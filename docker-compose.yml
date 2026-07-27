@@ -1,0 +1,45 @@
+services:
+  monitor:
+    build: .
+    container_name: services-health
+    restart: unless-stopped
+
+    # Expõe apenas no localhost — não acessível de outras máquinas
+    ports:
+      - "127.0.0.1:3000:3000"
+
+    env_file:
+      - .env
+
+    volumes:
+      # Volume nomeado para persistência do SQLite (Docker gerencia permissões)
+      - data:/app/data:rw
+
+    security_opt:
+      - no-new-privileges:true
+
+    cap_drop:
+      - ALL
+
+    # Sistema de arquivos raiz somente leitura
+    read_only: true
+
+    tmpfs:
+      - /tmp
+
+    healthcheck:
+      test:
+        ["CMD", "bun", "-e", "fetch('http://127.0.0.1:3000/health').then(r => process.exit(r.ok?0:1)).catch(() => process.exit(1))"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 15s
+
+    deploy:
+      resources:
+        limits:
+          memory: 256M
+          cpus: "0.5"
+
+volumes:
+  data:
