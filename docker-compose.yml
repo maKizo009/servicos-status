@@ -1,7 +1,7 @@
 services:
-  monitor:
+  services-health-monitor:
     build: .
-    container_name: services-health
+    container_name: services-health-monitor
     restart: unless-stopped
 
     # Expõe apenas no localhost — não acessível de outras máquinas
