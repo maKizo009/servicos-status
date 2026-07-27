@@ -1,279 +1,366 @@
-import { loadConfig, connectivityTargets } from "./config"
-import { logger } from "./logger"
-import { initDb, savePortalResult, saveConnectivityResult, saveBgpResult, getLatestPortalResults, getLatestConnectivityResults, getLatestBgpResults, getPortalHistory, closeDb } from "./db"
-import { sendTelegramAlert } from "./telegram"
-import type { CheckResult, OperatorName, PortalResult, ConnectivityResult, BgpResult, AlertLevel } from "./types"
+import { buildUnifiedReport, runAllChecks } from "./checker";
+import { loadConfig } from "./config";
+import {
+	closeDb,
+	getLatestBgpResults,
+	getLatestConnectivityResults,
+	getLatestPortalResults,
+	getPortalHistory,
+	initDb,
+	saveBgpResult,
+	saveConnectivityResult,
+	savePortalResult,
+} from "./db";
+import { logger } from "./logger";
+import { EventTracker } from "./state";
+import {
+	sendCopelAlert,
+	sendSaneparAlert,
+	sendTelegramAlert,
+	sendUnifiedReport,
+} from "./telegram";
+import type {
+	AlertLevel,
+	BgpResult,
+	CheckResult,
+	ConnectivityResult,
+	OperatorName,
+	PortalResult,
+	UnifiedReport,
+} from "./types";
 
-const config = loadConfig()
-const db = initDb()
+const config = loadConfig();
+const db = initDb();
+const tracker = new EventTracker(db);
 
-let checkResults: Map<OperatorName, CheckResult> = new Map()
-let lastResults: PortalResult[] = []
-let lastConnectivity: ConnectivityResult[] = []
-let lastBgp: BgpResult[] = []
-let currentLevel: AlertLevel = "ok"
+const checkResults: Map<OperatorName, CheckResult> = new Map();
+let lastResults: PortalResult[] = [];
 
-function assessLevel(portals: PortalResult[], connectivity: ConnectivityResult[], bgp: BgpResult | null): AlertLevel {
-  const portalFailures = portals.filter((p) => !p.success).length
-  const connFailures = connectivity.filter((c) => !c.success).length
+let currentLevel: AlertLevel = "ok";
+let lastUnifiedReportTime = 0;
+let lastUnifiedReport: UnifiedReport | null = null;
 
-  if (portalFailures > 0 || connFailures > 0 || (bgp && bgp.error)) return "critical"
+function assessLevel(
+	portals: PortalResult[],
+	connectivity: ConnectivityResult[],
+	bgp: BgpResult | null,
+): AlertLevel {
+	const portalFailures = portals.filter((p) => !p.success).length;
+	const connFailures = connectivity.filter((c) => !c.success).length;
 
-  const highLatency = portals.some((p) => p.latencyMs > config.latencyWarnMs && p.success)
-  if (highLatency) return "warn"
+	if (portalFailures > 0 || connFailures > 0 || bgp?.error) return "critical";
 
-  return "ok"
-}
+	const highLatency = portals.some(
+		(p) => p.latencyMs > config.latencyWarnMs && p.success,
+	);
+	if (highLatency) return "warn";
 
-function formatLatency(ms: number): string {
-  return `${ms.toFixed(0)}ms`
+	return "ok";
 }
 
 async function runChecks(): Promise<void> {
-  logger.info("Starting check cycle")
+	logger.info("Starting check cycle");
 
-  const allPortalResults: PortalResult[] = []
-  const allConnResults: ConnectivityResult[] = []
-  const allBgpResults: BgpResult[] = []
+	const data = await runAllChecks(config, tracker);
 
-  for (const [opName, opCfg] of Object.entries(config.operators) as [OperatorName, { asn: number; portals: string[] }][]) {
-    const portalResults = await Promise.all(
-      opCfg.portals.map(async (host) => {
-        const start = performance.now()
-        try {
-          const response = await fetch(`https://${host}`, {
-            signal: AbortSignal.timeout(config.portalTimeoutMs),
-            redirect: "follow",
-          })
-          const latencyMs = performance.now() - start
-          return { operator: opName, host, success: response.status < 500, latencyMs, error: "", timestamp: Date.now() } as PortalResult
-        } catch (err: unknown) {
-          const msg = err instanceof Error ? err.message : String(err)
-          return { operator: opName, host, success: false, latencyMs: performance.now() - start, error: msg, timestamp: Date.now() } as PortalResult
-        }
-      }),
-    )
+	// Save operator results to DB and update in-memory state
+	const allPortalResults: PortalResult[] = [];
+	const allConnResults: ConnectivityResult[] = [];
+	const allBgpResults: BgpResult[] = [];
 
-    const connectivityResults = await Promise.all(
-      connectivityTargets.map(async (t) => {
-        const start = performance.now()
-        try {
-          const response = await fetch(`https://${t.host}`, {
-            method: "HEAD",
-            signal: AbortSignal.timeout(config.connectivityTimeoutMs),
-          })
-          return { label: t.label, host: t.host, success: response.status < 500, latencyMs: performance.now() - start, error: "", timestamp: Date.now() } as ConnectivityResult
-        } catch (err: unknown) {
-          return { label: t.label, host: t.host, success: false, latencyMs: performance.now() - start, error: err instanceof Error ? err.message : String(err), timestamp: Date.now() } as ConnectivityResult
-        }
-      }),
-    )
+	for (const op of data.operators) {
+		for (const r of op.portalResults) savePortalResult(r);
+		for (const r of op.connectivityResults) saveConnectivityResult(r);
+		saveBgpResult(op.bgpResult);
 
-    let bgpResult: BgpResult
-    try {
-      const url = `https://stat.ripe.net/data/announced-prefixes/data.json?resource=AS${opCfg.asn}`
-      const res = await fetch(url, { signal: AbortSignal.timeout(config.bgpTimeoutMs) })
-      const data = (await res.json()) as { data?: { prefixes?: { prefix: string }[] } }
-      const prefixes = data?.data?.prefixes ?? []
-      const v4 = prefixes.filter((p) => !p.prefix.includes(":"))
-      bgpResult = { operator: opName, asn: opCfg.asn, prefixCountV4: v4.length, prefixCountV6: prefixes.length - v4.length, samplePrefixes: v4.slice(0, 10).map((p) => p.prefix), timestamp: Date.now() }
-    } catch (err: unknown) {
-      bgpResult = { operator: opName, asn: opCfg.asn, prefixCountV4: 0, prefixCountV6: 0, samplePrefixes: [], timestamp: Date.now(), error: err instanceof Error ? err.message : String(err) }
-    }
+		allPortalResults.push(...op.portalResults);
+		allConnResults.push(...op.connectivityResults);
+		allBgpResults.push(op.bgpResult);
 
-    for (const r of portalResults) savePortalResult(r)
-    for (const r of connectivityResults) saveConnectivityResult(r)
-    saveBgpResult(bgpResult)
+		const opLevel = assessLevel(
+			op.portalResults,
+			op.connectivityResults,
+			op.bgpResult,
+		);
+		checkResults.set(op.name, {
+			operator: op.name,
+			portalResults: op.portalResults,
+			connectivityResults: op.connectivityResults,
+			bgpResult: op.bgpResult,
+			status: opLevel,
+			timestamp: data.timestamp,
+		});
+	}
 
-    allPortalResults.push(...portalResults)
-    allConnResults.push(...connectivityResults)
-    allBgpResults.push(bgpResult)
+	lastResults = allPortalResults;
 
-    const opLevel = assessLevel(portalResults, connectivityResults, bgpResult)
-    checkResults.set(opName, {
-      operator: opName,
-      portalResults,
-      connectivityResults,
-      bgpResult,
-      status: opLevel,
-      timestamp: Date.now(),
-    })
-  }
+	// Operator aggregated alert (only on level change — existing behavior)
+	const newLevel = assessLevel(
+		allPortalResults,
+		allConnResults,
+		allBgpResults[0] ?? null,
+	);
+	if (newLevel !== currentLevel) {
+		currentLevel = newLevel;
+		const failedOps = [...checkResults.entries()]
+			.filter(([, r]) => r.status !== "ok")
+			.map(([name]) => name);
+		const summary =
+			failedOps.length > 0
+				? `⚠️ Problemas em: ${failedOps.join(", ")}`
+				: "✅ Todas as operadoras OK";
 
-  lastResults = allPortalResults
-  lastConnectivity = allConnResults
-  lastBgp = allBgpResults
+		await sendTelegramAlert({
+			botToken: config.telegramBotToken,
+			chatId: config.telegramChatId,
+			level: newLevel,
+			operatorResults: [...checkResults.entries()].map(([name, r]) => ({
+				operator: name,
+				status:
+					r.status === "ok"
+						? "✅ Normal"
+						: r.status === "warn"
+							? "⚠️ Atenção"
+							: "❌ Crítico",
+				portals: r.portalResults,
+			})),
+			summary,
+		});
+	}
 
-  const newLevel = assessLevel(allPortalResults, allConnResults, allBgpResults[0] ?? null)
-  if (newLevel !== currentLevel) {
-    currentLevel = newLevel
-    const failedOps = [...checkResults.entries()]
-      .filter(([, r]) => r.status !== "ok")
-      .map(([name]) => name)
-    const summary = failedOps.length > 0
-      ? `⚠️ Problemas em: ${failedOps.join(", ")}`
-      : "✅ Todas as operadoras OK"
+	// Per-event alerts for COPEL
+	for (const outage of data.newCopelOutages) {
+		await sendCopelAlert(
+			outage,
+			config.telegramBotToken,
+			config.telegramChatId,
+		);
+	}
 
-    await sendTelegramAlert({
-      botToken: config.telegramBotToken,
-      chatId: config.telegramChatId,
-      level: newLevel,
-      operatorResults: [...checkResults.entries()].map(([name, r]) => ({
-        operator: name,
-        status: r.status === "ok" ? "✅ Normal" : r.status === "warn" ? "⚠️ Atenção" : "❌ Crítico",
-        portals: r.portalResults,
-      })),
-      summary,
-    })
-  }
+	// Per-event alerts for Sanepar
+	for (const intr of data.newSaneparInterruptions) {
+		await sendSaneparAlert(
+			intr,
+			config.telegramBotToken,
+			config.telegramChatId,
+		);
+	}
 
-  logger.info("Check cycle completed", {
-    totalPortals: allPortalResults.length,
-    portalsOk: allPortalResults.filter((r) => r.success).length,
-    level: currentLevel,
-  })
+	// Build and optionally send unified report
+	lastUnifiedReport = buildUnifiedReport(data);
+	const now = Date.now();
+	if (
+		config.unifiedReportIntervalMs > 0 &&
+		now - lastUnifiedReportTime >= config.unifiedReportIntervalMs
+	) {
+		lastUnifiedReportTime = now;
+		await sendUnifiedReport(
+			lastUnifiedReport,
+			config.telegramBotToken,
+			config.telegramChatId,
+		);
+	}
+
+	logger.info("Check cycle completed", {
+		totalPortals: allPortalResults.length,
+		portalsOk: allPortalResults.filter((r) => r.success).length,
+		newCopel: data.newCopelOutages.length,
+		newSanepar: data.newSaneparInterruptions.length,
+		level: currentLevel,
+	});
 }
 
 function handleHealth(): Response {
-  const levelCounts = {
-    critical: [...checkResults.values()].filter((r) => r.status === "critical").length,
-    warn: [...checkResults.values()].filter((r) => r.status === "warn").length,
-    ok: [...checkResults.values()].filter((r) => r.status === "ok").length,
-  }
-  const healthy = levelCounts.critical === 0 && levelCounts.warn === 0
+	const levelCounts = {
+		critical: [...checkResults.values()].filter((r) => r.status === "critical")
+			.length,
+		warn: [...checkResults.values()].filter((r) => r.status === "warn").length,
+		ok: [...checkResults.values()].filter((r) => r.status === "ok").length,
+	};
+	const healthy = levelCounts.critical === 0 && levelCounts.warn === 0;
 
-  return Response.json({
-    status: healthy ? "healthy" : "degraded",
-    level: currentLevel,
-    uptime: Math.floor((Date.now() - startTime) / 1000),
-    operatorCount: checkResults.size,
-    levels: levelCounts,
-    lastCheck: lastResults.length > 0 ? lastResults[0].timestamp : null,
-    timestamp: Date.now(),
-  })
+	return Response.json({
+		status: healthy ? "healthy" : "degraded",
+		level: currentLevel,
+		uptime: Math.floor((Date.now() - startTime) / 1000),
+		operatorCount: checkResults.size,
+		levels: levelCounts,
+		lastCheck: lastResults.length > 0 ? lastResults[0].timestamp : null,
+		timestamp: Date.now(),
+	});
 }
 
 function handleStatus(): Response {
-  const results = [...checkResults.entries()].map(([name, r]) => ({
-    operator: name,
-    status: r.status,
-    portals: r.portalResults.map((p) => ({
-      host: p.host,
-      success: p.success,
-      latencyMs: p.latencyMs,
-      error: p.error,
-    })),
-    connectivity: r.connectivityResults.map((c) => ({
-      label: c.label,
-      success: c.success,
-      latencyMs: c.latencyMs,
-      error: c.error,
-    })),
-    bgp: r.bgpResult
-      ? {
-          asn: r.bgpResult.asn,
-          prefixCountV4: r.bgpResult.prefixCountV4,
-          prefixCountV6: r.bgpResult.prefixCountV6,
-          samplePrefixes: r.bgpResult.samplePrefixes,
-          error: r.bgpResult.error,
-        }
-      : null,
-  }))
+	const results = [...checkResults.entries()].map(([name, r]) => ({
+		operator: name,
+		status: r.status,
+		portals: r.portalResults.map((p) => ({
+			host: p.host,
+			success: p.success,
+			latencyMs: p.latencyMs,
+			error: p.error,
+		})),
+		connectivity: r.connectivityResults.map((c) => ({
+			label: c.label,
+			success: c.success,
+			latencyMs: c.latencyMs,
+			error: c.error,
+		})),
+		bgp: r.bgpResult
+			? {
+					asn: r.bgpResult.asn,
+					prefixCountV4: r.bgpResult.prefixCountV4,
+					prefixCountV6: r.bgpResult.prefixCountV6,
+					samplePrefixes: r.bgpResult.samplePrefixes,
+					error: r.bgpResult.error,
+				}
+			: null,
+	}));
 
-  return Response.json({
-    level: currentLevel,
-    operators: results,
-    timestamp: Date.now(),
-  })
+	return Response.json({
+		level: currentLevel,
+		operators: results,
+		timestamp: Date.now(),
+	});
 }
 
 function handleHistory(url: URL): Response {
-  const operator = url.searchParams.get("operator")
-  const limit = Math.min(Number(url.searchParams.get("limit")) || 100, 1000)
+	const operator = url.searchParams.get("operator");
+	const limit = Math.min(Number(url.searchParams.get("limit")) || 100, 1000);
 
-  if (operator) {
-    const history = getPortalHistory(operator, limit)
-    return Response.json({ operator, count: history.length, results: history })
-  }
+	if (operator) {
+		const history = getPortalHistory(operator, limit);
+		return Response.json({ operator, count: history.length, results: history });
+	}
 
-  return Response.json({
-    portals: getLatestPortalResults(limit),
-    connectivity: getLatestConnectivityResults(limit),
-    bgp: getLatestBgpResults(limit),
-  })
+	return Response.json({
+		portals: getLatestPortalResults(limit),
+		connectivity: getLatestConnectivityResults(limit),
+		bgp: getLatestBgpResults(limit),
+	});
+}
+
+function handleServices(): Response {
+	if (!lastUnifiedReport) {
+		return Response.json({ services: [], generatedAt: null });
+	}
+	return Response.json(lastUnifiedReport);
 }
 
 async function handleRequest(req: Request): Promise<Response> {
-  const url = new URL(req.url)
-  const path = url.pathname
+	const url = new URL(req.url);
+	const path = url.pathname;
 
-  try {
-    if (path === "/health" || path === "/health/") return handleHealth()
-    if (path === "/api/status") return handleStatus()
-    if (path === "/api/history") return handleHistory(url)
-    if (path === "/api/operators") {
-      return Response.json({ operators: Object.keys(config.operators) })
-    }
-    if (path === "/api/bgp") {
-      return Response.json({ results: getLatestBgpResults(20) })
-    }
-    if (path === "/api/check" && req.method === "POST") {
-      await runChecks()
-      return Response.json({ status: "ok", timestamp: Date.now() })
-    }
+	try {
+		if (path === "/health" || path === "/health/") return handleHealth();
+		if (path === "/api/status") return handleStatus();
+		if (path === "/api/services") return handleServices();
+		if (path === "/api/report") return handleServices();
+		if (path === "/api/history") return handleHistory(url);
+		if (path === "/api/operators") {
+			return Response.json({ operators: Object.keys(config.operators) });
+		}
+		if (path === "/api/bgp") {
+			return Response.json({ results: getLatestBgpResults(20) });
+		}
+		if (path === "/api/check" && req.method === "POST") {
+			await runChecks();
+			return Response.json({ status: "ok", timestamp: Date.now() });
+		}
 
-    return new Response("Not found", { status: 404 })
-  } catch (err: unknown) {
-    const msg = err instanceof Error ? err.message : String(err)
-    logger.error("API error", { path, error: msg })
-    return new Response(JSON.stringify({ error: msg }), {
-      status: 500,
-      headers: { "Content-Type": "application/json" },
-    })
-  }
+		return new Response("Not found", { status: 404 });
+	} catch (err: unknown) {
+		const msg = err instanceof Error ? err.message : String(err);
+		logger.error("API error", { path, error: msg });
+		return new Response(JSON.stringify({ error: msg }), {
+			status: 500,
+			headers: { "Content-Type": "application/json" },
+		});
+	}
 }
 
-const startTime = Date.now()
-let checkInterval: ReturnType<typeof setInterval> | null = null
-let server: { stop: () => void } | null = null
+const startTime = Date.now();
+let checkInterval: ReturnType<typeof setInterval> | null = null;
+let server: { stop: () => void } | null = null;
+
+async function runOnce(): Promise<void> {
+	logger.info("Running single check cycle (--once)");
+
+	const data = await runAllChecks(config, tracker);
+
+	for (const op of data.operators) {
+		for (const r of op.portalResults) savePortalResult(r);
+		for (const r of op.connectivityResults) saveConnectivityResult(r);
+		saveBgpResult(op.bgpResult);
+	}
+
+	for (const outage of data.newCopelOutages) {
+		await sendCopelAlert(
+			outage,
+			config.telegramBotToken,
+			config.telegramChatId,
+		);
+	}
+
+	for (const intr of data.newSaneparInterruptions) {
+		await sendSaneparAlert(
+			intr,
+			config.telegramBotToken,
+			config.telegramChatId,
+		);
+	}
+
+	logger.info("Single check cycle completed", {
+		operators: data.operators.length,
+		newCopel: data.newCopelOutages.length,
+		newSanepar: data.newSaneparInterruptions.length,
+	});
+}
 
 async function main(): Promise<void> {
-  logger.info("Starting services-health monitor", {
-    operators: Object.keys(config.operators),
-    checkIntervalMs: config.checkIntervalMs,
-    httpPort: config.httpPort,
-  })
+	if (process.argv.includes("--once")) {
+		await runOnce();
+		closeDb();
+		process.exit(0);
+	}
 
-  await runChecks()
+	logger.info("Starting services-health monitor", {
+		operators: Object.keys(config.operators),
+		municipio: config.municipio || "(não configurado)",
+		checkIntervalMs: config.checkIntervalMs,
+		httpPort: config.httpPort,
+	});
 
-  checkInterval = setInterval(runChecks, config.checkIntervalMs)
+	await runChecks();
 
-  server = Bun.serve({
-    port: config.httpPort,
-    fetch: handleRequest,
-  })
+	checkInterval = setInterval(runChecks, config.checkIntervalMs);
 
-  logger.info(`HTTP server listening on :${config.httpPort}`)
+	server = Bun.serve({
+		port: config.httpPort,
+		fetch: handleRequest,
+	});
 
-  process.on("SIGTERM", gracefulShutdown)
-  process.on("SIGINT", gracefulShutdown)
+	logger.info(`HTTP server listening on :${config.httpPort}`);
+
+	process.on("SIGTERM", gracefulShutdown);
+	process.on("SIGINT", gracefulShutdown);
 }
 
 async function gracefulShutdown(): Promise<void> {
-  logger.info("Shutting down gracefully...")
+	logger.info("Shutting down gracefully...");
 
-  if (checkInterval) clearInterval(checkInterval)
-  if (server) server.stop()
-  closeDb()
+	if (checkInterval) clearInterval(checkInterval);
+	if (server) server.stop();
+	closeDb();
 
-  logger.info("Shutdown complete")
-  process.exit(0)
+	logger.info("Shutdown complete");
+	process.exit(0);
 }
 
 if (import.meta.path === Bun.main) {
-  main().catch((err: unknown) => {
-    const msg = err instanceof Error ? err.message : String(err)
-    logger.error("Fatal error during startup", { error: msg })
-    process.exit(1)
-  })
+	main().catch((err: unknown) => {
+		const msg = err instanceof Error ? err.message : String(err);
+		logger.error("Fatal error during startup", { error: msg });
+		process.exit(1);
+	});
 }

@@ -1,52 +1,102 @@
-export type OperatorName = "Claro" | "Vivo" | "TIM"
+export type OperatorName = "Claro" | "Vivo" | "TIM";
 
 export interface OperatorConfig {
-  asn: number
-  portals: string[]
+	asn: number;
+	portals: string[];
 }
 
 export interface PortalResult {
-  operator: OperatorName
-  host: string
-  success: boolean
-  latencyMs: number
-  error: string
-  timestamp: number
+	operator: OperatorName;
+	host: string;
+	success: boolean;
+	latencyMs: number;
+	error: string;
+	timestamp: number;
 }
 
 export interface ConnectivityResult {
-  label: string
-  host: string
-  success: boolean
-  latencyMs: number
-  error: string
-  timestamp: number
+	label: string;
+	host: string;
+	success: boolean;
+	latencyMs: number;
+	error: string;
+	timestamp: number;
 }
 
 export interface BgpResult {
-  operator: OperatorName
-  asn: number
-  prefixCountV4: number
-  prefixCountV6: number
-  samplePrefixes: string[]
-  timestamp: number
-  error?: string
+	operator: OperatorName;
+	asn: number;
+	prefixCountV4: number;
+	prefixCountV6: number;
+	samplePrefixes: string[];
+	timestamp: number;
+	error?: string;
 }
 
 export interface CheckResult {
-  operator: OperatorName
-  portalResults: PortalResult[]
-  connectivityResults: ConnectivityResult[]
-  bgpResult: BgpResult | null
-  status: "ok" | "warn" | "critical"
-  timestamp: number
+	operator: OperatorName;
+	portalResults: PortalResult[];
+	connectivityResults: ConnectivityResult[];
+	bgpResult: BgpResult | null;
+	status: "ok" | "warn" | "critical";
+	timestamp: number;
 }
 
-export type AlertLevel = "ok" | "warn" | "critical"
+export type AlertLevel = "ok" | "warn" | "critical";
 
 export interface LogEntry {
-  level: "info" | "warn" | "error"
-  message: string
-  timestamp: string
-  [key: string]: unknown
+	level: "info" | "warn" | "error";
+	message: string;
+	timestamp: string;
+	[key: string]: unknown;
+}
+
+// =================== COPEL ===================
+export interface CopelOutage {
+	idOcorrencia: string;
+	numeroSequencial: string;
+	municipio: string;
+	bairro: string;
+	ehProgramada: boolean;
+	tipoPrincipal: string;
+	tipoEvento: string;
+	dataInicio: string;
+	previsaoRestabelecimento: string | null;
+	faixaDuracao: string;
+	statusEquipe: string;
+	qtdConsumidores: number;
+	equipeId: string;
+}
+
+// =================== Sanepar ===================
+export interface SaneparInterruption {
+	cidade: string;
+	bairro: string;
+	inicio: string;
+	fim: string;
+	motivo: string;
+	link: string;
+}
+
+// =================== Serviços de Utilidade ===================
+export type ServiceSource = OperatorName | "Copel" | "Sanepar";
+export type ServiceCategory = "telecom" | "utility";
+
+export interface ServiceHealth {
+	name: ServiceSource;
+	category: ServiceCategory;
+	status: "ok" | "warn" | "critical";
+	details: string;
+	timestamp: number;
+	data?: Record<string, unknown>;
+}
+
+export interface UnifiedReport {
+	generatedAt: number;
+	overallStatus: "ok" | "warn" | "critical";
+	services: ServiceHealth[];
+	newEvents: {
+		copel: CopelOutage[];
+		sanepar: SaneparInterruption[];
+	};
 }
