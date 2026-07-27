@@ -12,6 +12,7 @@ import {
 	savePortalResult,
 } from "./db";
 import { logger } from "./logger";
+import { checkRateLimit } from "./rate-limiter";
 import { EventTracker } from "./state";
 import {
 	sendCopelAlert,
@@ -250,6 +251,36 @@ function handleServices(): Response {
 async function handleRequest(req: Request): Promise<Response> {
 	const url = new URL(req.url);
 	const path = url.pathname;
+
+	// Rate limit all /api/* endpoints except /health
+	if (path.startsWith("/api/")) {
+		const ip =
+			req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ||
+			req.headers.get("x-real-ip") ||
+			"unknown";
+		const { allowed, retryAfter } = checkRateLimit(ip);
+		if (!allowed) {
+			return new Response(
+				JSON.stringify({
+					error: "Too many requests",
+					retryAfter,
+					limit: "10 requests per minute",
+				}),
+				{
+					status: 429,
+					headers: {
+						"Content-Type": "application/json",
+						"Retry-After": String(retryAfter),
+						"X-RateLimit-Limit": "10",
+						"X-RateLimit-Remaining": "0",
+						"X-RateLimit-Reset": String(
+							Math.ceil((Date.now() + retryAfter * 1000) / 1000),
+						),
+					},
+				},
+			);
+		}
+	}
 
 	try {
 		if (path === "/health" || path === "/health/") return handleHealth();

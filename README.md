@@ -41,17 +41,47 @@ bun run dev      # Desenvolvimento com watch
 bun run src/index.ts --once   # Modo cron: executa uma vez e sai
 ```
 
-## Endpoints (API Interna)
+## API REST
 
+> Base URL: `http://<host>:3000`
 > Todos os endpoints retornam `Content-Type: application/json`.
 
 ---
 
-### `GET /health`
+### Rate Limiting
 
-Health check do monitor. Retorna status geral e métricas de uptime.
+Os endpoints `/api/*` têm limite de **10 requisições por minuto por IP** para evitar abuso.
 
-**Resposta:**
+Quando excedido, a API retorna `429 Too Many Requests` com os headers:
+
+| Header | Exemplo | Descrição |
+|---|---|---|
+| `Retry-After` | `42` | Segundos até poder tentar de novo |
+| `X-RateLimit-Limit` | `10` | Máximo de requisições por janela |
+| `X-RateLimit-Remaining` | `0` | Requisições restantes na janela atual |
+| `X-RateLimit-Reset` | `1712345678` | Timestamp Unix do reset da janela |
+
+O endpoint `/health` **não** tem rate limit (essencial para load balancers e Docker healthcheck).
+
+**Exemplo de resposta 429:**
+
+```json
+{
+  "error": "Too many requests",
+  "retryAfter": 42,
+  "limit": "10 requests per minute"
+}
+```
+
+> 💡 A identificação do IP usa o header `X-Forwarded-For` (para uso atrás de reverse proxy) ou `X-Real-IP`. Se nenhum estiver presente, usa `"unknown"` e todos os requests sem esses headers compartilham o mesmo bucket.
+
+---
+
+### Endpoints Públicos
+
+#### `GET /health`
+
+Health check do monitor. **Sem rate limit.** Usado por Docker, load balancers e sistemas de orchestration.
 
 | Campo | Tipo | Descrição |
 |---|---|---|
@@ -59,7 +89,9 @@ Health check do monitor. Retorna status geral e métricas de uptime.
 | `level` | string | Nível geral: `"ok"`, `"warn"`, `"critical"` |
 | `uptime` | number | Segundos desde a inicialização |
 | `operatorCount` | number | Quantidade de operadoras monitoradas |
-| `levels` | object | Contagem de operadoras por nível |
+| `levels.critical` | number | Operadoras em estado crítico |
+| `levels.warn` | number | Operadoras em atenção |
+| `levels.ok` | number | Operadoras normais |
 | `lastCheck` | number \| null | Timestamp do último ciclo |
 | `timestamp` | number | Timestamp da resposta |
 
@@ -77,77 +109,29 @@ Health check do monitor. Retorna status geral e métricas de uptime.
 
 ---
 
-### `GET /api/status`
+#### `GET /api/services` ⭐
 
-Status detalhado de **todas as operadoras** (portais, conectividade, BGP).
+**Endpoint principal.** Relatório unificado de **todos os serviços monitorados**: operadoras (Claro, Vivo, TIM) + utilidades (COPEL, Sanepar).
 
-**Resposta:**
-
-| Campo | Tipo | Descrição |
-|---|---|---|
-| `level` | string | Nível geral das operadoras |
-| `operators[]` | array | Lista de operadoras |
-| `operators[].operator` | string | Nome: `"Claro"`, `"Vivo"`, `"TIM"` |
-| `operators[].status` | string | `"ok"`, `"warn"`, `"critical"` |
-| `operators[].portals[]` | array | Resultados dos portais |
-| `operators[].portals[].host` | string | Host do portal |
-| `operators[].portals[].success` | boolean | Se respondeu |
-| `operators[].portals[].latencyMs` | number | Latência em ms |
-| `operators[].portals[].error` | string | Erro (vazio se ok) |
-| `operators[].connectivity[]` | array | Testes de conectividade |
-| `operators[].connectivity[].label` | string | `"Google"`, `"Cloudflare"`, etc |
-| `operators[].bgp` | object \| null | Dados BGP (prefixos) |
-
-```json
-{
-  "level": "ok",
-  "operators": [
-    {
-      "operator": "Claro",
-      "status": "ok",
-      "portals": [
-        { "host": "minhaclaro.claro.com.br", "success": true, "latencyMs": 234, "error": "" }
-      ],
-      "connectivity": [
-        { "label": "Google", "success": true, "latencyMs": 15, "error": "" }
-      ],
-      "bgp": { "asn": 28573, "prefixCountV4": 42, "prefixCountV6": 12, "samplePrefixes": ["179.183.0.0/16"], "error": "" }
-    }
-  ],
-  "timestamp": 1712345678000
-}
-```
-
----
-
-### `GET /api/services`
-
-Relatório unificado de **todos os serviços**: operadoras + utilidades (COPEL, Sanepar).
-
-É o endpoint principal para consumo por dashboards ou agregadores.
-
-**Resposta:**
+É o endpoint recomendado para dashboards, agregadores e consumo externo.
 
 | Campo | Tipo | Descrição |
 |---|---|---|
 | `generatedAt` | number | Timestamp do relatório |
-| `overallStatus` | string | `"ok"`, `"warn"` ou `"critical"` (pior entre todos) |
+| `overallStatus` | string | Pior status entre todos os serviços: `"ok"`, `"warn"`, `"critical"` |
 | `services[]` | array | Lista de serviços monitorados |
-| `services[].name` | string | Nome do serviço: `"Claro"`, `"Vivo"`, `"TIM"`, `"Copel"`, `"Sanepar"` |
-| `services[].category` | string | `"telecom"` ou `"utility"` |
+| `services[].name` | string | Nome: `"Claro"`, `"Vivo"`, `"TIM"`, `"Copel"`, `"Sanepar"` |
+| `services[].category` | string | Categoria: `"telecom"` ou `"utility"` |
 | `services[].status` | string | `"ok"`, `"warn"`, `"critical"` |
-| `services[].details` | string | Resumo legível |
+| `services[].details` | string | Resumo legível em português |
 | `services[].timestamp` | number | Timestamp da última verificação |
-| `services[].data` | object | Dados completos (depende do serviço) |
-| `newEvents` | object | Ocorrências novas detectadas no último ciclo |
-| `newEvents.copel` | array | Lista de `CopelOutage` |
-| `newEvents.sanepar` | array | Lista de `SaneparInterruption` |
-
-**Exemplo:**
+| `services[].data` | object | Dados completos (varia por serviço) |
+| `newEvents.copel[]` | array | Novas ocorrências COPEL detectadas |
+| `newEvents.sanepar[]` | array | Novas interrupções Sanepar detectadas |
 
 ```json
 {
-  "generatedAt": 1712345678000,
+  "generatedAt": 1785179123920,
   "overallStatus": "warn",
   "services": [
     {
@@ -155,21 +139,26 @@ Relatório unificado de **todos os serviços**: operadoras + utilidades (COPEL, 
       "category": "telecom",
       "status": "ok",
       "details": "OK",
-      "timestamp": 1712345678000
+      "timestamp": 1785179123920,
+      "data": {
+        "portalResults": [{ "host": "minhaclaro.claro.com.br", "success": true, "latencyMs": 234, "error": "" }],
+        "connectivityResults": [{ "label": "Google", "success": true, "latencyMs": 15, "error": "" }],
+        "bgp": { "asn": 28573, "prefixCountV4": 42, "prefixCountV6": 12 }
+      }
     },
     {
       "name": "Copel",
       "category": "utility",
       "status": "ok",
       "details": "Sem ocorrências",
-      "timestamp": 1712345678000
+      "timestamp": 1785179123920
     },
     {
       "name": "Sanepar",
       "category": "utility",
       "status": "critical",
       "details": "1 interrupção(ões)",
-      "timestamp": 1712345678000
+      "timestamp": 1785179123920
     }
   ],
   "newEvents": {
@@ -190,30 +179,50 @@ Relatório unificado de **todos os serviços**: operadoras + utilidades (COPEL, 
 
 ---
 
-### `GET /api/report`
+#### `GET /api/status`
 
-Alias para [`/api/services`](#get-apiservices). Mesmo comportamento e resposta.
+Status detalhado das **operadoras de telecom** (portais, conectividade, BGP). Útil para monitoramento técnico granular.
+
+| Campo | Tipo | Descrição |
+|---|---|---|
+| `level` | string | Nível geral das operadoras |
+| `operators[]` | array | Lista de operadoras |
+| `operators[].operator` | string | Nome: `"Claro"`, `"Vivo"`, `"TIM"` |
+| `operators[].status` | string | `"ok"`, `"warn"`, `"critical"` |
+| `operators[].portals[].host` | string | Host do portal |
+| `operators[].portals[].success` | boolean | Se respondeu |
+| `operators[].portals[].latencyMs` | number | Latência em ms |
+| `operators[].portals[].error` | string | Vazio se OK |
+| `operators[].connectivity[].label` | string | Alvo: `"Google"`, `"Cloudflare"`, etc |
+| `operators[].bgp.asn` | number | ASN da operadora |
+| `operators[].bgp.prefixCountV4` | number | Prefixos IPv4 anunciados |
+| `operators[].bgp.prefixCountV6` | number | Prefixos IPv6 anunciados |
+
+```json
+{
+  "level": "ok",
+  "operators": [
+    {
+      "operator": "Claro",
+      "status": "ok",
+      "portals": [
+        { "host": "minhaclaro.claro.com.br", "success": true, "latencyMs": 234, "error": "" }
+      ],
+      "connectivity": [
+        { "label": "Google", "success": true, "latencyMs": 15, "error": "" }
+      ],
+      "bgp": { "asn": 28573, "prefixCountV4": 42, "prefixCountV6": 12, "samplePrefixes": ["179.183.0.0/16"], "error": "" }
+    }
+  ],
+  "timestamp": 1785179123920
+}
+```
 
 ---
 
-### `GET /api/history?operator=Claro&limit=100`
+#### `GET /api/operators`
 
-Histórico de latência dos portais, armazenado no SQLite.
-
-**Parâmetros:**
-
-| Parâmetro | Tipo | Default | Descrição |
-|---|---|---|---|
-| `operator` | string | _(todos)_ | Filtrar por operadora: `"Claro"`, `"Vivo"`, `"TIM"` |
-| `limit` | number | `100` | Máximo de registros (max: 1000) |
-
-**Resposta:** Array de resultados de portal com `operator`, `host`, `success`, `latencyMs`, `error`, `timestamp`.
-
----
-
-### `GET /api/operators`
-
-Lista as operadoras configuradas.
+Lista simples das operadoras configuradas.
 
 ```json
 { "operators": ["Claro", "Vivo", "TIM"] }
@@ -221,7 +230,7 @@ Lista as operadoras configuradas.
 
 ---
 
-### `GET /api/bgp`
+#### `GET /api/bgp`
 
 Últimos 20 resultados de BGP (prefixos anunciados por ASN).
 
@@ -234,7 +243,7 @@ Lista as operadoras configuradas.
       "prefixCountV4": 42,
       "prefixCountV6": 12,
       "samplePrefixes": ["179.183.0.0/16"],
-      "timestamp": 1712345678000,
+      "timestamp": 1785179123920,
       "error": ""
     }
   ]
@@ -243,19 +252,30 @@ Lista as operadoras configuradas.
 
 ---
 
-### `POST /api/check`
+### Endpoints Internos (não expor publicamente)
 
-Executa um ciclo completo de verificação **sob demanda**: operadoras (portal + conectividade + BGP) + COPEL + Sanepar.
+#### `POST /api/check`
 
-**Requisição:** Corpo vazio (apenas o POST).
-
-**Resposta:**
+Executa um ciclo completo de verificação sob demanda. Apenas para uso interno (ex: chamadas de sistemas de monitoramento autorizados).
 
 ```json
-{ "status": "ok", "timestamp": 1712345678000 }
+{ "status": "ok", "timestamp": 1785179123920 }
 ```
 
-> ⚠️ A resposta não inclui os resultados. Consulte `GET /api/services` ou `GET /api/status` após o POST.
+> Consulte `GET /api/services` após o POST para obter os resultados.
+
+#### `GET /api/history?operator=Claro&limit=100`
+
+Histórico de latência dos portais no SQLite. Expor apenas em redes internas.
+
+| Parâmetro | Tipo | Default | Descrição |
+|---|---|---|---|
+| `operator` | string | _(todos)_ | Filtrar: `"Claro"`, `"Vivo"`, `"TIM"` |
+| `limit` | number | `100` | Máximo: 1000 |
+
+#### `GET /api/report`
+
+Alias para `/api/services`. Mesmo comportamento.
 
 ## Serviços Monitorados
 
