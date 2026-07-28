@@ -6,7 +6,7 @@ services:
 
     # Expõe apenas no localhost — não acessível de outras máquinas
     ports:
-      - "127.0.0.1:3000:3000"
+      - "127.0.0.1:3030:3030"
 
     env_file:
       - .env
@@ -29,7 +29,7 @@ services:
 
     healthcheck:
       test:
-        ["CMD", "bun", "-e", "fetch('http://127.0.0.1:3000/health').then(r => process.exit(r.ok?0:1)).catch(() => process.exit(1))"]
+        ["CMD", "bun", "-e", "fetch('http://127.0.0.1:3030/health').then(r => process.exit(r.ok?0:1)).catch(() => process.exit(1))"]
       interval: 30s
       timeout: 10s
       retries: 3

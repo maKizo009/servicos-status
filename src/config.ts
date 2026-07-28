@@ -46,7 +46,7 @@ export function loadConfig(): AppConfig {
 		portalTimeoutMs: envInt("PORTAL_TIMEOUT_MS", 10_000),
 		connectivityTimeoutMs: envInt("CONNECTIVITY_TIMEOUT_MS", 5_000),
 		bgpTimeoutMs: envInt("BGP_TIMEOUT_MS", 15_000),
-		httpPort: envInt("HTTP_PORT", 3000),
+		httpPort: envInt("HTTP_PORT", 3030),
 		latencyOkMs: envInt("LATENCY_OK_MS", 500),
 		latencyWarnMs: envInt("LATENCY_WARN_MS", 2000),
 		lossOk: envInt("LOSS_OK", 0),
