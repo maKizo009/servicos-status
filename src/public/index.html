@@ -11,15 +11,16 @@
   --g500:#4CAF50;--g400:#66BB6A;--g300:#81C784;--g200:#A5D6A7;--g100:#C8E6C9;--g50:#E8F5E9;
   --gold:#FFC107;--gold-l:#FFF8E1;--gold-d:#FF8F00;
   --red:#D32F2F;--red-l:#FFEBEE;--red-d:#B71C1C;
+  --claro:#ED1C24;--vivo:#660099;--tim:#003DA5;
+  --copel:#00923F;--sanepar:#003F87;
   --bg:#F5F5F0;--surface:#fff;--text:#1C1C1C;--text2:#5F6368;--text3:#9AA0A6;--border:#E0E0D8;
   --radius:16px;--radius-sm:10px;--shadow:0 2px 8px rgba(0,0,0,.07),0 1px 2px rgba(0,0,0,.04);
-  --shadow-lg:0 8px 30px rgba(0,0,0,.1);--font:system-ui,-apple-system,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;
-  --transition:all .25s cubic-bezier(.4,0,.2,1)
+  --font:system-ui,-apple-system,'Segoe UI',Roboto,Helvetica,Arial,sans-serif
 }
 html{font-size:16px;-webkit-font-smoothing:antialiased}
 body{font-family:var(--font);background:var(--bg);color:var(--text);min-height:100dvh;display:flex;flex-direction:column}
 
-/* ――― Header ――― */
+/* Header */
 .header{
   background:linear-gradient(135deg,var(--g900),var(--g800));
   padding:16px 24px;color:#fff;display:flex;align-items:center;justify-content:space-between;
@@ -35,15 +36,15 @@ body{font-family:var(--font);background:var(--bg);color:var(--text);min-height:1
 .header-title span{font-weight:400;opacity:.8}
 .header-right{display:flex;align-items:center;gap:16px}
 .header-time{font-size:14px;font-variant-numeric:tabular-nums;opacity:.85}
-.ov-dot{width:10px;height:10px;border-radius:50%;transition:var(--transition)}
+.ov-dot{width:10px;height:10px;border-radius:50%;transition:opacity .25s}
 .ov-dot.ok{background:var(--g400);box-shadow:0 0 8px var(--g400)}
 .ov-dot.warn{background:var(--gold);box-shadow:0 0 8px var(--gold)}
 .ov-dot.critical{background:var(--red);box-shadow:0 0 8px var(--red)}
 
-/* ――― Status Banner ――― */
+/* Banner */
 .banner{
   margin:24px 24px 0;padding:24px 28px;border-radius:var(--radius);color:#fff;
-  display:flex;align-items:center;gap:20px;box-shadow:var(--shadow);transition:var(--transition)
+  display:flex;align-items:center;gap:20px;box-shadow:var(--shadow)
 }
 .banner.ok{background:linear-gradient(135deg,var(--g700),var(--g600))}
 .banner.warn{background:linear-gradient(135deg,var(--gold-d),var(--gold))}
@@ -61,65 +62,97 @@ body{font-family:var(--font);background:var(--bg);color:var(--text);min-height:1
   border-radius:20px;font-size:13px;font-weight:600;white-space:nowrap;flex-shrink:0
 }
 
-/* ――― Grid ――― */
+/* Grid */
 .grid{padding:24px;display:grid;grid-template-columns:1fr;gap:16px;flex:1}
 @media(min-width:640px){.grid{grid-template-columns:1fr 1fr}}
 @media(min-width:1024px){.grid{grid-template-columns:1fr 1fr 1fr;padding:32px;gap:20px}}
 
-/* ――― Card ――― */
+/* Card */
 .card{
   background:var(--surface);border-radius:var(--radius);box-shadow:var(--shadow);
-  padding:20px;transition:var(--transition);border:1px solid var(--border);
-  display:flex;flex-direction:column;gap:12px;position:relative;overflow:hidden
+  padding:0;display:flex;flex-direction:column;position:relative;overflow:hidden;
+  border:1px solid var(--border)
 }
-.card::before{content:'';position:absolute;top:0;left:0;right:0;height:4px;transition:var(--transition)}
-.card.ok::before{background:var(--g400)}
-.card.warn::before{background:var(--gold)}
-.card.critical::before{background:var(--red)}
-.card:hover{box-shadow:var(--shadow-lg);transform:translateY(-2px)}
+.card-banner{
+  height:6px;flex-shrink:0;display:flex;align-items:center;justify-content:center;
+  font-size:10px;font-weight:700;color:rgba(255,255,255,.8);text-transform:uppercase;letter-spacing:1px
+}
+.card-banner.claro{background:var(--claro)}
+.card-banner.claro::after{content:"CLARO"}
+.card-banner.vivo{background:var(--vivo)}
+.card-banner.vivo::after{content:"VIVO"}
+.card-banner.tim{background:var(--tim)}
+.card-banner.tim::after{content:"TIM"}
+.card-banner.copel{background:var(--copel)}
+.card-banner.copel::after{content:"COPEL"}
+.card-banner.sanepar{background:var(--sanepar)}
+.card-banner.sanepar::after{content:"SANEPAR"}
+.card-inner{padding:20px;display:flex;flex-direction:column;gap:12px}
 .card-head{display:flex;align-items:center;gap:14px}
 .card-icon{
-  width:44px;height:44px;border-radius:12px;display:flex;align-items:center;justify-content:center;flex-shrink:0
+  width:48px;height:48px;border-radius:12px;display:flex;align-items:center;justify-content:center;flex-shrink:0
 }
-.card-icon svg{width:24px;height:24px}
-.card-icon.telecom{background:var(--g50);fill:var(--g700)}
-.card-icon.utility{background:var(--gold-l);fill:var(--gold-d)}
-.card-name{font-size:17px;font-weight:600;flex:1}
+.card-icon svg{width:28px;height:28px}
+.card-icon.claro{background:rgba(237,28,36,.1)}
+.card-icon.claro svg{fill:var(--claro)}
+.card-icon.vivo{background:rgba(102,0,153,.1)}
+.card-icon.vivo svg{fill:var(--vivo)}
+.card-icon.tim{background:rgba(0,61,165,.1)}
+.card-icon.tim svg{fill:var(--tim)}
+.card-icon.copel{background:rgba(0,146,63,.1)}
+.card-icon.copel svg{fill:var(--copel)}
+.card-icon.sanepar{background:rgba(0,63,135,.1)}
+.card-icon.sanepar svg{fill:var(--sanepar)}
+.card-name{font-size:18px;font-weight:700;flex:1}
+.card-name .cat-badge{
+  font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.3px;
+  display:inline-block;margin-left:8px;padding:1px 8px;border-radius:4px;vertical-align:middle
+}
+.card-name .cat-badge.telecom{background:var(--g50);color:var(--g700)}
+.card-name .cat-badge.utility{background:var(--gold-l);color:var(--gold-d)}
 .card-status{
   font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;
-  padding:3px 12px;border-radius:20px;white-space:nowrap
+  padding:4px 14px;border-radius:20px;white-space:nowrap
 }
 .card-status.ok{background:var(--g100);color:var(--g800)}
 .card-status.warn{background:var(--gold-l);color:var(--gold-d)}
 .card-status.critical{background:var(--red-l);color:var(--red-d)}
-.card-body{display:flex;flex-direction:column;gap:6px;font-size:14px;color:var(--text2)}
+.card-body{display:flex;flex-direction:column;gap:8px;font-size:14px;color:var(--text2)}
 .card-body .row{display:flex;align-items:center;gap:8px}
 .card-body .row svg{width:16px;height:16px;fill:var(--text3);flex-shrink:0}
-.card-foot{font-size:12px;color:var(--text3);padding-top:8px;border-top:1px solid var(--border);display:flex;justify-content:space-between;align-items:center}
-.card-foot .refreshing svg{width:14px;height:14px;fill:var(--text3);animation:spin 1s linear infinite;vertical-align:middle;margin-right:6px}
-@keyframes spin{to{transform:rotate(360deg)}}
-.card-shimmer{position:absolute;inset:0;background:linear-gradient(90deg,transparent,rgba(255,255,255,.4),transparent);background-size:200% 100%;animation:shimmer 1.5s infinite;pointer-events:none}
-@keyframes shimmer{0%{background-position:-200% 0}100%{background-position:200% 0}}
+.card-body .latency{
+  font-size:22px;font-weight:700;color:var(--text);margin-top:2px
+}
+.card-body .latency span{font-size:13px;font-weight:400;color:var(--text3);margin-left:4px}
+.card-body .latency.fast{color:var(--g600)}
+.card-body .latency.slow{color:var(--gold-d)}
+.card-body .latency.slow svg{fill:var(--gold-d)}
+.card-foot{font-size:12px;color:var(--text3);padding:12px 20px;border-top:1px solid var(--border);display:flex;justify-content:space-between;align-items:center}
 
-/* ――― Skeleton state ――― */
-.skeleton .card::before{background:var(--border)}
+/* Skeleton */
+.skeleton .card-banner{background:var(--border)}
+.skeleton .card-banner.claro::after,.skeleton .card-banner.vivo::after,.skeleton .card-banner.tim::after,.skeleton .card-banner.copel::after,.skeleton .card-banner.sanepar::after{content:""}
 .skeleton .card-icon{background:var(--bg)}
-.skeleton .card-name{height:17px;background:var(--bg);border-radius:4px;width:60%}
-.skeleton .card-status{width:70px;height:20px;background:var(--bg);border-radius:20px}
+.skeleton .card-icon svg{display:none}
+.skeleton .card-name .cat-badge{display:none}
+.skeleton .card-name{height:18px;background:var(--bg);border-radius:4px;width:50%}
+.skeleton .card-status{width:80px;height:22px;background:var(--bg);border-radius:20px}
 .skeleton .row{height:14px;background:var(--bg);border-radius:4px;width:70%}
-.skeleton .row:nth-child(2){width:50%}
+.skeleton .row:nth-child(2){width:45%}
+.skeleton .latency{height:22px;background:var(--bg);border-radius:4px;width:30%}
 .skeleton .card-foot{height:12px;background:var(--bg);border-radius:4px;width:40%}
 
-/* ――― Footer ――― */
+/* Footer */
 .footer{
-  text-align:center;padding:20px 24px;font-size:13px;color:var(--text3);
-  border-top:1px solid var(--border);margin-top:auto
+  text-align:center;padding:20px 24px;font-size:13px;color:var(--text3);border-top:1px solid var(--border);margin-top:auto
 }
-.footer .live-indicator{display:inline-flex;align-items:center;gap:6px;margin-bottom:4px}
+.footer .live-indicator{display:inline-flex;align-items:center;gap:6px;margin-bottom:6px}
 .footer .live-dot{width:6px;height:6px;border-radius:50%;background:var(--g400);animation:pulse 2s infinite}
 @keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
+.footer .credit{font-size:12px;margin-top:4px}
+.footer .credit strong{color:var(--text2)}
 
-/* ――― Error state ――― */
+/* Error */
 .error-state{
   text-align:center;padding:64px 24px;color:var(--text2);flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px
 }
@@ -128,13 +161,12 @@ body{font-family:var(--font);background:var(--bg);color:var(--text);min-height:1
 .error-state p{font-size:14px;max-width:400px}
 .error-state button{
   margin-top:8px;padding:10px 28px;border:none;border-radius:var(--radius-sm);
-  background:var(--g700);color:#fff;font-size:14px;font-weight:600;cursor:pointer;transition:var(--transition)
+  background:var(--g700);color:#fff;font-size:14px;font-weight:600;cursor:pointer
 }
-.error-state button:hover{background:var(--g800);transform:translateY(-1px)}
+.error-state button:hover{background:var(--g800)}
 </style>
 </head>
 <body>
-
 <header class="header">
   <div class="header-left">
     <div class="header-shield" aria-hidden="true">
@@ -168,30 +200,36 @@ body{font-family:var(--font);background:var(--bg);color:var(--text);min-height:1
   <div class="live-indicator">
     <span class="live-dot"></span>
     <span id="liveLabel">Ao vivo</span>
+    <span style="margin:0 6px">·</span>
+    <span id="footerTime">Atualizado há --s</span>
   </div>
-  <div id="footerTime">Atualizado há --s</div>
+  <div class="credit">Desenvolvido por <strong>Lucas Modesto</strong></div>
 </footer>
 
 <script>
 const API_SERVICES='/api/services';
 const API_STATUS='/api/status';
 const REFRESH_MS=30000;
-const SERVICE_META={
-  Claro:{label:'Claro',icon:'signal',cat:'telecom',desc:'Portal do cliente'},
-  Vivo:{label:'Vivo',icon:'signal',cat:'telecom',desc:'Portal do cliente'},
-  TIM:{label:'TIM',icon:'signal',cat:'telecom',desc:'Portal do cliente'},
-  Copel:{label:'Copel',icon:'bolt',cat:'utility',desc:'Energia elétrica'},
-  Sanepar:{label:'Sanepar',icon:'water',cat:'utility',desc:'Abastecimento de água'}
+const BRANDS={
+  Claro:{label:'Claro',cls:'claro',cat:'telecom',desc:'Rede móvel'},
+  Vivo:{label:'Vivo',cls:'vivo',cat:'telecom',desc:'Rede móvel'},
+  TIM:{label:'TIM',cls:'tim',cat:'telecom',desc:'Rede móvel'},
+  Copel:{label:'Copel',cls:'copel',cat:'utility',desc:'Energia elétrica'},
+  Sanepar:{label:'Sanepar',cls:'sanepar',cat:'utility',desc:'Abastecimento de água'}
 };
-
-const icons={
-  signal:`<svg viewBox="0 0 24 24"><path d="M2 22h20V2L2 22zm18-2H6.83L20 6.83V20z"/></svg>`,
-  bolt:`<svg viewBox="0 0 24 24"><path d="M13 3h-2v10h2V3zm4.83 2.17l-1.42 1.42C17.99 7.86 19 9.81 19 12c0 3.87-3.13 7-7 7s-7-3.13-7-7c0-2.19 1.01-4.14 2.59-5.42L6.17 5.17C4.23 6.82 3 9.26 3 12c0 4.97 4.03 9 9 9s9-4.03 9-9c0-2.74-1.23-5.18-3.17-6.83z"/></svg>`,
-  water:`<svg viewBox="0 0 24 24"><path d="M12 2c-5.33 4.55-8 8.48-8 11.8 0 4.98 3.8 8.2 8 8.2s8-3.22 8-8.2c0-3.32-2.67-7.25-8-11.8zM7.83 14H5.34c.23-2.69 1.99-5.73 4.66-8.44L10 5.5v4l-2.17 4.5z"/></svg>`,
-  ok:`<svg viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/></svg>`,
-  warning:`<svg viewBox="0 0 24 24"><path d="M1 21h22L12 2 1 21zm12-3h-2v-2h2v2zm0-4h-2v-4h2v4z"/></svg>`,
-  error:`<svg viewBox="0 0 24 24"><path d="M12 2C6.47 2 2 6.47 2 12s4.47 10 10 10 10-4.47 10-10S17.53 2 12 2zm5 13.59L15.59 17 12 13.41 8.41 17 7 15.59 10.59 12 7 8.41 8.41 7 12 10.59 15.59 7 17 8.41 13.41 12 17 15.59z"/></svg>`,
-  spinner:`<svg viewBox="0 0 24 24"><path d="M12 4V1L8 5l4 4V6c3.31 0 6 2.69 6 6 0 1.01-.25 1.97-.7 2.8l1.46 1.46C19.54 15.03 20 13.57 20 12c0-4.42-3.58-8-8-8zm0 14c-3.31 0-6-2.69-6-6 0-1.01.25-1.97.7-2.8L5.24 7.74C4.46 8.97 4 10.43 4 12c0 4.42 3.58 8 8 8v3l4-4-4-4v3z"/></svg>`
+const SVG=`<svg viewBox="0 0 24 24">`;
+const ICON={
+  claro:`${SVG}<path d="M2 22h20V2L2 22zm18-2H6.83L20 6.83V20z"/></svg>`,
+  vivo:`${SVG}<path d="M2 22h20V2L2 22zm18-2H6.83L20 6.83V20z"/></svg>`,
+  tim:`${SVG}<path d="M2 22h20V2L2 22zm18-2H6.83L20 6.83V20z"/></svg>`,
+  copel:`${SVG}<path d="M13 3h-2v10h2V3zm4.83 2.17l-1.42 1.42C17.99 7.86 19 9.81 19 12c0 3.87-3.13 7-7 7s-7-3.13-7-7c0-2.19 1.01-4.14 2.59-5.42L6.17 5.17C4.23 6.82 3 9.26 3 12c0 4.97 4.03 9 9 9s9-4.03 9-9c0-2.74-1.23-5.18-3.17-6.83z"/></svg>`,
+  sanepar:`${SVG}<path d="M12 2c-5.33 4.55-8 8.48-8 11.8 0 4.98 3.8 8.2 8 8.2s8-3.22 8-8.2c0-3.32-2.67-7.25-8-11.8zM7.83 14H5.34c.23-2.69 1.99-5.73 4.66-8.44L10 5.5v4l-2.17 4.5z"/></svg>`,
+  ok:`${SVG}<path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/></svg>`,
+  warning:`${SVG}<path d="M1 21h22L12 2 1 21zm12-3h-2v-2h2v2zm0-4h-2v-4h2v4z"/></svg>`,
+  error:`${SVG}<path d="M12 2C6.47 2 2 6.47 2 12s4.47 10 10 10 10-4.47 10-10S17.53 2 12 2zm5 13.59L15.59 17 12 13.41 8.41 17 7 15.59 10.59 12 7 8.41 8.41 7 12 10.59 15.59 7 17 8.41 13.41 12 17 15.59z"/></svg>`,
+  bolt:`${SVG}<path d="M7 2v11h3v9l7-12h-4l4-8z"/></svg>`,
+  check:`${SVG}<path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg>`,
+  clock:`${SVG}<path d="M11.99 2C6.47 2 2 6.48 2 12s4.47 10 9.99 10C17.52 22 22 17.52 22 12S17.52 2 11.99 2zM12 20c-4.42 0-8-3.58-8-8s3.58-8 8-8 8 3.58 8 8-3.58 8-8 8zm.5-13H11v6l5.25 3.15.75-1.23-4.5-2.67z"/></svg>`
 };
 
 const $=(s)=>document.querySelector(s);
@@ -199,8 +237,7 @@ let lastFetch=0;
 
 function fmtTime(ts){
   if(!ts)return'--:--';
-  const d=new Date(ts);
-  return d.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
+  return new Date(ts).toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
 }
 function relativeTime(ts){
   if(!ts)return'--';const s=Math.floor((Date.now()-ts)/1000);
@@ -210,41 +247,39 @@ function relativeTime(ts){
   if(m<60)return`há ${m}min`;
   return`há ${Math.floor(m/60)}h ${m%60}min`;
 }
-
 function updateClock(){
   $('#headerTime').textContent=new Date().toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
+}
+function latencyClass(ms){
+  if(ms===null||ms===undefined)return'';
+  if(ms<100)return'fast';
+  if(ms<500)return'';
+  return'slow';
 }
 
 function updateBanner(level,ok,warn,crit){
   const bn=$('#banner'),t=$('#bannerTitle'),s=$('#bannerSub'),badge=$('#bannerBadge'),dot=$('#headerDot');
-  bn.className='banner';
-  const ico=bn.querySelector('.banner-icon');
-  let label,sub;
+  bn.className='banner';const ico=bn.querySelector('.banner-icon');
   if(level==='critical'){
-    bn.classList.add('critical');label='Serviço instável';
-    sub='Um ou mais serviços estão apresentando problemas.';
-    ico.innerHTML=icons.error;badge.textContent=`${crit} crítico`;
-    dot.className='ov-dot critical';
+    bn.classList.add('critical');t.textContent='Serviço instável';
+    s.textContent='Um ou mais serviços estão apresentando problemas.';ico.innerHTML=ICON.error;
+    badge.textContent=`${crit} crítico`;dot.className='ov-dot critical';
   }else if(level==='warn'){
-    bn.classList.add('warn');label='Atenção necessária';
-    sub='Alguns serviços podem estar com latência elevada.';
-    ico.innerHTML=icons.warning;badge.textContent=`${warn} alerta`;
-    dot.className='ov-dot warn';
+    bn.classList.add('warn');t.textContent='Atenção necessária';
+    s.textContent='Alguns serviços podem estar com latência elevada.';ico.innerHTML=ICON.warning;
+    badge.textContent=`${warn} alerta`;dot.className='ov-dot warn';
   }else{
-    bn.classList.add('ok');label='Tudo estável';
-    sub='Todos os serviços monitorados estão operando normalmente.';
-    ico.innerHTML=icons.ok;badge.textContent=`${ok} ok`;
-    dot.className='ov-dot ok';
+    bn.classList.add('ok');t.textContent='Tudo estável';
+    s.textContent='Todos os serviços monitorados estão operando normalmente.';ico.innerHTML=ICON.ok;
+    badge.textContent=`${ok} ok`;dot.className='ov-dot ok';
   }
-  t.textContent=label;s.textContent=sub;
 }
 
 function renderCards(services){
   const grid=$('#grid');
   if(!services||services.length===0){
     grid.innerHTML=`<div class="error-state" style="grid-column:1/-1">
-      ${icons.error}
-      <h2>Nenhum dado disponível</h2>
+      ${ICON.error}<h2>Nenhum dado disponível</h2>
       <p>O monitoramento ainda não coletou informações. Aguarde a primeira verificação automática.</p>
     </div>`;
     return;
@@ -252,37 +287,57 @@ function renderCards(services){
   let html='';
   for(const svc of services){
     const name=svc.name;
-    const meta=SERVICE_META[name]||{label:name,icon:'signal',cat:'telecom',desc:'Serviço'};
+    const br=BRANDS[name]||{label:name,cls:'claro',cat:'telecom',desc:'Serviço'};
     const st=svc.status||'ok';
-    const ico=icons[meta.icon]||icons.signal;
-    const cat=meta.cat||'telecom';
-    let detail='';
-    if(name==='Copel'||name==='Sanepar'){
-      detail=svc.details||'OK';
-    }else if(svc.data?.portals){
+    const ico=ICON[br.cls]||ICON.claro;
+    const stLabel=st==='ok'?'Normal':st==='warn'?'Atenção':'Crítico';
+    let perPortals='',latency='',latCls='',bgpLine='',detailLine='',portalsFail=0;
+
+    if(svc.data?.portals){
       const p=svc.data.portals;
       if(p.length>0){
-        const ok=p.filter(x=>x.success).length;
-        const total=p.length;
-        const avgLat=Math.round(p.reduce((a,x)=>a+(x.latencyMs||0),0)/total);
-        detail=`${ok}/${total} portais ok · ${avgLat}ms`;
+        const success=p.filter(x=>x.success);
+        portalsFail=p.length-success.length;
+        const avg=success.length>0?Math.round(success.reduce((a,x)=>a+(x.latencyMs||0),0)/success.length):null;
+        perPortals=`${success.length}/${p.length}`;
+        if(avg!==null){latency=`${avg}`;latCls=latencyClass(avg);}
       }
     }
-    html+=`<div class="card ${st}">
-      <div class="card-head">
-        <div class="card-icon ${cat}">${ico}</div>
-        <div class="card-name">${meta.label}</div>
-        <span class="card-status ${st}">${st==='ok'?'Normal':st==='warn'?'Atenção':'Crítico'}</span>
-      </div>
-      <div class="card-body">
-        <div class="row">${icons.ok}
-          <span>${meta.desc}${detail?`: ${detail}`:''}</span>
+    if(br.cat==='utility'){
+      detailLine=svc.details||'OK';
+      latency='—';
+    }
+    const hasLatency=latency&&latency!=='—';
+    let connOk=0,connTotal=0;
+    if(svc.data?.connectivity){
+      connOk=svc.data.connectivity.filter(x=>x.success).length;
+      connTotal=svc.data.connectivity.length;
+    }
+    if(svc.data?.bgp){
+      const b=svc.data.bgp;
+      bgpLine=`<div class="row">${ICON.clock}<span>AS${b.asn} · Faixas IPv4: ${b.prefixCountV4||0} · IPv6: ${b.prefixCountV6||0}</span></div>`;
+    }
+
+    html+=`<div class="card">
+      <div class="card-banner ${br.cls}"></div>
+      <div class="card-inner">
+        <div class="card-head">
+          <div class="card-icon ${br.cls}">${ico}</div>
+          <div class="card-name">${br.label}<span class="cat-badge ${br.cat}">${br.cat==='telecom'?'Telefonia':'Utilidade'}</span></div>
+          <span class="card-status ${st}">${stLabel}</span>
         </div>
-        ${svc.data?.bgp?`<div class="row">${icons.signal}<span>AS${svc.data.bgp.asn} · ${svc.data.bgp.prefixCountV4||0} prefixos IPv4</span></div>`:''}
-      </div>
-      <div class="card-foot">
-        <span>${fmtTime(svc.timestamp)}</span>
-        <span>${relativeTime(svc.timestamp)}</span>
+        <div class="card-body">
+          <div class="row">${ICON.check}<span>${br.desc}</span></div>
+          ${br.cat==='telecom'&&perPortals?`<div class="row">${ICON.bolt}<span>Portais: ${perPortals}${portalsFail>0?` (${portalsFail} falha${portalsFail>1?'s':''})`:''}</span></div>`:''}
+          ${detailLine?`<div class="row">${ICON.ok}<span>${detailLine}</span></div>`:''}
+          ${bgpLine}
+          ${hasLatency?`<div class="latency ${latCls}">${latency} <span>ms de latência média</span></div>`:''}
+          ${connTotal>0?`<div class="row">${ICON.ok}<span>Conectividade: ${connOk}/${connTotal} ok</span></div>`:''}
+        </div>
+        <div class="card-foot">
+          <span>${fmtTime(svc.timestamp)}</span>
+          <span>${relativeTime(svc.timestamp)}</span>
+        </div>
       </div>
     </div>`;
   }
@@ -293,14 +348,18 @@ function setSkeleton(){
   const grid=$('#grid');
   let html='';
   for(const name of['Claro','Vivo','TIM','Copel','Sanepar']){
+    const cls=BRANDS[name].cls;
     html+=`<div class="card skeleton">
-      <div class="card-head">
-        <div class="card-icon telecom" style="width:44px;height:44px"></div>
-        <div class="card-name"></div>
-        <div class="card-status"></div>
+      <div class="card-banner ${cls}"></div>
+      <div class="card-inner">
+        <div class="card-head">
+          <div class="card-icon ${cls}"></div>
+          <div class="card-name"></div>
+          <div class="card-status"></div>
+        </div>
+        <div class="card-body"><div class="row"></div><div class="row"></div><div class="latency"></div></div>
+        <div class="card-foot"></div>
       </div>
-      <div class="card-body"><div class="row"></div><div class="row"></div></div>
-      <div class="card-foot"></div>
     </div>`;
   }
   grid.innerHTML=html;
@@ -309,8 +368,7 @@ function setSkeleton(){
 function showError(msg){
   const grid=$('#grid');
   grid.innerHTML=`<div class="error-state" style="grid-column:1/-1">
-    ${icons.error}
-    <h2>Falha ao carregar</h2>
+    ${ICON.error}<h2>Falha ao carregar</h2>
     <p>${msg||'Não foi possível conectar ao servidor. Verifique sua conexão.'}</p>
     <button onclick="fetchData()">Tentar novamente</button>
   </div>`;
@@ -319,9 +377,8 @@ function showError(msg){
 }
 
 async function fetchData(){
-  const now=Date.now();
-  if(now-lastFetch<2000)return;
-  lastFetch=now;
+  if(Date.now()-lastFetch<2000)return;
+  lastFetch=Date.now();
   setSkeleton();
   try{
     let resp=await fetch(API_SERVICES);
@@ -333,41 +390,30 @@ async function fetchData(){
       data=await resp.json();
       const services=[];
       for(const op of(data.operators||[])){
-        const portals=op.portals||[];
         services.push({
-          name:op.operator,
-          status:op.status,
+          name:op.operator,status:op.status,
           timestamp:data.timestamp,
-          data:{
-            portals:portals,
-            connectivity:op.connectivity||[],
-            bgp:op.bgp||null
-          }
+          data:{portals:op.portals||[],connectivity:op.connectivity||[],bgp:op.bgp||null}
         });
       }
-      renderFromServices(services,data.level||'ok');
-      return;
+      renderFromServices(services,data.level||'ok');return;
     }
     renderFromUnified(data);
-  }catch(e){
-    showError(e.message);
-  }
+  }catch(e){showError(e.message)}
 }
 
 function renderFromUnified(data){
   const services=data.services||[];
   let ok=0,warn=0,crit=0;
-  const counts={};
   for(const s of services){
-    counts[s.status]=counts[s.status]+1||1;
     if(s.status==='ok')ok++;else if(s.status==='warn')warn++;else crit++;
   }
   const level=data.overallStatus||(crit>0?'critical':warn>0?'warn':'ok');
   updateBanner(level,ok,warn,crit);
   renderCards(services);
   updateFooter(data.generatedAt);
-  $('#liveLabel').textContent='Ao vivo';
   document.querySelector('.live-dot').style.background='var(--g400)';
+  $('#liveLabel').textContent='Ao vivo';
 }
 
 function renderFromServices(services,level){
@@ -378,8 +424,8 @@ function renderFromServices(services,level){
   updateBanner(level||'ok',ok,warn,crit);
   renderCards(services);
   updateFooter(Date.now());
-  $('#liveLabel').textContent='Ao vivo';
   document.querySelector('.live-dot').style.background='var(--g400)';
+  $('#liveLabel').textContent='Ao vivo';
 }
 
 function updateFooter(ts){
