@@ -97,15 +97,10 @@ body{font-family:var(--font);background:var(--s50);color:var(--text);min-height:
 }
 .card-icon svg{width:28px;height:28px}
 .card-icon.claro{background:rgba(237,28,36,.1)}
-.card-icon.claro svg{fill:var(--claro)}
 .card-icon.vivo{background:rgba(102,0,153,.1)}
-.card-icon.vivo svg{fill:var(--vivo)}
 .card-icon.tim{background:rgba(0,61,165,.1)}
-.card-icon.tim svg{fill:var(--tim)}
 .card-icon.copel{background:rgba(0,146,63,.1)}
-.card-icon.copel svg{fill:var(--copel)}
 .card-icon.sanepar{background:rgba(0,63,135,.1)}
-.card-icon.sanepar svg{fill:var(--sanepar)}
 .card-name{font-size:18px;font-weight:700;flex:1}
 .card-name .cb{
   font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.3px;
@@ -221,12 +216,14 @@ const BRANDS={
   Sanepar:{label:'Sanepar',cls:'sanepar',cat:'utility',desc:'Abastecimento de água'}
 };
 const SVG=`<svg viewBox="0 0 24 24">`;
+const LOGO={
+  claro:`<svg viewBox="0 0 24 24"><rect x="1" y="1" width="22" height="22" rx="6" fill="#ED1C24"/><text x="12" y="16" text-anchor="middle" fill="#fff" font-size="13" font-weight="800" font-family="system-ui,-apple-system,sans-serif">C</text></svg>`,
+  vivo:`<svg viewBox="0 0 24 24"><rect x="1" y="1" width="22" height="22" rx="6" fill="#660099"/><text x="12" y="16" text-anchor="middle" fill="#fff" font-size="13" font-weight="800" font-family="system-ui,-apple-system,sans-serif">V</text></svg>`,
+  tim:`<svg viewBox="0 0 24 24"><rect x="1" y="1" width="22" height="22" rx="6" fill="#003DA5"/><text x="12" y="16" text-anchor="middle" fill="#fff" font-size="8.5" font-weight="800" font-family="system-ui,-apple-system,sans-serif">TIM</text></svg>`,
+  copel:`<svg viewBox="0 0 24 24"><rect x="1" y="1" width="22" height="22" rx="6" fill="#00923F"/><path d="M14 4L6 13h4L9 22l8-11h-4l3-7z" fill="#fff"/></svg>`,
+  sanepar:`<svg viewBox="0 0 24 24"><rect x="1" y="1" width="22" height="22" rx="6" fill="#003F87"/><text x="12" y="16" text-anchor="middle" fill="#fff" font-size="13" font-weight="800" font-family="system-ui,-apple-system,sans-serif">S</text></svg>`,
+};
 const ICON={
-  claro:`${SVG}<path d="M2 22h20V2L2 22zm18-2H6.83L20 6.83V20z"/></svg>`,
-  vivo:`${SVG}<path d="M2 22h20V2L2 22zm18-2H6.83L20 6.83V20z"/></svg>`,
-  tim:`${SVG}<path d="M2 22h20V2L2 22zm18-2H6.83L20 6.83V20z"/></svg>`,
-  copel:`${SVG}<path d="M13 3h-2v10h2V3zm4.83 2.17l-1.42 1.42C17.99 7.86 19 9.81 19 12c0 3.87-3.13 7-7 7s-7-3.13-7-7c0-2.19 1.01-4.14 2.59-5.42L6.17 5.17C4.23 6.82 3 9.26 3 12c0 4.97 4.03 9 9 9s9-4.03 9-9c0-2.74-1.23-5.18-3.17-6.83z"/></svg>`,
-  sanepar:`${SVG}<path d="M12 2c-5.33 4.55-8 8.48-8 11.8 0 4.98 3.8 8.2 8 8.2s8-3.22 8-8.2c0-3.32-2.67-7.25-8-11.8zM7.83 14H5.34c.23-2.69 1.99-5.73 4.66-8.44L10 5.5v4l-2.17 4.5z"/></svg>`,
   ok:`${SVG}<path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/></svg>`,
   warning:`${SVG}<path d="M1 21h22L12 2 1 21zm12-3h-2v-2h2v2zm0-4h-2v-4h2v4z"/></svg>`,
   error:`${SVG}<path d="M12 2C6.47 2 2 6.47 2 12s4.47 10 10 10 10-4.47 10-10S17.53 2 12 2zm5 13.59L15.59 17 12 13.41 8.41 17 7 15.59 10.59 12 7 8.41 8.41 7 12 10.59 15.59 7 17 8.41 13.41 12 17 15.59z"/></svg>`,
@@ -293,7 +290,7 @@ function renderCards(services){
     const name=svc.name;
     const br=BRANDS[name]||{label:name,cls:'claro',cat:'telecom',desc:'Serviço'};
     const st=svc.status||'ok';
-    const ico=ICON[br.cls]||ICON.claro;
+    const ico=LOGO[br.cls];
     const stLabel=st==='ok'?'Normal':st==='warn'?'Atenção':'Crítico';
     let perPortals='',latency='',latCls='',bgpLine='',detailLine='',portalsFail=0;
 
