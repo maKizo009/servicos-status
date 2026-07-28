@@ -47,7 +47,9 @@ export async function checkPortal(
 					host,
 					success: isSuccess,
 					latencyMs: retryLatency,
-					error: isSuccess ? "" : `HTTP ${response.status} ${response.statusText}`,
+					error: isSuccess
+						? ""
+						: `HTTP ${response.status} ${response.statusText}`,
 					timestamp,
 				};
 			} catch {

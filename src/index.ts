@@ -44,12 +44,14 @@ let lastUnifiedReport: UnifiedReport | null = null;
 function assessLevel(
 	portals: PortalResult[],
 	connectivity: ConnectivityResult[],
-	bgp: BgpResult | null,
+	bgp: BgpResult | BgpResult[] | null,
 ): AlertLevel {
 	const portalFailures = portals.filter((p) => !p.success).length;
 	const connFailures = connectivity.filter((c) => !c.success).length;
+	const bgpList = Array.isArray(bgp) ? bgp : bgp ? [bgp] : [];
+	const bgpFailures = bgpList.some((b) => Boolean(b?.error));
 
-	if (portalFailures > 0 || connFailures > 0 || bgp?.error) return "critical";
+	if (portalFailures > 0 || connFailures > 0 || bgpFailures) return "critical";
 
 	const highLatency = portals.some(
 		(p) => p.latencyMs > config.latencyWarnMs && p.success,
@@ -96,11 +98,7 @@ async function runChecks(): Promise<void> {
 	lastResults = allPortalResults;
 
 	// Operator aggregated alert (only on level change — existing behavior)
-	const newLevel = assessLevel(
-		allPortalResults,
-		allConnResults,
-		allBgpResults[0] ?? null,
-	);
+	const newLevel = assessLevel(allPortalResults, allConnResults, allBgpResults);
 	if (newLevel !== currentLevel) {
 		currentLevel = newLevel;
 		const failedOps = [...checkResults.entries()]
