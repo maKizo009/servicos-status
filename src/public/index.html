@@ -7,22 +7,24 @@
 <style>
 *,*::before,*::after{margin:0;padding:0;box-sizing:border-box}
 :root{
-  --g900:#1B5E20;--g800:#2E7D32;--g700:#388E3C;--g600:#43A047;
-  --g500:#4CAF50;--g400:#66BB6A;--g300:#81C784;--g200:#A5D6A7;--g100:#C8E6C9;--g50:#E8F5E9;
-  --gold:#FFC107;--gold-l:#FFF8E1;--gold-d:#FF8F00;
-  --red:#D32F2F;--red-l:#FFEBEE;--red-d:#B71C1C;
-  --claro:#ED1C24;--vivo:#660099;--tim:#003DA5;
-  --copel:#00923F;--sanepar:#003F87;
-  --bg:#F5F5F0;--surface:#fff;--text:#1C1C1C;--text2:#5F6368;--text3:#9AA0A6;--border:#E0E0D8;
-  --radius:16px;--radius-sm:10px;--shadow:0 2px 8px rgba(0,0,0,.07),0 1px 2px rgba(0,0,0,.04);
+  --s900:#0F172A;--s700:#334155;--s600:#475569;--s400:#94A3B8;--s300:#CBD5E1;--s200:#E2E8F0;--s100:#F1F5F9;--s50:#F8FAFC;
+  --g6:#16A34A;--g1:#DCFCE7;--g0:#F0FDF4;
+  --a5:#F59E0B;--a1:#FEF3C7;--a0:#FFFBEB;
+  --r6:#DC2626;--r1:#FEE2E2;--r0:#FEF2F2;
+  --claro:#ED1C24;--vivo:#660099;--tim:#003DA5;--copel:#00923F;--sanepar:#003F87;
+  --surface:#fff;--text:#0F172A;--text2:#475569;--text3:#94A3B8;--border:#E2E8F0;
+  --radius:16px;--radius-sm:10px;--shadow:0 1px 3px rgba(0,0,0,.06),0 1px 2px rgba(0,0,0,.04);
   --font:system-ui,-apple-system,'Segoe UI',Roboto,Helvetica,Arial,sans-serif
 }
 html{font-size:16px;-webkit-font-smoothing:antialiased}
-body{font-family:var(--font);background:var(--bg);color:var(--text);min-height:100dvh;display:flex;flex-direction:column}
+body{font-family:var(--font);background:var(--s50);color:var(--text);min-height:100dvh;display:flex;flex-direction:column}
+
+/* Container centralizado */
+.container{max-width:1200px;margin:0 auto;padding:0 24px;width:100%}
 
 /* Header */
 .header{
-  background:linear-gradient(135deg,var(--g900),var(--g800));
+  background:linear-gradient(135deg,#1B5E20,#2E7D32);
   padding:16px 24px;color:#fff;display:flex;align-items:center;justify-content:space-between;
   box-shadow:0 2px 12px rgba(0,0,0,.15);position:relative;z-index:10
 }
@@ -34,59 +36,60 @@ body{font-family:var(--font);background:var(--bg);color:var(--text);min-height:1
 .header-shield svg{width:24px;height:24px;fill:#fff}
 .header-title{font-size:20px;font-weight:700;letter-spacing:-.3px}
 .header-title span{font-weight:400;opacity:.8}
-.header-right{display:flex;align-items:center;gap:16px}
-.header-time{font-size:14px;font-variant-numeric:tabular-nums;opacity:.85}
-.ov-dot{width:10px;height:10px;border-radius:50%;transition:opacity .25s}
-.ov-dot.ok{background:var(--g400);box-shadow:0 0 8px var(--g400)}
-.ov-dot.warn{background:var(--gold);box-shadow:0 0 8px var(--gold)}
-.ov-dot.critical{background:var(--red);box-shadow:0 0 8px var(--red)}
+.header-refresh-btn{
+  display:flex;align-items:center;gap:10px;background:none;border:1px solid transparent;
+  padding:6px 14px 6px 12px;border-radius:8px;cursor:pointer;color:#fff;
+  font-family:var(--font);font-size:14px;transition:all .2s;user-select:none
+}
+.header-refresh-btn:hover{background:rgba(255,255,255,.1);border-color:rgba(255,255,255,.2)}
+.header-refresh-btn:active{background:rgba(255,255,255,.15)}
+.header-refresh-btn .ri{
+  width:18px;height:18px;fill:#fff;flex-shrink:0;transition:transform .3s
+}
+.header-refresh-btn .ri.spinning{animation:spin .8s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+.header-refresh-btn .ht{font-variant-numeric:tabular-nums;opacity:.85}
+.ov-dot{width:10px;height:10px;border-radius:50%;transition:opacity .25s;flex-shrink:0}
+.ov-dot.ok{background:var(--g6);box-shadow:0 0 8px var(--g6)}
+.ov-dot.warn{background:var(--a5);box-shadow:0 0 8px var(--a5)}
+.ov-dot.critical{background:var(--r6);box-shadow:0 0 8px var(--r6)}
 
 /* Banner */
 .banner{
-  margin:24px 24px 0;padding:24px 28px;border-radius:var(--radius);color:#fff;
-  display:flex;align-items:center;gap:20px;box-shadow:var(--shadow)
+  margin-top:24px;padding:20px 24px;border-radius:var(--radius);border-left:4px solid;
+  display:flex;align-items:center;gap:16px;box-shadow:var(--shadow)
 }
-.banner.ok{background:linear-gradient(135deg,var(--g700),var(--g600))}
-.banner.warn{background:linear-gradient(135deg,var(--gold-d),var(--gold))}
-.banner.critical{background:linear-gradient(135deg,var(--red-d),var(--red))}
+.banner.ok{background:var(--g0);border-color:var(--g6)}
+.banner.warn{background:var(--a0);border-color:var(--a5)}
+.banner.critical{background:var(--r0);border-color:var(--r6)}
 .banner-icon{
-  width:52px;height:52px;border-radius:50%;background:rgba(255,255,255,.2);
-  display:flex;align-items:center;justify-content:center;flex-shrink:0
+  width:44px;height:44px;border-radius:50%;display:flex;align-items:center;justify-content:center;flex-shrink:0;
+  background:var(--s100)
 }
-.banner-icon svg{width:28px;height:28px;fill:#fff}
+.banner-icon svg{width:22px;height:22px}
+.banner.ok .banner-icon svg{fill:var(--g6)}
+.banner.warn .banner-icon svg{fill:var(--a5)}
+.banner.critical .banner-icon svg{fill:var(--r6)}
 .banner-text{flex:1}
-.banner-title{font-size:22px;font-weight:700;margin-bottom:2px}
-.banner-sub{font-size:15px;opacity:.9}
+.banner-title{font-size:20px;font-weight:700;color:var(--text)}
+.banner-sub{font-size:14px;color:var(--text2);margin-top:2px}
 .banner-badge{
-  background:rgba(255,255,255,.2);backdrop-filter:blur(4px);padding:6px 16px;
-  border-radius:20px;font-size:13px;font-weight:600;white-space:nowrap;flex-shrink:0
+  padding:4px 14px;border-radius:20px;font-size:13px;font-weight:600;white-space:nowrap;flex-shrink:0;cursor:default
 }
+.banner.ok .banner-badge{background:var(--g1);color:var(--g6)}
+.banner.warn .banner-badge{background:var(--a1);color:var(--a5)}
+.banner.critical .banner-badge{background:var(--r1);color:var(--r6)}
 
 /* Grid */
-.grid{padding:24px;display:grid;grid-template-columns:1fr;gap:16px;flex:1}
+.grid{padding:24px 0;display:grid;grid-template-columns:1fr;gap:16px;flex:1}
 @media(min-width:640px){.grid{grid-template-columns:1fr 1fr}}
-@media(min-width:1024px){.grid{grid-template-columns:1fr 1fr 1fr;padding:32px;gap:20px}}
+@media(min-width:1024px){.grid{grid-template-columns:1fr 1fr 1fr;gap:20px}}
 
 /* Card */
 .card{
   background:var(--surface);border-radius:var(--radius);box-shadow:var(--shadow);
-  padding:0;display:flex;flex-direction:column;position:relative;overflow:hidden;
-  border:1px solid var(--border)
+  display:flex;flex-direction:column;border:1px solid var(--border);overflow:hidden
 }
-.card-banner{
-  height:6px;flex-shrink:0;display:flex;align-items:center;justify-content:center;
-  font-size:10px;font-weight:700;color:rgba(255,255,255,.8);text-transform:uppercase;letter-spacing:1px
-}
-.card-banner.claro{background:var(--claro)}
-.card-banner.claro::after{content:"CLARO"}
-.card-banner.vivo{background:var(--vivo)}
-.card-banner.vivo::after{content:"VIVO"}
-.card-banner.tim{background:var(--tim)}
-.card-banner.tim::after{content:"TIM"}
-.card-banner.copel{background:var(--copel)}
-.card-banner.copel::after{content:"COPEL"}
-.card-banner.sanepar{background:var(--sanepar)}
-.card-banner.sanepar::after{content:"SANEPAR"}
 .card-inner{padding:20px;display:flex;flex-direction:column;gap:12px}
 .card-head{display:flex;align-items:center;gap:14px}
 .card-icon{
@@ -104,50 +107,47 @@ body{font-family:var(--font);background:var(--bg);color:var(--text);min-height:1
 .card-icon.sanepar{background:rgba(0,63,135,.1)}
 .card-icon.sanepar svg{fill:var(--sanepar)}
 .card-name{font-size:18px;font-weight:700;flex:1}
-.card-name .cat-badge{
+.card-name .cb{
   font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.3px;
-  display:inline-block;margin-left:8px;padding:1px 8px;border-radius:4px;vertical-align:middle
+  display:inline-block;margin-left:8px;padding:1px 8px;border-radius:4px;vertical-align:middle;cursor:default
 }
-.card-name .cat-badge.telecom{background:var(--g50);color:var(--g700)}
-.card-name .cat-badge.utility{background:var(--gold-l);color:var(--gold-d)}
+.card-name .cb.telecom{background:rgba(237,28,36,.08);color:var(--claro)}
+.card-name .cb.utility{background:rgba(0,146,63,.08);color:var(--copel)}
 .card-status{
   font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;
-  padding:4px 14px;border-radius:20px;white-space:nowrap
+  padding:4px 14px;border-radius:20px;white-space:nowrap;cursor:default
 }
-.card-status.ok{background:var(--g100);color:var(--g800)}
-.card-status.warn{background:var(--gold-l);color:var(--gold-d)}
-.card-status.critical{background:var(--red-l);color:var(--red-d)}
+.card-status.ok{background:var(--g1);color:var(--g6)}
+.card-status.warn{background:var(--a1);color:var(--a5)}
+.card-status.critical{background:var(--r1);color:var(--r6)}
 .card-body{display:flex;flex-direction:column;gap:8px;font-size:14px;color:var(--text2)}
 .card-body .row{display:flex;align-items:center;gap:8px}
 .card-body .row svg{width:16px;height:16px;fill:var(--text3);flex-shrink:0}
-.card-body .latency{
+.card-body .lat{
   font-size:22px;font-weight:700;color:var(--text);margin-top:2px
 }
-.card-body .latency span{font-size:13px;font-weight:400;color:var(--text3);margin-left:4px}
-.card-body .latency.fast{color:var(--g600)}
-.card-body .latency.slow{color:var(--gold-d)}
-.card-body .latency.slow svg{fill:var(--gold-d)}
-.card-foot{font-size:12px;color:var(--text3);padding:12px 20px;border-top:1px solid var(--border);display:flex;justify-content:space-between;align-items:center}
+.card-body .lat span{font-size:13px;font-weight:400;color:var(--text3);margin-left:4px}
+.card-body .lat.fast{color:var(--g6)}
+.card-body .lat.slow{color:var(--a5)}
+.card-foot{font-size:12px;color:var(--text3);padding:12px 20px;border-top:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;background:var(--s50)}
 
 /* Skeleton */
-.skeleton .card-banner{background:var(--border)}
-.skeleton .card-banner.claro::after,.skeleton .card-banner.vivo::after,.skeleton .card-banner.tim::after,.skeleton .card-banner.copel::after,.skeleton .card-banner.sanepar::after{content:""}
-.skeleton .card-icon{background:var(--bg)}
+.skeleton .card-icon{background:var(--s100)}
 .skeleton .card-icon svg{display:none}
-.skeleton .card-name .cat-badge{display:none}
-.skeleton .card-name{height:18px;background:var(--bg);border-radius:4px;width:50%}
-.skeleton .card-status{width:80px;height:22px;background:var(--bg);border-radius:20px}
-.skeleton .row{height:14px;background:var(--bg);border-radius:4px;width:70%}
+.skeleton .cb{display:none}
+.skeleton .card-name{height:18px;background:var(--s100);border-radius:4px;width:50%}
+.skeleton .card-status{width:80px;height:22px;background:var(--s100);border-radius:20px}
+.skeleton .row{height:14px;background:var(--s100);border-radius:4px;width:70%}
 .skeleton .row:nth-child(2){width:45%}
-.skeleton .latency{height:22px;background:var(--bg);border-radius:4px;width:30%}
-.skeleton .card-foot{height:12px;background:var(--bg);border-radius:4px;width:40%}
+.skeleton .lat{height:22px;background:var(--s100);border-radius:4px;width:30%}
+.skeleton .card-foot{height:12px;background:var(--s100);border-radius:4px;width:40%}
 
 /* Footer */
 .footer{
-  text-align:center;padding:20px 24px;font-size:13px;color:var(--text3);border-top:1px solid var(--border);margin-top:auto
+  text-align:center;padding:20px 24px;font-size:13px;color:var(--text3);border-top:1px solid var(--border);margin-top:auto;background:var(--surface)
 }
-.footer .live-indicator{display:inline-flex;align-items:center;gap:6px;margin-bottom:6px}
-.footer .live-dot{width:6px;height:6px;border-radius:50%;background:var(--g400);animation:pulse 2s infinite}
+.footer .li{display:inline-flex;align-items:center;gap:6px;margin-bottom:6px}
+.footer .ld{width:6px;height:6px;border-radius:50%;background:var(--g6);animation:pulse 2s infinite}
 @keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
 .footer .credit{font-size:12px;margin-top:4px}
 .footer .credit strong{color:var(--text2)}
@@ -161,9 +161,9 @@ body{font-family:var(--font);background:var(--bg);color:var(--text);min-height:1
 .error-state p{font-size:14px;max-width:400px}
 .error-state button{
   margin-top:8px;padding:10px 28px;border:none;border-radius:var(--radius-sm);
-  background:var(--g700);color:#fff;font-size:14px;font-weight:600;cursor:pointer
+  background:var(--s700);color:#fff;font-size:14px;font-weight:600;cursor:pointer
 }
-.error-state button:hover{background:var(--g800)}
+.error-state button:hover{background:var(--s900)}
 </style>
 </head>
 <body>
@@ -177,28 +177,31 @@ body{font-family:var(--font);background:var(--bg);color:var(--text);min-height:1
       <div style="font-size:12px;opacity:.7">Status dos serviços</div>
     </div>
   </div>
-  <div class="header-right">
-    <span class="header-time" id="headerTime" aria-live="polite">--:--</span>
+  <button class="header-refresh-btn" id="btnRefresh" type="button" aria-label="Atualizar dados do monitoramento" title="Clique para atualizar">
+    <svg class="ri" id="refreshIcon" viewBox="0 0 24 24"><title>Recarregar</title><path d="M17.65 6.35C16.2 4.9 14.21 4 12 4c-4.42 0-7.99 3.58-7.99 8s3.57 8 7.99 8c3.73 0 6.84-2.55 7.73-6h-2.08c-.82 2.33-3.04 4-5.65 4-3.31 0-6-2.69-6-6s2.69-6 6-6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z"/></svg>
+    <span class="ht" id="headerTime" aria-live="polite">--:--</span>
     <span class="ov-dot ok" id="headerDot" role="img" aria-label="Status geral"></span>
-  </div>
+  </button>
 </header>
 
-<div id="banner" class="banner ok" role="alert" aria-live="polite">
-  <div class="banner-icon" aria-hidden="true">
-    <svg viewBox="0 0 24 24"><title>Status</title><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/></svg>
+<div class="container">
+  <div id="banner" class="banner ok" role="alert" aria-live="polite">
+    <div class="banner-icon" aria-hidden="true">
+      <svg viewBox="0 0 24 24"><title>Estado geral</title><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/></svg>
+    </div>
+    <div class="banner-text">
+      <div class="banner-title" id="bannerTitle">Tudo estável</div>
+      <div class="banner-sub" id="bannerSub">Todos os serviços monitorados estão operando normalmente.</div>
+    </div>
+    <div class="banner-badge" id="bannerBadge">3 ok</div>
   </div>
-  <div class="banner-text">
-    <div class="banner-title" id="bannerTitle">Tudo estável</div>
-    <div class="banner-sub" id="bannerSub">Todos os serviços monitorados estão operando normalmente.</div>
-  </div>
-  <div class="banner-badge" id="bannerBadge">3 ok</div>
+
+  <section class="grid" id="grid" aria-label="Status dos serviços"></section>
 </div>
 
-<section class="grid" id="grid" aria-label="Status dos serviços"></section>
-
 <footer class="footer">
-  <div class="live-indicator">
-    <span class="live-dot"></span>
+  <div class="li">
+    <span class="ld"></span>
     <span id="liveLabel">Ao vivo</span>
     <span style="margin:0 6px">·</span>
     <span id="footerTime">Atualizado há --s</span>
@@ -248,7 +251,8 @@ function relativeTime(ts){
   return`há ${Math.floor(m/60)}h ${m%60}min`;
 }
 function updateClock(){
-  $('#headerTime').textContent=new Date().toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
+  const now=new Date();
+  $('#headerTime').textContent=now.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
 }
 function latencyClass(ms){
   if(ms===null||ms===undefined)return'';
@@ -259,19 +263,19 @@ function latencyClass(ms){
 
 function updateBanner(level,ok,warn,crit){
   const bn=$('#banner'),t=$('#bannerTitle'),s=$('#bannerSub'),badge=$('#bannerBadge'),dot=$('#headerDot');
-  bn.className='banner';const ico=bn.querySelector('.banner-icon');
+  bn.className='banner';
   if(level==='critical'){
     bn.classList.add('critical');t.textContent='Serviço instável';
-    s.textContent='Um ou mais serviços estão apresentando problemas.';ico.innerHTML=ICON.error;
-    badge.textContent=`${crit} crítico`;dot.className='ov-dot critical';
+    s.textContent='Um ou mais serviços estão apresentando problemas.';badge.textContent=`${crit} crítico`;
+    dot.className='ov-dot critical';
   }else if(level==='warn'){
     bn.classList.add('warn');t.textContent='Atenção necessária';
-    s.textContent='Alguns serviços podem estar com latência elevada.';ico.innerHTML=ICON.warning;
-    badge.textContent=`${warn} alerta`;dot.className='ov-dot warn';
+    s.textContent='Alguns serviços podem estar com latência elevada.';badge.textContent=`${warn} alerta`;
+    dot.className='ov-dot warn';
   }else{
     bn.classList.add('ok');t.textContent='Tudo estável';
-    s.textContent='Todos os serviços monitorados estão operando normalmente.';ico.innerHTML=ICON.ok;
-    badge.textContent=`${ok} ok`;dot.className='ov-dot ok';
+    s.textContent='Todos os serviços monitorados estão operando normalmente.';badge.textContent=`${ok} ok`;
+    dot.className='ov-dot ok';
   }
 }
 
@@ -319,11 +323,10 @@ function renderCards(services){
     }
 
     html+=`<div class="card">
-      <div class="card-banner ${br.cls}"></div>
       <div class="card-inner">
         <div class="card-head">
           <div class="card-icon ${br.cls}">${ico}</div>
-          <div class="card-name">${br.label}<span class="cat-badge ${br.cat}">${br.cat==='telecom'?'Telefonia':'Utilidade'}</span></div>
+          <div class="card-name">${br.label}<span class="cb ${br.cat}">${br.cat==='telecom'?'Telefonia':'Utilidade'}</span></div>
           <span class="card-status ${st}">${stLabel}</span>
         </div>
         <div class="card-body">
@@ -331,7 +334,7 @@ function renderCards(services){
           ${br.cat==='telecom'&&perPortals?`<div class="row">${ICON.bolt}<span>Portais: ${perPortals}${portalsFail>0?` (${portalsFail} falha${portalsFail>1?'s':''})`:''}</span></div>`:''}
           ${detailLine?`<div class="row">${ICON.ok}<span>${detailLine}</span></div>`:''}
           ${bgpLine}
-          ${hasLatency?`<div class="latency ${latCls}">${latency} <span>ms de latência média</span></div>`:''}
+          ${hasLatency?`<div class="lat ${latCls}">${latency} <span>ms de latência média</span></div>`:''}
           ${connTotal>0?`<div class="row">${ICON.ok}<span>Conectividade: ${connOk}/${connTotal} ok</span></div>`:''}
         </div>
         <div class="card-foot">
@@ -350,14 +353,13 @@ function setSkeleton(){
   for(const name of['Claro','Vivo','TIM','Copel','Sanepar']){
     const cls=BRANDS[name].cls;
     html+=`<div class="card skeleton">
-      <div class="card-banner ${cls}"></div>
       <div class="card-inner">
         <div class="card-head">
           <div class="card-icon ${cls}"></div>
           <div class="card-name"></div>
           <div class="card-status"></div>
         </div>
-        <div class="card-body"><div class="row"></div><div class="row"></div><div class="latency"></div></div>
+        <div class="card-body"><div class="row"></div><div class="row"></div><div class="lat"></div></div>
         <div class="card-foot"></div>
       </div>
     </div>`;
@@ -373,12 +375,14 @@ function showError(msg){
     <button onclick="fetchData()">Tentar novamente</button>
   </div>`;
   $('#liveLabel').textContent='Offline';
-  document.querySelector('.live-dot').style.background='var(--red)';
+  $('.ld').style.background='var(--r6)';
 }
 
 async function fetchData(){
   if(Date.now()-lastFetch<2000)return;
   lastFetch=Date.now();
+  const ri=$('#refreshIcon');
+  ri.classList.add('spinning');
   setSkeleton();
   try{
     let resp=await fetch(API_SERVICES);
@@ -400,6 +404,7 @@ async function fetchData(){
     }
     renderFromUnified(data);
   }catch(e){showError(e.message)}
+  finally{ri.classList.remove('spinning')}
 }
 
 function renderFromUnified(data){
@@ -412,7 +417,7 @@ function renderFromUnified(data){
   updateBanner(level,ok,warn,crit);
   renderCards(services);
   updateFooter(data.generatedAt);
-  document.querySelector('.live-dot').style.background='var(--g400)';
+  $('.ld').style.background='var(--g6)';
   $('#liveLabel').textContent='Ao vivo';
 }
 
@@ -424,7 +429,7 @@ function renderFromServices(services,level){
   updateBanner(level||'ok',ok,warn,crit);
   renderCards(services);
   updateFooter(Date.now());
-  document.querySelector('.live-dot').style.background='var(--g400)';
+  $('.ld').style.background='var(--g6)';
   $('#liveLabel').textContent='Ao vivo';
 }
 
@@ -434,6 +439,8 @@ function updateFooter(ts){
   tick();if(window._footerTick)clearInterval(window._footerTick);
   window._footerTick=setInterval(tick,5000);
 }
+
+document.getElementById('btnRefresh').addEventListener('click',fetchData);
 
 updateClock();
 setInterval(updateClock,60000);
