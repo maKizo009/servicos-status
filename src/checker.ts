@@ -82,6 +82,7 @@ export async function runAllChecks(
 				config.saneparViewName,
 				config.saneparDisplays,
 				30_000,
+				config.municipio,
 				tracker,
 			)
 		: [];

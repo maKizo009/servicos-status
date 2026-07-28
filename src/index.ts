@@ -167,7 +167,7 @@ async function runChecks(): Promise<void> {
 		portalsOk: allPortalResults.filter((r) => r.success).length,
 		newCopel: data.newCopelOutages.length,
 		newSanepar: data.newSaneparInterruptions.length,
-		level: currentLevel,
+		alertLevel: currentLevel,
 	});
 }
 

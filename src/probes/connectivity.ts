@@ -1,4 +1,7 @@
-import type { ConnectivityResult } from "../types";
+const DEFAULT_HEADERS = {
+	"User-Agent":
+		"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+};
 
 export async function checkConnectivity(
 	host: string,
@@ -13,14 +16,16 @@ export async function checkConnectivity(
 			method: "HEAD",
 			signal: AbortSignal.timeout(timeoutMs),
 			redirect: "follow",
+			headers: DEFAULT_HEADERS,
 		});
 		const latencyMs = performance.now() - start;
+		const isSuccess = response.status < 500;
 		return {
 			label,
 			host,
-			success: response.status < 500,
+			success: isSuccess,
 			latencyMs,
-			error: "",
+			error: isSuccess ? "" : `HTTP ${response.status} ${response.statusText}`,
 			timestamp,
 		};
 	} catch (err: unknown) {

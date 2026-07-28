@@ -73,10 +73,23 @@ export async function fetchSaneparDisplay(
 	}
 }
 
-export function parseSaneparHtml(html: string): SaneparInterruption[] {
+function normalizeString(str: string): string {
+	return str
+		.normalize("NFD")
+		.replace(/[\u0300-\u036f]/g, "")
+		.toLowerCase()
+		.trim();
+}
+
+export function parseSaneparHtml(
+	html: string,
+	targetMunicipio: string = "Ipiranga",
+): SaneparInterruption[] {
 	const interruptions: SaneparInterruption[] = [];
 	const articleRegex =
 		/<article[^>]*class="[^"]*feat-card-supplystop[^"]*"[^>]*>.*?<\/article>/gs;
+
+	const normTarget = normalizeString(targetMunicipio);
 
 	for (;;) {
 		const articleMatch = articleRegex.exec(html);
@@ -86,7 +99,7 @@ export function parseSaneparHtml(html: string): SaneparInterruption[] {
 		const cityMatch = article.match(/feat-card-supplystop-locale[^>]*>([^<]+)/);
 		const cidade = cityMatch ? cityMatch[1].trim() : "N/A";
 
-		if (!cidade.toLowerCase().includes("ipiranga")) continue;
+		if (!normalizeString(cidade).includes(normTarget)) continue;
 
 		const bairroMatch = article.match(
 			/feat-card-supplystop-locale[^>]*title="([^"]+)"/,
@@ -121,6 +134,7 @@ export async function checkSanepar(
 	viewName: string,
 	displays: string[],
 	timeoutMs: number,
+	municipio: string,
 	tracker: EventTracker,
 ): Promise<SaneparInterruption[]> {
 	const newInterruptions: SaneparInterruption[] = [];
@@ -143,7 +157,7 @@ export async function checkSanepar(
 		);
 		if (!html) continue;
 
-		const interruptions = parseSaneparHtml(html);
+		const interruptions = parseSaneparHtml(html, municipio);
 		for (const intr of interruptions) {
 			const h = makeHash(intr.cidade, intr.bairro, intr.inicio, intr.fim);
 			if (!tracker.isKnown("sanepar", h)) {

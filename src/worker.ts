@@ -33,16 +33,23 @@ self.onmessage = async (event: MessageEvent<WorkerInput>) => {
 			fetch(`https://${host}`, {
 				signal: AbortSignal.timeout(input.portalTimeoutMs),
 				redirect: "follow",
+				headers: {
+					"User-Agent":
+						"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+				},
 			})
-				.then((r) => ({
-					operator: input.operator,
-					host,
-					success: r.status < 500,
-					latencyMs: 0,
-					error: "",
-					timestamp,
-					actualLatency: performance.now(),
-				}))
+				.then((r) => {
+					const isSuccess = r.status < 500;
+					return {
+						operator: input.operator,
+						host,
+						success: isSuccess,
+						latencyMs: 0,
+						error: isSuccess ? "" : `HTTP ${r.status} ${r.statusText}`,
+						timestamp,
+						actualLatency: performance.now(),
+					};
+				})
 				.catch((err: Error) => ({
 					operator: input.operator,
 					host,
@@ -60,16 +67,23 @@ self.onmessage = async (event: MessageEvent<WorkerInput>) => {
 			fetch(`https://${t.host}`, {
 				method: "HEAD",
 				signal: AbortSignal.timeout(input.connectivityTimeoutMs),
+				headers: {
+					"User-Agent":
+						"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+				},
 			})
-				.then((r) => ({
-					label: t.label,
-					host: t.host,
-					success: r.status < 500,
-					latencyMs: 0,
-					error: "",
-					timestamp,
-					actualLatency: performance.now(),
-				}))
+				.then((r) => {
+					const isSuccess = r.status < 500;
+					return {
+						label: t.label,
+						host: t.host,
+						success: isSuccess,
+						latencyMs: 0,
+						error: isSuccess ? "" : `HTTP ${r.status} ${r.statusText}`,
+						timestamp,
+						actualLatency: performance.now(),
+					};
+				})
 				.catch((err: Error) => ({
 					label: t.label,
 					host: t.host,

@@ -68,7 +68,7 @@ export function loadConfig(): AppConfig {
 		saneparViewName:
 			process.env.SANEPAR_VIEW_NAME ?? "notices_panel_supply_stop",
 		saneparDisplays: ["supply_stop_desk", "supply_stop_mobile"],
-		municipio: process.env.MUNICIPIO ?? "",
+		municipio: process.env.MUNICIPIO ?? "Ipiranga",
 		unifiedReportIntervalMs: envInt("UNIFIED_REPORT_INTERVAL_MS", 3_600_000),
 	};
 }

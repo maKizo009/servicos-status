@@ -1,8 +1,18 @@
 import type { LogEntry } from "./types";
 
-function writeLog(entry: LogEntry): void {
+function writeLog(
+	level: "info" | "warn" | "error",
+	msg: string,
+	meta?: Record<string, unknown>,
+): void {
+	const entry: LogEntry = {
+		timestamp: new Date().toISOString(),
+		...meta,
+		level,
+		message: msg,
+	};
 	const line = JSON.stringify(entry);
-	if (entry.level === "error") {
+	if (level === "error") {
 		console.error(line);
 	} else {
 		console.log(line);
@@ -11,27 +21,12 @@ function writeLog(entry: LogEntry): void {
 
 export const logger = {
 	info(msg: string, meta?: Record<string, unknown>): void {
-		writeLog({
-			level: "info",
-			message: msg,
-			timestamp: new Date().toISOString(),
-			...meta,
-		});
+		writeLog("info", msg, meta);
 	},
 	warn(msg: string, meta?: Record<string, unknown>): void {
-		writeLog({
-			level: "warn",
-			message: msg,
-			timestamp: new Date().toISOString(),
-			...meta,
-		});
+		writeLog("warn", msg, meta);
 	},
 	error(msg: string, meta?: Record<string, unknown>): void {
-		writeLog({
-			level: "error",
-			message: msg,
-			timestamp: new Date().toISOString(),
-			...meta,
-		});
+		writeLog("error", msg, meta);
 	},
 };

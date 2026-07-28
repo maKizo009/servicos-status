@@ -2,6 +2,14 @@ import { logger } from "../logger";
 import { type EventTracker, makeHash } from "../state";
 import type { CopelOutage } from "../types";
 
+function normalizeString(str: string): string {
+	return str
+		.normalize("NFD")
+		.replace(/[\u0300-\u036f]/g, "")
+		.toUpperCase()
+		.trim();
+}
+
 export async function checkCopel(
 	apiUrl: string,
 	municipio: string,
@@ -25,9 +33,11 @@ export async function checkCopel(
 		};
 		const ocorrencias = data.ocorrencias ?? [];
 
+		const targetMunicipio = normalizeString(municipio);
+
 		for (const oc of ocorrencias) {
-			const mun = ((oc.municipio as string) ?? "").toUpperCase().trim();
-			if (mun !== municipio.toUpperCase().trim()) continue;
+			const mun = normalizeString((oc.municipio as string) ?? "");
+			if (mun !== targetMunicipio) continue;
 
 			const outage: CopelOutage = {
 				idOcorrencia: (oc.id_ocorrencia as string) ?? "",
