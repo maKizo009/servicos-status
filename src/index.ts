@@ -299,6 +299,13 @@ async function handleRequest(req: Request): Promise<Response> {
 			return Response.json({ status: "ok", timestamp: Date.now() });
 		}
 
+		// Serve static files from public/
+		const staticPath = `${import.meta.dir}/public${path === "/" ? "/index.html" : path}`;
+		const staticFile = Bun.file(staticPath);
+		if (await staticFile.exists()) {
+			return new Response(staticFile);
+		}
+
 		return new Response("Not found", { status: 404 });
 	} catch (err: unknown) {
 		const msg = err instanceof Error ? err.message : String(err);
