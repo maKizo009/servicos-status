@@ -100,25 +100,27 @@ export function saveBgpResult(r: BgpResult): void {
 }
 
 export function getLatestPortalResults(limit = 50): PortalResult[] {
-	return db
+	const rows = db
 		.query(
 			`SELECT operator, host, success, latency_ms as latencyMs, error, timestamp
        FROM portal_results
        ORDER BY timestamp DESC
        LIMIT ?`,
 		)
-		.all(limit) as PortalResult[];
+		.all(limit) as (Omit<PortalResult, "success"> & { success: number })[];
+	return rows.map((r) => ({ ...r, success: Boolean(r.success) }));
 }
 
 export function getLatestConnectivityResults(limit = 50): ConnectivityResult[] {
-	return db
+	const rows = db
 		.query(
 			`SELECT label, host, success, latency_ms as latencyMs, error, timestamp
        FROM connectivity_results
        ORDER BY timestamp DESC
        LIMIT ?`,
 		)
-		.all(limit) as ConnectivityResult[];
+		.all(limit) as (Omit<ConnectivityResult, "success"> & { success: number })[];
+	return rows.map((r) => ({ ...r, success: Boolean(r.success) }));
 }
 
 export function getLatestBgpResults(limit = 50): BgpResult[] {
@@ -136,7 +138,7 @@ export function getPortalHistory(
 	operator: string,
 	limit = 100,
 ): PortalResult[] {
-	return db
+	const rows = db
 		.query(
 			`SELECT operator, host, success, latency_ms as latencyMs, error, timestamp
        FROM portal_results
@@ -144,7 +146,8 @@ export function getPortalHistory(
        ORDER BY timestamp DESC
        LIMIT ?`,
 		)
-		.all(operator, limit) as PortalResult[];
+		.all(operator, limit) as (Omit<PortalResult, "success"> & { success: number })[];
+	return rows.map((r) => ({ ...r, success: Boolean(r.success) }));
 }
 
 export function closeDb(): void {

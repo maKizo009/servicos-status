@@ -146,7 +146,7 @@ async function runChecks(): Promise<void> {
 	}
 
 	// Build and optionally send unified report
-	lastUnifiedReport = buildUnifiedReport(data);
+	lastUnifiedReport = buildUnifiedReport(data, config.latencyWarnMs);
 	const now = Date.now();
 	if (
 		config.unifiedReportIntervalMs > 0 &&

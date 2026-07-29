@@ -99,19 +99,25 @@ function assessOperatorLevel(
 	portals: PortalResult[],
 	connectivity: ConnectivityResult[],
 	bgp: BgpResult | null,
+	latencyWarnMs = 2000,
 ): "ok" | "warn" | "critical" {
 	const portalFailures = portals.filter((p) => !p.success).length;
 	const connFailures = connectivity.filter((c) => !c.success).length;
 
 	if (portalFailures > 0 || connFailures > 0 || bgp?.error) return "critical";
 
-	const highLatency = portals.some((p) => p.latencyMs > 2000 && p.success);
+	const highLatency =
+		portals.some((p) => p.latencyMs > latencyWarnMs && p.success) ||
+		connectivity.some((c) => c.latencyMs > latencyWarnMs && c.success);
 	if (highLatency) return "warn";
 
 	return "ok";
 }
 
-export function buildUnifiedReport(data: AllCheckData): UnifiedReport {
+export function buildUnifiedReport(
+	data: AllCheckData,
+	latencyWarnMs = 2000,
+): UnifiedReport {
 	const services: ServiceHealth[] = [];
 
 	for (const op of data.operators) {
@@ -119,6 +125,7 @@ export function buildUnifiedReport(data: AllCheckData): UnifiedReport {
 			op.portalResults,
 			op.connectivityResults,
 			op.bgpResult,
+			latencyWarnMs,
 		);
 		const failures = op.portalResults.filter((p) => !p.success).length;
 		const details =

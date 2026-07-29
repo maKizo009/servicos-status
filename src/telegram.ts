@@ -42,6 +42,8 @@ function buildAlertText(payload: AlertPayload): string {
 	return `${header}\n${body}\n\n🕐 ${new Date().toISOString()}`;
 }
 
+let hasWarnedTelegramNotConfigured = false;
+
 async function sendTelegramMessage(
 	botToken: string,
 	chatId: string,
@@ -49,7 +51,10 @@ async function sendTelegramMessage(
 	parseMode: "Markdown" | "HTML" | null = "Markdown",
 ): Promise<boolean> {
 	if (!botToken || !chatId) {
-		logger.warn("Telegram not configured");
+		if (!hasWarnedTelegramNotConfigured) {
+			logger.warn("Telegram not configured");
+			hasWarnedTelegramNotConfigured = true;
+		}
 		return false;
 	}
 
