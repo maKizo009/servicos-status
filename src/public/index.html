@@ -59,7 +59,7 @@ body{font-family:var(--font);background:#F1F5F9;color:var(--text);min-height:100
 .ov-dot.critical{background:var(--r5);box-shadow:0 0 12px var(--r5);animation:pulse 1s infinite}
 @keyframes pulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.4;transform:scale(.85)}}
 
-/* Banner Refactored: Flex column with scoped top row to prevent badge overflow */
+/* Banner */
 .banner{
   margin-top:24px;padding:20px 24px;border-radius:var(--radius);border:2px solid;
   display:flex;flex-direction:column;gap:14px;box-shadow:var(--shadow-lg);
@@ -248,8 +248,8 @@ body{font-family:var(--font);background:#F1F5F9;color:var(--text);min-height:100
   font-weight:800;font-size:13px;padding:3px 10px;border-radius:20px;width:fit-content
 }
 
-/* Telecom Specific */
-.telecom-grid{display:flex;flex-direction:column;gap:8px}
+/* Telecom Specific Layout & Signal Reporting */
+.telecom-grid{display:flex;flex-direction:column;gap:12px}
 .portal-row{
   display:flex;align-items:center;justify-content:space-between;padding:10px 14px;
   background:var(--s50);border-radius:8px;border:1px solid var(--s200);font-size:13px
@@ -263,6 +263,27 @@ body{font-family:var(--font);background:#F1F5F9;color:var(--text);min-height:100
   background:var(--s50);padding:10px 14px;border-radius:8px;border:1px solid var(--s200);
   font-size:12px;color:var(--text2);display:flex;flex-direction:column;gap:4px
 }
+
+/* Local Signal Reporting Box */
+.signal-box{
+  background:var(--s50);border:1px dashed var(--s300);border-radius:10px;padding:12px 14px;
+  display:flex;flex-direction:column;gap:8px
+}
+.signal-box-head{display:flex;align-items:center;justify-content:space-between;font-size:13px;font-weight:700;color:var(--text)}
+.signal-status-badge{
+  font-size:11px;font-weight:800;padding:2px 8px;border-radius:4px;text-transform:uppercase
+}
+.signal-status-badge.ok{background:var(--g1);color:var(--g6)}
+.signal-status-badge.degraded{background:var(--a1);color:var(--a5)}
+.signal-status-badge.down{background:var(--r1);color:var(--r6)}
+
+.signal-report-btn-group{display:flex;gap:6px;flex-wrap:wrap;margin-top:4px}
+.signal-btn{
+  padding:5px 10px;border-radius:6px;border:1px solid var(--s300);background:#fff;
+  font-size:12px;font-weight:600;cursor:pointer;transition:all .15s;display:inline-flex;align-items:center;gap:4px
+}
+.signal-btn:hover{background:var(--s100);border-color:var(--s400)}
+.signal-btn.active{border-color:var(--s800);background:var(--s800);color:#fff}
 
 .card-foot{
   font-size:12px;color:var(--text3);padding:12px 22px;border-top:1px solid var(--border);
@@ -350,6 +371,7 @@ body{font-family:var(--font);background:#F1F5F9;color:var(--text);min-height:100
 <script>
 const API_SERVICES='/api/services';
 const API_STATUS='/api/status';
+const API_SIGNAL_REPORT='/api/signal-report';
 const REFRESH_MS=30000;
 
 const BRANDS={
@@ -446,6 +468,21 @@ function updateBanner(services){
     dot.className='ov-dot ok';
     iconEl.innerHTML=ICON.ok;
     detailsEl.style.display='none';
+  }
+}
+
+async function sendSignalReport(opName, status, signalType, notes){
+  try{
+    const resp = await fetch(API_SIGNAL_REPORT, {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({ operator: opName, status, signalType, notes })
+    });
+    if(resp.ok){
+      fetchData();
+    }
+  }catch(e){
+    console.error("Erro ao reportar sinal", e);
   }
 }
 
@@ -601,6 +638,7 @@ function renderCards(services){
       const portals=svc.data?.portalResults || [];
       const conn=svc.data?.connectivityResults || [];
       const bgp=svc.data?.bgp || null;
+      const sigRep=svc.data?.signalReport || null;
 
       let portalsHtml='';
       if(portals.length>0){
@@ -608,7 +646,7 @@ function renderCards(services){
           portalsHtml+=`<div class="portal-row">
             <div class="portal-host">
               ${p.success?ICON.ok:ICON.error}
-              <span>${p.host}</span>
+              <span>${p.host} (Portal Web/Backbone)</span>
             </div>
             <div>
               <span class="portal-status-tag ${p.success?'ok':'fail'}">${p.success?'ONLINE':'OFFLINE'}</span>
@@ -622,19 +660,40 @@ function renderCards(services){
       if(conn.length>0){
         const okConn=conn.filter(x=>x.success).length;
         connSummary=`<div style="font-size:13px;font-weight:600;color:var(--text2)">
-          Conectividade Geral: <strong style="color:${okConn===conn.length?'var(--g6)':'var(--r6)'}">${okConn}/${conn.length} testes OK</strong>
+          Backbone / Conectividade Global: <strong style="color:${okConn===conn.length?'var(--g6)':'var(--r6)'}">${okConn}/${conn.length} testes OK</strong>
         </div>`;
       }
 
       let bgpSummary='';
       if(bgp){
         bgpSummary=`<div class="bgp-box">
-          <div><strong>Roteamento BGP (AS${bgp.asn}):</strong></div>
+          <div><strong>Roteamento BGP Nacional (AS${bgp.asn}):</strong></div>
           <div>IPv4: <strong>${bgp.prefixCountV4||0} prefixos</strong> | IPv6: <strong>${bgp.prefixCountV6||0} prefixos</strong></div>
         </div>`;
       }
 
+      const currentSignalType = sigRep ? sigRep.signalType : '4G/5G';
+      const currentSignalStatus = sigRep ? sigRep.status : 'ok';
+      const currentSignalBadgeClass = currentSignalStatus === 'ok' ? 'ok' : currentSignalStatus === 'degraded' ? 'degraded' : 'down';
+      const currentSignalLabel = currentSignalStatus === 'ok' ? '4G/5G Normal' : `⚠️ ${currentSignalType} (${sigRep.notes || 'Queda de sinal em Ipiranga'})`;
+
+      const signalReportingBoxHtml=`<div class="signal-box">
+        <div class="signal-box-head">
+          <span>Sinal Móvel Local (Ipiranga):</span>
+          <span class="signal-status-badge ${currentSignalBadgeClass}">${currentSignalLabel}</span>
+        </div>
+        <div style="font-size:12px;color:var(--text3)">
+          Como está o sinal da <strong>${name}</strong> no seu celular agora em Ipiranga?
+        </div>
+        <div class="signal-report-btn-group">
+          <button class="signal-btn ${currentSignalStatus==='ok'?'active':''}" onclick="sendSignalReport('${name}','ok','4G/5G','Sinal Normal')">🟢 4G/5G Normal</button>
+          <button class="signal-btn ${currentSignalStatus==='degraded'?'active':''}" onclick="sendSignalReport('${name}','degraded','3G/H+','Queda para H+/3G')">⚠️ 3G/H+ (Queda 4G)</button>
+          <button class="signal-btn ${currentSignalStatus==='down'?'active':''}" onclick="sendSignalReport('${name}','down','Sem Sinal','Fora do Ar')">🔴 Sem Sinal</button>
+        </div>
+      </div>`;
+
       contentHtml=`<div class="telecom-grid">
+        ${signalReportingBoxHtml}
         ${portalsHtml}
         ${connSummary}
         ${bgpSummary}

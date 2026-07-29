@@ -33,6 +33,16 @@ export interface BgpResult {
 	error?: string;
 }
 
+export interface LocalSignalReport {
+	id?: number;
+	operator: OperatorName;
+	status: "ok" | "degraded" | "down";
+	signalType: string;
+	notes?: string;
+	reportedAt: number;
+	expiresAt: number;
+}
+
 export interface CheckResult {
 	operator: OperatorName;
 	portalResults: PortalResult[];

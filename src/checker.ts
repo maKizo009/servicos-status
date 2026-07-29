@@ -1,5 +1,6 @@
 import type { AppConfig } from "./config";
 import { connectivityTargets } from "./config";
+import { getActiveSignalReports } from "./db";
 import { checkBgpPrefixes } from "./probes/bgp";
 import { checkConnectivity } from "./probes/connectivity";
 import { checkCopel } from "./probes/copel";
@@ -133,9 +134,10 @@ export function buildUnifiedReport(
 	latencyWarnMs = 2000,
 ): UnifiedReport {
 	const services: ServiceHealth[] = [];
+	const signalReports = getActiveSignalReports();
 
 	for (const op of data.operators) {
-		const status = assessLevel(
+		let status = assessLevel(
 			op.portalResults,
 			op.connectivityResults,
 			op.bgpResult,
@@ -151,8 +153,22 @@ export function buildUnifiedReport(
 			op.bgpResult.prefixCountV4 === 0 &&
 			op.bgpResult.prefixCountV6 === 0;
 
+		const activeSignalReport = signalReports.find(
+			(r) => r.operator === op.name && r.status !== "ok",
+		);
+
+		if (activeSignalReport) {
+			if (activeSignalReport.status === "down") {
+				status = "critical";
+			} else if (status === "ok") {
+				status = "warn";
+			}
+		}
+
 		let details = "OK";
-		if (status === "critical") {
+		if (activeSignalReport) {
+			details = `⚠️ Sinal Local: ${activeSignalReport.signalType} (${activeSignalReport.notes || "Relato de instabilidade local"})`;
+		} else if (status === "critical") {
 			const parts: string[] = [];
 			if (portalFailures > 0)
 				parts.push(`${portalFailures} portal(is) fora do ar`);
@@ -174,6 +190,7 @@ export function buildUnifiedReport(
 				portalResults: op.portalResults,
 				connectivityResults: op.connectivityResults,
 				bgp: op.bgpResult,
+				signalReport: activeSignalReport ?? null,
 			},
 		});
 	}

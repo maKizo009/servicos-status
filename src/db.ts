@@ -1,6 +1,12 @@
 import { Database } from "bun:sqlite";
 import { logger } from "./logger";
-import type { BgpResult, ConnectivityResult, PortalResult } from "./types";
+import type {
+	BgpResult,
+	ConnectivityResult,
+	LocalSignalReport,
+	OperatorName,
+	PortalResult,
+} from "./types";
 
 let db: Database;
 
@@ -55,6 +61,18 @@ export function initDb(path = "data/health.db"): Database {
   `);
 
 	db.run(`
+    CREATE TABLE IF NOT EXISTS signal_reports (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      operator TEXT NOT NULL,
+      status TEXT NOT NULL,
+      signal_type TEXT NOT NULL,
+      notes TEXT DEFAULT '',
+      reported_at INTEGER NOT NULL,
+      expires_at INTEGER NOT NULL
+    )
+  `);
+
+	db.run(`
     CREATE INDEX IF NOT EXISTS idx_portal_timestamp ON portal_results(timestamp)
   `);
 	db.run(`
@@ -66,9 +84,65 @@ export function initDb(path = "data/health.db"): Database {
 	db.run(`
     CREATE INDEX IF NOT EXISTS idx_known_events_source ON known_events(source)
   `);
+	db.run(`
+    CREATE INDEX IF NOT EXISTS idx_signal_reports_expires ON signal_reports(expires_at)
+  `);
 
 	logger.info("Database initialized", { path });
 	return db;
+}
+
+export function saveSignalReport(
+	operator: OperatorName,
+	status: "ok" | "degraded" | "down",
+	signalType: string,
+	notes = "",
+	ttlHours = 3,
+): LocalSignalReport {
+	const now = Date.now();
+	const expiresAt = now + ttlHours * 3600 * 1000;
+
+	// Invalidate older reports for this operator if status is 'ok'
+	if (status === "ok") {
+		db.run(
+			"UPDATE signal_reports SET expires_at = ? WHERE operator = ? AND expires_at > ?",
+			[now, operator, now],
+		);
+	}
+
+	db.run(
+		"INSERT INTO signal_reports (operator, status, signal_type, notes, reported_at, expires_at) VALUES (?, ?, ?, ?, ?, ?)",
+		[operator, status, signalType, notes, now, expiresAt],
+	);
+
+	logger.info("Local signal report saved", {
+		operator,
+		status,
+		signalType,
+		notes,
+		expiresAt,
+	});
+
+	return {
+		operator,
+		status,
+		signalType,
+		notes,
+		reportedAt: now,
+		expiresAt,
+	};
+}
+
+export function getActiveSignalReports(): LocalSignalReport[] {
+	const now = Date.now();
+	return db
+		.query(
+			`SELECT id, operator, status, signal_type as signalType, notes, reported_at as reportedAt, expires_at as expiresAt
+       FROM signal_reports
+       WHERE expires_at > ?
+       ORDER BY reported_at DESC`,
+		)
+		.all(now) as LocalSignalReport[];
 }
 
 export function savePortalResult(r: PortalResult): void {

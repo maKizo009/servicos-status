@@ -10,6 +10,7 @@ import {
 	saveBgpResult,
 	saveConnectivityResult,
 	savePortalResult,
+	saveSignalReport,
 } from "./db";
 import { logger } from "./logger";
 import { checkRateLimit } from "./rate-limiter";
@@ -283,6 +284,36 @@ async function handleRequest(req: Request): Promise<Response> {
 		if (path === "/api/check" && req.method === "POST") {
 			await runChecks();
 			return Response.json({ status: "ok", timestamp: Date.now() });
+		}
+		if (path === "/api/signal-report" && req.method === "POST") {
+			try {
+				const body = (await req.json()) as {
+					operator: OperatorName;
+					status: "ok" | "degraded" | "down";
+					signalType: string;
+					notes?: string;
+				};
+				if (!body.operator || !body.status || !body.signalType) {
+					return new Response(
+						JSON.stringify({ error: "Parâmetros inválidos" }),
+						{ status: 400, headers: { "Content-Type": "application/json" } },
+					);
+				}
+				const report = saveSignalReport(
+					body.operator,
+					body.status,
+					body.signalType,
+					body.notes ?? "",
+				);
+				await runChecks();
+				return Response.json({ status: "ok", report, timestamp: Date.now() });
+			} catch (err: unknown) {
+				const msg = err instanceof Error ? err.message : String(err);
+				return new Response(JSON.stringify({ error: msg }), {
+					status: 400,
+					headers: { "Content-Type": "application/json" },
+				});
+			}
 		}
 
 		// Serve static files from public/
