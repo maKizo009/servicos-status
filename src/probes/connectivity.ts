@@ -17,7 +17,7 @@ export async function checkConnectivity(
 		const response = await fetch(`https://${host}`, {
 			method: "HEAD",
 			signal: AbortSignal.timeout(timeoutMs),
-			redirect: "follow",
+			redirect: "manual",
 			headers: DEFAULT_HEADERS,
 		});
 		const latencyMs = performance.now() - start;

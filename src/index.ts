@@ -149,7 +149,9 @@ async function runChecks(): Promise<void> {
 	logger.info("Check cycle completed", {
 		totalPortals: allPortalResults.length,
 		portalsOk: allPortalResults.filter((r) => r.success).length,
+		activeCopel: data.copelOutages.length,
 		newCopel: data.newCopelOutages.length,
+		activeSanepar: data.saneparInterruptions.length,
 		newSanepar: data.newSaneparInterruptions.length,
 		alertLevel: currentLevel,
 	});

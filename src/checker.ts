@@ -24,7 +24,9 @@ export interface AllCheckData {
 		connectivityResults: ConnectivityResult[];
 		bgpResult: BgpResult;
 	}[];
+	copelOutages: CopelOutage[];
 	newCopelOutages: CopelOutage[];
+	saneparInterruptions: SaneparInterruption[];
 	newSaneparInterruptions: SaneparInterruption[];
 	timestamp: number;
 }
@@ -66,16 +68,16 @@ export async function runAllChecks(
 		});
 	}
 
-	const newCopelOutages = config.municipio
+	const copelRes = config.municipio
 		? await checkCopel(
 				config.copelApiUrl,
 				config.municipio,
 				config.copelTimeoutMs,
 				tracker,
 			)
-		: [];
+		: { allOutages: [], newOutages: [] };
 
-	const newSaneparInterruptions = config.municipio
+	const saneparRes = config.municipio
 		? await checkSanepar(
 				config.saneparViewsAjaxUrl,
 				config.saneparPageUrl,
@@ -85,12 +87,14 @@ export async function runAllChecks(
 				config.municipio,
 				tracker,
 			)
-		: [];
+		: { allInterruptions: [], newInterruptions: [] };
 
 	return {
 		operators: operatorResults,
-		newCopelOutages,
-		newSaneparInterruptions,
+		copelOutages: copelRes.allOutages,
+		newCopelOutages: copelRes.newOutages,
+		saneparInterruptions: saneparRes.allInterruptions,
+		newSaneparInterruptions: saneparRes.newInterruptions,
 		timestamp,
 	};
 }
@@ -174,7 +178,11 @@ export function buildUnifiedReport(
 		});
 	}
 
-	const copelStatus = data.newCopelOutages.length > 0 ? "critical" : "ok";
+	const copelStatus = data.copelOutages.length > 0 ? "critical" : "ok";
+	const copelTotalConsumers = data.copelOutages.reduce(
+		(sum, o) => sum + (o.qtdConsumidores || 0),
+		0,
+	);
 	services.push({
 		name: "Copel",
 		category: "utility",
@@ -182,13 +190,19 @@ export function buildUnifiedReport(
 		details:
 			copelStatus === "ok"
 				? "Sem ocorrências"
-				: `${data.newCopelOutages.length} ocorrência(s)`,
+				: copelTotalConsumers > 0
+					? `${data.copelOutages.length} ocorrência(s) (${copelTotalConsumers} unidades sem energia)`
+					: `${data.copelOutages.length} ocorrência(s)`,
 		timestamp: data.timestamp,
-		data: { newEvents: data.newCopelOutages },
+		data: {
+			activeEvents: data.copelOutages,
+			newEvents: data.newCopelOutages,
+			totalConsumers: copelTotalConsumers,
+		},
 	});
 
 	const saneparStatus =
-		data.newSaneparInterruptions.length > 0 ? "critical" : "ok";
+		data.saneparInterruptions.length > 0 ? "critical" : "ok";
 	services.push({
 		name: "Sanepar",
 		category: "utility",
@@ -196,9 +210,12 @@ export function buildUnifiedReport(
 		details:
 			saneparStatus === "ok"
 				? "Sem interrupções"
-				: `${data.newSaneparInterruptions.length} interrupção(ões)`,
+				: `${data.saneparInterruptions.length} interrupção(ões)`,
 		timestamp: data.timestamp,
-		data: { newEvents: data.newSaneparInterruptions },
+		data: {
+			activeEvents: data.saneparInterruptions,
+			newEvents: data.newSaneparInterruptions,
+		},
 	});
 
 	const allStatuses = services.map((s) => s.status);

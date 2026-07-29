@@ -128,6 +128,11 @@ export function parseSaneparHtml(
 	return interruptions;
 }
 
+export interface SaneparCheckResult {
+	allInterruptions: SaneparInterruption[];
+	newInterruptions: SaneparInterruption[];
+}
+
 export async function checkSanepar(
 	viewsAjaxUrl: string,
 	pageUrl: string,
@@ -136,13 +141,14 @@ export async function checkSanepar(
 	timeoutMs: number,
 	municipio: string,
 	tracker: EventTracker,
-): Promise<SaneparInterruption[]> {
+): Promise<SaneparCheckResult> {
+	const allInterruptions: SaneparInterruption[] = [];
 	const newInterruptions: SaneparInterruption[] = [];
 	const domIds = await getSaneparViewDomIds(pageUrl, timeoutMs);
 
 	if (domIds.length === 0) {
 		logger.warn("Sanepar: nenhum view_dom_id encontrado");
-		return [];
+		return { allInterruptions: [], newInterruptions: [] };
 	}
 
 	for (let i = 0; i < Math.min(domIds.length, displays.length); i++) {
@@ -159,6 +165,7 @@ export async function checkSanepar(
 
 		const interruptions = parseSaneparHtml(html, municipio);
 		for (const intr of interruptions) {
+			allInterruptions.push(intr);
 			const h = makeHash(intr.cidade, intr.bairro, intr.inicio, intr.fim);
 			if (!tracker.isKnown("sanepar", h)) {
 				tracker.markKnown("sanepar", h);
@@ -167,11 +174,12 @@ export async function checkSanepar(
 		}
 	}
 
-	if (newInterruptions.length > 0) {
-		logger.info("Sanepar: novas interrupções encontradas", {
-			count: newInterruptions.length,
+	if (allInterruptions.length > 0) {
+		logger.info("Sanepar: interrupções encontradas", {
+			total: allInterruptions.length,
+			novas: newInterruptions.length,
 		});
 	}
 
-	return newInterruptions;
+	return { allInterruptions, newInterruptions };
 }

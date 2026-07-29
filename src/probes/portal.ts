@@ -17,7 +17,7 @@ export async function checkPortal(
 	try {
 		const response = await fetch(`https://${host}`, {
 			signal: AbortSignal.timeout(timeoutMs),
-			redirect: "follow",
+			redirect: "manual",
 			headers: DEFAULT_HEADERS,
 		});
 		const latencyMs = performance.now() - start;
@@ -37,7 +37,7 @@ export async function checkPortal(
 			try {
 				const response = await fetch(`http://${host}`, {
 					signal: AbortSignal.timeout(timeoutMs),
-					redirect: "follow",
+					redirect: "manual",
 					headers: DEFAULT_HEADERS,
 				});
 				const retryLatency = performance.now() - start;

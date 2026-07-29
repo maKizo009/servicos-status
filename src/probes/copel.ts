@@ -10,12 +10,18 @@ function normalizeString(str: string): string {
 		.trim();
 }
 
+export interface CopelCheckResult {
+	allOutages: CopelOutage[];
+	newOutages: CopelOutage[];
+}
+
 export async function checkCopel(
 	apiUrl: string,
 	municipio: string,
 	timeoutMs: number,
 	tracker: EventTracker,
-): Promise<CopelOutage[]> {
+): Promise<CopelCheckResult> {
+	const allOutages: CopelOutage[] = [];
 	const newOutages: CopelOutage[] = [];
 
 	try {
@@ -25,7 +31,7 @@ export async function checkCopel(
 		});
 		if (!resp.ok) {
 			logger.warn("COPEL API returned non-ok status", { status: resp.status });
-			return [];
+			return { allOutages: [], newOutages: [] };
 		}
 
 		const data = (await resp.json()) as {
@@ -56,11 +62,14 @@ export async function checkCopel(
 				equipeId: (oc.equipe_id as string) ?? "",
 			};
 
+			allOutages.push(outage);
+
 			const h = makeHash(
 				outage.idOcorrencia,
 				outage.numeroSequencial,
 				outage.dataInicio,
 				outage.bairro,
+				String(outage.qtdConsumidores),
 			);
 			if (!tracker.isKnown("copel", h)) {
 				tracker.markKnown("copel", h);
@@ -68,9 +77,10 @@ export async function checkCopel(
 			}
 		}
 
-		if (newOutages.length > 0) {
-			logger.info("COPEL: novas ocorrências encontradas", {
-				count: newOutages.length,
+		if (allOutages.length > 0) {
+			logger.info("COPEL: ocorrências ativas encontradas", {
+				total: allOutages.length,
+				novas: newOutages.length,
 				municipio,
 			});
 		}
@@ -79,5 +89,5 @@ export async function checkCopel(
 		logger.error("Erro ao verificar COPEL", { error: msg });
 	}
 
-	return newOutages;
+	return { allOutages, newOutages };
 }
