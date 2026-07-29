@@ -2,6 +2,7 @@ import { assessLevel, buildUnifiedReport, runAllChecks } from "./checker";
 import { loadConfig } from "./config";
 import {
 	closeDb,
+	getDailyStatsSummary,
 	getLatestBgpResults,
 	getLatestConnectivityResults,
 	getLatestPortalResults,
@@ -10,6 +11,7 @@ import {
 	initDb,
 	saveBgpResult,
 	saveConnectivityResult,
+	saveEventLog,
 	savePortalResult,
 	saveSignalReport,
 	saveTelemetryLog,
@@ -126,6 +128,13 @@ async function runChecks(): Promise<void> {
 			config.telegramBotToken,
 			config.telegramChatId,
 		);
+		saveEventLog(
+			"copel",
+			`Queda de Energia (${outage.ehProgramada ? "Programada" : "Emergencial"})`,
+			outage.bairro || "Ipiranga",
+			`Equipe: ${outage.statusEquipe || "Pendente"} | Previsão: ${outage.previsaoRestabelecimento || "Sem previsão"}`,
+			outage.qtdConsumidores || 0,
+		);
 	}
 
 	// Per-event alerts for Sanepar
@@ -134,6 +143,13 @@ async function runChecks(): Promise<void> {
 			intr,
 			config.telegramBotToken,
 			config.telegramChatId,
+		);
+		saveEventLog(
+			"sanepar",
+			`Interrupção de Água - ${intr.motivo || "Manutenção"}`,
+			intr.bairro || intr.cidade || "Ipiranga",
+			`Início: ${intr.inicio} | Fim: ${intr.fim}`,
+			0,
 		);
 	}
 
@@ -327,6 +343,12 @@ async function handleRequest(req: Request): Promise<Response> {
 		if (path === "/api/telemetry/stats") {
 			return Response.json({
 				stats: getTelemetryStats(30),
+				timestamp: Date.now(),
+			});
+		}
+		if (path === "/api/stats/daily" || path === "/api/stats") {
+			return Response.json({
+				daily: getDailyStatsSummary(),
 				timestamp: Date.now(),
 			});
 		}

@@ -339,6 +339,57 @@ body{font-family:var(--font);background:#F1F5F9;color:var(--text);min-height:100
   display:flex;justify-content:space-between;align-items:center;background:var(--s50);margin-top:auto
 }
 
+/* Source Link Button */
+.source-link-btn{
+  font-size:12px;font-weight:700;color:var(--s700);text-decoration:none;
+  background:rgba(0,0,0,.06);padding:6px 12px;border-radius:8px;
+  display:inline-flex;align-items:center;gap:6px;transition:all .2s ease;
+  border:1px solid var(--s300);line-height:1
+}
+.source-link-btn:hover{background:var(--s800);color:#fff;border-color:var(--s800);transform:translateY(-1px)}
+
+/* Tabs Navigation */
+.tabs-nav{
+  display:flex;gap:12px;margin-top:24px;border-bottom:2px solid var(--s200);padding-bottom:0
+}
+.tab-btn{
+  padding:12px 20px;border:none;background:none;font-family:var(--font);
+  font-size:14px;font-weight:700;color:var(--s500);cursor:pointer;
+  border-bottom:3px solid transparent;margin-bottom:-2px;transition:all .2s ease;
+  display:flex;align-items:center;gap:8px;border-radius:8px 8px 0 0
+}
+.tab-btn.active{
+  color:var(--s900);border-bottom-color:var(--g6);background:rgba(22,163,74,.05)
+}
+.tab-btn:hover:not(.active){color:var(--s800);background:var(--s100)}
+
+/* Stats View */
+.stats-container{display:flex;flex-direction:column;gap:20px;padding:20px 0}
+.stats-kpi-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:16px}
+.stats-kpi-card{
+  background:var(--surface);border:1px solid var(--s300);border-radius:var(--radius);
+  padding:20px;display:flex;flex-direction:column;gap:8px;box-shadow:var(--shadow)
+}
+.stats-kpi-card h3{font-size:13px;font-weight:700;color:var(--s500);text-transform:uppercase;letter-spacing:.4px;display:flex;align-items:center;gap:8px}
+.stats-kpi-val{font-size:32px;font-weight:800;color:var(--s900);line-height:1}
+.stats-kpi-sub{font-size:13px;color:var(--text2);font-weight:500}
+
+.stats-table-wrapper{
+  background:var(--surface);border:1px solid var(--s300);border-radius:var(--radius);
+  overflow:hidden;box-shadow:var(--shadow)
+}
+.stats-table-head{padding:16px 20px;background:var(--s50);border-bottom:1px solid var(--s200);font-size:16px;font-weight:800;color:var(--s800);display:flex;align-items:center;justify-content:space-between}
+.stats-table{width:100%;border-collapse:collapse;text-align:left;font-size:13px}
+.stats-table th{background:var(--s100);padding:12px 16px;font-weight:700;color:var(--s700);border-bottom:1px solid var(--s200)}
+.stats-table td{padding:14px 16px;border-bottom:1px solid var(--s200);color:var(--text);vertical-align:middle}
+.stats-table tr:last-child td{border-bottom:none}
+.stats-table tr:hover td{background:var(--s50)}
+
+.badge-source{font-size:11px;font-weight:800;padding:3px 8px;border-radius:6px;text-transform:uppercase;display:inline-block}
+.badge-source.copel{background:rgba(0,146,63,.1);color:var(--copel)}
+.badge-source.sanepar{background:rgba(0,63,135,.1);color:var(--sanepar)}
+.badge-source.telecom{background:rgba(237,28,36,.1);color:var(--claro)}
+
 /* Footer */
 .footer{
   text-align:center;padding:24px;font-size:14px;color:var(--text3);border-top:1px solid var(--border);margin-top:auto;background:var(--surface)
@@ -406,14 +457,83 @@ body{font-family:var(--font);background:#F1F5F9;color:var(--text);min-height:100
     <div class="banner-details-list" id="bannerDetails"></div>
   </div>
 
-  <div class="section-head">
-    <div class="section-title">
-      <svg viewBox="0 0 24 24"><path d="M4 6h16v2H4zm0 5h16v2H4zm0 5h16v2H4z"/></svg>
-      Painel dos Serviços
+  <nav class="tabs-nav" aria-label="Navegação do Monitor">
+    <button class="tab-btn active" id="tabStatusBtn" type="button">
+      <svg viewBox="0 0 24 24" style="width:18px;height:18px;fill:currentColor" aria-hidden="true"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 17.93c-3.95-.49-7-3.85-7-7.93 0-.62.08-1.21.21-1.79L9 15v1c0 1.1.9 2 2 2v1.93zm6.9-2.54c-.26-.81-1-1.39-1.9-1.39h-1v-3c0-.55-.45-1-1-1H8v-2h2c.55 0 1-.45 1-1V7h2c1.1 0 2-.9 2-2v-.41c2.93 1.19 5 4.06 5 7.41 0 2.08-.8 3.97-2.1 5.39z"/></svg>
+      Status Ao Vivo
+    </button>
+    <button class="tab-btn" id="tabStatsBtn" type="button">
+      <svg viewBox="0 0 24 24" style="width:18px;height:18px;fill:currentColor" aria-hidden="true"><path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zM9 17H7v-7h2v7zm4 0h-2v-10h2v10zm4 0h-2v-4h2v4z"/></svg>
+      Relatório & Estatísticas Diárias
+    </button>
+  </nav>
+
+  <!-- TAB 1: STATUS AO VIVO -->
+  <div id="statusView">
+    <div class="section-head">
+      <div class="section-title">
+        <svg viewBox="0 0 24 24"><path d="M4 6h16v2H4zm0 5h16v2H4zm0 5h16v2H4z"/></svg>
+        Painel dos Serviços
+      </div>
     </div>
+
+    <section class="grid" id="grid" aria-label="Status dos serviços"></section>
   </div>
 
-  <section class="grid" id="grid" aria-label="Status dos serviços"></section>
+  <!-- TAB 2: ESTATÍSTICAS DIÁRIAS -->
+  <div id="statsView" style="display:none">
+    <div class="stats-container">
+      <div class="section-head" style="margin-top:10px">
+        <div class="section-title">
+          <svg viewBox="0 0 24 24"><path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zM9 17H7v-7h2v7zm4 0h-2v-10h2v10zm4 0h-2v-4h2v4z"/></svg>
+          Resumo Diário de Interrupções e Solicitações
+        </div>
+      </div>
+
+      <div class="stats-kpi-grid">
+        <div class="stats-kpi-card">
+          <h3>⚡ COPEL (Energia) Hoje</h3>
+          <div class="stats-kpi-val" id="statCopelToday">0</div>
+          <div class="stats-kpi-sub" id="statCopelSub">0 solicitações de interrupção registradas hoje</div>
+        </div>
+        <div class="stats-kpi-card">
+          <h3>💧 Sanepar (Água) Hoje</h3>
+          <div class="stats-kpi-val" id="statSaneparToday">0</div>
+          <div class="stats-kpi-sub" id="statSaneparSub">0 alertas de manutenção programada hoje</div>
+        </div>
+        <div class="stats-kpi-card">
+          <h3>📱 Testes de Moradores Hoje</h3>
+          <div class="stats-kpi-val" id="statTelemetryToday">0</div>
+          <div class="stats-kpi-sub">Medições automáticas via crowdsourcing em Ipiranga</div>
+        </div>
+      </div>
+
+      <div class="stats-table-wrapper">
+        <div class="stats-table-head">
+          <span>📋 Registro de Ocorrências Diárias</span>
+          <span style="font-size:12px;font-weight:600;color:var(--text3)">Ipiranga / PR</span>
+        </div>
+        <div style="overflow-x:auto">
+          <table class="stats-table">
+            <thead>
+              <tr>
+                <th>Horário</th>
+                <th>Serviço</th>
+                <th>Bairro / Local</th>
+                <th>Descrição da Ocorrência</th>
+                <th>Consumidores</th>
+              </tr>
+            </thead>
+            <tbody id="statsLogsTableBody">
+              <tr>
+                <td colspan="5" style="text-align:center;padding:24px;color:var(--text3)">Carregando estatísticas...</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
 </div>
 
 <footer class="footer">
@@ -430,7 +550,16 @@ body{font-family:var(--font);background:#F1F5F9;color:var(--text);min-height:100
 const API_SERVICES='/api/services';
 const API_STATUS='/api/status';
 const API_TELEMETRY='/api/telemetry';
+const API_STATS='/api/stats/daily';
 const REFRESH_MS=30000;
+
+const OFFICIAL_URLS={
+  Copel:'https://www.copel.com/site/falta-de-luz/',
+  Sanepar:'https://www.sanepar.com.br/esta-sem-agua',
+  Claro:'https://minhaclaro.claro.com.br',
+  Vivo:'https://meuvivo.vivo.com.br',
+  TIM:'https://meutim.tim.com.br'
+};
 
 const BRANDS={
   Claro:{label:'Claro',cls:'claro',cat:'telecom',desc:'Rede Móvel e Conectividade'},
@@ -895,6 +1024,9 @@ function renderCards(services){
       contentHtml = localSection + backboneSection;
     }
 
+    const officialUrl = OFFICIAL_URLS[name] || null;
+    const sourceBtnHtml = officialUrl ? `<a href="${officialUrl}" target="_blank" rel="noopener noreferrer" class="source-link-btn" title="Verificar no site oficial">Fonte Oficial ↗</a>` : '';
+
     html+=`<div class="card ${st}" data-name="${name}">
       <div class="card-crit-bar"></div>
       <div class="card-inner">
@@ -917,8 +1049,11 @@ function renderCards(services){
         </div>
 
         <div class="card-foot">
-          <span>Horário do teste: ${fmtTime(svc.timestamp)}</span>
-          <span>${relativeTime(svc.timestamp)}</span>
+          <div style="display:flex;flex-direction:column;gap:2px">
+            <span>Horário do teste: ${fmtTime(svc.timestamp)}</span>
+            <span style="font-size:11px;opacity:.75">${relativeTime(svc.timestamp)}</span>
+          </div>
+          ${sourceBtnHtml}
         </div>
       </div>
     </div>`;
@@ -943,7 +1078,6 @@ async function fetchData(){
   if(Date.now()-lastFetch<1500){
     ri.classList.add('spinning');
     const timeEl=$('#headerTime');
-    const prevText=timeEl.textContent;
     timeEl.textContent='Aguarde...';
     setTimeout(()=>{
       ri.classList.remove('spinning');
@@ -990,7 +1124,76 @@ function updateFooter(ts){
   window._footerTick=setInterval(tick,5000);
 }
 
+function switchTab(tab){
+  const statusView = $('#statusView');
+  const statsView = $('#statsView');
+  const btnStatus = $('#tabStatusBtn');
+  const btnStats = $('#tabStatsBtn');
+
+  if(tab === 'stats'){
+    statusView.style.display = 'none';
+    statsView.style.display = 'block';
+    btnStatus.classList.remove('active');
+    btnStats.classList.add('active');
+    fetchStats();
+  } else {
+    statsView.style.display = 'none';
+    statusView.style.display = 'block';
+    btnStats.classList.remove('active');
+    btnStatus.classList.add('active');
+  }
+}
+
+async function fetchStats(){
+  try{
+    const resp = await fetch(API_STATS);
+    if(!resp.ok) return;
+    const data = await resp.json();
+    const daily = data.daily || {};
+
+    $('#statCopelToday').textContent = daily.copel?.eventsToday || 0;
+    $('#statCopelSub').textContent = `${(daily.copel?.totalConsumersToday || 0).toLocaleString('pt-BR')} UCs afetadas hoje (${daily.copel?.events7Days || 0} nos últimos 7 dias)`;
+
+    $('#statSaneparToday').textContent = daily.sanepar?.eventsToday || 0;
+    $('#statSaneparSub').textContent = `${daily.sanepar?.events7Days || 0} interrupções nos últimos 7 dias`;
+
+    $('#statTelemetryToday').textContent = daily.telemetry?.testsToday || 0;
+
+    const logs = daily.recentLogs || [];
+    const tbody = $('#statsLogsTableBody');
+
+    if(logs.length === 0){
+      tbody.innerHTML = `<tr><td colspan="5" style="text-align:center;padding:24px;color:var(--text3)">Nenhuma ocorrência ou solicitação registrada até o momento.</td></tr>`;
+      return;
+    }
+
+    let rowsHtml = '';
+    for(const item of logs){
+      const srcBadge = item.source === 'copel' ? 'copel' : item.source === 'sanepar' ? 'sanepar' : 'telecom';
+      const srcName = item.source.toUpperCase();
+      const dtStr = new Date(item.timestamp).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' });
+
+      rowsHtml += `<tr>
+        <td style="font-weight:700;white-space:nowrap">${dtStr}</td>
+        <td><span class="badge-source ${srcBadge}">${srcName}</span></td>
+        <td style="font-weight:700">${item.bairro || 'Ipiranga'}</td>
+        <td>${item.title} ${item.details ? `<br><small style="color:var(--text2)">${item.details}</small>` : ''}</td>
+        <td style="font-weight:800;color:${item.consumers > 0 ? 'var(--r6)' : 'var(--text3)'}">${item.consumers > 0 ? item.consumers.toLocaleString('pt-BR') + ' UCs' : '-'}</td>
+      </tr>`;
+    }
+
+    tbody.innerHTML = rowsHtml;
+  }catch(e){
+    console.error("Stats fetch error", e);
+  }
+}
+
 document.getElementById('btnRefresh').addEventListener('click',fetchData);
+document.getElementById('tabStatusBtn').addEventListener('click', () => switchTab('status'));
+document.getElementById('tabStatsBtn').addEventListener('click', () => switchTab('stats'));
+window.switchTab = switchTab;
+window.scrollToCard = scrollToCard;
+window.toggleCopelOutages = toggleCopelOutages;
 
 updateClock();
 setInterval(updateClock,60000);

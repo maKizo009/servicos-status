@@ -110,6 +110,18 @@ export function initDb(path = "data/health.db"): Database {
   `);
 
 	db.run(`
+    CREATE TABLE IF NOT EXISTS event_history (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      source TEXT NOT NULL,
+      title TEXT NOT NULL,
+      bairro TEXT DEFAULT '',
+      details TEXT DEFAULT '',
+      consumers INTEGER DEFAULT 0,
+      timestamp INTEGER NOT NULL
+    )
+  `);
+
+	db.run(`
     CREATE INDEX IF NOT EXISTS idx_portal_timestamp ON portal_results(timestamp)
   `);
 	db.run(`
@@ -126,6 +138,9 @@ export function initDb(path = "data/health.db"): Database {
   `);
 	db.run(`
     CREATE INDEX IF NOT EXISTS idx_telemetry_timestamp ON telemetry_logs(timestamp)
+  `);
+	db.run(`
+    CREATE INDEX IF NOT EXISTS idx_event_history_timestamp ON event_history(timestamp)
   `);
 
 	logger.info("Database initialized", { path });
@@ -454,6 +469,86 @@ export function getPortalHistory(
 		success: number;
 	})[];
 	return rows.map((r) => ({ ...r, success: Boolean(r.success) }));
+}
+
+export interface EventLogItem {
+	id: number;
+	source: string;
+	title: string;
+	bairro: string;
+	details: string;
+	consumers: number;
+	timestamp: number;
+}
+
+export function saveEventLog(
+	source: string,
+	title: string,
+	bairro = "",
+	details = "",
+	consumers = 0,
+): void {
+	db.run(
+		"INSERT INTO event_history (source, title, bairro, details, consumers, timestamp) VALUES (?, ?, ?, ?, ?, ?)",
+		[source, title, bairro, details, consumers, Date.now()],
+	);
+}
+
+export function getDailyStatsSummary() {
+	const now = Date.now();
+	const startOfDay = now - (now % (24 * 60 * 60 * 1000));
+	const startOf7Days = now - 7 * 86400 * 1000;
+
+	const copelToday = db
+		.query(
+			"SELECT COUNT(*) as cnt, COALESCE(SUM(consumers), 0) as totalConsumers FROM event_history WHERE source = 'copel' AND timestamp >= ?",
+		)
+		.get(startOfDay) as { cnt: number; totalConsumers: number } | null;
+
+	const copel7Days = db
+		.query(
+			"SELECT COUNT(*) as cnt FROM event_history WHERE source = 'copel' AND timestamp >= ?",
+		)
+		.get(startOf7Days) as { cnt: number } | null;
+
+	const saneparToday = db
+		.query(
+			"SELECT COUNT(*) as cnt FROM event_history WHERE source = 'sanepar' AND timestamp >= ?",
+		)
+		.get(startOfDay) as { cnt: number } | null;
+
+	const sanepar7Days = db
+		.query(
+			"SELECT COUNT(*) as cnt FROM event_history WHERE source = 'sanepar' AND timestamp >= ?",
+		)
+		.get(startOf7Days) as { cnt: number } | null;
+
+	const telemetryToday = db
+		.query("SELECT COUNT(*) as cnt FROM telemetry_logs WHERE timestamp >= ?")
+		.get(startOfDay) as { cnt: number } | null;
+
+	const logs = db
+		.query(
+			"SELECT id, source, title, bairro, details, consumers, timestamp FROM event_history ORDER BY timestamp DESC LIMIT 30",
+		)
+		.all() as EventLogItem[];
+
+	return {
+		todayStart: startOfDay,
+		copel: {
+			eventsToday: copelToday?.cnt || 0,
+			totalConsumersToday: copelToday?.totalConsumers || 0,
+			events7Days: copel7Days?.cnt || 0,
+		},
+		sanepar: {
+			eventsToday: saneparToday?.cnt || 0,
+			events7Days: sanepar7Days?.cnt || 0,
+		},
+		telemetry: {
+			testsToday: telemetryToday?.cnt || 0,
+		},
+		recentLogs: logs,
+	};
 }
 
 export function closeDb(): void {
