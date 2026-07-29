@@ -206,25 +206,6 @@ export function buildUnifiedReport(
 		});
 	}
 
-	// Dynamic cards for local fiber ISPs (e.g. Boavista Net, Netfibra, Ligga, Unifique)
-	for (const isp of ispHealthStates) {
-		if (!isp.operator) {
-			services.push({
-				name: isp.ispName as ServiceSource,
-				category: "telecom",
-				status: isp.status,
-				details: isp.details,
-				timestamp: isp.lastUpdated,
-				data: {
-					isLocalFiber: true,
-					avgRttMs: isp.avgRttMs,
-					sampleCount: isp.sampleCount,
-					degradedCount: isp.degradedCount,
-				},
-			});
-		}
-	}
-
 	const copelStatus = data.copelOutages.length > 0 ? "critical" : "ok";
 	const copelTotalConsumers = data.copelOutages.reduce(
 		(sum, o) => sum + (o.qtdConsumidores || 0),

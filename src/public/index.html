@@ -14,7 +14,7 @@
   --g6:#16A34A;--g5:#22C55E;--g1:#DCFCE7;--g0:#F0FDF4;
   --a5:#D97706;--a4:#F59E0B;--a1:#FEF3C7;--a0:#FFFBEB;
   --r6:#DC2626;--r5:#EF4444;--r1:#FEE2E2;--r0:#FEF2F2;
-  --claro:#ED1C24;--vivo:#660099;--tim:#003DA5;--copel:#00923F;--sanepar:#003F87;--fiber:#0284C7;
+  --claro:#ED1C24;--vivo:#660099;--tim:#003DA5;--copel:#00923F;--sanepar:#003F87;
   --surface:#ffffff;--text:#0F172A;--text2:#475569;--text3:#94A3B8;--border:#E2E8F0;
   --radius:16px;--radius-sm:10px;--shadow:0 4px 6px -1px rgba(0,0,0,.05),0 2px 4px -2px rgba(0,0,0,.05);
   --shadow-lg:0 10px 15px -3px rgba(0,0,0,.1),0 4px 6px -4px rgba(0,0,0,.1);
@@ -113,10 +113,21 @@ body{font-family:var(--font);background:#F1F5F9;color:var(--text);min-height:100
 .banner-details-list{
   display:flex;flex-direction:column;gap:8px;padding-top:10px;border-top:1px solid rgba(0,0,0,.08)
 }
+
+/* Clickable Banner Detail Item (UX enhancement for scrolling directly to card) */
 .banner-detail-item{
-  font-size:14px;font-weight:700;display:inline-flex;align-items:center;gap:8px;
-  padding:6px 14px;border-radius:8px;width:fit-content;line-height:1.4
+  font-size:14px;font-weight:700;display:inline-flex;align-items:center;gap:10px;
+  padding:8px 16px;border-radius:10px;width:fit-content;line-height:1.4;
+  cursor:pointer;user-select:none;transition:all .2s ease
 }
+.banner-detail-item:hover{
+  transform:translateX(4px);box-shadow:0 4px 12px rgba(0,0,0,.1)
+}
+.banner-detail-item:active{transform:scale(.98)}
+.banner-detail-item .banner-jump-tag{
+  font-size:11px;font-weight:800;padding:2px 8px;border-radius:6px;background:rgba(0,0,0,.08);margin-left:6px;text-transform:uppercase
+}
+
 .banner.critical .banner-detail-item{background:rgba(220,38,38,.12);color:var(--r6);border:1px solid rgba(220,38,38,.2)}
 .banner.warn .banner-detail-item{background:rgba(217,119,6,.12);color:var(--a5);border:1px solid rgba(217,119,6,.2)}
 
@@ -136,9 +147,20 @@ body{font-family:var(--font);background:#F1F5F9;color:var(--text);min-height:100
 .card{
   background:var(--surface);border-radius:var(--radius);box-shadow:var(--shadow);
   display:flex;flex-direction:column;border:2px solid var(--border);overflow:hidden;
-  transition:all .25s ease;position:relative
+  transition:all .3s ease;position:relative
 }
 .card:hover{transform:translateY(-2px);box-shadow:var(--shadow-lg)}
+
+/* Card Highlight Animation on Click from Banner */
+.card.card-highlight{
+  animation:cardPulse 2s ease-in-out!important
+}
+@keyframes cardPulse{
+  0%{transform:scale(1);box-shadow:0 0 0 rgba(220,38,38,0)}
+  30%{transform:scale(1.02);box-shadow:0 0 25px rgba(220,38,38,.6);border-color:var(--r6)}
+  70%{transform:scale(1.02);box-shadow:0 0 25px rgba(220,38,38,.6);border-color:var(--r6)}
+  100%{transform:scale(1)}
+}
 
 .card.critical{
   border-color:var(--r6);box-shadow:var(--shadow-crit);
@@ -172,7 +194,6 @@ body{font-family:var(--font);background:#F1F5F9;color:var(--text);min-height:100
 .card-icon.tim{background:rgba(0,61,165,.1)}
 .card-icon.copel{background:rgba(0,146,63,.1)}
 .card-icon.sanepar{background:rgba(0,63,135,.1)}
-.card-icon.fiber{background:rgba(2,132,199,.1)}
 
 .card-name-group{display:flex;flex-direction:column;gap:2px;min-width:0;flex:1}
 .card-name{font-size:18px;font-weight:800;color:var(--text);display:flex;align-items:center;gap:8px;flex-wrap:wrap}
@@ -184,7 +205,6 @@ body{font-family:var(--font);background:#F1F5F9;color:var(--text);min-height:100
 }
 .card-cb.telecom{background:rgba(237,28,36,.08);color:var(--claro)}
 .card-cb.utility{background:rgba(0,146,63,.1);color:var(--copel)}
-.card-cb.fiber{background:rgba(2,132,199,.1);color:var(--fiber)}
 
 .card-status-badge{
   font-size:12px;font-weight:800;text-transform:uppercase;letter-spacing:.5px;
@@ -262,7 +282,7 @@ body{font-family:var(--font);background:#F1F5F9;color:var(--text);min-height:100
   font-weight:800;font-size:13px;padding:3px 10px;border-radius:20px;width:fit-content
 }
 
-/* Telecom Specific Layout & Signal Reporting */
+/* Telecom Specific Layout */
 .telecom-grid{display:flex;flex-direction:column;gap:12px}
 .portal-row{
   display:flex;align-items:center;justify-content:space-between;padding:10px 14px;
@@ -277,27 +297,6 @@ body{font-family:var(--font);background:#F1F5F9;color:var(--text);min-height:100
   background:var(--s50);padding:10px 14px;border-radius:8px;border:1px solid var(--s200);
   font-size:12px;color:var(--text2);display:flex;flex-direction:column;gap:4px
 }
-
-/* Local Signal Reporting Box */
-.signal-box{
-  background:var(--s50);border:1px dashed var(--s300);border-radius:10px;padding:12px 14px;
-  display:flex;flex-direction:column;gap:8px
-}
-.signal-box-head{display:flex;align-items:center;justify-content:space-between;font-size:13px;font-weight:700;color:var(--text)}
-.signal-status-badge{
-  font-size:11px;font-weight:800;padding:2px 8px;border-radius:4px;text-transform:uppercase
-}
-.signal-status-badge.ok{background:var(--g1);color:var(--g6)}
-.signal-status-badge.degraded{background:var(--a1);color:var(--a5)}
-.signal-status-badge.down{background:var(--r1);color:var(--r6)}
-
-.signal-report-btn-group{display:flex;gap:6px;flex-wrap:wrap;margin-top:4px}
-.signal-btn{
-  padding:5px 10px;border-radius:6px;border:1px solid var(--s300);background:#fff;
-  font-size:12px;font-weight:600;cursor:pointer;transition:all .15s;display:inline-flex;align-items:center;gap:4px
-}
-.signal-btn:hover{background:var(--s100);border-color:var(--s400)}
-.signal-btn.active{border-color:var(--s800);background:var(--s800);color:#fff}
 
 .card-foot{
   font-size:12px;color:var(--text3);padding:12px 22px;border-top:1px solid var(--border);
@@ -394,7 +393,6 @@ body{font-family:var(--font);background:#F1F5F9;color:var(--text);min-height:100
 <script>
 const API_SERVICES='/api/services';
 const API_STATUS='/api/status';
-const API_SIGNAL_REPORT='/api/signal-report';
 const API_TELEMETRY='/api/telemetry';
 const REFRESH_MS=30000;
 
@@ -413,7 +411,6 @@ const LOGO={
   tim:`<svg viewBox="0 0 24 24"><rect x="1" y="1" width="22" height="22" rx="6" fill="#003DA5"/><text x="12" y="16" text-anchor="middle" fill="#fff" font-size="8.5" font-weight="800">TIM</text></svg>`,
   copel:`<svg viewBox="0 0 24 24"><rect x="1" y="1" width="22" height="22" rx="6" fill="#00923F"/><path d="M14 4L6 13h4L9 22l8-11h-4l3-7z" fill="#fff"/></svg>`,
   sanepar:`<svg viewBox="0 0 24 24"><rect x="1" y="1" width="22" height="22" rx="6" fill="#003F87"/><text x="12" y="16" text-anchor="middle" fill="#fff" font-size="13" font-weight="800">S</text></svg>`,
-  fiber:`<svg viewBox="0 0 24 24"><rect x="1" y="1" width="22" height="22" rx="6" fill="#0284C7"/><path d="M12 3v18M3 12h18" stroke="#fff" stroke-width="3" stroke-linecap="round"/></svg>`
 };
 
 const ICON={
@@ -445,6 +442,19 @@ function relativeTime(ts){
 function updateClock(){
   const now=new Date();
   $('#headerTime').textContent=now.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
+}
+
+/* UX Feature: Click on banner item smoothly scrolls to service card */
+function scrollToCard(name){
+  const cards = document.querySelectorAll('.card');
+  for(const card of cards){
+    if(card.getAttribute('data-name') === name){
+      card.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      card.classList.add('card-highlight');
+      setTimeout(() => card.classList.remove('card-highlight'), 2200);
+      break;
+    }
+  }
 }
 
 async function runClientTelemetry(){
@@ -489,7 +499,10 @@ function updateBanner(services){
 
     let detailsHtml='';
     for(const cs of criticalSvcs){
-      detailsHtml+=`<div class="banner-detail-item">🔴 <strong>${cs.name}:</strong> ${cs.details}</div>`;
+      detailsHtml+=`<div class="banner-detail-item" onclick="scrollToCard('${cs.name}')" role="button" tabindex="0" title="Clique para focar no card do serviço">
+        🔴 <strong>${cs.name}:</strong> ${cs.details}
+        <span class="banner-jump-tag">Ver card ➔</span>
+      </div>`;
     }
     detailsEl.innerHTML=detailsHtml;
     detailsEl.style.display='flex';
@@ -503,7 +516,10 @@ function updateBanner(services){
 
     let detailsHtml='';
     for(const ws of warnSvcs){
-      detailsHtml+=`<div class="banner-detail-item">⚠️ <strong>${ws.name}:</strong> ${ws.details}</div>`;
+      detailsHtml+=`<div class="banner-detail-item" onclick="scrollToCard('${ws.name}')" role="button" tabindex="0" title="Clique para focar no card do serviço">
+        ⚠️ <strong>${ws.name}:</strong> ${ws.details}
+        <span class="banner-jump-tag">Ver card ➔</span>
+      </div>`;
     }
     detailsEl.innerHTML=detailsHtml;
     detailsEl.style.display='flex';
@@ -515,21 +531,6 @@ function updateBanner(services){
     dot.className='ov-dot ok';
     iconEl.innerHTML=ICON.ok;
     detailsEl.style.display='none';
-  }
-}
-
-async function sendSignalReport(opName, status, signalType, notes){
-  try{
-    const resp = await fetch(API_SIGNAL_REPORT, {
-      method: 'POST',
-      headers: {'Content-Type': 'application/json'},
-      body: JSON.stringify({ operator: opName, status, signalType, notes })
-    });
-    if(resp.ok){
-      fetchData();
-    }
-  }catch(e){
-    console.error("Erro ao reportar sinal", e);
   }
 }
 
@@ -552,32 +553,15 @@ function renderCards(services){
   let html='';
   for(const svc of sortedServices){
     const name=svc.name;
-    const isFiberCard = svc.data?.isLocalFiber || false;
-    const br=BRANDS[name]||{label:name,cls:isFiberCard?'fiber':'claro',cat:isFiberCard?'fiber':'telecom',desc:isFiberCard?'Provedor Local de Fibra Óptica':'Serviço'};
+    const br=BRANDS[name]||{label:name,cls:'claro',cat:'telecom',desc:'Serviço'};
     const st=svc.status||'ok';
-    const ico=LOGO[br.cls] || LOGO.fiber;
+    const ico=LOGO[br.cls];
     const stLabel=st==='ok'?'Normal':st==='warn'?'Atenção':'CRÍTICO';
     
     let contentHtml='';
 
-    // ================= DYNAMIC LOCAL FIBER CARDS =================
-    if(isFiberCard){
-      const avgRtt = svc.data?.avgRttMs || 0;
-      const count = svc.data?.sampleCount || 1;
-      const degradedCount = svc.data?.degradedCount || 0;
-
-      contentHtml=`<div class="summary-box ${st}">
-        ${st==='ok'?ICON.ok:ICON.warning}
-        <div>${svc.details || 'Provedor operando normalmente em Ipiranga'}</div>
-      </div>
-      <div style="font-size:13px;color:var(--text2);background:var(--s50);padding:12px 14px;border-radius:10px;border:1px solid var(--s200);display:flex;justify-content:space-between">
-        <span>Telemetria de Moradores: <strong>${count} medição(ões)</strong></span>
-        <span>Ping médio: <strong>${avgRtt} ms</strong></span>
-      </div>`;
-    }
-
     // ================= COPEL / SANEPAR (UTILIDADES) =================
-    else if(br.cat==='utility'){
+    if(br.cat==='utility'){
       const activeEvents=svc.data?.activeEvents || [];
       const totalConsumers=svc.data?.totalConsumers || 0;
       const cityTotalConsumers=svc.data?.cityTotalConsumers || 5200;
@@ -702,7 +686,6 @@ function renderCards(services){
       const portals=svc.data?.portalResults || [];
       const conn=svc.data?.connectivityResults || [];
       const bgp=svc.data?.bgp || null;
-      const sigRep=svc.data?.signalReport || null;
 
       let portalsHtml='';
       if(portals.length>0){
@@ -736,35 +719,14 @@ function renderCards(services){
         </div>`;
       }
 
-      const currentSignalType = sigRep ? sigRep.signalType : '4G/5G';
-      const currentSignalStatus = sigRep ? sigRep.status : 'ok';
-      const currentSignalBadgeClass = currentSignalStatus === 'ok' ? 'ok' : currentSignalStatus === 'degraded' ? 'degraded' : 'down';
-      const currentSignalLabel = currentSignalStatus === 'ok' ? '4G/5G Normal' : `⚠️ ${currentSignalType} (${sigRep.notes || 'Queda de sinal em Ipiranga'})`;
-
-      const signalReportingBoxHtml=`<div class="signal-box">
-        <div class="signal-box-head">
-          <span>Sinal Móvel Local (Ipiranga):</span>
-          <span class="signal-status-badge ${currentSignalBadgeClass}">${currentSignalLabel}</span>
-        </div>
-        <div style="font-size:12px;color:var(--text3)">
-          Como está o sinal da <strong>${name}</strong> no seu celular agora em Ipiranga?
-        </div>
-        <div class="signal-report-btn-group">
-          <button class="signal-btn ${currentSignalStatus==='ok'?'active':''}" onclick="sendSignalReport('${name}','ok','4G/5G','Sinal Normal')">🟢 4G/5G Normal</button>
-          <button class="signal-btn ${currentSignalStatus==='degraded'?'active':''}" onclick="sendSignalReport('${name}','degraded','3G/H+','Queda para H+/3G')">⚠️ 3G/H+ (Queda 4G)</button>
-          <button class="signal-btn ${currentSignalStatus==='down'?'active':''}" onclick="sendSignalReport('${name}','down','Sem Sinal','Fora do Ar')">🔴 Sem Sinal</button>
-        </div>
-      </div>`;
-
       contentHtml=`<div class="telecom-grid">
-        ${signalReportingBoxHtml}
         ${portalsHtml}
         ${connSummary}
         ${bgpSummary}
       </div>`;
     }
 
-    html+=`<div class="card ${st}">
+    html+=`<div class="card ${st}" data-name="${name}">
       <div class="card-crit-bar"></div>
       <div class="card-inner">
         <div class="card-head">
@@ -773,7 +735,7 @@ function renderCards(services){
             <div class="card-name-group">
               <div class="card-name">
                 ${br.label}
-                <span class="card-cb ${br.cat}">${isFiberCard?'Fibra':br.cat==='telecom'?'Telefonia':'Utilidade'}</span>
+                <span class="card-cb ${br.cat}">${br.cat==='telecom'?'Telefonia':'Utilidade'}</span>
               </div>
               <div class="card-sub">${br.desc}</div>
             </div>
