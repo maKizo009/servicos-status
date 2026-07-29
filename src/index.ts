@@ -340,6 +340,7 @@ async function handleRequest(req: Request): Promise<Response> {
 				const effectiveType = String(body.effectiveType || "");
 
 				saveTelemetryLog(ip, isp.operator, isp.ispName, rttMs, effectiveType);
+				await runChecks();
 
 				return Response.json({
 					status: "ok",
