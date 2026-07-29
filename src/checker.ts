@@ -196,7 +196,7 @@ export function buildUnifiedReport(
 			copelStatus === "ok"
 				? "Sem ocorrências"
 				: copelTotalConsumers > 0
-					? `${data.copelOutages.length} ocorrência(s) (${copelTotalConsumers} de ${cityTotalConsumers} UCs — ${pctAffected}% sem energia)`
+					? `${copelTotalConsumers} UCs sem energia em ${data.copelOutages.length} ocorrência(s)`
 					: `${data.copelOutages.length} ocorrência(s)`,
 		timestamp: data.timestamp,
 		data: {

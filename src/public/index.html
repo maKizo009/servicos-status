@@ -59,19 +59,25 @@ body{font-family:var(--font);background:#F1F5F9;color:var(--text);min-height:100
 .ov-dot.critical{background:var(--r5);box-shadow:0 0 12px var(--r5);animation:pulse 1s infinite}
 @keyframes pulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.4;transform:scale(.85)}}
 
-/* Banner */
+/* Banner Refactored: Flex column with scoped top row to prevent badge overflow */
 .banner{
-  margin-top:24px;padding:22px 28px;border-radius:var(--radius);border:2px solid;
-  display:flex;align-items:flex-start;gap:20px;box-shadow:var(--shadow-lg);
-  transition:all .3s ease
+  margin-top:24px;padding:20px 24px;border-radius:var(--radius);border:2px solid;
+  display:flex;flex-direction:column;gap:14px;box-shadow:var(--shadow-lg);
+  transition:all .3s ease;width:100%;overflow:hidden
 }
 .banner.ok{background:var(--g0);border-color:var(--g6)}
 .banner.warn{background:var(--a0);border-color:var(--a5)}
 .banner.critical{background:var(--r0);border-color:var(--r6);animation:bannerGlow 3s infinite alternate}
 @keyframes bannerGlow{from{box-shadow:0 4px 15px rgba(220,38,38,.1)}to{box-shadow:0 8px 30px rgba(220,38,38,.25)}}
 
+.banner-top-row{
+  display:flex;align-items:center;justify-content:space-between;gap:16px;width:100%;flex-wrap:wrap
+}
+.banner-icon-title{
+  display:flex;align-items:center;gap:14px;flex:1;min-width:0
+}
 .banner-icon{
-  width:52px;height:52px;border-radius:14px;display:flex;align-items:center;justify-content:center;flex-shrink:0
+  width:48px;height:48px;border-radius:14px;display:flex;align-items:center;justify-content:center;flex-shrink:0
 }
 .banner.ok .banner-icon{background:var(--g1)}
 .banner.ok .banner-icon svg{fill:var(--g6)}
@@ -80,24 +86,27 @@ body{font-family:var(--font);background:#F1F5F9;color:var(--text);min-height:100
 .banner.critical .banner-icon{background:var(--r1)}
 .banner.critical .banner-icon svg{fill:var(--r6)}
 
-.banner-text{flex:1}
-.banner-title{font-size:22px;font-weight:800;color:var(--text);letter-spacing:-.3px}
-.banner-sub{font-size:15px;color:var(--text2);margin-top:4px;line-height:1.5}
-.banner-details-list{margin-top:12px;display:flex;flex-direction:column;gap:8px}
-.banner-detail-item{
-  font-size:14px;font-weight:700;display:inline-flex;align-items:center;gap:8px;
-  padding:6px 14px;border-radius:8px;width:fit-content
-}
-.banner.critical .banner-detail-item{background:rgba(220,38,38,.12);color:var(--r6);border:1px solid rgba(220,38,38,.2)}
-.banner.warn .banner-detail-item{background:rgba(217,119,6,.12);color:var(--a5);border:1px solid rgba(217,119,6,.2)}
+.banner-title-group{display:flex;flex-direction:column;gap:2px;min-width:0;flex:1}
+.banner-title{font-size:20px;font-weight:800;color:var(--text);letter-spacing:-.3px}
+.banner-sub{font-size:14px;color:var(--text2);line-height:1.4}
 
 .banner-badge{
-  padding:6px 16px;border-radius:20px;font-size:13px;font-weight:700;white-space:nowrap;flex-shrink:0;
-  text-transform:uppercase;letter-spacing:.5px
+  padding:6px 16px;border-radius:20px;font-size:13px;font-weight:700;white-space:nowrap;
+  text-transform:uppercase;letter-spacing:.5px;flex-shrink:0;margin-left:auto
 }
 .banner.ok .banner-badge{background:var(--g1);color:var(--g6)}
 .banner.warn .banner-badge{background:var(--a1);color:var(--a5)}
 .banner.critical .banner-badge{background:var(--r6);color:#fff;box-shadow:0 2px 8px rgba(220,38,38,.4)}
+
+.banner-details-list{
+  display:flex;flex-direction:column;gap:8px;padding-top:10px;border-top:1px solid rgba(0,0,0,.08)
+}
+.banner-detail-item{
+  font-size:14px;font-weight:700;display:inline-flex;align-items:center;gap:8px;
+  padding:6px 14px;border-radius:8px;width:fit-content;line-height:1.4
+}
+.banner.critical .banner-detail-item{background:rgba(220,38,38,.12);color:var(--r6);border:1px solid rgba(220,38,38,.2)}
+.banner.warn .banner-detail-item{background:rgba(217,119,6,.12);color:var(--a5);border:1px solid rgba(217,119,6,.2)}
 
 /* Section Heading */
 .section-head{
@@ -137,8 +146,8 @@ body{font-family:var(--font);background:#F1F5F9;color:var(--text);min-height:100
 
 /* Card Header Fix: Container scoping to prevent badge overflow */
 .card-head{
-  display:flex;align-items:flex-start;justify-content:space-between;gap:12px;
-  width:100%;position:relative
+  display:flex;align-items:center;justify-content:space-between;gap:12px;
+  width:100%;position:relative;flex-wrap:wrap
 }
 .card-head-left{display:flex;align-items:center;gap:12px;flex:1;min-width:0}
 
@@ -163,7 +172,6 @@ body{font-family:var(--font);background:#F1F5F9;color:var(--text);min-height:100
 .card-cb.telecom{background:rgba(237,28,36,.08);color:var(--claro)}
 .card-cb.utility{background:rgba(0,146,63,.1);color:var(--copel)}
 
-/* Badge styling fixed to stay within container */
 .card-status-badge{
   font-size:12px;font-weight:800;text-transform:uppercase;letter-spacing:.5px;
   padding:5px 12px;border-radius:20px;white-space:nowrap;display:inline-flex;align-items:center;gap:6px;
@@ -184,7 +192,7 @@ body{font-family:var(--font);background:#F1F5F9;color:var(--text);min-height:100
   display:flex;flex-direction:column;gap:4px
 }
 .kpi-card.crit{background:var(--r0);border-color:rgba(220,38,38,.2)}
-.kpi-label{font-size:12px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.3px}
+.kpi-label{font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.4px}
 .kpi-value{font-size:22px;font-weight:800;color:var(--text);line-height:1.2}
 .kpi-card.crit .kpi-value{color:var(--r6)}
 .kpi-sub{font-size:12px;font-weight:600;color:var(--text2)}
@@ -304,15 +312,19 @@ body{font-family:var(--font);background:#F1F5F9;color:var(--text);min-height:100
 
 <div class="container">
   <div id="banner" class="banner ok" role="alert" aria-live="polite">
-    <div class="banner-icon" aria-hidden="true" id="bannerIcon">
-      <svg viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/></svg>
+    <div class="banner-top-row">
+      <div class="banner-icon-title">
+        <div class="banner-icon" aria-hidden="true" id="bannerIcon">
+          <svg viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/></svg>
+        </div>
+        <div class="banner-title-group">
+          <div class="banner-title" id="bannerTitle">Tudo estável</div>
+          <div class="banner-sub" id="bannerSub">Todos os serviços monitorados estão operando normalmente em Ipiranga.</div>
+        </div>
+      </div>
+      <div class="banner-badge" id="bannerBadge">3 OK</div>
     </div>
-    <div class="banner-text">
-      <div class="banner-title" id="bannerTitle">Tudo estável</div>
-      <div class="banner-sub" id="bannerSub">Todos os serviços monitorados estão operando normalmente em Ipiranga.</div>
-      <div class="banner-details-list" id="bannerDetails"></div>
-    </div>
-    <div class="banner-badge" id="bannerBadge">3 OK</div>
+    <div class="banner-details-list" id="bannerDetails"></div>
   </div>
 
   <div class="section-head">
@@ -401,7 +413,7 @@ function updateBanner(services){
   if(criticalSvcs.length>0){
     bn.classList.add('critical');
     t.textContent='Ocorrências Críticas Detectadas!';
-    s.textContent=`Existem ${criticalSvcs.length} serviço(s) com instabilidade ou interrupção ativa em Ipiranga:`;
+    s.textContent=`Serviço com interrupção ou instabilidade ativa em Ipiranga/PR:`;
     badge.textContent=`${criticalSvcs.length} CRÍTICO`;
     dot.className='ov-dot critical';
     iconEl.innerHTML=ICON.error;
@@ -411,6 +423,7 @@ function updateBanner(services){
       detailsHtml+=`<div class="banner-detail-item">🔴 <strong>${cs.name}:</strong> ${cs.details}</div>`;
     }
     detailsEl.innerHTML=detailsHtml;
+    detailsEl.style.display='flex';
   }else if(warnSvcs.length>0){
     bn.classList.add('warn');
     t.textContent='Atenção Necessária';
@@ -424,13 +437,15 @@ function updateBanner(services){
       detailsHtml+=`<div class="banner-detail-item">⚠️ <strong>${ws.name}:</strong> ${ws.details}</div>`;
     }
     detailsEl.innerHTML=detailsHtml;
+    detailsEl.style.display='flex';
   }else{
     bn.classList.add('ok');
     t.textContent='Tudo Operando Estável';
-    s.textContent='Todos os serviços monitorados (telecomunicações e utilidades) estão funcionando normalmente.';
+    s.textContent='Todos os serviços monitorados (telecomunicações e utilidades) estão funcionando normalmente em Ipiranga.';
     badge.textContent=`${okCount} OK`;
     dot.className='ov-dot ok';
     iconEl.innerHTML=ICON.ok;
+    detailsEl.style.display='none';
   }
 }
 
@@ -485,7 +500,7 @@ function renderCards(services){
               <div class="kpi-sub">Unidades afetadas</div>
             </div>
             <div class="kpi-card">
-              <div class="kpi-label">Total de UCs do Município</div>
+              <div class="kpi-label">Total UCs do Município</div>
               <div class="kpi-value">${cityTotalConsumers.toLocaleString('pt-BR')}</div>
               <div class="kpi-sub">Ipiranga / PR</div>
             </div>
