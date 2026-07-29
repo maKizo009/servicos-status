@@ -17,6 +17,7 @@ export interface AppConfig {
 	// Utilidades
 	copelApiUrl: string;
 	copelTimeoutMs: number;
+	copelTotalConsumersCity: number;
 	saneparViewsAjaxUrl: string;
 	saneparPageUrl: string;
 	saneparViewName: string;
@@ -60,6 +61,7 @@ export function loadConfig(): AppConfig {
 			process.env.COPEL_API_URL ??
 			"https://cdn.copel.com/aneel-informacoes/api/portal/mapa_poligonos_data",
 		copelTimeoutMs: envInt("COPEL_TIMEOUT_MS", 30_000),
+		copelTotalConsumersCity: envInt("COPEL_TOTAL_CONSUMERS_CITY", 5200),
 		saneparViewsAjaxUrl:
 			process.env.SANEPAR_VIEWS_AJAX ?? "https://www.sanepar.com.br/views/ajax",
 		saneparPageUrl:

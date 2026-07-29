@@ -183,6 +183,11 @@ export function buildUnifiedReport(
 		(sum, o) => sum + (o.qtdConsumidores || 0),
 		0,
 	);
+	const cityTotalConsumers = 5200;
+	const pctAffected = Number(
+		((copelTotalConsumers / cityTotalConsumers) * 100).toFixed(2),
+	);
+
 	services.push({
 		name: "Copel",
 		category: "utility",
@@ -191,13 +196,15 @@ export function buildUnifiedReport(
 			copelStatus === "ok"
 				? "Sem ocorrências"
 				: copelTotalConsumers > 0
-					? `${data.copelOutages.length} ocorrência(s) (${copelTotalConsumers} unidades sem energia)`
+					? `${data.copelOutages.length} ocorrência(s) (${copelTotalConsumers} de ${cityTotalConsumers} UCs — ${pctAffected}% sem energia)`
 					: `${data.copelOutages.length} ocorrência(s)`,
 		timestamp: data.timestamp,
 		data: {
 			activeEvents: data.copelOutages,
 			newEvents: data.newCopelOutages,
 			totalConsumers: copelTotalConsumers,
+			cityTotalConsumers,
+			pctAffected,
 		},
 	});
 

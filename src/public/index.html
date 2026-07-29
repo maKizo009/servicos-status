@@ -78,18 +78,18 @@ body{font-family:var(--font);background:#F1F5F9;color:var(--text);min-height:100
 .banner.warn .banner-icon{background:var(--a1)}
 .banner.warn .banner-icon svg{fill:var(--a5)}
 .banner.critical .banner-icon{background:var(--r1)}
-.banner.critical .banner-icon svg{fill:var(--r6);animation:shake .5s linear infinite alternate}
+.banner.critical .banner-icon svg{fill:var(--r6)}
 
 .banner-text{flex:1}
 .banner-title{font-size:22px;font-weight:800;color:var(--text);letter-spacing:-.3px}
 .banner-sub{font-size:15px;color:var(--text2);margin-top:4px;line-height:1.5}
-.banner-details-list{margin-top:10px;display:flex;flex-direction:column;gap:6px}
+.banner-details-list{margin-top:12px;display:flex;flex-direction:column;gap:8px}
 .banner-detail-item{
-  font-size:14px;font-weight:600;display:inline-flex;align-items:center;gap:8px;
-  padding:4px 12px;border-radius:6px;width:fit-content
+  font-size:14px;font-weight:700;display:inline-flex;align-items:center;gap:8px;
+  padding:6px 14px;border-radius:8px;width:fit-content
 }
-.banner.critical .banner-detail-item{background:rgba(220,38,38,.1);color:var(--r6)}
-.banner.warn .banner-detail-item{background:rgba(217,119,6,.1);color:var(--a5)}
+.banner.critical .banner-detail-item{background:rgba(220,38,38,.12);color:var(--r6);border:1px solid rgba(220,38,38,.2)}
+.banner.warn .banner-detail-item{background:rgba(217,119,6,.12);color:var(--a5);border:1px solid rgba(217,119,6,.2)}
 
 .banner-badge{
   padding:6px 16px;border-radius:20px;font-size:13px;font-weight:700;white-space:nowrap;flex-shrink:0;
@@ -119,17 +119,12 @@ body{font-family:var(--font);background:#F1F5F9;color:var(--text);min-height:100
 }
 .card:hover{transform:translateY(-2px);box-shadow:var(--shadow-lg)}
 
-/* Card Status Variations */
 .card.critical{
   border-color:var(--r6);box-shadow:var(--shadow-crit);
   grid-column:1/-1
 }
-@media(min-width:768px){
-  .card.critical{grid-column:span 2}
-}
-@media(min-width:1100px){
-  .card.critical{grid-column:span 3}
-}
+@media(min-width:768px){.card.critical{grid-column:span 2}}
+@media(min-width:1100px){.card.critical{grid-column:span 3}}
 
 .card.warn{border-color:var(--a5)}
 
@@ -139,39 +134,70 @@ body{font-family:var(--font);background:#F1F5F9;color:var(--text);min-height:100
 .card.critical .card-crit-bar{display:block}
 
 .card-inner{padding:22px;display:flex;flex-direction:column;gap:16px;height:100%}
-.card-head{display:flex;align-items:center;gap:14px}
-.card-icon{
-  width:50px;height:50px;border-radius:14px;display:flex;align-items:center;justify-content:center;flex-shrink:0
+
+/* Card Header Fix: Container scoping to prevent badge overflow */
+.card-head{
+  display:flex;align-items:flex-start;justify-content:space-between;gap:12px;
+  width:100%;position:relative
 }
-.card-icon svg{width:30px;height:30px}
+.card-head-left{display:flex;align-items:center;gap:12px;flex:1;min-width:0}
+
+.card-icon{
+  width:48px;height:48px;border-radius:14px;display:flex;align-items:center;justify-content:center;flex-shrink:0
+}
+.card-icon svg{width:28px;height:28px}
 .card-icon.claro{background:rgba(237,28,36,.1)}
 .card-icon.vivo{background:rgba(102,0,153,.1)}
 .card-icon.tim{background:rgba(0,61,165,.1)}
 .card-icon.copel{background:rgba(0,146,63,.1)}
 .card-icon.sanepar{background:rgba(0,63,135,.1)}
 
-.card-name-group{flex:1;display:flex;flex-direction:column;gap:2px}
-.card-name{font-size:19px;font-weight:800;color:var(--text);display:flex;align-items:center;gap:8px}
-.card-sub{font-size:12px;color:var(--text3);font-weight:500}
+.card-name-group{display:flex;flex-direction:column;gap:2px;min-width:0;flex:1}
+.card-name{font-size:18px;font-weight:800;color:var(--text);display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.card-sub{font-size:12px;color:var(--text3);font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 
 .card-cb{
   font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.4px;
-  padding:2px 8px;border-radius:6px;display:inline-block
+  padding:2px 8px;border-radius:6px;display:inline-block;flex-shrink:0
 }
 .card-cb.telecom{background:rgba(237,28,36,.08);color:var(--claro)}
 .card-cb.utility{background:rgba(0,146,63,.1);color:var(--copel)}
 
+/* Badge styling fixed to stay within container */
 .card-status-badge{
-  font-size:12px;font-weight:800;text-transform:uppercase;letter-spacing:.6px;
-  padding:6px 14px;border-radius:20px;white-space:nowrap;display:inline-flex;align-items:center;gap:6px
+  font-size:12px;font-weight:800;text-transform:uppercase;letter-spacing:.5px;
+  padding:5px 12px;border-radius:20px;white-space:nowrap;display:inline-flex;align-items:center;gap:6px;
+  flex-shrink:0;margin-left:auto
 }
 .card-status-badge.ok{background:var(--g1);color:var(--g6)}
 .card-status-badge.warn{background:var(--a1);color:var(--a5)}
 .card-status-badge.critical{background:var(--r6);color:#fff;box-shadow:0 2px 6px rgba(220,38,38,.4);animation:pulse 1.5s infinite}
 
-.card-body{display:flex;flex-direction:column;gap:12px;font-size:14px;color:var(--text2);flex:1}
+.card-body{display:flex;flex-direction:column;gap:14px;font-size:14px;color:var(--text2);flex:1}
 
-/* Status Summary Box inside Card */
+/* KPI Summary Cards for Copel Stats */
+.kpi-grid{
+  display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px;margin-bottom:4px
+}
+.kpi-card{
+  background:var(--s50);border:1px solid var(--s200);border-radius:12px;padding:12px 14px;
+  display:flex;flex-direction:column;gap:4px
+}
+.kpi-card.crit{background:var(--r0);border-color:rgba(220,38,38,.2)}
+.kpi-label{font-size:12px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.3px}
+.kpi-value{font-size:22px;font-weight:800;color:var(--text);line-height:1.2}
+.kpi-card.crit .kpi-value{color:var(--r6)}
+.kpi-sub{font-size:12px;font-weight:600;color:var(--text2)}
+
+/* Progress Bar */
+.progress-container{
+  display:flex;flex-direction:column;gap:6px;background:var(--s50);padding:12px 16px;border-radius:12px;border:1px solid var(--s200)
+}
+.progress-header{display:flex;justify-content:space-between;font-size:13px;font-weight:700;color:var(--text)}
+.progress-bar-bg{height:10px;width:100%;background:var(--s200);border-radius:10px;overflow:hidden}
+.progress-bar-fill{height:100%;background:linear-gradient(90deg,var(--r5),var(--r6));border-radius:10px;transition:width .6s ease}
+
+/* Summary Box */
 .summary-box{
   padding:12px 16px;border-radius:10px;font-size:14px;font-weight:600;display:flex;align-items:center;gap:10px
 }
@@ -180,7 +206,7 @@ body{font-family:var(--font);background:#F1F5F9;color:var(--text);min-height:100
 .summary-box.critical{background:var(--r0);color:var(--r6);border:1px solid rgba(220,38,38,.3);font-size:15px;font-weight:700}
 .summary-box svg{width:20px;height:20px;flex-shrink:0}
 
-/* Active Outages Detailed Box for Copel/Sanepar */
+/* Active Outages Detailed Box */
 .outages-container{
   display:flex;flex-direction:column;gap:12px;margin-top:4px
 }
@@ -224,11 +250,6 @@ body{font-family:var(--font);background:#F1F5F9;color:var(--text);min-height:100
 .portal-status-tag{font-weight:700;padding:2px 8px;border-radius:4px}
 .portal-status-tag.ok{background:var(--g1);color:var(--g6)}
 .portal-status-tag.fail{background:var(--r1);color:var(--r6)}
-
-.lat-display{font-size:24px;font-weight:800;color:var(--text);display:flex;align-items:baseline;gap:6px}
-.lat-display span{font-size:13px;font-weight:500;color:var(--text3)}
-.lat-display.fast{color:var(--g6)}
-.lat-display.slow{color:var(--a5)}
 
 .bgp-box{
   background:var(--s50);padding:10px 14px;border-radius:8px;border:1px solid var(--s200);
@@ -443,13 +464,48 @@ function renderCards(services){
     if(br.cat==='utility'){
       const activeEvents=svc.data?.activeEvents || [];
       const totalConsumers=svc.data?.totalConsumers || 0;
-      
+      const cityTotalConsumers=svc.data?.cityTotalConsumers || 5200;
+      const pctAffected=svc.data?.pctAffected || (cityTotalConsumers > 0 ? Number(((totalConsumers/cityTotalConsumers)*100).toFixed(2)) : 0);
+
       let summaryBoxHtml='';
+      let kpiGridHtml='';
+      let progressBarHtml='';
+
       if(st==='critical'){
         summaryBoxHtml=`<div class="summary-box critical">
           ${ICON.bolt}
           <div>${svc.details || 'Ocorrência de interrupção ativa'}</div>
         </div>`;
+
+        if(name==='Copel'){
+          kpiGridHtml=`<div class="kpi-grid">
+            <div class="kpi-card crit">
+              <div class="kpi-label">UCs Sem Energia</div>
+              <div class="kpi-value">${totalConsumers.toLocaleString('pt-BR')}</div>
+              <div class="kpi-sub">Unidades afetadas</div>
+            </div>
+            <div class="kpi-card">
+              <div class="kpi-label">Total de UCs do Município</div>
+              <div class="kpi-value">${cityTotalConsumers.toLocaleString('pt-BR')}</div>
+              <div class="kpi-sub">Ipiranga / PR</div>
+            </div>
+            <div class="kpi-card crit">
+              <div class="kpi-label">Porcentagem Afetada</div>
+              <div class="kpi-value">${pctAffected}%</div>
+              <div class="kpi-sub">Da rede municipal</div>
+            </div>
+          </div>`;
+
+          progressBarHtml=`<div class="progress-container">
+            <div class="progress-header">
+              <span>Nível de Impacto no Município</span>
+              <span style="color:var(--r6)">${pctAffected}% sem energia (${totalConsumers} de ${cityTotalConsumers.toLocaleString('pt-BR')} UCs)</span>
+            </div>
+            <div class="progress-bar-bg">
+              <div class="progress-bar-fill" style="width: ${Math.min(Math.max(pctAffected, 2), 100)}%"></div>
+            </div>
+          </div>`;
+        }
       }else{
         summaryBoxHtml=`<div class="summary-box ok">
           ${ICON.ok}
@@ -522,7 +578,7 @@ function renderCards(services){
         </div>`;
       }
 
-      contentHtml=summaryBoxHtml + outagesListHtml;
+      contentHtml=summaryBoxHtml + kpiGridHtml + progressBarHtml + outagesListHtml;
     }
 
     // ================= OPERADORAS (TELECOM) =================
@@ -574,13 +630,15 @@ function renderCards(services){
       <div class="card-crit-bar"></div>
       <div class="card-inner">
         <div class="card-head">
-          <div class="card-icon ${br.cls}">${ico}</div>
-          <div class="card-name-group">
-            <div class="card-name">
-              ${br.label}
-              <span class="card-cb ${br.cat}">${br.cat==='telecom'?'Telefonia':'Utilidade'}</span>
+          <div class="card-head-left">
+            <div class="card-icon ${br.cls}">${ico}</div>
+            <div class="card-name-group">
+              <div class="card-name">
+                ${br.label}
+                <span class="card-cb ${br.cat}">${br.cat==='telecom'?'Telefonia':'Utilidade'}</span>
+              </div>
+              <div class="card-sub">${br.desc}</div>
             </div>
-            <div class="card-sub">${br.desc}</div>
           </div>
           <div class="card-status-badge ${st}">${stLabel}</div>
         </div>
