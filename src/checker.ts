@@ -1,6 +1,6 @@
 import type { AppConfig } from "./config";
 import { connectivityTargets } from "./config";
-import { getActiveSignalReports } from "./db";
+import { getActiveIspHealthStates, getActiveSignalReports } from "./db";
 import { checkBgpPrefixes } from "./probes/bgp";
 import { checkConnectivity } from "./probes/connectivity";
 import { checkCopel } from "./probes/copel";
@@ -15,6 +15,7 @@ import type {
 	PortalResult,
 	SaneparInterruption,
 	ServiceHealth,
+	ServiceSource,
 	UnifiedReport,
 } from "./types";
 
@@ -135,6 +136,7 @@ export function buildUnifiedReport(
 ): UnifiedReport {
 	const services: ServiceHealth[] = [];
 	const signalReports = getActiveSignalReports();
+	const ispHealthStates = getActiveIspHealthStates();
 
 	for (const op of data.operators) {
 		let status = assessLevel(
@@ -157,17 +159,25 @@ export function buildUnifiedReport(
 			(r) => r.operator === op.name && r.status !== "ok",
 		);
 
+		const crowdsourcedIspState = ispHealthStates.find(
+			(i) => i.operator === op.name,
+		);
+
 		if (activeSignalReport) {
 			if (activeSignalReport.status === "down") {
 				status = "critical";
 			} else if (status === "ok") {
 				status = "warn";
 			}
+		} else if (crowdsourcedIspState && crowdsourcedIspState.status !== "ok") {
+			status = crowdsourcedIspState.status;
 		}
 
 		let details = "OK";
 		if (activeSignalReport) {
 			details = `⚠️ Sinal Local: ${activeSignalReport.signalType} (${activeSignalReport.notes || "Relato de instabilidade local"})`;
+		} else if (crowdsourcedIspState && crowdsourcedIspState.status !== "ok") {
+			details = crowdsourcedIspState.details;
 		} else if (status === "critical") {
 			const parts: string[] = [];
 			if (portalFailures > 0)
@@ -191,8 +201,28 @@ export function buildUnifiedReport(
 				connectivityResults: op.connectivityResults,
 				bgp: op.bgpResult,
 				signalReport: activeSignalReport ?? null,
+				crowdsourcedState: crowdsourcedIspState ?? null,
 			},
 		});
+	}
+
+	// Dynamic cards for local fiber ISPs (e.g. Boavista Net, Netfibra, Ligga, Unifique)
+	for (const isp of ispHealthStates) {
+		if (!isp.operator) {
+			services.push({
+				name: isp.ispName as ServiceSource,
+				category: "telecom",
+				status: isp.status,
+				details: isp.details,
+				timestamp: isp.lastUpdated,
+				data: {
+					isLocalFiber: true,
+					avgRttMs: isp.avgRttMs,
+					sampleCount: isp.sampleCount,
+					degradedCount: isp.degradedCount,
+				},
+			});
+		}
 	}
 
 	const copelStatus = data.copelOutages.length > 0 ? "critical" : "ok";

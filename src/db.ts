@@ -96,6 +96,20 @@ export function initDb(path = "data/health.db"): Database {
   `);
 
 	db.run(`
+    CREATE TABLE IF NOT EXISTS isp_health_states (
+      isp_name TEXT PRIMARY KEY,
+      operator TEXT,
+      status TEXT NOT NULL,
+      avg_rtt_ms REAL NOT NULL,
+      sample_count INTEGER NOT NULL,
+      degraded_count INTEGER NOT NULL,
+      details TEXT NOT NULL,
+      last_updated INTEGER NOT NULL,
+      expires_at INTEGER NOT NULL
+    )
+  `);
+
+	db.run(`
     CREATE INDEX IF NOT EXISTS idx_portal_timestamp ON portal_results(timestamp)
   `);
 	db.run(`
@@ -170,6 +184,104 @@ export function saveTelemetryLog(
 		"INSERT INTO telemetry_logs (ip, operator, isp_name, rtt_ms, effective_type, timestamp) VALUES (?, ?, ?, ?, ?, ?)",
 		[ip, operator, ispName, rttMs, effectiveType, Date.now()],
 	);
+
+	// Automatically update persistent ISP status
+	recalculateIspHealth(ispName, operator);
+}
+
+export interface IspHealthState {
+	ispName: string;
+	operator: OperatorName | null;
+	status: "ok" | "warn" | "critical";
+	avgRttMs: number;
+	sampleCount: number;
+	degradedCount: number;
+	details: string;
+	lastUpdated: number;
+	expiresAt: number;
+}
+
+export function recalculateIspHealth(
+	ispName: string,
+	operator: OperatorName | null,
+	ttlHours = 2,
+): IspHealthState {
+	const now = Date.now();
+	const cutoff = now - 30 * 60 * 1000;
+	const row = db
+		.query(
+			`SELECT 
+        COUNT(DISTINCT ip) as sample_count,
+        AVG(rtt_ms) as avg_rtt,
+        SUM(CASE WHEN rtt_ms > 200 OR effective_type IN ('3g', '2g', 'slow-2g') THEN 1 ELSE 0 END) as degraded_count
+       FROM telemetry_logs
+       WHERE isp_name = ? AND timestamp > ?`,
+		)
+		.get(ispName, cutoff) as {
+		sample_count: number;
+		avg_rtt: number;
+		degraded_count: number;
+	} | null;
+
+	const sampleCount = row?.sample_count || 1;
+	const avgRttMs = Math.round(row?.avg_rtt || 0);
+	const degradedCount = row?.degraded_count || 0;
+
+	let status: "ok" | "warn" | "critical" = "ok";
+	let details = `🟢 Conexão estável (Latência média: ${avgRttMs}ms — ${sampleCount} morador(es) em Ipiranga)`;
+
+	if (degradedCount > 0 || avgRttMs > 250) {
+		status = "warn";
+		details = `⚠️ Instabilidade/Latência elevada (${avgRttMs}ms) relatada por ${degradedCount} morador(es)`;
+	} else if (avgRttMs > 500) {
+		status = "critical";
+		details = `🔴 Queda severa ou lentidão extrema (${avgRttMs}ms) em Ipiranga`;
+	}
+
+	const expiresAt = now + ttlHours * 3600 * 1000;
+
+	db.run(
+		`INSERT OR REPLACE INTO isp_health_states 
+     (isp_name, operator, status, avg_rtt_ms, sample_count, degraded_count, details, last_updated, expires_at) 
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+		[
+			ispName,
+			operator,
+			status,
+			avgRttMs,
+			sampleCount,
+			degradedCount,
+			details,
+			now,
+			expiresAt,
+		],
+	);
+
+	return {
+		ispName,
+		operator,
+		status,
+		avgRttMs,
+		sampleCount,
+		degradedCount,
+		details,
+		lastUpdated: now,
+		expiresAt,
+	};
+}
+
+export function getActiveIspHealthStates(): IspHealthState[] {
+	const now = Date.now();
+	return db
+		.query(
+			`SELECT isp_name as ispName, operator, status, avg_rtt_ms as avgRttMs, 
+              sample_count as sampleCount, degraded_count as degradedCount, 
+              details, last_updated as lastUpdated, expires_at as expiresAt
+       FROM isp_health_states
+       WHERE expires_at > ?
+       ORDER BY last_updated DESC`,
+		)
+		.all(now) as IspHealthState[];
 }
 
 export interface TelemetrySummary {
