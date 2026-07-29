@@ -64,7 +64,18 @@ export async function detectIsp(ip: string): Promise<IspInfo> {
 					operator = "TIM";
 				}
 
-				const ispName = data.isp || data.org || "Desconhecido";
+				let rawIsp = data.isp || data.org || "Provedor Local";
+				if (rawIsp.toUpperCase().includes("LIGGA") || rawIsp.toUpperCase().includes("COPEL TELECOM")) {
+					rawIsp = "Ligga Telecom (Fibra Óptica)";
+				} else if (rawIsp.toUpperCase().includes("UNIFIQUE")) {
+					rawIsp = "Unifique (Fibra Óptica)";
+				} else if (operator) {
+					rawIsp = `${operator} (Rede Móvel)`;
+				} else {
+					rawIsp = `${rawIsp} (Banda Larga)`;
+				}
+
+				const ispName = rawIsp;
 				const asn = data.as || "";
 				const isMobile = Boolean(data.mobile || operator !== null);
 
