@@ -6,12 +6,15 @@ import {
 	getLatestConnectivityResults,
 	getLatestPortalResults,
 	getPortalHistory,
+	getTelemetryStats,
 	initDb,
 	saveBgpResult,
 	saveConnectivityResult,
 	savePortalResult,
 	saveSignalReport,
+	saveTelemetryLog,
 } from "./db";
+import { detectIsp } from "./isp-detector";
 import { logger } from "./logger";
 import { checkRateLimit } from "./rate-limiter";
 import { EventTracker } from "./state";
@@ -315,8 +318,42 @@ async function handleRequest(req: Request): Promise<Response> {
 				});
 			}
 		}
+		if (path === "/api/telemetry/stats") {
+			return Response.json({
+				stats: getTelemetryStats(30),
+				timestamp: Date.now(),
+			});
+		}
+		if (path === "/api/telemetry" && req.method === "POST") {
+			try {
+				const ip =
+					req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ||
+					req.headers.get("x-real-ip") ||
+					"127.0.0.1";
+				const body = (await req.json().catch(() => ({}))) as {
+					rttMs?: number;
+					effectiveType?: string;
+				};
 
-		// Serve static files from public/
+				const isp = await detectIsp(ip);
+				const rttMs = Number(body.rttMs) || 0;
+				const effectiveType = String(body.effectiveType || "");
+
+				saveTelemetryLog(ip, isp.operator, isp.ispName, rttMs, effectiveType);
+
+				return Response.json({
+					status: "ok",
+					isp,
+					timestamp: Date.now(),
+				});
+			} catch (err: unknown) {
+				const msg = err instanceof Error ? err.message : String(err);
+				return new Response(JSON.stringify({ error: msg }), {
+					status: 400,
+					headers: { "Content-Type": "application/json" },
+				});
+			}
+		}
 		const staticPath = `${import.meta.dir}/public${path === "/" ? "/index.html" : path}`;
 		const staticFile = Bun.file(staticPath);
 		if (await staticFile.exists()) {

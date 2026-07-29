@@ -73,6 +73,29 @@ export function initDb(path = "data/health.db"): Database {
   `);
 
 	db.run(`
+    CREATE TABLE IF NOT EXISTS ip_isp_cache (
+      ip TEXT PRIMARY KEY,
+      operator TEXT,
+      isp_name TEXT NOT NULL,
+      asn TEXT DEFAULT '',
+      is_mobile INTEGER NOT NULL DEFAULT 0,
+      cached_at INTEGER NOT NULL
+    )
+  `);
+
+	db.run(`
+    CREATE TABLE IF NOT EXISTS telemetry_logs (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      ip TEXT NOT NULL,
+      operator TEXT,
+      isp_name TEXT NOT NULL,
+      rtt_ms REAL NOT NULL,
+      effective_type TEXT DEFAULT '',
+      timestamp INTEGER NOT NULL
+    )
+  `);
+
+	db.run(`
     CREATE INDEX IF NOT EXISTS idx_portal_timestamp ON portal_results(timestamp)
   `);
 	db.run(`
@@ -87,9 +110,101 @@ export function initDb(path = "data/health.db"): Database {
 	db.run(`
     CREATE INDEX IF NOT EXISTS idx_signal_reports_expires ON signal_reports(expires_at)
   `);
+	db.run(`
+    CREATE INDEX IF NOT EXISTS idx_telemetry_timestamp ON telemetry_logs(timestamp)
+  `);
 
 	logger.info("Database initialized", { path });
 	return db;
+}
+
+export function getCachedIspInfo(ip: string): {
+	ip: string;
+	operator: OperatorName | null;
+	ispName: string;
+	asn: string;
+	isMobile: boolean;
+} | null {
+	const now = Date.now();
+	// Cache valid for 7 days
+	const row = db
+		.query(
+			"SELECT ip, operator, isp_name as ispName, asn, is_mobile as isMobile FROM ip_isp_cache WHERE ip = ? AND cached_at > ?",
+		)
+		.get(ip, now - 7 * 86400 * 1000) as {
+		ip: string;
+		operator: OperatorName | null;
+		ispName: string;
+		asn: string;
+		isMobile: number;
+	} | null;
+
+	if (!row) return null;
+	return {
+		...row,
+		isMobile: Boolean(row.isMobile),
+	};
+}
+
+export function saveCachedIspInfo(
+	ip: string,
+	operator: OperatorName | null,
+	ispName: string,
+	asn: string,
+	isMobile: boolean,
+): void {
+	db.run(
+		"INSERT OR REPLACE INTO ip_isp_cache (ip, operator, isp_name, asn, is_mobile, cached_at) VALUES (?, ?, ?, ?, ?, ?)",
+		[ip, operator, ispName, asn, isMobile ? 1 : 0, Date.now()],
+	);
+}
+
+export function saveTelemetryLog(
+	ip: string,
+	operator: OperatorName | null,
+	ispName: string,
+	rttMs: number,
+	effectiveType: string,
+): void {
+	db.run(
+		"INSERT INTO telemetry_logs (ip, operator, isp_name, rtt_ms, effective_type, timestamp) VALUES (?, ?, ?, ?, ?, ?)",
+		[ip, operator, ispName, rttMs, effectiveType, Date.now()],
+	);
+}
+
+export interface TelemetrySummary {
+	operator: OperatorName | "Outros";
+	userCount: number;
+	avgRttMs: number;
+	degradedCount: number; // Users reporting 3g/2g or RTT > 250ms
+}
+
+export function getTelemetryStats(windowMinutes = 30): TelemetrySummary[] {
+	const cutoff = Date.now() - windowMinutes * 60 * 1000;
+	const rows = db
+		.query(
+			`SELECT 
+        COALESCE(operator, 'Outros') as op,
+        COUNT(DISTINCT ip) as user_count,
+        AVG(rtt_ms) as avg_rtt,
+        SUM(CASE WHEN rtt_ms > 250 OR effective_type IN ('3g', '2g', 'slow-2g') THEN 1 ELSE 0 END) as degraded_count
+       FROM telemetry_logs
+       WHERE timestamp > ?
+       GROUP BY op`,
+		)
+		.all(cutoff) as {
+		op: string;
+		user_count: number;
+		avg_rtt: number;
+		degraded_count: number;
+	}[];
+
+	return rows.map((r) => ({
+		operator: r.op as OperatorName | "Outros",
+		userCount: r.user_count,
+		avgRttMs: Math.round(r.avg_rtt || 0),
+		degradedCount: r.degraded_count,
+	}));
 }
 
 export function saveSignalReport(
