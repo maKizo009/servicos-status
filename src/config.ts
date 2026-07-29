@@ -10,6 +10,7 @@ export interface AppConfig {
 	httpPort: number;
 	latencyOkMs: number;
 	latencyWarnMs: number;
+	latencyCritMs: number;
 	lossOk: number;
 	lossWarn: number;
 	operators: Record<OperatorName, OperatorConfig>;
@@ -48,8 +49,9 @@ export function loadConfig(): AppConfig {
 		connectivityTimeoutMs: envInt("CONNECTIVITY_TIMEOUT_MS", 5_000),
 		bgpTimeoutMs: envInt("BGP_TIMEOUT_MS", 15_000),
 		httpPort: envInt("HTTP_PORT", 3030),
-		latencyOkMs: envInt("LATENCY_OK_MS", 500),
-		latencyWarnMs: envInt("LATENCY_WARN_MS", 2000),
+		latencyOkMs: envInt("LATENCY_OK_MS", 100),
+		latencyWarnMs: envInt("LATENCY_WARN_MS", 150),
+		latencyCritMs: envInt("LATENCY_CRIT_MS", 300),
 		lossOk: envInt("LOSS_OK", 0),
 		lossWarn: envInt("LOSS_WARN", 10),
 		operators: {

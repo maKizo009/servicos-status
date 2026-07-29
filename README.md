@@ -367,3 +367,16 @@ Para executar verificações sob demanda via cron:
 # Executa a cada 5 minutos
 */5 * * * * /usr/local/bin/bun run /opt/services-health/src/index.ts --once >> /var/log/services-health-cron.log 2>&1
 ```
+
+## Cloudflare (Bypass de Challenge para API)
+
+Para evitar latência desnecessária e interferência de verificação bot/challenge automático nas chamadas da API do painel de monitoramento:
+
+1. No dashboard do **Cloudflare**: acesse **Security > WAF > Custom Rules** (ou Page Rules / Managed Rules).
+2. Crie uma regra de bypass:
+   - **Campo**: `URI Path`
+   - **Operador**: `starts_with`
+   - **Valor**: `/api/`
+   - **Ação**: `Bypass` -> selecione `WAF Managed Rules` e `JS Challenge / Interactive Challenge`.
+3. Para a página principal HTML, mantenha apenas a proteção DDoS passiva ativada.
+4. O arquivo `src/public/_headers` já define os cabeçalhos de controle de cache (`no-store, no-cache`) para requisições de API.

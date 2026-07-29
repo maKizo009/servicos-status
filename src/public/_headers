@@ -1,0 +1,7 @@
+/api/*
+  Cache-Control: no-store, no-cache, must-revalidate
+  X-Robots-Tag: noindex
+
+/health
+  Cache-Control: no-store, no-cache, must-revalidate
+  X-Robots-Tag: noindex

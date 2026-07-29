@@ -213,7 +213,7 @@ export function recalculateIspHealth(
 			`SELECT 
         COUNT(DISTINCT ip) as sample_count,
         AVG(rtt_ms) as avg_rtt,
-        SUM(CASE WHEN rtt_ms > 200 OR effective_type IN ('3g', '2g', 'slow-2g') THEN 1 ELSE 0 END) as degraded_count
+        SUM(CASE WHEN rtt_ms > 100 OR effective_type IN ('3g', '2g', 'slow-2g') THEN 1 ELSE 0 END) as degraded_count
        FROM telemetry_logs
        WHERE (isp_name = ? OR (operator IS NOT NULL AND operator = ?)) AND timestamp > ?`,
 		)
@@ -230,12 +230,12 @@ export function recalculateIspHealth(
 	let status: "ok" | "warn" | "critical" = "ok";
 	let details = `🟢 Conexão estável (Latência média: ${avgRttMs}ms — ${sampleCount} morador(es) em Ipiranga)`;
 
-	if (avgRttMs >= 500 || degradedCount >= 3) {
+	if (avgRttMs > 200) {
 		status = "critical";
-		details = `🔴 Queda severa ou lentidão extrema (${avgRttMs}ms) relatada por moradores`;
-	} else if (avgRttMs >= 200 || degradedCount > 0) {
+		details = `🔴 Instabilidade severa na rede móvel (${avgRttMs}ms)`;
+	} else if (avgRttMs > 100 || degradedCount > 0) {
 		status = "warn";
-		details = `⚠️ Instabilidade / Latência elevada (${avgRttMs}ms) relatada por moradores`;
+		details = `⚠️ Latência elevada (${avgRttMs}ms)`;
 	}
 
 	const expiresAt = now + ttlHours * 3600 * 1000;

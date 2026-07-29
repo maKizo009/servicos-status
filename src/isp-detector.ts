@@ -55,17 +55,21 @@ export async function detectIsp(ip: string): Promise<IspInfo> {
 
 				if (fullStr.includes("CLARO") || fullStr.includes("EMBRATEL")) {
 					operator = "Claro";
-				} else if (
-					fullStr.includes("TELEFONICA") ||
-					fullStr.includes("VIVO")
-				) {
+				} else if (fullStr.includes("TELEFONICA") || fullStr.includes("VIVO")) {
 					operator = "Vivo";
-				} else if (fullStr.includes("TIM S.A.") || fullStr.includes("TIM BRASIL") || fullStr.includes("TIM PERNAMBUCO")) {
+				} else if (
+					fullStr.includes("TIM S.A.") ||
+					fullStr.includes("TIM BRASIL") ||
+					fullStr.includes("TIM PERNAMBUCO")
+				) {
 					operator = "TIM";
 				}
 
 				let rawIsp = data.isp || data.org || "Provedor Local";
-				if (rawIsp.toUpperCase().includes("LIGGA") || rawIsp.toUpperCase().includes("COPEL TELECOM")) {
+				if (
+					rawIsp.toUpperCase().includes("LIGGA") ||
+					rawIsp.toUpperCase().includes("COPEL TELECOM")
+				) {
 					rawIsp = "Ligga Telecom (Fibra Óptica)";
 				} else if (rawIsp.toUpperCase().includes("UNIFIQUE")) {
 					rawIsp = "Unifique (Fibra Óptica)";

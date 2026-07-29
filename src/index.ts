@@ -69,6 +69,7 @@ async function runChecks(): Promise<void> {
 			op.connectivityResults,
 			op.bgpResult,
 			config.latencyWarnMs,
+			config.latencyCritMs,
 		);
 		checkResults.set(op.name, {
 			operator: op.name,
@@ -88,6 +89,7 @@ async function runChecks(): Promise<void> {
 		allConnResults,
 		allBgpResults,
 		config.latencyWarnMs,
+		config.latencyCritMs,
 	);
 	if (newLevel !== currentLevel) {
 		currentLevel = newLevel;
@@ -136,7 +138,11 @@ async function runChecks(): Promise<void> {
 	}
 
 	// Build and optionally send unified report
-	lastUnifiedReport = buildUnifiedReport(data, config.latencyWarnMs);
+	lastUnifiedReport = buildUnifiedReport(
+		data,
+		config.latencyWarnMs,
+		config.latencyCritMs,
+	);
 	const now = Date.now();
 	if (
 		config.unifiedReportIntervalMs > 0 &&
@@ -324,7 +330,11 @@ async function handleRequest(req: Request): Promise<Response> {
 				timestamp: Date.now(),
 			});
 		}
-		if (path === "/api/telemetry" && (req.method === "HEAD" || (req.method === "GET" && url.searchParams.has("ping")))) {
+		if (
+			path === "/api/telemetry" &&
+			(req.method === "HEAD" ||
+				(req.method === "GET" && url.searchParams.has("ping")))
+		) {
 			return new Response(null, { status: 200 });
 		}
 		if (path === "/api/telemetry" && req.method === "POST") {
@@ -347,7 +357,8 @@ async function handleRequest(req: Request): Promise<Response> {
 				saveTelemetryLog(
 					ip,
 					operator,
-					isp.ispName || (operator ? `${operator} (Rede Móvel)` : "Banda Larga"),
+					isp.ispName ||
+						(operator ? `${operator} (Rede Móvel)` : "Banda Larga"),
 					rttMs,
 					effectiveType,
 				);

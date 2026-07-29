@@ -105,7 +105,8 @@ export function assessLevel(
 	portals: PortalResult[],
 	connectivity: ConnectivityResult[],
 	bgp: BgpResult | BgpResult[] | null,
-	latencyWarnMs = 2000,
+	latencyWarnMs = 150,
+	latencyCritMs = 300,
 ): "ok" | "warn" | "critical" {
 	const portalFailures = portals.filter((p) => !p.success).length;
 	const connFailures = connectivity.filter((c) => !c.success).length;
@@ -119,7 +120,16 @@ export function assessLevel(
 			b.asn > 0,
 	);
 
-	if (portalFailures > 0 || connFailures > 0 || bgpZeroPrefixes)
+	const criticalLatency =
+		portals.some((p) => p.latencyMs > latencyCritMs && p.success) ||
+		connectivity.some((c) => c.latencyMs > latencyCritMs && c.success);
+
+	if (
+		portalFailures > 0 ||
+		connFailures > 0 ||
+		bgpZeroPrefixes ||
+		criticalLatency
+	)
 		return "critical";
 
 	const highLatency =
@@ -132,7 +142,8 @@ export function assessLevel(
 
 export function buildUnifiedReport(
 	data: AllCheckData,
-	latencyWarnMs = 2000,
+	latencyWarnMs = 150,
+	latencyCritMs = 300,
 ): UnifiedReport {
 	const services: ServiceHealth[] = [];
 	const signalReports = getActiveSignalReports();
@@ -144,6 +155,7 @@ export function buildUnifiedReport(
 			op.connectivityResults,
 			op.bgpResult,
 			latencyWarnMs,
+			latencyCritMs,
 		);
 		const portalFailures = op.portalResults.filter((p) => !p.success).length;
 		const connFailures = op.connectivityResults.filter(
@@ -170,7 +182,11 @@ export function buildUnifiedReport(
 				status = "warn";
 			}
 		} else if (crowdsourcedIspState && crowdsourcedIspState.status !== "ok") {
-			status = crowdsourcedIspState.status;
+			const csWeight = { ok: 0, warn: 1, critical: 2 };
+			const currentWeight = { ok: 0, warn: 1, critical: 2 }[status];
+			if (csWeight[crowdsourcedIspState.status] > currentWeight) {
+				status = crowdsourcedIspState.status;
+			}
 		}
 
 		let details = "OK";
@@ -185,9 +201,13 @@ export function buildUnifiedReport(
 			if (connFailures > 0)
 				parts.push(`${connFailures} teste(s) de conectividade falharam`);
 			if (bgpFail) parts.push("0 prefixos BGP anunciados");
+			if (
+				op.portalResults.some((p) => p.latencyMs > latencyCritMs && p.success)
+			)
+				parts.push("Latência crítica no portal (>300ms)");
 			details = parts.join(", ") || "Falha de serviço";
 		} else if (status === "warn") {
-			details = "Latência alta detectada";
+			details = "Latência elevada detectada no portal (>150ms)";
 		}
 
 		services.push({

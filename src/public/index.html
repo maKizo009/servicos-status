@@ -250,30 +250,44 @@ body{font-family:var(--font);background:#F1F5F9;color:var(--text);min-height:100
 
 /* Active Outages Detailed Box */
 .outages-container{
-  display:flex;flex-direction:column;gap:12px;margin-top:4px
+  display:flex;flex-direction:column;gap:8px;margin-top:4px;
+  max-height:260px;overflow-y:auto;padding-right:4px
 }
+.outages-container::-webkit-scrollbar{width:5px}
+.outages-container::-webkit-scrollbar-track{background:var(--s100);border-radius:6px}
+.outages-container::-webkit-scrollbar-thumb{background:var(--s300);border-radius:6px}
+.outages-container::-webkit-scrollbar-thumb:hover{background:var(--s400)}
+
 .outages-title{
-  font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--s600);
-  display:flex;align-items:center;gap:6px
+  font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--s600);
+  display:flex;align-items:center;gap:6px;position:sticky;top:0;background:var(--surface);padding:4px 0;z-index:2
 }
 
 .outage-card{
   background:#fff;border:1px solid var(--r1);border-left:4px solid var(--r6);
-  border-radius:10px;padding:14px 16px;display:flex;flex-direction:column;gap:8px;
-  box-shadow:0 2px 4px rgba(0,0,0,.03)
+  border-radius:8px;padding:10px 12px;display:flex;flex-direction:column;gap:6px;
+  box-shadow:0 1px 3px rgba(0,0,0,.03);font-size:13px
 }
 .outage-head{display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap}
-.outage-location{font-size:15px;font-weight:800;color:var(--text);display:flex;align-items:center;gap:6px}
-.outage-location svg{width:16px;height:16px;fill:var(--r6)}
+.outage-location{font-size:14px;font-weight:800;color:var(--text);display:flex;align-items:center;gap:6px}
+.outage-location svg{width:15px;height:15px;fill:var(--r6)}
 .outage-badge-tag{
-  font-size:11px;font-weight:700;padding:3px 8px;border-radius:4px;background:var(--r1);color:var(--r6);text-transform:uppercase
+  font-size:10px;font-weight:700;padding:2px 6px;border-radius:4px;background:var(--r1);color:var(--r6);text-transform:uppercase
 }
 .outage-badge-tag.prog{background:var(--a1);color:var(--a5)}
+.outage-badge-tag.sem-equipe{background:var(--a1);color:var(--a5)}
+
+.outage-sem-equipe-alert{
+  background:var(--a0);color:var(--a5);border:1px solid rgba(217,119,6,.3);
+  border-radius:6px;padding:6px 10px;font-size:11px;font-weight:700;
+  display:flex;align-items:center;gap:6px;line-height:1.3
+}
+.outage-card.sem-equipe{border-left-color:var(--a5)}
 
 .outage-meta-grid{
-  display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:8px;font-size:13px;color:var(--text2);margin-top:2px
+  display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:6px;font-size:12px;color:var(--text2);margin-top:2px
 }
-.outage-meta-item{display:flex;align-items:center;gap:6px}
+.outage-meta-item{display:flex;align-items:center;gap:5px}
 .outage-meta-item strong{color:var(--text);font-weight:600}
 .outage-meta-item svg{width:14px;height:14px;fill:var(--s400)}
 
@@ -291,12 +305,34 @@ body{font-family:var(--font);background:#F1F5F9;color:var(--text);min-height:100
 .portal-host{font-weight:600;color:var(--text);display:flex;align-items:center;gap:8px}
 .portal-status-tag{font-weight:700;padding:2px 8px;border-radius:4px}
 .portal-status-tag.ok{background:var(--g1);color:var(--g6)}
+.portal-status-tag.warn-tag{background:var(--a1);color:var(--a5)}
 .portal-status-tag.fail{background:var(--r1);color:var(--r6)}
 
 .bgp-box{
   background:var(--s50);padding:10px 14px;border-radius:8px;border:1px solid var(--s200);
   font-size:12px;color:var(--text2);display:flex;flex-direction:column;gap:4px
 }
+
+.telecom-section{display:flex;flex-direction:column;gap:8px}
+.telecom-section-title{font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--s500);margin-bottom:2px}
+
+.telecom-local-box{
+  background:var(--s50);border:1px solid var(--s200);border-radius:12px;padding:14px;
+  display:flex;flex-direction:column;gap:10px;margin-top:12px;transition:all .2s
+}
+.telecom-local-box.critical{background:var(--r0);border-color:rgba(220,38,38,.3)}
+.telecom-local-box.warn{background:var(--a0);border-color:rgba(217,119,6,.3)}
+
+.telecom-local-head{display:flex;align-items:center;justify-content:space-between;gap:8px}
+.telecom-local-title{font-size:13px;font-weight:800;color:var(--text);display:flex;align-items:center;gap:6px}
+
+.telecom-local-body{display:flex;align-items:center;justify-content:space-between;gap:12px;background:rgba(255,255,255,.7);padding:10px 12px;border-radius:8px}
+.telecom-local-metric{display:flex;flex-direction:column}
+.telecom-local-val{font-size:20px;font-weight:800;color:var(--text);line-height:1.1}
+.telecom-local-sub{font-size:11px;color:var(--text3);font-weight:600}
+.telecom-local-info{font-size:12px;color:var(--text2);text-align:right;line-height:1.4}
+
+.telecom-local-foot{font-size:11px;color:var(--text3);font-style:italic;text-align:right;margin-top:-2px}
 
 .card-foot{
   font-size:12px;color:var(--text3);padding:12px 22px;border-top:1px solid var(--border);
@@ -439,6 +475,20 @@ function relativeTime(ts){
   if(m<60)return`há ${m}min`;
   return`há ${Math.floor(m/60)}h ${m%60}min`;
 }
+function formatCopelStart(dataInicioStr){
+  if(!dataInicioStr)return 'Recente';
+  let d = new Date(dataInicioStr);
+  if(isNaN(d.getTime())){
+    const m = String(dataInicioStr).match(/(\d{2})\/(\d{2})\/(\d{4})\s+(\d{2}):(\d{2})/);
+    if(m){
+      d = new Date(`${m[3]}-${m[2]}-${m[1]}T${m[4]}:${m[5]}:00`);
+    }
+  }
+  if(isNaN(d.getTime()))return dataInicioStr;
+  const timeStr = d.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
+  const relStr = relativeTime(d.getTime());
+  return `${relStr} (${timeStr})`;
+}
 function updateClock(){
   const now=new Date();
   $('#headerTime').textContent=now.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
@@ -458,6 +508,13 @@ function scrollToCard(name){
 }
 
 async function runClientTelemetry(){
+  const telemetryTimeout = setTimeout(() => {
+    if ($('#telemetryIsp').textContent === 'Identificando operadora...') {
+      $('#telemetryIsp').textContent = 'Conexão detectada';
+      $('#telemetryPing').textContent = '⚡ Sinal ativo';
+    }
+  }, 8000);
+
   try{
     const connType = navigator.connection ? navigator.connection.effectiveType : '';
     const pingStart = performance.now();
@@ -471,6 +528,7 @@ async function runClientTelemetry(){
     });
 
     if(resp.ok){
+      clearTimeout(telemetryTimeout);
       const data = await resp.json();
       const isp = data.isp || {};
       const ispName = isp.ispName || (isp.operator ? `${isp.operator} (Rede Móvel)` : 'Banda Larga');
@@ -481,6 +539,11 @@ async function runClientTelemetry(){
       }
     }
   }catch(e){
+    clearTimeout(telemetryTimeout);
+    if ($('#telemetryIsp').textContent === 'Identificando operadora...') {
+      $('#telemetryIsp').textContent = 'Conexão detectada';
+      $('#telemetryPing').textContent = '⚡ Sinal ativo';
+    }
     console.error("Telemetry error", e);
   }
 }
@@ -505,7 +568,7 @@ function updateBanner(services){
 
     let detailsHtml='';
     for(const cs of criticalSvcs){
-      detailsHtml+=`<div class="banner-detail-item" onclick="scrollToCard('${cs.name}')" role="button" tabindex="0" title="Clique para focar no card do serviço">
+      detailsHtml+=`<div class="banner-detail-item" onclick="scrollToCard('${cs.name}')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();scrollToCard('${cs.name}');}" role="button" tabindex="0" title="Clique para focar no card do serviço">
         🔴 <strong>${cs.name}:</strong> ${cs.details}
         <span class="banner-jump-tag">Ver card ➔</span>
       </div>`;
@@ -522,7 +585,7 @@ function updateBanner(services){
 
     let detailsHtml='';
     for(const ws of warnSvcs){
-      detailsHtml+=`<div class="banner-detail-item" onclick="scrollToCard('${ws.name}')" role="button" tabindex="0" title="Clique para focar no card do serviço">
+      detailsHtml+=`<div class="banner-detail-item" onclick="scrollToCard('${ws.name}')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();scrollToCard('${ws.name}');}" role="button" tabindex="0" title="Clique para focar no card do serviço">
         ⚠️ <strong>${ws.name}:</strong> ${ws.details}
         <span class="banner-jump-tag">Ver card ➔</span>
       </div>`;
@@ -613,9 +676,17 @@ function renderCards(services){
           </div>`;
         }
       }else{
-        summaryBoxHtml=`<div class="summary-box ok">
-          ${ICON.ok}
-          <div>Sem registros de falhas ou interrupções no momento</div>
+        const lastCheckRel = relativeTime(svc.timestamp || Date.now());
+        const nextCheckSec = Math.round(REFRESH_MS / 1000);
+        summaryBoxHtml=`<div class="summary-box ok" style="flex-direction:column;align-items:flex-start;gap:8px;padding:16px">
+          <div style="display:flex;align-items:center;gap:10px;font-size:15px;font-weight:700">
+            ${ICON.ok}
+            <span>✅ Sem interrupções ativas</span>
+          </div>
+          <div style="font-size:13px;color:var(--text2);font-weight:500;display:flex;flex-direction:column;gap:4px;padding-left:30px">
+            <div>🕒 <strong>Última verificação:</strong> ${lastCheckRel}</div>
+            <div>🔄 <strong>Próxima checagem automática:</strong> em ~${nextCheckSec}s</div>
+          </div>
         </div>`;
       }
 
@@ -625,23 +696,46 @@ function renderCards(services){
         for(const ev of activeEvents){
           if(name==='Copel'){
             const isProg=ev.ehProgramada;
+            const isSemEquipe=ev.equipeId==='SEM_EQUIPE';
             const tagLabel=isProg?'Desligamento Programado':(ev.tipoPrincipal||'EMERGÊNCIA');
-            const previsaoStr=ev.previsaoRestabelecimento ? ev.previsaoRestabelecimento : 'Sem previsão';
-            const statusEquipe=ev.statusEquipe || 'Em atendimento';
+            const tagCls=isProg?'prog':isSemEquipe?'sem-equipe':'';
+            
+            let previsaoStr='Sem previsão ainda';
+            if(ev.previsaoRestabelecimento){
+              previsaoStr=ev.previsaoRestabelecimento;
+            }else if(ev.faixaDuracao){
+              previsaoStr=`Sem previsão ainda (Estimativa: ${ev.faixaDuracao})`;
+            }
+
+            let statusEquipeHtml='';
+            if(isSemEquipe || ev.statusEquipe==='Preparação'){
+              statusEquipeHtml=`⏳ Preparação (${ev.equipeId || 'SEM_EQUIPE'})`;
+            }else{
+              statusEquipeHtml=`🟢 ${ev.statusEquipe || 'Em atendimento'}`;
+            }
+
+            let semEquipeWarningHtml='';
+            if(isSemEquipe && !isProg){
+              semEquipeWarningHtml=`<div class="outage-sem-equipe-alert">
+                ⚠️ Sem equipes despachadas — a Copel ainda não designou atendimento para esta ocorrência
+              </div>`;
+            }
+
             const consumers=ev.qtdConsumidores || 0;
 
-            itemsHtml+=`<div class="outage-card">
+            itemsHtml+=`<div class="outage-card ${isSemEquipe && !isProg ?'sem-equipe':''}">
               <div class="outage-head">
                 <div class="outage-location">
                   ${ICON.pin}
                   <span>Bairro ${ev.bairro || 'Ipiranga'}</span>
                 </div>
-                <div class="outage-badge-tag ${isProg?'prog':''}">${tagLabel}</div>
+                <div class="outage-badge-tag ${tagCls}">${tagLabel}</div>
               </div>
+              ${semEquipeWarningHtml}
               <div class="outage-meta-grid">
                 <div class="outage-meta-item">
                   ${ICON.clock}
-                  <span>Início: <strong>${ev.dataInicio || 'Recente'}</strong></span>
+                  <span>Início: <strong>${formatCopelStart(ev.dataInicio)}</strong></span>
                 </div>
                 <div class="outage-meta-item">
                   ${ICON.clock}
@@ -649,7 +743,7 @@ function renderCards(services){
                 </div>
                 <div class="outage-meta-item">
                   ${ICON.worker}
-                  <span>Equipe: <strong>${statusEquipe}</strong> (${ev.equipeId || 'Geral'})</span>
+                  <span>Equipe: <strong>${statusEquipeHtml}</strong></span>
                 </div>
                 ${consumers>0 ? `
                   <div class="outage-meta-item">
@@ -676,9 +770,10 @@ function renderCards(services){
           }
         }
 
+        const hint = activeEvents.length > 2 ? ' <span style="font-size:11px;font-weight:600;opacity:.8">(role para ver todas)</span>' : '';
         outagesListHtml=`<div class="outages-container">
           <div class="outages-title">
-            ${ICON.error} Ocorrências detalhadas (${activeEvents.length}):
+            ${ICON.error} Ocorrências detalhadas (${activeEvents.length})${hint}:
           </div>
           ${itemsHtml}
         </div>`;
@@ -692,17 +787,22 @@ function renderCards(services){
       const portals=svc.data?.portalResults || [];
       const conn=svc.data?.connectivityResults || [];
       const bgp=svc.data?.bgp || null;
+      const crowdsourced=svc.data?.crowdsourcedState || null;
 
       let portalsHtml='';
       if(portals.length>0){
         for(const p of portals){
+          const isCrit = p.success && p.latencyMs > 300;
+          const isWarn = p.success && p.latencyMs > 150;
+          const tagCls = !p.success || isCrit ? 'fail' : isWarn ? 'warn-tag' : 'ok';
+          const tagText = !p.success ? 'OFFLINE' : isCrit ? 'CRÍTICO' : isWarn ? 'ALERTA' : 'ONLINE';
           portalsHtml+=`<div class="portal-row">
             <div class="portal-host">
-              ${p.success?ICON.ok:ICON.error}
-              <span>${p.host} (Portal Web/Backbone)</span>
+              ${p.success && !isCrit ? ICON.ok : ICON.error}
+              <span>${p.host} (Portal Web)</span>
             </div>
             <div>
-              <span class="portal-status-tag ${p.success?'ok':'fail'}">${p.success?'ONLINE':'OFFLINE'}</span>
+              <span class="portal-status-tag ${tagCls}">${tagText}</span>
               <span style="margin-left:6px;font-weight:700">${Math.round(p.latencyMs||0)} ms</span>
             </div>
           </div>`;
@@ -711,9 +811,9 @@ function renderCards(services){
 
       let connSummary='';
       if(conn.length>0){
-        const okConn=conn.filter(x=>x.success).length;
+        const okConn=conn.filter(x=>x.success && x.latencyMs<=300).length;
         connSummary=`<div style="font-size:13px;font-weight:600;color:var(--text2)">
-          Backbone / Conectividade Global: <strong style="color:${okConn===conn.length?'var(--g6)':'var(--r6)'}">${okConn}/${conn.length} testes OK</strong>
+          Backbone Global: <strong style="color:${okConn===conn.length?'var(--g6)':'var(--r6)'}">${okConn}/${conn.length} testes OK</strong>
         </div>`;
       }
 
@@ -725,11 +825,42 @@ function renderCards(services){
         </div>`;
       }
 
-      contentHtml=`<div class="telecom-grid">
-        ${portalsHtml}
-        ${connSummary}
-        ${bgpSummary}
+      const backboneSection=`<div class="telecom-section">
+        <div class="telecom-section-title">🌐 Infraestrutura Nacional</div>
+        <div class="telecom-grid">
+          ${portalsHtml}
+          ${connSummary}
+          ${bgpSummary}
+        </div>
       </div>`;
+
+      let localSection='';
+      if(crowdsourced){
+        const csSt = crowdsourced.status || 'ok';
+        const csStLabel = csSt==='critical' ? '🔴 CRÍTICO' : csSt==='warn' ? '⚠️ ATENÇÃO' : '🟢 NORMAL';
+        const csStCls = csSt==='critical' ? 'fail' : csSt==='warn' ? 'warn-tag' : 'ok';
+        const updatedRel = relativeTime(crowdsourced.lastUpdated);
+
+        localSection=`<div class="telecom-local-box ${csSt}">
+          <div class="telecom-local-head">
+            <div class="telecom-local-title">📱 Rede Móvel Local (Ipiranga/PR)</div>
+            <span class="portal-status-tag ${csStCls}">${csStLabel}</span>
+          </div>
+          <div class="telecom-local-body">
+            <div class="telecom-local-metric">
+              <span class="telecom-local-val">${crowdsourced.avgRttMs} ms</span>
+              <span class="telecom-local-sub">latência média local</span>
+            </div>
+            <div class="telecom-local-info">
+              <div><strong>Amostras:</strong> ${crowdsourced.sampleCount} morador(es)</div>
+              <div><strong>Atualizado:</strong> ${updatedRel}</div>
+            </div>
+          </div>
+          <div class="telecom-local-foot">Fonte: Relatos de moradores (crowdsourcing)</div>
+        </div>`;
+      }
+
+      contentHtml = backboneSection + localSection;
     }
 
     html+=`<div class="card ${st}" data-name="${name}">
@@ -776,9 +907,19 @@ function showError(msg){
 }
 
 async function fetchData(){
-  if(Date.now()-lastFetch<1500)return;
-  lastFetch=Date.now();
   const ri=$('#refreshIcon');
+  if(Date.now()-lastFetch<1500){
+    ri.classList.add('spinning');
+    const timeEl=$('#headerTime');
+    const prevText=timeEl.textContent;
+    timeEl.textContent='Aguarde...';
+    setTimeout(()=>{
+      ri.classList.remove('spinning');
+      updateClock();
+    },800);
+    return;
+  }
+  lastFetch=Date.now();
   ri.classList.add('spinning');
   try{
     let resp=await fetch(API_SERVICES);
