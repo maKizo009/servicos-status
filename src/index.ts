@@ -336,13 +336,21 @@ async function handleRequest(req: Request): Promise<Response> {
 				const body = (await req.json().catch(() => ({}))) as {
 					rttMs?: number;
 					effectiveType?: string;
+					operator?: OperatorName;
 				};
 
 				const isp = await detectIsp(ip);
+				const operator = body.operator || isp.operator;
 				const rttMs = Number(body.rttMs) || 0;
 				const effectiveType = String(body.effectiveType || "");
 
-				saveTelemetryLog(ip, isp.operator, isp.ispName, rttMs, effectiveType);
+				saveTelemetryLog(
+					ip,
+					operator,
+					isp.ispName || (operator ? `${operator} (Rede Móvel)` : "Banda Larga"),
+					rttMs,
+					effectiveType,
+				);
 				await runChecks();
 
 				return Response.json({
