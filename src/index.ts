@@ -1,4 +1,4 @@
-import { buildUnifiedReport, runAllChecks } from "./checker";
+import { assessLevel, buildUnifiedReport, runAllChecks } from "./checker";
 import { loadConfig } from "./config";
 import {
 	closeDb,
@@ -41,26 +41,6 @@ let currentLevel: AlertLevel = "ok";
 let lastUnifiedReportTime = 0;
 let lastUnifiedReport: UnifiedReport | null = null;
 
-function assessLevel(
-	portals: PortalResult[],
-	connectivity: ConnectivityResult[],
-	bgp: BgpResult | BgpResult[] | null,
-): AlertLevel {
-	const portalFailures = portals.filter((p) => !p.success).length;
-	const connFailures = connectivity.filter((c) => !c.success).length;
-	const bgpList = Array.isArray(bgp) ? bgp : bgp ? [bgp] : [];
-	const bgpFailures = bgpList.some((b) => Boolean(b?.error));
-
-	if (portalFailures > 0 || connFailures > 0 || bgpFailures) return "critical";
-
-	const highLatency = portals.some(
-		(p) => p.latencyMs > config.latencyWarnMs && p.success,
-	);
-	if (highLatency) return "warn";
-
-	return "ok";
-}
-
 async function runChecks(): Promise<void> {
 	logger.info("Starting check cycle");
 
@@ -84,6 +64,7 @@ async function runChecks(): Promise<void> {
 			op.portalResults,
 			op.connectivityResults,
 			op.bgpResult,
+			config.latencyWarnMs,
 		);
 		checkResults.set(op.name, {
 			operator: op.name,
@@ -98,7 +79,12 @@ async function runChecks(): Promise<void> {
 	lastResults = allPortalResults;
 
 	// Operator aggregated alert (only on level change — existing behavior)
-	const newLevel = assessLevel(allPortalResults, allConnResults, allBgpResults);
+	const newLevel = assessLevel(
+		allPortalResults,
+		allConnResults,
+		allBgpResults,
+		config.latencyWarnMs,
+	);
 	if (newLevel !== currentLevel) {
 		currentLevel = newLevel;
 		const failedOps = [...checkResults.entries()]

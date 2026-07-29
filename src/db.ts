@@ -119,7 +119,9 @@ export function getLatestConnectivityResults(limit = 50): ConnectivityResult[] {
        ORDER BY timestamp DESC
        LIMIT ?`,
 		)
-		.all(limit) as (Omit<ConnectivityResult, "success"> & { success: number })[];
+		.all(limit) as (Omit<ConnectivityResult, "success"> & {
+		success: number;
+	})[];
 	return rows.map((r) => ({ ...r, success: Boolean(r.success) }));
 }
 
@@ -146,7 +148,9 @@ export function getPortalHistory(
        ORDER BY timestamp DESC
        LIMIT ?`,
 		)
-		.all(operator, limit) as (Omit<PortalResult, "success"> & { success: number })[];
+		.all(operator, limit) as (Omit<PortalResult, "success"> & {
+		success: number;
+	})[];
 	return rows.map((r) => ({ ...r, success: Boolean(r.success) }));
 }
 

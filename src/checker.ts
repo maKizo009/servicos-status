@@ -95,16 +95,26 @@ export async function runAllChecks(
 	};
 }
 
-function assessOperatorLevel(
+export function assessLevel(
 	portals: PortalResult[],
 	connectivity: ConnectivityResult[],
-	bgp: BgpResult | null,
+	bgp: BgpResult | BgpResult[] | null,
 	latencyWarnMs = 2000,
 ): "ok" | "warn" | "critical" {
 	const portalFailures = portals.filter((p) => !p.success).length;
 	const connFailures = connectivity.filter((c) => !c.success).length;
+	const bgpList = Array.isArray(bgp) ? bgp : bgp ? [bgp] : [];
+	const bgpZeroPrefixes = bgpList.some(
+		(b) =>
+			Boolean(b) &&
+			!b.error &&
+			b.prefixCountV4 === 0 &&
+			b.prefixCountV6 === 0 &&
+			b.asn > 0,
+	);
 
-	if (portalFailures > 0 || connFailures > 0 || bgp?.error) return "critical";
+	if (portalFailures > 0 || connFailures > 0 || bgpZeroPrefixes)
+		return "critical";
 
 	const highLatency =
 		portals.some((p) => p.latencyMs > latencyWarnMs && p.success) ||
@@ -121,19 +131,34 @@ export function buildUnifiedReport(
 	const services: ServiceHealth[] = [];
 
 	for (const op of data.operators) {
-		const status = assessOperatorLevel(
+		const status = assessLevel(
 			op.portalResults,
 			op.connectivityResults,
 			op.bgpResult,
 			latencyWarnMs,
 		);
-		const failures = op.portalResults.filter((p) => !p.success).length;
-		const details =
-			status === "ok"
-				? "OK"
-				: status === "critical"
-					? `${failures} portal(is) fora do ar`
-					: "Latência alta detectada";
+		const portalFailures = op.portalResults.filter((p) => !p.success).length;
+		const connFailures = op.connectivityResults.filter(
+			(c) => !c.success,
+		).length;
+		const bgpFail =
+			op.bgpResult &&
+			!op.bgpResult.error &&
+			op.bgpResult.prefixCountV4 === 0 &&
+			op.bgpResult.prefixCountV6 === 0;
+
+		let details = "OK";
+		if (status === "critical") {
+			const parts: string[] = [];
+			if (portalFailures > 0)
+				parts.push(`${portalFailures} portal(is) fora do ar`);
+			if (connFailures > 0)
+				parts.push(`${connFailures} teste(s) de conectividade falharam`);
+			if (bgpFail) parts.push("0 prefixos BGP anunciados");
+			details = parts.join(", ") || "Falha de serviço";
+		} else if (status === "warn") {
+			details = "Latência alta detectada";
+		}
 
 		services.push({
 			name: op.name,
