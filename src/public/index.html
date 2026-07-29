@@ -4,159 +4,261 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Monitor Ipiranga — Status dos Serviços</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <style>
 *,*::before,*::after{margin:0;padding:0;box-sizing:border-box}
 :root{
-  --s900:#0F172A;--s700:#334155;--s600:#475569;--s400:#94A3B8;--s300:#CBD5E1;--s200:#E2E8F0;--s100:#F1F5F9;--s50:#F8FAFC;
-  --g6:#16A34A;--g1:#DCFCE7;--g0:#F0FDF4;
-  --a5:#F59E0B;--a1:#FEF3C7;--a0:#FFFBEB;
-  --r6:#DC2626;--r1:#FEE2E2;--r0:#FEF2F2;
+  --s900:#0F172A;--s800:#1E293B;--s700:#334155;--s600:#475569;--s500:#64748B;--s400:#94A3B8;--s300:#CBD5E1;--s200:#E2E8F0;--s100:#F1F5F9;--s50:#F8FAFC;
+  --g6:#16A34A;--g5:#22C55E;--g1:#DCFCE7;--g0:#F0FDF4;
+  --a5:#D97706;--a4:#F59E0B;--a1:#FEF3C7;--a0:#FFFBEB;
+  --r6:#DC2626;--r5:#EF4444;--r1:#FEE2E2;--r0:#FEF2F2;
   --claro:#ED1C24;--vivo:#660099;--tim:#003DA5;--copel:#00923F;--sanepar:#003F87;
-  --surface:#fff;--text:#0F172A;--text2:#475569;--text3:#94A3B8;--border:#E2E8F0;
-  --radius:16px;--radius-sm:10px;--shadow:0 1px 3px rgba(0,0,0,.06),0 1px 2px rgba(0,0,0,.04);
-  --font:system-ui,-apple-system,'Segoe UI',Roboto,Helvetica,Arial,sans-serif
+  --surface:#ffffff;--text:#0F172A;--text2:#475569;--text3:#94A3B8;--border:#E2E8F0;
+  --radius:16px;--radius-sm:10px;--shadow:0 4px 6px -1px rgba(0,0,0,.05),0 2px 4px -2px rgba(0,0,0,.05);
+  --shadow-lg:0 10px 15px -3px rgba(0,0,0,.1),0 4px 6px -4px rgba(0,0,0,.1);
+  --shadow-crit:0 0 20px rgba(220,38,38,.2),0 4px 6px -1px rgba(220,38,38,.1);
+  --font:'Inter',system-ui,-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif
 }
 html{font-size:16px;-webkit-font-smoothing:antialiased}
-body{font-family:var(--font);background:var(--s50);color:var(--text);min-height:100dvh;display:flex;flex-direction:column}
+body{font-family:var(--font);background:#F1F5F9;color:var(--text);min-height:100dvh;display:flex;flex-direction:column}
 
-/* Container centralizado */
-.container{max-width:1200px;margin:0 auto;padding:0 24px;width:100%}
+.container{max-width:1200px;margin:0 auto;padding:0 20px;width:100%}
 
 /* Header */
 .header{
-  background:linear-gradient(135deg,#1B5E20,#2E7D32);
+  background:linear-gradient(135deg,#064E3B 0%,#047857 50%,#059669 100%);
   padding:16px 24px;color:#fff;display:flex;align-items:center;justify-content:space-between;
-  box-shadow:0 2px 12px rgba(0,0,0,.15);position:relative;z-index:10
+  box-shadow:0 4px 20px rgba(4,120,87,.25);position:relative;z-index:10
 }
 .header-left{display:flex;align-items:center;gap:14px}
 .header-shield{
-  width:40px;height:40px;background:rgba(255,255,255,.15);border-radius:50%;
-  display:flex;align-items:center;justify-content:center;flex-shrink:0
+  width:42px;height:42px;background:rgba(255,255,255,.18);backdrop-filter:blur(8px);
+  border-radius:12px;display:flex;align-items:center;justify-content:center;flex-shrink:0;
+  border:1px solid rgba(255,255,255,.25)
 }
 .header-shield svg{width:24px;height:24px;fill:#fff}
-.header-title{font-size:20px;font-weight:700;letter-spacing:-.3px}
-.header-title span{font-weight:400;opacity:.8}
+.header-title{font-size:20px;font-weight:800;letter-spacing:-.4px}
+.header-title span{font-weight:400;opacity:.85;font-size:16px}
 .header-refresh-btn{
-  display:flex;align-items:center;gap:10px;background:none;border:1px solid transparent;
-  padding:6px 14px 6px 12px;border-radius:8px;cursor:pointer;color:#fff;
-  font-family:var(--font);font-size:14px;transition:all .2s;user-select:none
+  display:flex;align-items:center;gap:10px;background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.25);
+  padding:8px 16px;border-radius:10px;cursor:pointer;color:#fff;
+  font-family:var(--font);font-size:14px;font-weight:600;transition:all .2s;user-select:none;
+  backdrop-filter:blur(8px)
 }
-.header-refresh-btn:hover{background:rgba(255,255,255,.1);border-color:rgba(255,255,255,.2)}
-.header-refresh-btn:active{background:rgba(255,255,255,.15)}
-.header-refresh-btn .ri{
-  width:18px;height:18px;fill:#fff;flex-shrink:0;transition:transform .3s
-}
+.header-refresh-btn:hover{background:rgba(255,255,255,.22);border-color:rgba(255,255,255,.4)}
+.header-refresh-btn:active{transform:scale(.98)}
+.header-refresh-btn .ri{width:18px;height:18px;fill:#fff;flex-shrink:0;transition:transform .3s}
 .header-refresh-btn .ri.spinning{animation:spin .8s linear infinite}
 @keyframes spin{to{transform:rotate(360deg)}}
-.header-refresh-btn .ht{font-variant-numeric:tabular-nums;opacity:.85}
-.ov-dot{width:10px;height:10px;border-radius:50%;transition:opacity .25s;flex-shrink:0}
-.ov-dot.ok{background:var(--g6);box-shadow:0 0 8px var(--g6)}
-.ov-dot.warn{background:var(--a5);box-shadow:0 0 8px var(--a5)}
-.ov-dot.critical{background:var(--r6);box-shadow:0 0 8px var(--r6)}
+.header-refresh-btn .ht{font-variant-numeric:tabular-nums;opacity:.9}
+.ov-dot{width:10px;height:10px;border-radius:50%;transition:all .3s;flex-shrink:0}
+.ov-dot.ok{background:var(--g5);box-shadow:0 0 10px var(--g5)}
+.ov-dot.warn{background:var(--a4);box-shadow:0 0 10px var(--a4);animation:pulse 1.5s infinite}
+.ov-dot.critical{background:var(--r5);box-shadow:0 0 12px var(--r5);animation:pulse 1s infinite}
+@keyframes pulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.4;transform:scale(.85)}}
 
 /* Banner */
 .banner{
-  margin-top:24px;padding:20px 24px;border-radius:var(--radius);border-left:4px solid;
-  display:flex;align-items:center;gap:16px;box-shadow:var(--shadow)
+  margin-top:24px;padding:22px 28px;border-radius:var(--radius);border:2px solid;
+  display:flex;align-items:flex-start;gap:20px;box-shadow:var(--shadow-lg);
+  transition:all .3s ease
 }
 .banner.ok{background:var(--g0);border-color:var(--g6)}
 .banner.warn{background:var(--a0);border-color:var(--a5)}
-.banner.critical{background:var(--r0);border-color:var(--r6)}
+.banner.critical{background:var(--r0);border-color:var(--r6);animation:bannerGlow 3s infinite alternate}
+@keyframes bannerGlow{from{box-shadow:0 4px 15px rgba(220,38,38,.1)}to{box-shadow:0 8px 30px rgba(220,38,38,.25)}}
+
 .banner-icon{
-  width:44px;height:44px;border-radius:50%;display:flex;align-items:center;justify-content:center;flex-shrink:0;
-  background:var(--s100)
+  width:52px;height:52px;border-radius:14px;display:flex;align-items:center;justify-content:center;flex-shrink:0
 }
-.banner-icon svg{width:22px;height:22px}
+.banner.ok .banner-icon{background:var(--g1)}
 .banner.ok .banner-icon svg{fill:var(--g6)}
+.banner.warn .banner-icon{background:var(--a1)}
 .banner.warn .banner-icon svg{fill:var(--a5)}
-.banner.critical .banner-icon svg{fill:var(--r6)}
+.banner.critical .banner-icon{background:var(--r1)}
+.banner.critical .banner-icon svg{fill:var(--r6);animation:shake .5s linear infinite alternate}
+
 .banner-text{flex:1}
-.banner-title{font-size:20px;font-weight:700;color:var(--text)}
-.banner-sub{font-size:14px;color:var(--text2);margin-top:2px}
+.banner-title{font-size:22px;font-weight:800;color:var(--text);letter-spacing:-.3px}
+.banner-sub{font-size:15px;color:var(--text2);margin-top:4px;line-height:1.5}
+.banner-details-list{margin-top:10px;display:flex;flex-direction:column;gap:6px}
+.banner-detail-item{
+  font-size:14px;font-weight:600;display:inline-flex;align-items:center;gap:8px;
+  padding:4px 12px;border-radius:6px;width:fit-content
+}
+.banner.critical .banner-detail-item{background:rgba(220,38,38,.1);color:var(--r6)}
+.banner.warn .banner-detail-item{background:rgba(217,119,6,.1);color:var(--a5)}
+
 .banner-badge{
-  padding:4px 14px;border-radius:20px;font-size:13px;font-weight:600;white-space:nowrap;flex-shrink:0;cursor:default
+  padding:6px 16px;border-radius:20px;font-size:13px;font-weight:700;white-space:nowrap;flex-shrink:0;
+  text-transform:uppercase;letter-spacing:.5px
 }
 .banner.ok .banner-badge{background:var(--g1);color:var(--g6)}
 .banner.warn .banner-badge{background:var(--a1);color:var(--a5)}
-.banner.critical .banner-badge{background:var(--r1);color:var(--r6)}
+.banner.critical .banner-badge{background:var(--r6);color:#fff;box-shadow:0 2px 8px rgba(220,38,38,.4)}
+
+/* Section Heading */
+.section-head{
+  margin-top:28px;margin-bottom:16px;display:flex;align-items:center;justify-content:space-between
+}
+.section-title{font-size:18px;font-weight:700;color:var(--s800);display:flex;align-items:center;gap:8px}
+.section-title svg{width:20px;height:20px;fill:var(--s500)}
 
 /* Grid */
-.grid{padding:24px 0;display:grid;grid-template-columns:1fr;gap:16px;flex:1}
-@media(min-width:640px){.grid{grid-template-columns:1fr 1fr}}
-@media(min-width:1024px){.grid{grid-template-columns:1fr 1fr 1fr;gap:20px}}
+.grid{padding-bottom:32px;display:grid;grid-template-columns:1fr;gap:20px;flex:1}
+@media(min-width:768px){.grid{grid-template-columns:1fr 1fr}}
+@media(min-width:1100px){.grid{grid-template-columns:1fr 1fr 1fr}}
 
-/* Card */
+/* Card Base */
 .card{
   background:var(--surface);border-radius:var(--radius);box-shadow:var(--shadow);
-  display:flex;flex-direction:column;border:1px solid var(--border);overflow:hidden
+  display:flex;flex-direction:column;border:2px solid var(--border);overflow:hidden;
+  transition:all .25s ease;position:relative
 }
-.card-inner{padding:20px;display:flex;flex-direction:column;gap:12px}
+.card:hover{transform:translateY(-2px);box-shadow:var(--shadow-lg)}
+
+/* Card Status Variations */
+.card.critical{
+  border-color:var(--r6);box-shadow:var(--shadow-crit);
+  grid-column:1/-1
+}
+@media(min-width:768px){
+  .card.critical{grid-column:span 2}
+}
+@media(min-width:1100px){
+  .card.critical{grid-column:span 3}
+}
+
+.card.warn{border-color:var(--a5)}
+
+.card-crit-bar{
+  height:6px;width:100%;background:linear-gradient(90deg,var(--r6),#EF4444);display:none
+}
+.card.critical .card-crit-bar{display:block}
+
+.card-inner{padding:22px;display:flex;flex-direction:column;gap:16px;height:100%}
 .card-head{display:flex;align-items:center;gap:14px}
 .card-icon{
-  width:48px;height:48px;border-radius:12px;display:flex;align-items:center;justify-content:center;flex-shrink:0
+  width:50px;height:50px;border-radius:14px;display:flex;align-items:center;justify-content:center;flex-shrink:0
 }
-.card-icon svg{width:28px;height:28px}
+.card-icon svg{width:30px;height:30px}
 .card-icon.claro{background:rgba(237,28,36,.1)}
 .card-icon.vivo{background:rgba(102,0,153,.1)}
 .card-icon.tim{background:rgba(0,61,165,.1)}
 .card-icon.copel{background:rgba(0,146,63,.1)}
 .card-icon.sanepar{background:rgba(0,63,135,.1)}
-.card-name{font-size:18px;font-weight:700;flex:1}
-.card-name .cb{
-  font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.3px;
-  display:inline-block;margin-left:8px;padding:1px 8px;border-radius:4px;vertical-align:middle;cursor:default
-}
-.card-name .cb.telecom{background:rgba(237,28,36,.08);color:var(--claro)}
-.card-name .cb.utility{background:rgba(0,146,63,.08);color:var(--copel)}
-.card-status{
-  font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;
-  padding:4px 14px;border-radius:20px;white-space:nowrap;cursor:default
-}
-.card-status.ok{background:var(--g1);color:var(--g6)}
-.card-status.warn{background:var(--a1);color:var(--a5)}
-.card-status.critical{background:var(--r1);color:var(--r6)}
-.card-body{display:flex;flex-direction:column;gap:8px;font-size:14px;color:var(--text2)}
-.card-body .row{display:flex;align-items:center;gap:8px}
-.card-body .row svg{width:16px;height:16px;fill:var(--text3);flex-shrink:0}
-.card-body .lat{
-  font-size:22px;font-weight:700;color:var(--text);margin-top:2px
-}
-.card-body .lat span{font-size:13px;font-weight:400;color:var(--text3);margin-left:4px}
-.card-body .lat.fast{color:var(--g6)}
-.card-body .lat.slow{color:var(--a5)}
-.card-foot{font-size:12px;color:var(--text3);padding:12px 20px;border-top:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;background:var(--s50)}
 
-/* Skeleton */
-.skeleton .card-icon{background:var(--s100)}
-.skeleton .card-icon svg{display:none}
-.skeleton .cb{display:none}
-.skeleton .card-name{height:18px;background:var(--s100);border-radius:4px;width:50%}
-.skeleton .card-status{width:80px;height:22px;background:var(--s100);border-radius:20px}
-.skeleton .row{height:14px;background:var(--s100);border-radius:4px;width:70%}
-.skeleton .row:nth-child(2){width:45%}
-.skeleton .lat{height:22px;background:var(--s100);border-radius:4px;width:30%}
-.skeleton .card-foot{height:12px;background:var(--s100);border-radius:4px;width:40%}
+.card-name-group{flex:1;display:flex;flex-direction:column;gap:2px}
+.card-name{font-size:19px;font-weight:800;color:var(--text);display:flex;align-items:center;gap:8px}
+.card-sub{font-size:12px;color:var(--text3);font-weight:500}
+
+.card-cb{
+  font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.4px;
+  padding:2px 8px;border-radius:6px;display:inline-block
+}
+.card-cb.telecom{background:rgba(237,28,36,.08);color:var(--claro)}
+.card-cb.utility{background:rgba(0,146,63,.1);color:var(--copel)}
+
+.card-status-badge{
+  font-size:12px;font-weight:800;text-transform:uppercase;letter-spacing:.6px;
+  padding:6px 14px;border-radius:20px;white-space:nowrap;display:inline-flex;align-items:center;gap:6px
+}
+.card-status-badge.ok{background:var(--g1);color:var(--g6)}
+.card-status-badge.warn{background:var(--a1);color:var(--a5)}
+.card-status-badge.critical{background:var(--r6);color:#fff;box-shadow:0 2px 6px rgba(220,38,38,.4);animation:pulse 1.5s infinite}
+
+.card-body{display:flex;flex-direction:column;gap:12px;font-size:14px;color:var(--text2);flex:1}
+
+/* Status Summary Box inside Card */
+.summary-box{
+  padding:12px 16px;border-radius:10px;font-size:14px;font-weight:600;display:flex;align-items:center;gap:10px
+}
+.summary-box.ok{background:var(--g0);color:var(--g6);border:1px solid rgba(22,163,74,.2)}
+.summary-box.warn{background:var(--a0);color:var(--a5);border:1px solid rgba(217,119,6,.2)}
+.summary-box.critical{background:var(--r0);color:var(--r6);border:1px solid rgba(220,38,38,.3);font-size:15px;font-weight:700}
+.summary-box svg{width:20px;height:20px;flex-shrink:0}
+
+/* Active Outages Detailed Box for Copel/Sanepar */
+.outages-container{
+  display:flex;flex-direction:column;gap:12px;margin-top:4px
+}
+.outages-title{
+  font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--s600);
+  display:flex;align-items:center;gap:6px
+}
+
+.outage-card{
+  background:#fff;border:1px solid var(--r1);border-left:4px solid var(--r6);
+  border-radius:10px;padding:14px 16px;display:flex;flex-direction:column;gap:8px;
+  box-shadow:0 2px 4px rgba(0,0,0,.03)
+}
+.outage-head{display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap}
+.outage-location{font-size:15px;font-weight:800;color:var(--text);display:flex;align-items:center;gap:6px}
+.outage-location svg{width:16px;height:16px;fill:var(--r6)}
+.outage-badge-tag{
+  font-size:11px;font-weight:700;padding:3px 8px;border-radius:4px;background:var(--r1);color:var(--r6);text-transform:uppercase
+}
+.outage-badge-tag.prog{background:var(--a1);color:var(--a5)}
+
+.outage-meta-grid{
+  display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:8px;font-size:13px;color:var(--text2);margin-top:2px
+}
+.outage-meta-item{display:flex;align-items:center;gap:6px}
+.outage-meta-item strong{color:var(--text);font-weight:600}
+.outage-meta-item svg{width:14px;height:14px;fill:var(--s400)}
+
+.consumers-count{
+  display:inline-flex;align-items:center;gap:4px;background:var(--r6);color:#fff;
+  font-weight:800;font-size:13px;padding:3px 10px;border-radius:20px;width:fit-content
+}
+
+/* Telecom Specific */
+.telecom-grid{display:flex;flex-direction:column;gap:8px}
+.portal-row{
+  display:flex;align-items:center;justify-content:space-between;padding:10px 14px;
+  background:var(--s50);border-radius:8px;border:1px solid var(--s200);font-size:13px
+}
+.portal-host{font-weight:600;color:var(--text);display:flex;align-items:center;gap:8px}
+.portal-status-tag{font-weight:700;padding:2px 8px;border-radius:4px}
+.portal-status-tag.ok{background:var(--g1);color:var(--g6)}
+.portal-status-tag.fail{background:var(--r1);color:var(--r6)}
+
+.lat-display{font-size:24px;font-weight:800;color:var(--text);display:flex;align-items:baseline;gap:6px}
+.lat-display span{font-size:13px;font-weight:500;color:var(--text3)}
+.lat-display.fast{color:var(--g6)}
+.lat-display.slow{color:var(--a5)}
+
+.bgp-box{
+  background:var(--s50);padding:10px 14px;border-radius:8px;border:1px solid var(--s200);
+  font-size:12px;color:var(--text2);display:flex;flex-direction:column;gap:4px
+}
+
+.card-foot{
+  font-size:12px;color:var(--text3);padding:12px 22px;border-top:1px solid var(--border);
+  display:flex;justify-content:space-between;align-items:center;background:var(--s50);margin-top:auto
+}
 
 /* Footer */
 .footer{
-  text-align:center;padding:20px 24px;font-size:13px;color:var(--text3);border-top:1px solid var(--border);margin-top:auto;background:var(--surface)
+  text-align:center;padding:24px;font-size:14px;color:var(--text3);border-top:1px solid var(--border);margin-top:auto;background:var(--surface)
 }
-.footer .li{display:inline-flex;align-items:center;gap:6px;margin-bottom:6px}
-.footer .ld{width:6px;height:6px;border-radius:50%;background:var(--g6);animation:pulse 2s infinite}
-@keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
-.footer .credit{font-size:12px;margin-top:4px}
-.footer .credit strong{color:var(--text2)}
+.footer .li{display:inline-flex;align-items:center;gap:8px;margin-bottom:6px;font-weight:600;color:var(--text2)}
+.footer .ld{width:8px;height:8px;border-radius:50%;background:var(--g5);animation:pulse 2s infinite}
+.footer .credit{font-size:13px;margin-top:4px}
+.footer .credit strong{color:var(--text)}
 
 /* Error */
 .error-state{
   text-align:center;padding:64px 24px;color:var(--text2);flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px
 }
-.error-state svg{width:48px;height:48px;fill:var(--text3)}
-.error-state h2{font-size:20px;color:var(--text)}
-.error-state p{font-size:14px;max-width:400px}
+.error-state svg{width:56px;height:56px;fill:var(--text3)}
+.error-state h2{font-size:22px;color:var(--text);font-weight:800}
+.error-state p{font-size:15px;max-width:420px}
 .error-state button{
-  margin-top:8px;padding:10px 28px;border:none;border-radius:var(--radius-sm);
-  background:var(--s700);color:#fff;font-size:14px;font-weight:600;cursor:pointer
+  margin-top:12px;padding:12px 32px;border:none;border-radius:var(--radius-sm);
+  background:var(--s800);color:#fff;font-size:15px;font-weight:700;cursor:pointer;transition:all .2s
 }
 .error-state button:hover{background:var(--s900)}
 </style>
@@ -165,15 +267,15 @@ body{font-family:var(--font);background:var(--s50);color:var(--text);min-height:
 <header class="header">
   <div class="header-left">
     <div class="header-shield" aria-hidden="true">
-      <svg viewBox="0 0 24 24"><title>Monitor Ipiranga</title><path d="M12 1L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4zm0 10.99h7c-.53 4.12-3.28 7.79-7 8.94V12H5V6.3l7-3.11v8.8z"/></svg>
+      <svg viewBox="0 0 24 24"><path d="M12 1L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4zm0 10.99h7c-.53 4.12-3.28 7.79-7 8.94V12H5V6.3l7-3.11v8.8z"/></svg>
     </div>
     <div>
-      <div class="header-title">Monitor <span>Ipiranga</span></div>
-      <div style="font-size:12px;opacity:.7">Status dos serviços</div>
+      <div class="header-title">Monitor <span>Ipiranga/PR</span></div>
+      <div style="font-size:12px;opacity:.85;font-weight:500">Status em tempo real das utilidades e telecomunicações</div>
     </div>
   </div>
-  <button class="header-refresh-btn" id="btnRefresh" type="button" aria-label="Atualizar dados do monitoramento" title="Clique para atualizar">
-    <svg class="ri" id="refreshIcon" viewBox="0 0 24 24"><title>Recarregar</title><path d="M17.65 6.35C16.2 4.9 14.21 4 12 4c-4.42 0-7.99 3.58-7.99 8s3.57 8 7.99 8c3.73 0 6.84-2.55 7.73-6h-2.08c-.82 2.33-3.04 4-5.65 4-3.31 0-6-2.69-6-6s2.69-6 6-6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z"/></svg>
+  <button class="header-refresh-btn" id="btnRefresh" type="button" aria-label="Atualizar dados do monitoramento">
+    <svg class="ri" id="refreshIcon" viewBox="0 0 24 24"><path d="M17.65 6.35C16.2 4.9 14.21 4 12 4c-4.42 0-7.99 3.58-7.99 8s3.57 8 7.99 8c3.73 0 6.84-2.55 7.73-6h-2.08c-.82 2.33-3.04 4-5.65 4-3.31 0-6-2.69-6-6s2.69-6 6-6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z"/></svg>
     <span class="ht" id="headerTime" aria-live="polite">--:--</span>
     <span class="ov-dot ok" id="headerDot" role="img" aria-label="Status geral"></span>
   </button>
@@ -181,14 +283,22 @@ body{font-family:var(--font);background:var(--s50);color:var(--text);min-height:
 
 <div class="container">
   <div id="banner" class="banner ok" role="alert" aria-live="polite">
-    <div class="banner-icon" aria-hidden="true">
-      <svg viewBox="0 0 24 24"><title>Estado geral</title><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/></svg>
+    <div class="banner-icon" aria-hidden="true" id="bannerIcon">
+      <svg viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/></svg>
     </div>
     <div class="banner-text">
       <div class="banner-title" id="bannerTitle">Tudo estável</div>
-      <div class="banner-sub" id="bannerSub">Todos os serviços monitorados estão operando normalmente.</div>
+      <div class="banner-sub" id="bannerSub">Todos os serviços monitorados estão operando normalmente em Ipiranga.</div>
+      <div class="banner-details-list" id="bannerDetails"></div>
     </div>
-    <div class="banner-badge" id="bannerBadge">3 ok</div>
+    <div class="banner-badge" id="bannerBadge">3 OK</div>
+  </div>
+
+  <div class="section-head">
+    <div class="section-title">
+      <svg viewBox="0 0 24 24"><path d="M4 6h16v2H4zm0 5h16v2H4zm0 5h16v2H4z"/></svg>
+      Painel dos Serviços
+    </div>
   </div>
 
   <section class="grid" id="grid" aria-label="Status dos serviços"></section>
@@ -208,28 +318,33 @@ body{font-family:var(--font);background:var(--s50);color:var(--text);min-height:
 const API_SERVICES='/api/services';
 const API_STATUS='/api/status';
 const REFRESH_MS=30000;
+
 const BRANDS={
-  Claro:{label:'Claro',cls:'claro',cat:'telecom',desc:'Rede móvel'},
-  Vivo:{label:'Vivo',cls:'vivo',cat:'telecom',desc:'Rede móvel'},
-  TIM:{label:'TIM',cls:'tim',cat:'telecom',desc:'Rede móvel'},
-  Copel:{label:'Copel',cls:'copel',cat:'utility',desc:'Energia elétrica'},
-  Sanepar:{label:'Sanepar',cls:'sanepar',cat:'utility',desc:'Abastecimento de água'}
+  Claro:{label:'Claro',cls:'claro',cat:'telecom',desc:'Rede Móvel e Conectividade'},
+  Vivo:{label:'Vivo',cls:'vivo',cat:'telecom',desc:'Rede Móvel e Conectividade'},
+  TIM:{label:'TIM',cls:'tim',cat:'telecom',desc:'Rede Móvel e Conectividade'},
+  Copel:{label:'COPEL',cls:'copel',cat:'utility',desc:'Energia Elétrica (Copel ANEEL)'},
+  Sanepar:{label:'Sanepar',cls:'sanepar',cat:'utility',desc:'Abastecimento de Água'}
 };
+
 const SVG=`<svg viewBox="0 0 24 24">`;
 const LOGO={
-  claro:`<svg viewBox="0 0 24 24"><rect x="1" y="1" width="22" height="22" rx="6" fill="#ED1C24"/><text x="12" y="16" text-anchor="middle" fill="#fff" font-size="13" font-weight="800" font-family="system-ui,-apple-system,sans-serif">C</text></svg>`,
-  vivo:`<svg viewBox="0 0 24 24"><rect x="1" y="1" width="22" height="22" rx="6" fill="#660099"/><text x="12" y="16" text-anchor="middle" fill="#fff" font-size="13" font-weight="800" font-family="system-ui,-apple-system,sans-serif">V</text></svg>`,
-  tim:`<svg viewBox="0 0 24 24"><rect x="1" y="1" width="22" height="22" rx="6" fill="#003DA5"/><text x="12" y="16" text-anchor="middle" fill="#fff" font-size="8.5" font-weight="800" font-family="system-ui,-apple-system,sans-serif">TIM</text></svg>`,
+  claro:`<svg viewBox="0 0 24 24"><rect x="1" y="1" width="22" height="22" rx="6" fill="#ED1C24"/><text x="12" y="16" text-anchor="middle" fill="#fff" font-size="13" font-weight="800">C</text></svg>`,
+  vivo:`<svg viewBox="0 0 24 24"><rect x="1" y="1" width="22" height="22" rx="6" fill="#660099"/><text x="12" y="16" text-anchor="middle" fill="#fff" font-size="13" font-weight="800">V</text></svg>`,
+  tim:`<svg viewBox="0 0 24 24"><rect x="1" y="1" width="22" height="22" rx="6" fill="#003DA5"/><text x="12" y="16" text-anchor="middle" fill="#fff" font-size="8.5" font-weight="800">TIM</text></svg>`,
   copel:`<svg viewBox="0 0 24 24"><rect x="1" y="1" width="22" height="22" rx="6" fill="#00923F"/><path d="M14 4L6 13h4L9 22l8-11h-4l3-7z" fill="#fff"/></svg>`,
-  sanepar:`<svg viewBox="0 0 24 24"><rect x="1" y="1" width="22" height="22" rx="6" fill="#003F87"/><text x="12" y="16" text-anchor="middle" fill="#fff" font-size="13" font-weight="800" font-family="system-ui,-apple-system,sans-serif">S</text></svg>`,
+  sanepar:`<svg viewBox="0 0 24 24"><rect x="1" y="1" width="22" height="22" rx="6" fill="#003F87"/><text x="12" y="16" text-anchor="middle" fill="#fff" font-size="13" font-weight="800">S</text></svg>`,
 };
+
 const ICON={
   ok:`${SVG}<path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/></svg>`,
   warning:`${SVG}<path d="M1 21h22L12 2 1 21zm12-3h-2v-2h2v2zm0-4h-2v-4h2v4z"/></svg>`,
   error:`${SVG}<path d="M12 2C6.47 2 2 6.47 2 12s4.47 10 10 10 10-4.47 10-10S17.53 2 12 2zm5 13.59L15.59 17 12 13.41 8.41 17 7 15.59 10.59 12 7 8.41 8.41 7 12 10.59 15.59 7 17 8.41 13.41 12 17 15.59z"/></svg>`,
-  bolt:`${SVG}<path d="M7 2v11h3v9l7-12h-4l4-8z"/></svg>`,
-  check:`${SVG}<path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg>`,
-  clock:`${SVG}<path d="M11.99 2C6.47 2 2 6.48 2 12s4.47 10 9.99 10C17.52 22 22 17.52 22 12S17.52 2 11.99 2zM12 20c-4.42 0-8-3.58-8-8s3.58-8 8-8 8 3.58 8 8-3.58 8-8 8zm.5-13H11v6l5.25 3.15.75-1.23-4.5-2.67z"/></svg>`
+  bolt:`${SVG}<path d="M11 15H6l7-14v8h5l-7 14v-8z"/></svg>`,
+  pin:`${SVG}<path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/></svg>`,
+  clock:`${SVG}<path d="M11.99 2C6.47 2 2 6.48 2 12s4.47 10 9.99 10C17.52 22 22 17.52 22 12S17.52 2 11.99 2zM12 20c-4.42 0-8-3.58-8-8s3.58-8 8-8 8 3.58 8 8-3.58 8-8 8zm.5-13H11v6l5.25 3.15.75-1.23-4.5-2.67z"/></svg>`,
+  users:`${SVG}<path d="M16 11c1.66 0 2.99-1.34 2.99-3S17.66 5 16 5c-1.66 0-3 1.34-3 3s1.34 3 3 3zm-8 0c1.66 0 2.99-1.34 2.99-3S9.66 5 8 5C6.34 5 5 6.34 5 8s1.34 3 3 3zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5c0-2.33-4.67-3.5-7-3.5zm8 0c-.29 0-.62.02-.97.05 1.16.84 1.97 1.97 1.97 3.45V19h6v-2.5c0-2.33-4.67-3.5-7-3.5z"/></svg>`,
+  worker:`${SVG}<path d="M12 2c1.1 0 2 .9 2 2v1h4c1.1 0 2 .9 2 2v3c0 3.87-3.13 7-7 7s-7-3.13-7-7V7c0-1.1.9-2 2-2h4V4c0-1.1.9-2 2-2zM5 19v3h14v-3c0-2.21-3.58-4-8-4s-8 1.79-8 4z"/></svg>`
 };
 
 const $=(s)=>document.querySelector(s);
@@ -251,28 +366,50 @@ function updateClock(){
   const now=new Date();
   $('#headerTime').textContent=now.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
 }
-function latencyClass(ms){
-  if(ms===null||ms===undefined)return'';
-  if(ms<100)return'fast';
-  if(ms<500)return'';
-  return'slow';
-}
 
-function updateBanner(level,ok,warn,crit){
-  const bn=$('#banner'),t=$('#bannerTitle'),s=$('#bannerSub'),badge=$('#bannerBadge'),dot=$('#headerDot');
+function updateBanner(services){
+  const bn=$('#banner'),t=$('#bannerTitle'),s=$('#bannerSub'),badge=$('#bannerBadge'),dot=$('#headerDot'),detailsEl=$('#bannerDetails'),iconEl=$('#bannerIcon');
+  
+  const criticalSvcs=services.filter(x=>x.status==='critical');
+  const warnSvcs=services.filter(x=>x.status==='warn');
+  const okCount=services.filter(x=>x.status==='ok').length;
+
   bn.className='banner';
-  if(level==='critical'){
-    bn.classList.add('critical');t.textContent='Serviço instável';
-    s.textContent='Um ou mais serviços estão apresentando problemas.';badge.textContent=`${crit} crítico`;
+  detailsEl.innerHTML='';
+
+  if(criticalSvcs.length>0){
+    bn.classList.add('critical');
+    t.textContent='Ocorrências Críticas Detectadas!';
+    s.textContent=`Existem ${criticalSvcs.length} serviço(s) com instabilidade ou interrupção ativa em Ipiranga:`;
+    badge.textContent=`${criticalSvcs.length} CRÍTICO`;
     dot.className='ov-dot critical';
-  }else if(level==='warn'){
-    bn.classList.add('warn');t.textContent='Atenção necessária';
-    s.textContent='Alguns serviços podem estar com latência elevada.';badge.textContent=`${warn} alerta`;
+    iconEl.innerHTML=ICON.error;
+
+    let detailsHtml='';
+    for(const cs of criticalSvcs){
+      detailsHtml+=`<div class="banner-detail-item">🔴 <strong>${cs.name}:</strong> ${cs.details}</div>`;
+    }
+    detailsEl.innerHTML=detailsHtml;
+  }else if(warnSvcs.length>0){
+    bn.classList.add('warn');
+    t.textContent='Atenção Necessária';
+    s.textContent='Alguns serviços estão operando com latência elevada ou alerta de desempenho.';
+    badge.textContent=`${warnSvcs.length} ALERTA`;
     dot.className='ov-dot warn';
+    iconEl.innerHTML=ICON.warning;
+
+    let detailsHtml='';
+    for(const ws of warnSvcs){
+      detailsHtml+=`<div class="banner-detail-item">⚠️ <strong>${ws.name}:</strong> ${ws.details}</div>`;
+    }
+    detailsEl.innerHTML=detailsHtml;
   }else{
-    bn.classList.add('ok');t.textContent='Tudo estável';
-    s.textContent='Todos os serviços monitorados estão operando normalmente.';badge.textContent=`${ok} ok`;
+    bn.classList.add('ok');
+    t.textContent='Tudo Operando Estável';
+    s.textContent='Todos os serviços monitorados (telecomunicações e utilidades) estão funcionando normalmente.';
+    badge.textContent=`${okCount} OK`;
     dot.className='ov-dot ok';
+    iconEl.innerHTML=ICON.ok;
   }
 }
 
@@ -281,106 +418,204 @@ function renderCards(services){
   if(!services||services.length===0){
     grid.innerHTML=`<div class="error-state" style="grid-column:1/-1">
       ${ICON.error}<h2>Nenhum dado disponível</h2>
-      <p>O monitoramento ainda não coletou informações. Aguarde a primeira verificação automática.</p>
+      <p>O monitoramento ainda não coletou informações. Aguarde a verificação automática.</p>
     </div>`;
     return;
   }
+
+  // Ordenar serviços: Críticos primeiro, depois Avisos, depois OK
+  const sortedServices=[...services].sort((a,b)=>{
+    const p={critical:0,warn:1,ok:2};
+    return (p[a.status]||2) - (p[b.status]||2);
+  });
+
   let html='';
-  for(const svc of services){
+  for(const svc of sortedServices){
     const name=svc.name;
     const br=BRANDS[name]||{label:name,cls:'claro',cat:'telecom',desc:'Serviço'};
     const st=svc.status||'ok';
     const ico=LOGO[br.cls];
-    const stLabel=st==='ok'?'Normal':st==='warn'?'Atenção':'Crítico';
-    let perPortals='',latency='',latCls='',bgpLine='',detailLine='',portalsFail=0;
+    const stLabel=st==='ok'?'Normal':st==='warn'?'Atenção':'CRÍTICO';
+    
+    let contentHtml='';
 
-    if(svc.data?.portals){
-      const p=svc.data.portals;
-      if(p.length>0){
-        const success=p.filter(x=>x.success);
-        portalsFail=p.length-success.length;
-        const avg=success.length>0?Math.round(success.reduce((a,x)=>a+(x.latencyMs||0),0)/success.length):null;
-        perPortals=`${success.length}/${p.length}`;
-        if(avg!==null){latency=`${avg}`;latCls=latencyClass(avg);}
-      }
-    }
+    // ================= COPEL / SANEPAR (UTILIDADES) =================
     if(br.cat==='utility'){
-      detailLine=svc.details||'OK';
-      latency='—';
-    }
-    const hasLatency=latency&&latency!=='—';
-    let connOk=0,connTotal=0;
-    if(svc.data?.connectivity){
-      connOk=svc.data.connectivity.filter(x=>x.success).length;
-      connTotal=svc.data.connectivity.length;
-    }
-    if(svc.data?.bgp){
-      const b=svc.data.bgp;
-      bgpLine=`<div class="row">${ICON.clock}<span>AS${b.asn} · Faixas IPv4: ${b.prefixCountV4||0} · IPv6: ${b.prefixCountV6||0}</span></div>`;
+      const activeEvents=svc.data?.activeEvents || [];
+      const totalConsumers=svc.data?.totalConsumers || 0;
+      
+      let summaryBoxHtml='';
+      if(st==='critical'){
+        summaryBoxHtml=`<div class="summary-box critical">
+          ${ICON.bolt}
+          <div>${svc.details || 'Ocorrência de interrupção ativa'}</div>
+        </div>`;
+      }else{
+        summaryBoxHtml=`<div class="summary-box ok">
+          ${ICON.ok}
+          <div>Sem registros de falhas ou interrupções no momento</div>
+        </div>`;
+      }
+
+      let outagesListHtml='';
+      if(activeEvents.length>0){
+        let itemsHtml='';
+        for(const ev of activeEvents){
+          if(name==='Copel'){
+            const isProg=ev.ehProgramada;
+            const tagLabel=isProg?'Desligamento Programado':(ev.tipoPrincipal||'EMERGÊNCIA');
+            const previsaoStr=ev.previsaoRestabelecimento ? ev.previsaoRestabelecimento : 'Sem previsão';
+            const statusEquipe=ev.statusEquipe || 'Em atendimento';
+            const consumers=ev.qtdConsumidores || 0;
+
+            itemsHtml+=`<div class="outage-card">
+              <div class="outage-head">
+                <div class="outage-location">
+                  ${ICON.pin}
+                  <span>Bairro ${ev.bairro || 'Ipiranga'}</span>
+                </div>
+                <div class="outage-badge-tag ${isProg?'prog':''}">${tagLabel}</div>
+              </div>
+              <div class="outage-meta-grid">
+                <div class="outage-meta-item">
+                  ${ICON.clock}
+                  <span>Início: <strong>${ev.dataInicio || 'Recente'}</strong></span>
+                </div>
+                <div class="outage-meta-item">
+                  ${ICON.clock}
+                  <span>Previsão: <strong>${previsaoStr}</strong></span>
+                </div>
+                <div class="outage-meta-item">
+                  ${ICON.worker}
+                  <span>Equipe: <strong>${statusEquipe}</strong> (${ev.equipeId || 'Geral'})</span>
+                </div>
+                ${consumers>0 ? `
+                  <div class="outage-meta-item">
+                    <span class="consumers-count">⚡ ${consumers} consumidor(es) afetado(s)</span>
+                  </div>
+                `:''}
+              </div>
+            </div>`;
+          }else if(name==='Sanepar'){
+            itemsHtml+=`<div class="outage-card">
+              <div class="outage-head">
+                <div class="outage-location">
+                  ${ICON.pin}
+                  <span>${ev.bairro || ev.cidade}</span>
+                </div>
+                <div class="outage-badge-tag">INTERRUPÇÃO DE ÁGUA</div>
+              </div>
+              <div class="outage-meta-grid">
+                <div class="outage-meta-item">${ICON.clock} Início: <strong>${ev.inicio}</strong></div>
+                <div class="outage-meta-item">${ICON.clock} Retorno: <strong>${ev.fim}</strong></div>
+                <div class="outage-meta-item">Motivo: <strong>${ev.motivo}</strong></div>
+              </div>
+            </div>`;
+          }
+        }
+
+        outagesListHtml=`<div class="outages-container">
+          <div class="outages-title">
+            ${ICON.error} Ocorrências detalhadas (${activeEvents.length}):
+          </div>
+          ${itemsHtml}
+        </div>`;
+      }
+
+      contentHtml=summaryBoxHtml + outagesListHtml;
     }
 
-    html+=`<div class="card">
+    // ================= OPERADORAS (TELECOM) =================
+    if(br.cat==='telecom'){
+      const portals=svc.data?.portalResults || [];
+      const conn=svc.data?.connectivityResults || [];
+      const bgp=svc.data?.bgp || null;
+
+      let portalsHtml='';
+      if(portals.length>0){
+        for(const p of portals){
+          portalsHtml+=`<div class="portal-row">
+            <div class="portal-host">
+              ${p.success?ICON.ok:ICON.error}
+              <span>${p.host}</span>
+            </div>
+            <div>
+              <span class="portal-status-tag ${p.success?'ok':'fail'}">${p.success?'ONLINE':'OFFLINE'}</span>
+              <span style="margin-left:6px;font-weight:700">${Math.round(p.latencyMs||0)} ms</span>
+            </div>
+          </div>`;
+        }
+      }
+
+      let connSummary='';
+      if(conn.length>0){
+        const okConn=conn.filter(x=>x.success).length;
+        connSummary=`<div style="font-size:13px;font-weight:600;color:var(--text2)">
+          Conectividade Geral: <strong style="color:${okConn===conn.length?'var(--g6)':'var(--r6)'}">${okConn}/${conn.length} testes OK</strong>
+        </div>`;
+      }
+
+      let bgpSummary='';
+      if(bgp){
+        bgpSummary=`<div class="bgp-box">
+          <div><strong>Roteamento BGP (AS${bgp.asn}):</strong></div>
+          <div>IPv4: <strong>${bgp.prefixCountV4||0} prefixos</strong> | IPv6: <strong>${bgp.prefixCountV6||0} prefixos</strong></div>
+        </div>`;
+      }
+
+      contentHtml=`<div class="telecom-grid">
+        ${portalsHtml}
+        ${connSummary}
+        ${bgpSummary}
+      </div>`;
+    }
+
+    html+=`<div class="card ${st}">
+      <div class="card-crit-bar"></div>
       <div class="card-inner">
         <div class="card-head">
           <div class="card-icon ${br.cls}">${ico}</div>
-          <div class="card-name">${br.label}<span class="cb ${br.cat}">${br.cat==='telecom'?'Telefonia':'Utilidade'}</span></div>
-          <span class="card-status ${st}">${stLabel}</span>
+          <div class="card-name-group">
+            <div class="card-name">
+              ${br.label}
+              <span class="card-cb ${br.cat}">${br.cat==='telecom'?'Telefonia':'Utilidade'}</span>
+            </div>
+            <div class="card-sub">${br.desc}</div>
+          </div>
+          <div class="card-status-badge ${st}">${stLabel}</div>
         </div>
+
         <div class="card-body">
-          <div class="row">${ICON.check}<span>${br.desc}</span></div>
-          ${br.cat==='telecom'&&perPortals?`<div class="row">${ICON.bolt}<span>Portais: ${perPortals}${portalsFail>0?` (${portalsFail} falha${portalsFail>1?'s':''})`:''}</span></div>`:''}
-          ${detailLine?`<div class="row">${ICON.ok}<span>${detailLine}</span></div>`:''}
-          ${bgpLine}
-          ${hasLatency?`<div class="lat ${latCls}">${latency} <span>ms de latência média</span></div>`:''}
-          ${connTotal>0?`<div class="row">${ICON.ok}<span>Conectividade: ${connOk}/${connTotal} ok</span></div>`:''}
+          ${contentHtml}
         </div>
+
         <div class="card-foot">
-          <span>${fmtTime(svc.timestamp)}</span>
+          <span>Horário do teste: ${fmtTime(svc.timestamp)}</span>
           <span>${relativeTime(svc.timestamp)}</span>
         </div>
       </div>
     </div>`;
   }
-  grid.innerHTML=html;
-}
 
-function setSkeleton(){
-  const grid=$('#grid');
-  let html='';
-  for(const name of['Claro','Vivo','TIM','Copel','Sanepar']){
-    const cls=BRANDS[name].cls;
-    html+=`<div class="card skeleton">
-      <div class="card-inner">
-        <div class="card-head">
-          <div class="card-icon ${cls}"></div>
-          <div class="card-name"></div>
-          <div class="card-status"></div>
-        </div>
-        <div class="card-body"><div class="row"></div><div class="row"></div><div class="lat"></div></div>
-        <div class="card-foot"></div>
-      </div>
-    </div>`;
-  }
   grid.innerHTML=html;
 }
 
 function showError(msg){
   const grid=$('#grid');
   grid.innerHTML=`<div class="error-state" style="grid-column:1/-1">
-    ${ICON.error}<h2>Falha ao carregar</h2>
-    <p>${msg||'Não foi possível conectar ao servidor. Verifique sua conexão.'}</p>
-    <button onclick="fetchData()">Tentar novamente</button>
+    ${ICON.error}<h2>Falha de Conexão com o Monitor</h2>
+    <p>${msg||'Não foi possível obter dados atualizados da API. Verifique a conexão com o servidor.'}</p>
+    <button onclick="fetchData()">Tentar Novamente</button>
   </div>`;
   $('#liveLabel').textContent='Offline';
   $('.ld').style.background='var(--r6)';
 }
 
 async function fetchData(){
-  if(Date.now()-lastFetch<2000)return;
+  if(Date.now()-lastFetch<1500)return;
   lastFetch=Date.now();
   const ri=$('#refreshIcon');
   ri.classList.add('spinning');
-  setSkeleton();
   try{
     let resp=await fetch(API_SERVICES);
     if(!resp.ok)throw new Error(`HTTP ${resp.status}`);
@@ -394,40 +629,21 @@ async function fetchData(){
         services.push({
           name:op.operator,status:op.status,
           timestamp:data.timestamp,
-          data:{portals:op.portals||[],connectivity:op.connectivity||[],bgp:op.bgp||null}
+          data:{portalResults:op.portals||[],connectivityResults:op.connectivity||[],bgp:op.bgp||null}
         });
       }
-      renderFromServices(services,data.level||'ok');return;
+      renderCards(services);
+      updateBanner(services);
+      return;
     }
-    renderFromUnified(data);
+    const services=data.services||[];
+    updateBanner(services);
+    renderCards(services);
+    updateFooter(data.generatedAt);
+    $('.ld').style.background='var(--g5)';
+    $('#liveLabel').textContent='Ao vivo';
   }catch(e){showError(e.message)}
   finally{ri.classList.remove('spinning')}
-}
-
-function renderFromUnified(data){
-  const services=data.services||[];
-  let ok=0,warn=0,crit=0;
-  for(const s of services){
-    if(s.status==='ok')ok++;else if(s.status==='warn')warn++;else crit++;
-  }
-  const level=data.overallStatus||(crit>0?'critical':warn>0?'warn':'ok');
-  updateBanner(level,ok,warn,crit);
-  renderCards(services);
-  updateFooter(data.generatedAt);
-  $('.ld').style.background='var(--g6)';
-  $('#liveLabel').textContent='Ao vivo';
-}
-
-function renderFromServices(services,level){
-  let ok=0,warn=0,crit=0;
-  for(const s of services){
-    if(s.status==='ok')ok++;else if(s.status==='warn')warn++;else crit++;
-  }
-  updateBanner(level||'ok',ok,warn,crit);
-  renderCards(services);
-  updateFooter(Date.now());
-  $('.ld').style.background='var(--g6)';
-  $('#liveLabel').textContent='Ao vivo';
 }
 
 function updateFooter(ts){
@@ -441,7 +657,6 @@ document.getElementById('btnRefresh').addEventListener('click',fetchData);
 
 updateClock();
 setInterval(updateClock,60000);
-setSkeleton();
 fetchData();
 setInterval(fetchData,REFRESH_MS);
 </script>
