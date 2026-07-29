@@ -324,6 +324,9 @@ async function handleRequest(req: Request): Promise<Response> {
 				timestamp: Date.now(),
 			});
 		}
+		if (path === "/api/telemetry" && (req.method === "HEAD" || (req.method === "GET" && url.searchParams.has("ping")))) {
+			return new Response(null, { status: 200 });
+		}
 		if (path === "/api/telemetry" && req.method === "POST") {
 			try {
 				const ip =

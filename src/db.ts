@@ -207,7 +207,7 @@ export function recalculateIspHealth(
 	ttlHours = 2,
 ): IspHealthState {
 	const now = Date.now();
-	const cutoff = now - 30 * 60 * 1000;
+	const cutoff = now - 60 * 60 * 1000;
 	const row = db
 		.query(
 			`SELECT 
@@ -215,9 +215,9 @@ export function recalculateIspHealth(
         AVG(rtt_ms) as avg_rtt,
         SUM(CASE WHEN rtt_ms > 200 OR effective_type IN ('3g', '2g', 'slow-2g') THEN 1 ELSE 0 END) as degraded_count
        FROM telemetry_logs
-       WHERE isp_name = ? AND timestamp > ?`,
+       WHERE (isp_name = ? OR (operator IS NOT NULL AND operator = ?)) AND timestamp > ?`,
 		)
-		.get(ispName, cutoff) as {
+		.get(ispName, operator ?? "", cutoff) as {
 		sample_count: number;
 		avg_rtt: number;
 		degraded_count: number;
@@ -230,22 +230,23 @@ export function recalculateIspHealth(
 	let status: "ok" | "warn" | "critical" = "ok";
 	let details = `🟢 Conexão estável (Latência média: ${avgRttMs}ms — ${sampleCount} morador(es) em Ipiranga)`;
 
-	if (degradedCount > 0 || avgRttMs > 250) {
-		status = "warn";
-		details = `⚠️ Instabilidade/Latência elevada (${avgRttMs}ms) relatada por ${degradedCount} morador(es)`;
-	} else if (avgRttMs > 500) {
+	if (avgRttMs >= 500 || degradedCount >= 3) {
 		status = "critical";
-		details = `🔴 Queda severa ou lentidão extrema (${avgRttMs}ms) em Ipiranga`;
+		details = `🔴 Queda severa ou lentidão extrema (${avgRttMs}ms) relatada por moradores`;
+	} else if (avgRttMs >= 200 || degradedCount > 0) {
+		status = "warn";
+		details = `⚠️ Instabilidade / Latência elevada (${avgRttMs}ms) relatada por moradores`;
 	}
 
 	const expiresAt = now + ttlHours * 3600 * 1000;
+	const targetKey = operator || ispName;
 
 	db.run(
 		`INSERT OR REPLACE INTO isp_health_states 
      (isp_name, operator, status, avg_rtt_ms, sample_count, degraded_count, details, last_updated, expires_at) 
      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
 		[
-			ispName,
+			targetKey,
 			operator,
 			status,
 			avgRttMs,
@@ -258,7 +259,7 @@ export function recalculateIspHealth(
 	);
 
 	return {
-		ispName,
+		ispName: targetKey,
 		operator,
 		status,
 		avgRttMs,

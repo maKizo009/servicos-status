@@ -459,20 +459,26 @@ function scrollToCard(name){
 
 async function runClientTelemetry(){
   try{
-    const start = performance.now();
     const connType = navigator.connection ? navigator.connection.effectiveType : '';
+    const pingStart = performance.now();
+    await fetch(API_TELEMETRY + '?ping=1', { method: 'HEAD', cache: 'no-store' });
+    const rtt = Math.round(performance.now() - pingStart);
+
     const resp = await fetch(API_TELEMETRY, {
       method: 'POST',
       headers: {'Content-Type': 'application/json'},
-      body: JSON.stringify({ rttMs: 0, effectiveType: connType })
+      body: JSON.stringify({ rttMs: rtt, effectiveType: connType })
     });
-    const rtt = Math.round(performance.now() - start);
+
     if(resp.ok){
       const data = await resp.json();
       const isp = data.isp || {};
       const ispName = isp.ispName || (isp.operator ? `${isp.operator} (Rede Móvel)` : 'Banda Larga');
       $('#telemetryIsp').textContent = ispName;
       $('#telemetryPing').textContent = `⚡ Ping: ${rtt} ms ${connType ? '('+connType.toUpperCase()+')' : ''}`;
+      if(rtt > 200){
+        fetchData();
+      }
     }
   }catch(e){
     console.error("Telemetry error", e);
