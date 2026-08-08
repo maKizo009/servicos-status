@@ -1,3 +1,5 @@
+import type { NowcastResult } from "./radar-analysis.js";
+
 export type OperatorName = "Claro" | "Vivo" | "TIM";
 
 export interface OperatorConfig {
@@ -160,5 +162,7 @@ export interface WeatherState {
 	hourlyForecast: HourlyForecastPoint[];
 	radar: WeatherRadarData | null;
 	bulletin: WeatherBulletin | null;
+	/** Nowcast determinístico (Camada A) — núcleos + movimento do radar */
+	nowcast?: NowcastResult | null;
 	updatedAt: number;
 }

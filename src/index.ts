@@ -315,6 +315,24 @@ async function syncWeatherCycle(): Promise<WeatherState> {
 
 	setCachedWeatherState(state);
 
+	// Nowcast determinístico (Camada A): analisa núcleos + movimento do radar
+	try {
+		const nowcast = await getRadarNowcast();
+		state.nowcast = nowcast;
+		setCachedWeatherState(state);
+		logger.info("Nowcast integrado ao estado de clima", {
+			dominant: nowcast.currentDominant,
+			maxDbz: nowcast.currentMaxDbz,
+			movement: nowcast.movement
+				? `${nowcast.movement.directionDeg}° ${nowcast.movement.speedKmh}km/h`
+				: null,
+		});
+	} catch (err) {
+		logger.warn("Nowcast falhou ao integrar ao estado", {
+			error: String(err),
+		});
+	}
+
 	const now = Date.now();
 	const bulletinAgeMs = existingBulletin
 		? now - existingBulletin.generatedAt
