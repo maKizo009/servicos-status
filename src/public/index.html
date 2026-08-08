@@ -7,6 +7,8 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <style>
 *,*::before,*::after{margin:0;padding:0;box-sizing:border-box}
 :root{
@@ -21,6 +23,101 @@
   --shadow-crit:0 0 20px rgba(220,38,38,.2),0 4px 6px -1px rgba(220,38,38,.1);
   --font:'Inter',system-ui,-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif
 }
+
+.weather-section{
+  margin-top:24px;background:var(--surface);border-radius:var(--radius);border:2px solid var(--border);
+  box-shadow:var(--shadow-lg);overflow:hidden;display:flex;flex-direction:column
+}
+.weather-header{
+  background:linear-gradient(135deg,#0F172A 0%,#1E293B 100%);color:#fff;padding:18px 24px;
+  display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap
+}
+.weather-title-group{display:flex;align-items:center;gap:12px}
+.weather-icon-box{
+  width:44px;height:44px;background:rgba(56,189,248,.15);border:1px solid rgba(56,189,248,.3);
+  border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:22px
+}
+.weather-title{font-size:18px;font-weight:800;letter-spacing:-.3px}
+.weather-sub{font-size:13px;color:var(--s400)}
+.weather-metrics-bar{
+  display:flex;align-items:center;gap:12px;flex-wrap:wrap
+}
+.weather-badge{
+  background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.15);
+  padding:6px 14px;border-radius:10px;font-size:13px;font-weight:700;color:#fff;
+  display:inline-flex;align-items:center;gap:6px
+}
+
+.weather-content-grid{
+  display:grid;grid-template-columns:1fr;gap:0
+}
+@media(min-width:992px){.weather-content-grid{grid-template-columns:1fr 340px}}
+
+.radar-map-wrapper{
+  position:relative;background:#090d16;height:440px;width:100%
+}
+#weatherMap{width:100%;height:100%;z-index:1}
+
+.radar-controls-overlay{
+  position:absolute;bottom:16px;left:16px;right:16px;z-index:1000;
+  background:rgba(15,23,42,.85);backdrop-filter:blur(12px);
+  border:1px solid rgba(255,255,255,.15);border-radius:14px;padding:12px 18px;
+  display:flex;align-items:center;gap:14px;color:#fff;flex-wrap:wrap;
+  box-shadow:0 10px 25px rgba(0,0,0,.4)
+}
+.radar-play-btn{
+  background:#0284C7;border:none;color:#fff;width:38px;height:38px;border-radius:10px;
+  cursor:pointer;display:flex;align-items:center;justify-content:center;font-weight:800;
+  transition:all .2s ease;flex-shrink:0
+}
+.radar-play-btn:hover{background:#0369A1;transform:scale(1.05)}
+.radar-play-btn:active{transform:scale(.95)}
+.radar-slider{flex:1;min-width:120px;accent-color:#38BDF8;cursor:pointer}
+.map-layer-selector{
+  position:absolute;top:14px;right:14px;z-index:600;display:flex;gap:6px;
+  background:rgba(15,23,42,.85);backdrop-filter:blur(8px);padding:4px;border-radius:10px;
+  border:1px solid rgba(255,255,255,.15);box-shadow:0 4px 12px rgba(0,0,0,.3)
+}
+.layer-btn{
+  background:transparent;border:none;color:#94a3b8;font-size:11px;font-weight:700;
+  padding:5px 11px;border-radius:7px;cursor:pointer;transition:all .2s ease;display:flex;align-items:center;gap:4px
+}
+.layer-btn:hover{color:#fff;background:rgba(255,255,255,.1)}
+.layer-btn.active{background:#0284C7;color:#fff;font-weight:800}
+
+.radar-time-text{font-size:13px;font-weight:700;font-variant-numeric:tabular-nums;color:#38BDF8;white-space:nowrap}
+
+.weather-sidebar{
+  background:var(--s50);padding:20px;border-left:1px solid var(--border);
+  display:flex;flex-direction:column;gap:18px
+}
+.bulletin-box{
+  background:var(--surface);border:1px solid var(--s300);border-radius:12px;padding:14px;
+  display:flex;flex-direction:column;gap:8px;box-shadow:var(--shadow)
+}
+.bulletin-head{display:flex;align-items:center;justify-content:space-between}
+.bulletin-tag{
+  font-size:10px;font-weight:800;text-transform:uppercase;padding:3px 8px;border-radius:6px;
+  background:rgba(2,132,199,.12);color:#0284C7
+}
+.bulletin-text{font-size:13px;color:var(--text);line-height:1.5;font-weight:500}
+
+.rain-tile {
+  image-rendering: smooth;
+  filter: contrast(1.15) brightness(1.05) saturate(1.2);
+  transition: opacity 0.25s ease-in-out;
+}
+
+.llm-banner-box{
+  background:linear-gradient(135deg,#064E3B 0%,#0F172A 100%);
+  border-radius:12px;padding:14px;color:#fff;display:flex;flex-direction:column;gap:8px
+}
+.llm-btn{
+  background:rgba(255,255,255,.15);border:1px solid rgba(255,255,255,.25);color:#fff;
+  padding:6px 12px;border-radius:8px;font-size:12px;font-weight:700;cursor:pointer;
+  transition:all .2s;display:inline-flex;align-items:center;gap:6px;width:fit-content;text-decoration:none
+}
+.llm-btn:hover{background:rgba(255,255,255,.25)}
 html{font-size:16px;-webkit-font-smoothing:antialiased}
 body{font-family:var(--font);background:#F1F5F9;color:var(--text);min-height:100dvh;display:flex;flex-direction:column}
 
@@ -470,6 +567,59 @@ body{font-family:var(--font);background:#F1F5F9;color:var(--text);min-height:100
 
   <!-- TAB 1: STATUS AO VIVO -->
   <div id="statusView">
+    <!-- WEATHER & RAINVIEWER RADAR SECTION -->
+    <div class="weather-section">
+      <div class="weather-header">
+        <div class="weather-title-group">
+          <div class="weather-icon-box">🌩️</div>
+          <div>
+            <div class="weather-title">Radar de Chuva & Clima — Ipiranga e Região</div>
+            <div class="weather-sub">Previsão e monitoramento com radar RainViewer e limites municipais do IBGE</div>
+          </div>
+        </div>
+        <div class="weather-metrics-bar">
+          <div class="weather-badge" id="wxTempBadge">🌡️ --°C</div>
+          <div class="weather-badge" id="wxCondBadge">🌤️ Carregando...</div>
+          <div class="weather-badge" id="wxRainBadge">🌧️ --% Chuva</div>
+          <div class="weather-badge" id="wxWindBadge">💨 -- km/h</div>
+        </div>
+      </div>
+
+      <div class="weather-content-grid">
+        <div class="radar-map-wrapper">
+          <div class="map-layer-selector">
+            <button type="button" class="layer-btn active" id="layerStreetBtn">🗺️ Mapa</button>
+            <button type="button" class="layer-btn" id="layerSatBtn">🛰️ Satélite HD</button>
+          </div>
+          <div id="weatherMap"></div>
+          <div class="radar-controls-overlay">
+            <button type="button" class="radar-play-btn" id="radarPlayBtn" aria-label="Play / Pause radar">▶</button>
+            <input type="range" class="radar-slider" id="radarSlider" min="0" max="0" value="0" />
+            <span class="radar-time-text" id="radarTimeLabel">Ao vivo</span>
+          </div>
+        </div>
+
+        <div class="weather-sidebar">
+          <div class="bulletin-box">
+            <div class="bulletin-head">
+              <span style="font-size:13px;font-weight:800;color:var(--text)">Boletim Climatológico IA</span>
+              <span class="bulletin-tag" id="bulletinSourceTag">IA Local</span>
+            </div>
+            <p class="bulletin-text" id="bulletinText">Carregando análise descritiva da situação climatológica de Ipiranga...</p>
+          </div>
+
+          <div class="llm-banner-box">
+            <div style="font-size:13px;font-weight:800">🤖 AI-First & LLM Friendly</div>
+            <div style="font-size:12px;opacity:.9;line-height:1.4">Exposição dos dados em Markdown puro para assistentes de IA (ChatGPT, Claude, modelos locais).</div>
+            <div style="display:flex;gap:8px;margin-top:4px">
+              <a href="/llms.txt" target="_blank" class="llm-btn">📄 /llms.txt</a>
+              <a href="/api/weather/json-ld" target="_blank" class="llm-btn">🔗 JSON-LD</a>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
     <div class="section-head">
       <div class="section-title">
         <svg viewBox="0 0 24 24"><path d="M4 6h16v2H4zm0 5h16v2H4zm0 5h16v2H4z"/></svg>
@@ -743,6 +893,7 @@ function updateBanner(services){
 }
 
 function renderCards(services){
+  window.lastServicesData = services;
   const grid=$('#grid');
   if(!services||services.length===0){
     grid.innerHTML=`<div class="error-state" style="grid-column:1/-1">
@@ -817,11 +968,15 @@ function renderCards(services){
       }else{
         const lastCheckRel = relativeTime(svc.timestamp || Date.now());
         const nextCheckSec = Math.round(REFRESH_MS / 1000);
-        summaryBoxHtml=`<div class="summary-box ok" style="flex-direction:column;align-items:flex-start;gap:8px;padding:16px">
-          <div style="display:flex;align-items:center;gap:10px;font-size:15px;font-weight:700">
-            ${ICON.ok}
-            <span>✅ Sem interrupções ativas</span>
+        const hasRainAlert = (name==='Copel' && (window.latestWeatherData?.hasRegionalRain || (window.latestWeatherData?.rainProbabilityPct && window.latestWeatherData.rainProbabilityPct >= 50)));
+        summaryBoxHtml=`<div class="summary-box ${hasRainAlert ? 'warn' : 'ok'}" style="flex-direction:column;align-items:flex-start;gap:8px;padding:16px;${hasRainAlert ? 'background:rgba(234, 179, 8, 0.12);border:1.5px solid #eab308;border-radius:10px;' : ''}">
+          <div style="display:flex;align-items:center;gap:10px;font-size:15px;font-weight:700;color:${hasRainAlert ? '#eab308' : 'inherit'}">
+            ${hasRainAlert ? '⚡' : ICON.ok}
+            <span>${hasRainAlert ? '⚠️ Alerta de Tempestade: Risco de Oscilação / Queda de Energia (COPEL)' : '✅ Sem interrupções ativas'}</span>
           </div>
+          ${hasRainAlert ? `<div style="font-size:13px;color:var(--text);font-weight:500;padding-left:30px;line-height:1.4">
+            ${window.latestWeatherData?.regionalRainAlert || 'Núcleos de chuva foram detectados no radar RainViewer na região dos Campos Gerais. Raios e ventos podem afetar a rede elétrica da COPEL em Ipiranga nas próximas horas.'}
+          </div>` : ''}
           <div style="font-size:13px;color:var(--text2);font-weight:500;display:flex;flex-direction:column;gap:4px;padding-left:30px">
             <div>🕒 <strong>Última verificação:</strong> ${lastCheckRel}</div>
             <div>🔄 <strong>Próxima checagem automática:</strong> em ~${nextCheckSec}s</div>
@@ -1200,6 +1355,234 @@ setInterval(updateClock,60000);
 fetchData();
 runClientTelemetry();
 setInterval(fetchData,REFRESH_MS);
+
+// Weather & RainViewer Radar Map Logic
+let map = null;
+let streetLayer = null;
+let satLayer = null;
+let radarFrames = [];
+let radarTileLayers = [];
+let currentFrameIndex = 0;
+let isPlaying = false;
+let playInterval = null;
+
+async function initWeatherMap() {
+  if (map || typeof L === 'undefined') return;
+  const ipirangaLat = -25.0244;
+  const ipirangaLng = -50.5847;
+
+  map = L.map('weatherMap', {
+    center: [ipirangaLat, ipirangaLng],
+    zoom: 8,
+    minZoom: 6,
+    maxZoom: 14,
+    zoomControl: true,
+    attributionControl: false,
+  });
+
+  // Base map tile layers (Street & High-Res Satellite)
+  streetLayer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    maxNativeZoom: 14,
+    opacity: 0.85
+  });
+
+  satLayer = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+    maxNativeZoom: 17,
+    maxZoom: 17,
+    opacity: 0.95
+  });
+
+  streetLayer.addTo(map);
+
+  // Toggle Map Base Layers
+  const btnStreet = document.getElementById('layerStreetBtn');
+  const btnSat = document.getElementById('layerSatBtn');
+
+  btnStreet?.addEventListener('click', () => {
+    if (map.hasLayer(satLayer)) map.removeLayer(satLayer);
+    if (!map.hasLayer(streetLayer)) map.addLayer(streetLayer);
+    btnStreet.classList.add('active');
+    btnSat?.classList.remove('active');
+  });
+
+  btnSat?.addEventListener('click', () => {
+    if (map.hasLayer(streetLayer)) map.removeLayer(streetLayer);
+    if (!map.hasLayer(satLayer)) map.addLayer(satLayer);
+    btnSat.classList.add('active');
+    btnStreet?.classList.remove('active');
+  });
+
+  // Dedicated Panes for Z-Index layering
+  map.createPane('radarPane');
+  map.getPane('radarPane').style.zIndex = 430;
+
+  map.createPane('ibgePane');
+  map.getPane('ibgePane').style.zIndex = 500;
+  map.getPane('ibgePane').style.pointerEvents = 'none';
+
+  // Fetch & Render Official IBGE Municipal Boundaries GeoJSON (Clean tooltips on hover)
+  try {
+    const geoResp = await fetch('/ibge-ipiranga-region.json');
+    if (geoResp.ok) {
+      const geoJson = await geoResp.json();
+      L.geoJSON(geoJson, {
+        pane: 'ibgePane',
+        style: (feature) => {
+          const isCenter = feature.properties?.isCenter;
+          return {
+            color: isCenter ? '#38bdf8' : '#64748b',
+            weight: isCenter ? 2.5 : 1.2,
+            dashArray: isCenter ? null : '4, 4',
+            fill: true,
+            fillColor: isCenter ? '#0284c7' : '#1e293b',
+            fillOpacity: isCenter ? 0.05 : 0.01
+          };
+        },
+        onEachFeature: (feature, layer) => {
+          const name = feature.properties?.name || 'Município';
+          const isCenter = feature.properties?.isCenter;
+          layer.bindTooltip(`<strong>${name}</strong>${isCenter ? ' (Sede)' : ''}`, {
+            permanent: false,
+            direction: 'center',
+            sticky: true
+          });
+        }
+      }).addTo(map);
+    }
+  } catch (err) {
+    console.warn("IBGE GeoJSON load error", err);
+  }
+
+  // Sleek Marker for Ipiranga City Center
+  const centerIcon = L.divIcon({
+    className: 'custom-map-pin',
+    html: '<div style="background:#0284c7;color:#fff;font-weight:700;font-size:10px;padding:2px 7px;border-radius:10px;box-shadow:0 2px 8px rgba(0,0,0,0.5);border:1px solid #38bdf8;pointer-events:none">📍 Ipiranga</div>',
+    iconSize: [68, 20],
+    iconAnchor: [34, 10]
+  });
+  L.marker([ipirangaLat, ipirangaLng], { icon: centerIcon, zIndexOffset: 1000 }).addTo(map);
+
+  fetchWeatherData();
+}
+
+async function fetchWeatherData() {
+  try {
+    const resp = await fetch('/api/weather');
+    if (!resp.ok) return;
+    const data = await resp.json();
+    window.latestWeatherData = data;
+
+    if (data.tempC !== undefined) {
+      const tEl = document.getElementById('wxTempBadge');
+      const cEl = document.getElementById('wxCondBadge');
+      const rEl = document.getElementById('wxRainBadge');
+      const wEl = document.getElementById('wxWindBadge');
+      if(tEl) tEl.textContent = `🌡️ ${data.tempC}°C`;
+      if(cEl) cEl.textContent = `🌤️ ${data.condition || 'Nublado'}`;
+      if(rEl) rEl.textContent = `🌧️ ${data.rainProbabilityPct ?? 0}% Chuva`;
+      if(wEl) wEl.textContent = `💨 ${data.windKmh ?? 0} km/h`;
+
+      // Highlight Regional Radar Alert if active rain is detected in Campos Gerais
+      if (data.hasRegionalRain) {
+        if(rEl) {
+          rEl.style.background = 'rgba(220, 38, 38, 0.25)';
+          rEl.style.borderColor = '#ef4444';
+          rEl.textContent = `⚡ Radar: Chuva na Região (${data.rainProbabilityPct}%)`;
+        }
+      }
+
+      if (window.lastServicesData) {
+        renderCards(window.lastServicesData);
+      }
+    }
+
+    if (data.bulletin?.bulletin) {
+      const bEl = document.getElementById('bulletinText');
+      const sEl = document.getElementById('bulletinSourceTag');
+      if(bEl) bEl.textContent = data.bulletin.bulletin;
+      const src = data.bulletin.source === 'nvidia_nim' ? 'NVIDIA NIM' : data.bulletin.source === 'gemini' ? 'Gemini' : 'Engine Local';
+      if(sEl) sEl.textContent = `IA (${src})`;
+    }
+
+    if (data.radar?.radar?.past && data.radar.radar.past.length > 0) {
+      const host = data.radar.host || 'https://tilecache.rainviewer.com';
+      radarFrames = [...data.radar.radar.past, ...(data.radar.radar.nowcast || [])];
+
+      radarTileLayers.forEach(l => map.removeLayer(l));
+      radarTileLayers = [];
+
+      radarFrames.forEach((frame) => {
+        const tileUrl = `${host}${frame.path}/256/{z}/{x}/{y}/2/1_1.png`;
+        const layer = L.tileLayer(tileUrl, {
+          pane: 'radarPane',
+          tileSize: 256,
+          opacity: 0,
+          maxNativeZoom: 7,
+          maxZoom: 14,
+          className: 'rain-tile'
+        });
+        layer.addTo(map);
+        radarTileLayers.push(layer);
+      });
+
+      const slider = document.getElementById('radarSlider');
+      if(slider) {
+        slider.max = Math.max(0, radarFrames.length - 1);
+        currentFrameIndex = radarFrames.length - 1;
+        slider.value = currentFrameIndex;
+        showRadarFrame(currentFrameIndex);
+      }
+    }
+  } catch (e) {
+    console.error("Weather fetch error", e);
+  }
+}
+
+function showRadarFrame(index) {
+  if (!radarTileLayers || radarTileLayers.length === 0) return;
+  currentFrameIndex = index;
+  radarTileLayers.forEach((layer, i) => {
+    layer.setOpacity(i === index ? 0.75 : 0);
+  });
+
+  const frame = radarFrames[index];
+  if (frame && frame.time) {
+    const dt = new Date(frame.time * 1000);
+    const timeStr = dt.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+    const isNowcast = index >= (radarFrames.length - 2);
+    const lbl = document.getElementById('radarTimeLabel');
+    if(lbl) lbl.textContent = `${timeStr} ${isNowcast ? '(Previsão)' : ''}`;
+  }
+}
+
+function toggleRadarPlay() {
+  isPlaying = !isPlaying;
+  const btn = document.getElementById('radarPlayBtn');
+  if(btn) btn.textContent = isPlaying ? '⏸' : '▶';
+
+  if (isPlaying) {
+    playInterval = setInterval(() => {
+      let nextIndex = currentFrameIndex + 1;
+      if (nextIndex >= radarFrames.length) nextIndex = 0;
+      const slider = document.getElementById('radarSlider');
+      if(slider) slider.value = nextIndex;
+      showRadarFrame(nextIndex);
+    }, 800);
+  } else {
+    if (playInterval) clearInterval(playInterval);
+  }
+}
+
+document.getElementById('radarPlayBtn')?.addEventListener('click', toggleRadarPlay);
+document.getElementById('radarSlider')?.addEventListener('input', (e) => {
+  if (isPlaying) toggleRadarPlay();
+  showRadarFrame(parseInt(e.target.value, 10));
+});
+
+document.addEventListener('DOMContentLoaded', () => {
+  initWeatherMap();
+});
+setTimeout(initWeatherMap, 600);
 </script>
 </body>
 </html>

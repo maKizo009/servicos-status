@@ -23,8 +23,17 @@ export interface AppConfig {
 	saneparPageUrl: string;
 	saneparViewName: string;
 	saneparDisplays: string[];
+	// AI / LLM & Clima
+	nvidiaNimApiKey: string;
+	nvidiaNimModel: string;
+	nvidiaNimEndpoint: string;
+	geminiApiKey: string;
+	weatherModel: string;
 	municipio: string;
 	unifiedReportIntervalMs: number;
+	// Turso Cloud Database
+	tursoDatabaseUrl: string;
+	tursoAuthToken: string;
 }
 
 export const connectivityTargets: { host: string; label: string }[] = [
@@ -72,7 +81,16 @@ export function loadConfig(): AppConfig {
 		saneparViewName:
 			process.env.SANEPAR_VIEW_NAME ?? "notices_panel_supply_stop",
 		saneparDisplays: ["supply_stop_desk", "supply_stop_mobile"],
+		nvidiaNimApiKey: process.env.NVIDIA_NIM_API_KEY ?? "",
+		nvidiaNimModel: process.env.NVIDIA_NIM_MODEL ?? "meta/llama-3.1-8b-instruct",
+		nvidiaNimEndpoint:
+			process.env.NVIDIA_NIM_ENDPOINT ??
+			"https://integrate.api.nvidia.com/v1/chat/completions",
+		geminiApiKey: process.env.GEMINI_API_KEY ?? "",
+		weatherModel: process.env.WEATHER_MODEL ?? "ecmwf_ifs04",
 		municipio: process.env.MUNICIPIO ?? "Ipiranga",
 		unifiedReportIntervalMs: envInt("UNIFIED_REPORT_INTERVAL_MS", 3_600_000),
+		tursoDatabaseUrl: process.env.TURSO_DATABASE_URL ?? "",
+		tursoAuthToken: process.env.TURSO_AUTH_TOKEN ?? "",
 	};
 }

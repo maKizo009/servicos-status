@@ -1,3 +1,5 @@
+import { mkdirSync } from "node:fs";
+import { dirname } from "node:path";
 import { Database } from "bun:sqlite";
 import { logger } from "./logger";
 import type {
@@ -6,11 +8,14 @@ import type {
 	LocalSignalReport,
 	OperatorName,
 	PortalResult,
+	WeatherBulletin,
+	WeatherRadarData,
 } from "./types";
 
 let db: Database;
 
 export function initDb(path = "data/health.db"): Database {
+	mkdirSync(dirname(path), { recursive: true });
 	db = new Database(path);
 	db.run("PRAGMA journal_mode = WAL");
 	db.run("PRAGMA synchronous = NORMAL");
@@ -122,6 +127,39 @@ export function initDb(path = "data/health.db"): Database {
   `);
 
 	db.run(`
+    CREATE TABLE IF NOT EXISTS event_history (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      source TEXT NOT NULL,
+      title TEXT NOT NULL,
+      bairro TEXT DEFAULT '',
+      details TEXT DEFAULT '',
+      consumers INTEGER DEFAULT 0,
+      timestamp INTEGER NOT NULL
+    )
+  `);
+
+	db.run(`
+    CREATE TABLE IF NOT EXISTS weather_radar_cache (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      host TEXT NOT NULL,
+      version TEXT NOT NULL,
+      payload TEXT NOT NULL,
+      status TEXT NOT NULL,
+      last_success_time INTEGER NOT NULL,
+      timestamp INTEGER NOT NULL
+    )
+  `);
+
+	db.run(`
+    CREATE TABLE IF NOT EXISTS weather_bulletins (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      bulletin TEXT NOT NULL,
+      source TEXT NOT NULL,
+      generated_at INTEGER NOT NULL
+    )
+  `);
+
+	db.run(`
     CREATE INDEX IF NOT EXISTS idx_portal_timestamp ON portal_results(timestamp)
   `);
 	db.run(`
@@ -141,6 +179,9 @@ export function initDb(path = "data/health.db"): Database {
   `);
 	db.run(`
     CREATE INDEX IF NOT EXISTS idx_event_history_timestamp ON event_history(timestamp)
+  `);
+	db.run(`
+    CREATE INDEX IF NOT EXISTS idx_weather_bulletins_generated ON weather_bulletins(generated_at)
   `);
 
 	logger.info("Database initialized", { path });
@@ -548,6 +589,83 @@ export function getDailyStatsSummary() {
 			testsToday: telemetryToday?.cnt || 0,
 		},
 		recentLogs: logs,
+	};
+}
+
+export function saveRadarCache(data: WeatherRadarData): void {
+	if (!db) return;
+	const payload = JSON.stringify(data);
+	db.run(
+		"INSERT INTO weather_radar_cache (host, version, payload, status, last_success_time, timestamp) VALUES (?, ?, ?, ?, ?, ?)",
+		[
+			data.host,
+			data.version,
+			payload,
+			data.status,
+			data.lastSuccessTime,
+			Date.now(),
+		],
+	);
+}
+
+export function getLatestRadarCache(): WeatherRadarData | null {
+	if (!db) return null;
+	const row = db
+		.query(
+			"SELECT payload, status, last_success_time FROM weather_radar_cache ORDER BY timestamp DESC LIMIT 1",
+		)
+		.get() as { payload: string; status: string; last_success_time: number } | null;
+
+	if (!row) return null;
+	try {
+		const parsed = JSON.parse(row.payload) as WeatherRadarData;
+		parsed.status = row.status as "ok" | "degraded" | "down";
+		parsed.lastSuccessTime = row.last_success_time;
+		return parsed;
+	} catch {
+		return null;
+	}
+}
+
+export function saveWeatherBulletin(
+	bulletin: string,
+	source: "nvidia_nim" | "gemini" | "heuristic",
+): WeatherBulletin {
+	const now = Date.now();
+	if (db) {
+		const res = db.run(
+			"INSERT INTO weather_bulletins (bulletin, source, generated_at) VALUES (?, ?, ?)",
+			[bulletin, source, now],
+		);
+		return {
+			id: Number(res.lastInsertRowid),
+			bulletin,
+			source,
+			generatedAt: now,
+		};
+	}
+	return { bulletin, source, generatedAt: now };
+}
+
+export function getLatestWeatherBulletin(): WeatherBulletin | null {
+	if (!db) return null;
+	const row = db
+		.query(
+			"SELECT id, bulletin, source, generated_at FROM weather_bulletins ORDER BY generated_at DESC LIMIT 1",
+		)
+		.get() as {
+		id: number;
+		bulletin: string;
+		source: "nvidia_nim" | "gemini" | "heuristic";
+		generated_at: number;
+	} | null;
+
+	if (!row) return null;
+	return {
+		id: row.id,
+		bulletin: row.bulletin,
+		source: row.source,
+		generatedAt: row.generated_at,
 	};
 }
 

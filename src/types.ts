@@ -110,3 +110,56 @@ export interface UnifiedReport {
 		sanepar: SaneparInterruption[];
 	};
 }
+
+// =================== RainViewer & Clima ===================
+export interface RainViewerFrame {
+	time: number;
+	path: string;
+}
+
+export interface WeatherRadarData {
+	host: string;
+	version: string;
+	generated: number;
+	radar: {
+		past: RainViewerFrame[];
+		nowcast: RainViewerFrame[];
+	};
+	satellite: {
+		infrared: RainViewerFrame[];
+	};
+	status: "ok" | "degraded" | "down";
+	lastSuccessTime: number;
+	hasRegionalRain?: boolean;
+	error?: string;
+}
+
+export interface WeatherBulletin {
+	id?: number;
+	bulletin: string;
+	source: "nvidia_nim" | "gemini" | "heuristic";
+	generatedAt: number;
+}
+
+export interface HourlyForecastPoint {
+	time: string;
+	tempC: number;
+	rainProbabilityPct: number;
+	precipitationMm: number;
+}
+
+export interface WeatherState {
+	municipio: string;
+	tempC: number;
+	condition: string;
+	rainProbabilityPct: number;
+	windKmh: number;
+	humidityPct: number;
+	hasRegionalRain: boolean;
+	regionalRainAlert: string;
+	hourlyForecast: HourlyForecastPoint[];
+	radar: WeatherRadarData | null;
+	bulletin: WeatherBulletin | null;
+	updatedAt: number;
+}
+

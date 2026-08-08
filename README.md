@@ -1,37 +1,70 @@
-# services-health
+# Monitor Ipiranga & Radar Climatológico AI-First
 
-Monitor unificado de serviços para **Ipiranga - PR**.
+Monitor unificado de serviços e clima para **Ipiranga e Região dos Campos Gerais — PR**. Projeto utilitário, comunitário, sem fins lucrativos, focado na arquitetura **Zero-Cost** e **LLM-Friendly / AI-First**.
 
-Monitora:
+```mermaid
+flowchart TD
+    subgraph Ingestion["Fase 1: Ingestão & Resiliência (Bun/TS)"]
+        RV["RainViewer API (Grátis)"] --> WCollector["Weather Collector Worker"]
+        OM["Open-Meteo API (Grátis)"] --> WCollector
+        WCollector --> Cache[("SQLite Cache (health.db)")]
+    end
+
+    subgraph LLMLayer["Fase 2: AI-First & LLM-Friendly"]
+        Cache --> LLMSTXT["Endpoint /llms.txt & /llms-full.txt"]
+        Cache --> JSONLD["Endpoint /api/weather/json-ld"]
+        Cache --> NIMWorker["Boletim IA Worker"]
+        NIMWorker -->|"NVIDIA NIM API / Llama 3.1"| NIM["NVIDIA NIM Engine"]
+        NIMWorker -.->|"Fallback"| LocalEngine["Engine Heurística Local"]
+    end
+
+    subgraph Frontend["Fase 3: Web Dashboard (Leaflet.js + IBGE)"]
+        Cache --> REST["API REST /api/weather"]
+        IBGE["IBGE GeoJSON (Ipiranga & Vizinhos)"] --> Leaflet["Leaflet.js Radar Map"]
+        REST --> Leaflet
+        Leaflet --> Dashboard["Dashboard Responsivo"]
+    end
+```
+
+## 🌦️ Funcionalidades Meteorológicas & Clima
+- **Radar RainViewer 10min**: Animação contínua de mancha de chuva dos últimos 60 minutos e nowcast.
+- **Camada Vetorial IBGE**: Limites municipais exatos de Ipiranga (`4110508`) com realce neon e municípios vizinhos (Ponta Grossa, Castro, Prudentópolis, Tibagi, Imbituva, Teixeira Soares, Guamiranga, Ivaí).
+- **Endpoint `/llms.txt`**: Exposição em Markdown denso para assistentes de IA (ChatGPT, Claude, modelos locais).
+- **JSON-LD Schema**: Dados estritamente estruturados (`https://schema.org/SpecialAnnouncement`).
+- **Boletins IA (NVIDIA NIM)**: Síntese em linguagem natural gerada por modelos da NVIDIA NIM (`meta/llama-3.1-8b-instruct`) ou engine de regras heurísticas locais.
+
+## 📡 Monitoramento de Infraestrutura Pública
 - **Operadoras móveis**: Claro, Vivo, TIM (portais, conectividade, BGP)
 - **COPEL**: Ocorrências de energia (programadas e emergenciais)
 - **Sanepar**: Interrupções programadas de abastecimento de água
 
-## Stack
+---
+
+## 🛠️ Stack
 
 - **Runtime:** Bun 1.3+
 - **Linguagem:** TypeScript
-- **Banco:** SQLite (bun:sqlite) com WAL mode
+- **Banco:** SQLite (`bun:sqlite`) com WAL mode
+- **Mapas & UI:** Leaflet.js + CartoDB / OpenStreetMap + IBGE GeoJSON
+- **LLM Engine:** NVIDIA NIM API (Llama 3.1) / Local Heuristic Engine
 - **HTTP:** Servidor nativo Bun
-- **Logs:** JSON estruturado (Loki/ELK ready)
-- **Alertas:** Telegram (Markdown)
+- **Logs:** JSON estruturado
 
-## Configuração
+---
+
+## ⚙️ Configuração
 
 Copie `.env.example` para `.env` e preencha:
 
 | Variável | Descrição | Default |
 |---|---|---|
+| `NVIDIA_NIM_API_KEY` | Chave de API da NVIDIA NIM (opcional para boletins IA) | — |
 | `TELEGRAM_BOT_TOKEN` | Token do bot Telegram | — |
 | `TELEGRAM_CHAT_ID` | Chat ID para alertas | — |
-| `CHECK_INTERVAL_MS` | Intervalo entre ciclos (ms) | 60000 |
-| `HTTP_PORT` | Porta do servidor | 3000 |
-| `MUNICIPIO` | Município alvo para utilidades | IPIRANGA |
-| `COPEL_API_URL` | URL da API COPEL ANEEL | _(fixa)_ |
-| `COPEL_TIMEOUT_MS` | Timeout requisição COPEL | 30000 |
-| `SANEPAR_VIEWS_AJAX` | URL AJAX Sanepar | _(fixa)_ |
-| `SANEPAR_PAGE_URL` | URL página Sanepar | _(fixa)_ |
-| `UNIFIED_REPORT_INTERVAL_MS` | Intervalo relatório unificado | 3600000 |
+| `CHECK_INTERVAL_MS` | Intervalo entre ciclos (ms) | `60000` |
+| `HTTP_PORT` | Porta do servidor | `3030` |
+| `MUNICIPIO` | Município alvo para utilidades | `Ipiranga` |
+
 
 ## Execução
 

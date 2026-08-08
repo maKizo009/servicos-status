@@ -6,6 +6,7 @@ import {
 	getLatestBgpResults,
 	getLatestConnectivityResults,
 	getLatestPortalResults,
+	getLatestWeatherBulletin,
 	getPortalHistory,
 	getTelemetryStats,
 	initDb,
@@ -17,6 +18,7 @@ import {
 	saveTelemetryLog,
 } from "./db";
 import { detectIsp } from "./isp-detector";
+import { generateAiWeatherBulletin, renderJsonLd, renderLlmsTxt } from "./llm-formatter";
 import { logger } from "./logger";
 import { checkRateLimit } from "./rate-limiter";
 import { EventTracker } from "./state";
@@ -34,7 +36,14 @@ import type {
 	OperatorName,
 	PortalResult,
 	UnifiedReport,
+	WeatherState,
 } from "./types";
+import {
+	fetchCurrentWeather,
+	fetchRainViewerRadar,
+	getCachedWeatherState,
+	setCachedWeatherState,
+} from "./weather-collector";
 
 const config = loadConfig();
 const db = initDb();
@@ -260,9 +269,87 @@ function handleServices(): Response {
 	return Response.json(lastUnifiedReport);
 }
 
+let weatherInterval: ReturnType<typeof setInterval> | null = null;
+
+async function syncWeatherCycle(): Promise<WeatherState> {
+	logger.info("Starting weather & radar sync cycle...");
+	const [radar, weatherInfo] = await Promise.all([
+		fetchRainViewerRadar(),
+		fetchCurrentWeather(),
+	]);
+
+	const existingBulletin = getLatestWeatherBulletin();
+
+	const state: WeatherState = {
+		municipio: config.municipio || "Ipiranga",
+		tempC: weatherInfo.tempC,
+		condition: weatherInfo.condition,
+		rainProbabilityPct: weatherInfo.rainProbabilityPct,
+		windKmh: weatherInfo.windKmh,
+		humidityPct: weatherInfo.humidityPct,
+		hasRegionalRain: radar.hasRegionalRain || false,
+		regionalRainAlert: radar.hasRegionalRain
+			? "🌩️ Núcleos de chuva detectados na região dos Campos Gerais. Atenção para potencial deslocamento de instabilidades e oscilações na rede elétrica (COPEL)."
+			: "Sem instabilidades ativas no radar regional.",
+		hourlyForecast: weatherInfo.hourlyForecast || [],
+		radar,
+		bulletin: existingBulletin,
+		updatedAt: Date.now(),
+	};
+
+	setCachedWeatherState(state);
+
+	const now = Date.now();
+	const bulletinAgeMs = existingBulletin ? now - existingBulletin.generatedAt : Infinity;
+	const isExpired = bulletinAgeMs > 900_000; // 15 min expiration
+	const isRainStatusMismatch = Boolean(
+		radar.hasRegionalRain &&
+		existingBulletin &&
+		(existingBulletin.bulletin.includes("estáveis") ||
+			existingBulletin.bulletin.includes("sem instabilidades") ||
+			existingBulletin.bulletin.includes("estável") ||
+			existingBulletin.bulletin.includes("Nenhuma alteração"))
+	);
+
+	if (!existingBulletin || isExpired || isRainStatusMismatch) {
+		logger.info("Triggering fresh AI Weather Bulletin generation", {
+			reason: !existingBulletin ? "no_bulletin" : isRainStatusMismatch ? "rain_status_mismatch" : "cache_expired",
+			bulletinAgeMin: Math.round(bulletinAgeMs / 60000),
+			hasRegionalRain: radar.hasRegionalRain,
+		});
+		const newBulletinText = await generateAiWeatherBulletin(state, lastUnifiedReport);
+		const updatedBulletin = getLatestWeatherBulletin();
+		state.bulletin = updatedBulletin || {
+			bulletin: newBulletinText,
+			source: "heuristic",
+			generatedAt: now,
+		};
+		setCachedWeatherState(state);
+	}
+
+	logger.info("Weather & radar sync cycle completed", {
+		tempC: state.tempC,
+		condition: state.condition,
+		radarStatus: radar.status,
+	});
+
+	return state;
+}
+
 async function handleRequest(req: Request): Promise<Response> {
 	const url = new URL(req.url);
 	const path = url.pathname;
+
+	// Serve llms.txt endpoints without rate limits
+	if (path === "/llms.txt" || path === "/llms-full.txt") {
+		const text = renderLlmsTxt(getCachedWeatherState(), lastUnifiedReport);
+		return new Response(text, {
+			headers: {
+				"Content-Type": "text/plain; charset=utf-8",
+				"Cache-Control": "public, max-age=300",
+			},
+		});
+	}
 
 	// Rate limit all /api/* endpoints except /health
 	if (path.startsWith("/api/")) {
@@ -299,6 +386,26 @@ async function handleRequest(req: Request): Promise<Response> {
 		if (path === "/api/status") return handleStatus();
 		if (path === "/api/services") return handleServices();
 		if (path === "/api/report") return handleServices();
+		if (path === "/api/weather" || path === "/api/weather/radar") {
+			const state = getCachedWeatherState();
+			return Response.json(state || { error: "Sem dados climatológicos no momento" });
+		}
+		if (path === "/api/weather/json-ld") {
+			const jsonLd = renderJsonLd(getCachedWeatherState(), lastUnifiedReport);
+			return new Response(JSON.stringify(jsonLd, null, 2), {
+				headers: {
+					"Content-Type": "application/ld+json; charset=utf-8",
+					"Cache-Control": "public, max-age=300",
+				},
+			});
+		}
+		if (path === "/api/weather/bulletin") {
+			const state = getCachedWeatherState();
+			return Response.json({
+				bulletin: state?.bulletin || null,
+				timestamp: Date.now(),
+			});
+		}
 		if (path === "/api/history") return handleHistory(url);
 		if (path === "/api/operators") {
 			return Response.json({ operators: Object.keys(config.operators) });
@@ -468,9 +575,10 @@ async function main(): Promise<void> {
 		httpPort: config.httpPort,
 	});
 
-	await runChecks();
+	await Promise.all([runChecks(), syncWeatherCycle()]);
 
 	checkInterval = setInterval(runChecks, config.checkIntervalMs);
+	weatherInterval = setInterval(syncWeatherCycle, 900_000);
 
 	server = Bun.serve({
 		port: config.httpPort,
@@ -487,6 +595,7 @@ async function gracefulShutdown(): Promise<void> {
 	logger.info("Shutting down gracefully...");
 
 	if (checkInterval) clearInterval(checkInterval);
+	if (weatherInterval) clearInterval(weatherInterval);
 	if (server) server.stop();
 	closeDb();
 
