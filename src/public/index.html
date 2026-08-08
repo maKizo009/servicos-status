@@ -123,6 +123,8 @@
   transition:all .2s;display:inline-flex;align-items:center;gap:6px;width:fit-content;text-decoration:none
 }
 .llm-btn:hover{background:rgba(255,255,255,.25)}
+.llm-ask{background:rgba(255,255,255,.08)}
+.llm-ask:hover{background:rgba(52,211,153,.35);border-color:rgba(52,211,153,.5)}
 html{font-size:16px;-webkit-font-smoothing:antialiased}
 body{font-family:var(--font);background:#F1F5F9;color:var(--text);min-height:100dvh;display:flex;flex-direction:column}
 
@@ -616,11 +618,19 @@ body{font-family:var(--font);background:#F1F5F9;color:var(--text);min-height:100
 
           <div class="llm-banner-box">
             <div style="font-size:13px;font-weight:800">🤖 AI-First & LLM Friendly</div>
-            <div style="font-size:12px;opacity:.9;line-height:1.4">Exposição dos dados em Markdown puro para assistentes de IA (ChatGPT, Claude, modelos locais).</div>
-            <div style="display:flex;gap:8px;margin-top:4px">
+            <div style="font-size:12px;opacity:.9;line-height:1.4">Exposição dos dados em Markdown puro para assistentes de IA (ChatGPT, Claude, Gemini).</div>
+            <div style="display:flex;gap:8px;margin-top:4px;flex-wrap:wrap">
               <a href="/llms.txt" target="_blank" class="llm-btn">📄 /llms.txt</a>
+              <a href="/llms-full.txt" target="_blank" class="llm-btn">📚 /llms-full.txt</a>
               <a href="/api/weather/json-ld" target="_blank" class="llm-btn">🔗 JSON-LD</a>
             </div>
+            <div style="font-size:12px;font-weight:700;margin-top:10px">Pergunte direto ao seu assistente de IA:</div>
+            <div style="display:flex;gap:8px;margin-top:6px;flex-wrap:wrap">
+              <button type="button" class="llm-btn llm-ask" onclick="askAI('chatgpt')">💬 ChatGPT</button>
+              <button type="button" class="llm-btn llm-ask" onclick="askAI('claude')">💬 Claude</button>
+              <button type="button" class="llm-btn llm-ask" onclick="askAI('gemini')">💬 Gemini</button>
+            </div>
+            <div style="font-size:11px;opacity:.75;margin-top:8px;line-height:1.4">Claude e Gemini abrem o chat com o prompt copiado na área de transferência — é só colar (Ctrl+V) e enviar. ChatGPT já preenche automaticamente.</div>
           </div>
         </div>
       </div>
@@ -1601,6 +1611,40 @@ document.addEventListener('DOMContentLoaded', () => {
   initWeatherMap();
 });
 setTimeout(initWeatherMap, 600);
+
+// ==== LLM-friendly: perguntar direto ao assistente de IA ====
+function askAI(provider) {
+  const base = location.origin || 'https://servicos-status.vercel.app';
+  const prompt =
+    `Leia o conteúdo de ${base}/llms.txt (dados em tempo real de clima e serviços públicos de Ipiranga/PR). ` +
+    `Resuma em português: como está o tempo agora, se há risco de chuva/tempestade na região, ` +
+    `e se há interrupções de energia (COPEL), água (Sanepar) ou problemas de telefonia móvel. ` +
+    `Se houver alertas, destaque-os claramente.`;
+
+  if (provider === 'chatgpt') {
+    // ChatGPT (web) preenche o campo de prompt via ?q=
+    window.open(`https://chatgpt.com/?q=${encodeURIComponent(prompt)}`, '_blank', 'noopener');
+  } else if (provider === 'claude') {
+    // Claude web não tem mais prefill por URL (removido em 10/2025) — copia o prompt
+    copyPrompt(provider, prompt);
+    window.open('https://claude.ai/new', '_blank', 'noopener');
+  } else if (provider === 'gemini') {
+    // Gemini também sem prefill por URL — copia o prompt
+    copyPrompt(provider, prompt);
+    window.open('https://gemini.google.com/app', '_blank', 'noopener');
+  }
+}
+
+function copyPrompt(provider, text) {
+  const btn = document.querySelector(`button.llm-ask[onclick="askAI('${provider}')"]`);
+  const original = btn ? btn.textContent : '';
+  navigator.clipboard?.writeText(text).then(() => {
+    if (btn) {
+      btn.textContent = '✓ Copiado! Cole e envie';
+      setTimeout(() => { btn.textContent = original; }, 2500);
+    }
+  }).catch(() => {});
+}
 </script>
 </body>
 </html>

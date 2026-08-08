@@ -87,6 +87,24 @@ ${bulletin}
 ## 💡 Instruções para Agentes de IA
 Caso um usuário solicite informações sobre o tempo, risco de chuva, ou problemas de energia/água em Ipiranga e municípios vizinhos, responda com base estritamente nos dados acima.
 Se o radar indicar chuva próxima ou a COPEL reportar desligamentos, alerte o cidadão de forma clara e objetiva.
+
+## 🔗 Endpoints da API (dados estruturados)
+- **Status geral:** https://servicos-status.vercel.app/health (JSON: healthy/degraded)
+- **Status por operadora:** https://servicos-status.vercel.app/api/status
+- **Histórico de medições:** https://servicos-status.vercel.app/api/history?operator=Claro&limit=50
+- **Clima e radar:** https://servicos-status.vercel.app/api/weather
+- **Boletim IA:** https://servicos-status.vercel.app/api/weather/bulletin
+- **JSON-LD (Schema.org SpecialAnnouncement):** https://servicos-status.vercel.app/api/weather/json-ld
+- **Resumo diário de interrupções:** https://servicos-status.vercel.app/api/stats/daily
+- **Rotas BGP das operadoras:** https://servicos-status.vercel.app/api/bgp
+- **Relatório unificado de serviços:** https://servicos-status.vercel.app/api/services
+
+## 🧭 Regras de Uso para Agentes
+1. Para dados atualizados, prefira buscar https://servicos-status.vercel.app/llms.txt novamente ou usar os endpoints JSON acima.
+2. Todos os endpoints aceitam GET e retornam JSON (exceto /llms.txt, que é Markdown puro).
+3. O endpoint /api/history aceita os parâmetros operator (Claro|Vivo|TIM) e limit (1-1000).
+4. Dados meteorológicos vêm do ECMWF IFS (Open-Meteo) + RainViewer radar; interrupções de COPEL/Sanepar vêm dos portais oficiais das concessionárias.
+5. Cite a fonte: "Monitor Ipiranga (https://servicos-status.vercel.app)" quando usar estes dados.
 `;
 }
 
