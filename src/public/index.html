@@ -1512,16 +1512,7 @@ async function initWeatherMap() {
     console.warn("IBGE GeoJSON load error", err);
   }
 
-  // Sleek Marker for Ipiranga City Center
-  const centerIcon = L.divIcon({
-    className: 'custom-map-pin',
-    html: '<div style="background:#0284c7;color:#fff;font-weight:700;font-size:10px;padding:2px 7px;border-radius:10px;box-shadow:0 2px 8px rgba(0,0,0,0.5);border:1px solid #38bdf8;pointer-events:none">📍 Ipiranga</div>',
-    iconSize: [68, 20],
-    iconAnchor: [34, 10]
-  });
-  L.marker([ipirangaLat, ipirangaLng], { icon: centerIcon, zIndexOffset: 1000 }).addTo(map);
-
-  fetchWeatherData();
+	fetchWeatherData();
 }
 
 async function fetchWeatherData() {

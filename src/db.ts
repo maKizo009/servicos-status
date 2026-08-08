@@ -137,6 +137,12 @@ export async function initDb(): Promise<Client> {
 				source TEXT NOT NULL,
 				generated_at INTEGER NOT NULL
 			)`,
+				`CREATE TABLE IF NOT EXISTS weather_nowcast_bulletins (
+				id INTEGER PRIMARY KEY AUTOINCREMENT,
+				text TEXT NOT NULL,
+				source TEXT NOT NULL,
+				generated_at INTEGER NOT NULL
+			)`,
 				"CREATE INDEX IF NOT EXISTS idx_portal_timestamp ON portal_results(timestamp)",
 				"CREATE INDEX IF NOT EXISTS idx_connectivity_timestamp ON connectivity_results(timestamp)",
 				"CREATE INDEX IF NOT EXISTS idx_bgp_timestamp ON bgp_results(timestamp)",
@@ -145,6 +151,7 @@ export async function initDb(): Promise<Client> {
 				"CREATE INDEX IF NOT EXISTS idx_telemetry_timestamp ON telemetry_logs(timestamp)",
 				"CREATE INDEX IF NOT EXISTS idx_event_history_timestamp ON event_history(timestamp)",
 				"CREATE INDEX IF NOT EXISTS idx_weather_bulletins_generated ON weather_bulletins(generated_at)",
+				"CREATE INDEX IF NOT EXISTS idx_weather_nowcast_bulletins_generated ON weather_nowcast_bulletins(generated_at)",
 			],
 			"write",
 		);
@@ -705,6 +712,47 @@ export async function getLatestWeatherBulletin(): Promise<WeatherBulletin | null
 		id: Number(row.id),
 		bulletin: String(row.bulletin),
 		source: row.source as "nvidia_nim" | "gemini" | "heuristic",
+		generatedAt: Number(row.generatedAt),
+	};
+}
+
+export interface NowcastBulletinRecord {
+	id: number;
+	text: string;
+	source: "nvidia_nim_vision" | "heuristic";
+	generatedAt: number;
+}
+
+export async function saveNowcastBulletin(
+	text: string,
+	source: "nvidia_nim_vision" | "heuristic",
+): Promise<NowcastBulletinRecord> {
+	const now = Date.now();
+	const db = await getDbClient();
+	const res = await db.execute({
+		sql: "INSERT INTO weather_nowcast_bulletins (text, source, generated_at) VALUES (?, ?, ?)",
+		args: [text, source, now],
+	});
+	return {
+		id: Number(res.lastInsertRowid ?? now),
+		text,
+		source,
+		generatedAt: now,
+	};
+}
+
+export async function getLatestNowcastBulletin(): Promise<NowcastBulletinRecord | null> {
+	const db = await getDbClient();
+	const res = await db.execute(
+		"SELECT id, text, source, generated_at as generatedAt FROM weather_nowcast_bulletins ORDER BY generated_at DESC LIMIT 1",
+	);
+	if (res.rows.length === 0) return null;
+	const row = res.rows[0] as Record<string, unknown>;
+
+	return {
+		id: Number(row.id),
+		text: String(row.text),
+		source: row.source as "nvidia_nim_vision" | "heuristic",
 		generatedAt: Number(row.generatedAt),
 	};
 }

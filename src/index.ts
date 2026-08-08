@@ -5,6 +5,7 @@ import {
 	getDailyStatsSummary,
 	getLatestBgpResults,
 	getLatestConnectivityResults,
+	getLatestNowcastBulletin,
 	getLatestPortalResults,
 	getLatestWeatherBulletin,
 	getPortalHistory,
@@ -13,6 +14,7 @@ import {
 	saveBgpResult,
 	saveConnectivityResult,
 	saveEventLog,
+	saveNowcastBulletin,
 	savePortalResult,
 	saveSignalReport,
 	saveTelemetryLog,
@@ -287,6 +289,9 @@ function handleServices(): Response {
 
 let weatherInterval: ReturnType<typeof setInterval> | null = null;
 
+/** TTL do boletim narrativo do nowcast (Camada B): vale até a próxima leitura de radar (15 min). */
+const NOWCAST_BULLETIN_TTL_MS = 900_000;
+
 async function syncWeatherCycle(): Promise<WeatherState> {
 	await ensureInitialized();
 	logger.info("Starting weather & radar sync cycle...");
@@ -329,19 +334,35 @@ async function syncWeatherCycle(): Promise<WeatherState> {
 				: null,
 		});
 
-		// Camada B: boletim narrativo (VLM NIM ou heurística)
+		// Camada B: boletim narrativo (VLM NIM ou heurística).
+		// Persistido no DB e reutilizado até a próxima leitura de radar (15 min) —
+		// evita regerar texto a cada reload/cold start e gasta cota NIM à toa.
 		if (state.radar) {
-			const bulletin = await generateNowcastBulletin(
-				nowcast,
-				state.radar.host,
-				state.radar.radar.past,
-				{ z: 7, x: 46, y: 73 },
-			);
-			state.nowcastBulletin = bulletin;
+			const cachedBulletin = await getLatestNowcastBulletin();
+			const bulletinAgeMs = cachedBulletin
+				? Date.now() - cachedBulletin.generatedAt
+				: Infinity;
+
+			if (cachedBulletin && bulletinAgeMs < NOWCAST_BULLETIN_TTL_MS) {
+				state.nowcastBulletin = cachedBulletin;
+				logger.info("Boletim nowcast reutilizado do cache persistido", {
+					ageMin: Math.round(bulletinAgeMs / 60000),
+					source: cachedBulletin.source,
+				});
+			} else {
+				const bulletin = await generateNowcastBulletin(
+					nowcast,
+					state.radar.host,
+					state.radar.radar.past,
+					{ z: 7, x: 46, y: 73 },
+				);
+				state.nowcastBulletin = bulletin;
+				await saveNowcastBulletin(bulletin.text, bulletin.source);
+				logger.info("Boletim nowcast (Camada B) gerado e persistido", {
+					source: bulletin.source,
+				});
+			}
 			setCachedWeatherState(state);
-			logger.info("Boletim nowcast (Camada B) gerado", {
-				source: bulletin.source,
-			});
 		}
 	} catch (err) {
 		logger.warn("Nowcast falhou ao integrar ao estado", {
@@ -429,7 +450,9 @@ async function getReqJson(req: IncomingRequest): Promise<unknown> {
 	return {};
 }
 
-export async function handleRequest(reqIn: IncomingRequest | string): Promise<Response> {
+export async function handleRequest(
+	reqIn: IncomingRequest | string,
+): Promise<Response> {
 	await ensureInitialized();
 
 	// Normaliza: string (URL) vira objeto; Request nativo já é IncomingRequest
@@ -512,6 +535,7 @@ export async function handleRequest(reqIn: IncomingRequest | string): Promise<Re
 			if (!state) state = await syncWeatherCycle();
 			return Response.json(
 				state || { error: "Sem dados climatológicos no momento" },
+				{ headers: { "Cache-Control": "public, max-age=30" } },
 			);
 		}
 		if (path === "/api/weather/nowcast") {
