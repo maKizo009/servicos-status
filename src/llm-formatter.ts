@@ -1,5 +1,5 @@
 import { loadConfig } from "./config.js";
-import { getLatestWeatherBulletin, saveWeatherBulletin } from "./db.js";
+import { saveWeatherBulletin } from "./db.js";
 import { logger } from "./logger.js";
 import type { UnifiedReport, WeatherState } from "./types.js";
 
