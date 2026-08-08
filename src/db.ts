@@ -26,13 +26,16 @@ export function getDbClient(): Client {
 				authToken: tursoToken,
 			});
 		} else {
-			const localPath = "data/health.db";
-			try {
-				mkdirSync(dirname(localPath), { recursive: true });
-			} catch {}
-			logger.info("Connecting to local SQLite database via LibSQL", { path: localPath });
+			const isVercel = Boolean(process.env.VERCEL);
+			const localUrl = isVercel ? ":memory:" : "file:data/health.db";
+			if (!isVercel) {
+				try {
+					mkdirSync(dirname("data/health.db"), { recursive: true });
+				} catch {}
+			}
+			logger.info("Connecting to local SQLite database via LibSQL", { url: localUrl });
 			client = createClient({
-				url: `file:${localPath}`,
+				url: localUrl,
 			});
 		}
 	}

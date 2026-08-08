@@ -1,6 +1,5 @@
 {
   "version": 2,
-  "outputDirectory": "src/public",
   "crons": [
     {
       "path": "/api/cron",
@@ -8,6 +7,14 @@
     }
   ],
   "rewrites": [
+    {
+      "source": "/",
+      "destination": "/src/public/index.html"
+    },
+    {
+      "source": "/ibge-ipiranga-region.json",
+      "destination": "/src/public/ibge-ipiranga-region.json"
+    },
     {
       "source": "/api/cron",
       "destination": "/api/cron"
