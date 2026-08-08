@@ -588,6 +588,7 @@ let checkInterval: ReturnType<typeof setInterval> | null = null;
 let server: { stop: () => void } | null = null;
 
 async function runOnce(): Promise<void> {
+	await ensureInitialized();
 	logger.info("Running single check cycle (--once)");
 
 	const data = await runAllChecks(config, tracker);
