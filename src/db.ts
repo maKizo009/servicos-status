@@ -1,6 +1,6 @@
 import { mkdirSync } from "node:fs";
 import { dirname } from "node:path";
-import { createClient, type Client } from "@libsql/client";
+import { createClient as createWebClient, type Client } from "@libsql/client/web";
 import { logger } from "./logger";
 import type {
 	BgpResult,
@@ -14,28 +14,31 @@ import type {
 
 let client: Client | null = null;
 
-export function getDbClient(): Client {
+export async function getDbClient(): Promise<Client> {
 	if (!client) {
 		const tursoUrl = process.env.TURSO_DATABASE_URL;
 		const tursoToken = process.env.TURSO_AUTH_TOKEN;
 
 		if (tursoUrl && tursoUrl.trim().length > 0) {
-			logger.info("Connecting to Turso Cloud SQLite database", { url: tursoUrl });
-			client = createClient({
+			logger.info("Connecting to Turso Cloud SQLite database via Web Client", { url: tursoUrl });
+			client = createWebClient({
 				url: tursoUrl,
 				authToken: tursoToken,
 			});
+		} else if (process.env.VERCEL) {
+			logger.info("Connecting to in-memory SQLite database on Vercel via Web Client");
+			client = createWebClient({
+				url: ":memory:",
+			});
 		} else {
-			const isVercel = Boolean(process.env.VERCEL);
-			const localUrl = isVercel ? ":memory:" : "file:data/health.db";
-			if (!isVercel) {
-				try {
-					mkdirSync(dirname("data/health.db"), { recursive: true });
-				} catch {}
-			}
-			logger.info("Connecting to local SQLite database via LibSQL", { url: localUrl });
-			client = createClient({
-				url: localUrl,
+			const { createClient: createNodeClient } = await import("@libsql/client");
+			const localPath = "data/health.db";
+			try {
+				mkdirSync(dirname(localPath), { recursive: true });
+			} catch {}
+			logger.info("Connecting to local SQLite database via LibSQL Node Client", { path: localPath });
+			client = createNodeClient({
+				url: `file:${localPath}`,
 			});
 		}
 	}
@@ -43,7 +46,7 @@ export function getDbClient(): Client {
 }
 
 export async function initDb(): Promise<Client> {
-	const db = getDbClient();
+	const db = await getDbClient();
 
 	try {
 		await db.execute(`
@@ -197,7 +200,7 @@ export async function getCachedIspInfo(ip: string): Promise<{
 	asn: string;
 	isMobile: boolean;
 } | null> {
-	const db = getDbClient();
+	const db = await getDbClient();
 	const now = Date.now();
 	const res = await db.execute({
 		sql: "SELECT ip, operator, isp_name as ispName, asn, is_mobile as isMobile FROM ip_isp_cache WHERE ip = ? AND cached_at > ?",
@@ -223,7 +226,7 @@ export async function saveCachedIspInfo(
 	asn: string,
 	isMobile: boolean,
 ): Promise<void> {
-	const db = getDbClient();
+	const db = await getDbClient();
 	await db.execute({
 		sql: "INSERT OR REPLACE INTO ip_isp_cache (ip, operator, isp_name, asn, is_mobile, cached_at) VALUES (?, ?, ?, ?, ?, ?)",
 		args: [ip, operator, ispName, asn, isMobile ? 1 : 0, Date.now()],
@@ -237,7 +240,7 @@ export async function saveTelemetryLog(
 	rttMs: number,
 	effectiveType: string,
 ): Promise<void> {
-	const db = getDbClient();
+	const db = await getDbClient();
 	await db.execute({
 		sql: "INSERT INTO telemetry_logs (ip, operator, isp_name, rtt_ms, effective_type, timestamp) VALUES (?, ?, ?, ?, ?, ?)",
 		args: [ip, operator, ispName, rttMs, effectiveType, Date.now()],
@@ -263,7 +266,7 @@ export async function recalculateIspHealth(
 	operator: OperatorName | null,
 	ttlHours = 2,
 ): Promise<IspHealthState> {
-	const db = getDbClient();
+	const db = await getDbClient();
 	const now = Date.now();
 	const cutoff = now - 60 * 60 * 1000;
 	const res = await db.execute({
@@ -326,7 +329,7 @@ export async function recalculateIspHealth(
 }
 
 export async function getActiveIspHealthStates(): Promise<IspHealthState[]> {
-	const db = getDbClient();
+	const db = await getDbClient();
 	const now = Date.now();
 	const res = await db.execute({
 		sql: `SELECT isp_name as ispName, operator, status, avg_rtt_ms as avgRttMs, 
@@ -359,7 +362,7 @@ export interface TelemetrySummary {
 }
 
 export async function getTelemetryStats(windowMinutes = 30): Promise<TelemetrySummary[]> {
-	const db = getDbClient();
+	const db = await getDbClient();
 	const cutoff = Date.now() - windowMinutes * 60 * 1000;
 	const res = await db.execute({
 		sql: `SELECT 
@@ -388,7 +391,7 @@ export async function saveSignalReport(
 	notes = "",
 	ttlHours = 3,
 ): Promise<LocalSignalReport> {
-	const db = getDbClient();
+	const db = await getDbClient();
 	const now = Date.now();
 	const expiresAt = now + ttlHours * 3600 * 1000;
 
@@ -415,7 +418,7 @@ export async function saveSignalReport(
 }
 
 export async function getActiveSignalReports(): Promise<LocalSignalReport[]> {
-	const db = getDbClient();
+	const db = await getDbClient();
 	const now = Date.now();
 	const res = await db.execute({
 		sql: `SELECT id, operator, status, signal_type as signalType, notes, reported_at as reportedAt, expires_at as expiresAt
@@ -436,7 +439,7 @@ export async function getActiveSignalReports(): Promise<LocalSignalReport[]> {
 }
 
 export async function savePortalResult(r: PortalResult): Promise<void> {
-	const db = getDbClient();
+	const db = await getDbClient();
 	await db.execute({
 		sql: "INSERT INTO portal_results (operator, host, success, latency_ms, error, timestamp) VALUES (?, ?, ?, ?, ?, ?)",
 		args: [r.operator, r.host, r.success ? 1 : 0, r.latencyMs, r.error, r.timestamp],
@@ -444,7 +447,7 @@ export async function savePortalResult(r: PortalResult): Promise<void> {
 }
 
 export async function saveConnectivityResult(r: ConnectivityResult): Promise<void> {
-	const db = getDbClient();
+	const db = await getDbClient();
 	await db.execute({
 		sql: "INSERT INTO connectivity_results (label, host, success, latency_ms, error, timestamp) VALUES (?, ?, ?, ?, ?, ?)",
 		args: [r.label, r.host, r.success ? 1 : 0, r.latencyMs, r.error, r.timestamp],
@@ -452,7 +455,7 @@ export async function saveConnectivityResult(r: ConnectivityResult): Promise<voi
 }
 
 export async function saveBgpResult(r: BgpResult): Promise<void> {
-	const db = getDbClient();
+	const db = await getDbClient();
 	await db.execute({
 		sql: "INSERT INTO bgp_results (operator, asn, prefix_count_v4, prefix_count_v6, timestamp, error) VALUES (?, ?, ?, ?, ?, ?)",
 		args: [r.operator, r.asn, r.prefixCountV4, r.prefixCountV6, r.timestamp, r.error ?? ""],
@@ -460,7 +463,7 @@ export async function saveBgpResult(r: BgpResult): Promise<void> {
 }
 
 export async function getLatestPortalResults(limit = 50): Promise<PortalResult[]> {
-	const db = getDbClient();
+	const db = await getDbClient();
 	const res = await db.execute({
 		sql: `SELECT operator, host, success, latency_ms as latencyMs, error, timestamp
        FROM portal_results
@@ -480,7 +483,7 @@ export async function getLatestPortalResults(limit = 50): Promise<PortalResult[]
 }
 
 export async function getLatestConnectivityResults(limit = 50): Promise<ConnectivityResult[]> {
-	const db = getDbClient();
+	const db = await getDbClient();
 	const res = await db.execute({
 		sql: `SELECT label, host, success, latency_ms as latencyMs, error, timestamp
        FROM connectivity_results
@@ -500,7 +503,7 @@ export async function getLatestConnectivityResults(limit = 50): Promise<Connecti
 }
 
 export async function getLatestBgpResults(limit = 50): Promise<BgpResult[]> {
-	const db = getDbClient();
+	const db = await getDbClient();
 	const res = await db.execute({
 		sql: `SELECT operator, asn, prefix_count_v4 as prefixCountV4, prefix_count_v6 as prefixCountV6, timestamp, error
        FROM bgp_results
@@ -524,7 +527,7 @@ export async function getPortalHistory(
 	operator: string,
 	limit = 100,
 ): Promise<PortalResult[]> {
-	const db = getDbClient();
+	const db = await getDbClient();
 	const res = await db.execute({
 		sql: `SELECT operator, host, success, latency_ms as latencyMs, error, timestamp
        FROM portal_results
@@ -561,7 +564,7 @@ export async function saveEventLog(
 	details = "",
 	consumers = 0,
 ): Promise<void> {
-	const db = getDbClient();
+	const db = await getDbClient();
 	await db.execute({
 		sql: "INSERT INTO event_history (source, title, bairro, details, consumers, timestamp) VALUES (?, ?, ?, ?, ?, ?)",
 		args: [source, title, bairro, details, consumers, Date.now()],
@@ -569,7 +572,7 @@ export async function saveEventLog(
 }
 
 export async function getDailyStatsSummary() {
-	const db = getDbClient();
+	const db = await getDbClient();
 	const now = Date.now();
 	const startOfDay = now - (now % (24 * 60 * 60 * 1000));
 	const startOf7Days = now - 7 * 86400 * 1000;
@@ -635,7 +638,7 @@ export async function getDailyStatsSummary() {
 }
 
 export async function saveRadarCache(data: WeatherRadarData): Promise<void> {
-	const db = getDbClient();
+	const db = await getDbClient();
 	const payload = JSON.stringify(data);
 	await db.execute({
 		sql: "INSERT INTO weather_radar_cache (host, version, payload, status, last_success_time, timestamp) VALUES (?, ?, ?, ?, ?, ?)",
@@ -651,7 +654,7 @@ export async function saveRadarCache(data: WeatherRadarData): Promise<void> {
 }
 
 export async function getLatestRadarCache(): Promise<WeatherRadarData | null> {
-	const db = getDbClient();
+	const db = await getDbClient();
 	const res = await db.execute("SELECT payload, status, last_success_time FROM weather_radar_cache ORDER BY timestamp DESC LIMIT 1");
 	if (res.rows.length === 0) return null;
 	const row = res.rows[0] as any;
@@ -671,7 +674,7 @@ export async function saveWeatherBulletin(
 	source: "nvidia_nim" | "gemini" | "heuristic",
 ): Promise<WeatherBulletin> {
 	const now = Date.now();
-	const db = getDbClient();
+	const db = await getDbClient();
 	const res = await db.execute({
 		sql: "INSERT INTO weather_bulletins (bulletin, source, generated_at) VALUES (?, ?, ?)",
 		args: [bulletin, source, now],
@@ -685,7 +688,7 @@ export async function saveWeatherBulletin(
 }
 
 export async function getLatestWeatherBulletin(): Promise<WeatherBulletin | null> {
-	const db = getDbClient();
+	const db = await getDbClient();
 	const res = await db.execute("SELECT id, bulletin, source, generated_at as generatedAt FROM weather_bulletins ORDER BY generated_at DESC LIMIT 1");
 	if (res.rows.length === 0) return null;
 	const row = res.rows[0] as any;

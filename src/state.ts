@@ -16,7 +16,7 @@ export class EventTracker {
 
 	private async load(): Promise<void> {
 		try {
-			const db = getDbClient();
+			const db = await getDbClient();
 			const res = await db.execute("SELECT source, hash FROM known_events");
 			for (const row of res.rows) {
 				const source = String(row.source);
@@ -48,7 +48,7 @@ export class EventTracker {
 		if (set.has(hash)) return;
 		set.add(hash);
 		try {
-			const db = getDbClient();
+			const db = await getDbClient();
 			await db.execute({
 				sql: "INSERT INTO known_events (source, hash, created_at) VALUES (?, ?, ?)",
 				args: [source, hash, Date.now()],
