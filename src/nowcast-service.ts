@@ -15,8 +15,18 @@ import {
 
 const TTL_MS = 5 * 60_000;
 
-/** Tile z=7 que cobre Ipiranga e arredores (mesma região do weather-collector) */
-const REGION_TILE = { z: 7, x: 46, y: 73 } as const;
+/**
+ * Grid de tiles z=9 (4x4) cobrindo a mesma área do antigo tile z=7 (46,73):
+ * x 184-187, y 292-295. Resolução ~4x melhor na localização dos núcleos
+ * (~70km/tile → ~17km/tile) mantendo a cobertura regional.
+ */
+export const REGION_GRID = {
+	z: 9,
+	xMin: 184,
+	yMin: 292,
+	xMax: 187,
+	yMax: 295,
+} as const;
 
 let cached: { result: NowcastResult; at: number } | null = null;
 
@@ -33,11 +43,11 @@ export async function getRadarNowcast(): Promise<NowcastResult> {
 			radar = await fetchRainViewerRadar();
 		}
 
-		// 2. analisa os 3 frames mais recentes da região
+		// 2. analisa os 3 frames mais recentes da região (mosaico z=9)
 		const result = await analyzeRadarNowcast(
 			radar.host,
 			radar.radar.past,
-			REGION_TILE,
+			REGION_GRID,
 			3,
 		);
 

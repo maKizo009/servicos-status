@@ -163,6 +163,57 @@ export interface TileBounds {
 	y: number;
 }
 
+/** Grid retangular de tiles no mesmo zoom (ex.: 4x4 de z=9 = área de 1 tile z=7). */
+export interface TileGrid {
+	z: number;
+	xMin: number;
+	yMin: number;
+	xMax: number;
+	yMax: number;
+}
+
+export type RegionSpec = TileBounds | TileGrid;
+
+export interface NormalizedRegion {
+	grid: TileGrid;
+	/** Tile "pai" usado na conversão pixel→lat/lon (zoom do pai = z - log2(gridSize)) */
+	parent: TileBounds;
+	/** Lado do grid em tiles (1 para tile único, 4 para 4x4) */
+	gridSize: number;
+	width: number;
+	height: number;
+}
+
+/** Normaliza RegionSpec (tile único ou grid) para um mosaico analisável. */
+export function normalizeRegion(spec: RegionSpec): NormalizedRegion {
+	if ("xMax" in spec) {
+		const grid = spec as TileGrid;
+		const gw = grid.xMax - grid.xMin + 1;
+		const gh = grid.yMax - grid.yMin + 1;
+		const gridSize = Math.max(gw, gh);
+		const log2 = Math.round(Math.log2(gridSize));
+		return {
+			grid,
+			parent: {
+				z: grid.z - log2,
+				x: Math.floor(grid.xMin / gridSize),
+				y: Math.floor(grid.yMin / gridSize),
+			},
+			gridSize,
+			width: gw * 256,
+			height: gh * 256,
+		};
+	}
+	const b = spec as TileBounds;
+	return {
+		grid: { z: b.z, xMin: b.x, yMin: b.y, xMax: b.x, yMax: b.y },
+		parent: b,
+		gridSize: 1,
+		width: 256,
+		height: 256,
+	};
+}
+
 /** Baixa e decodifica um tile PNG 256x256, devolvendo pixels RGBA. */
 export async function fetchTile(
 	host: string,
@@ -182,6 +233,56 @@ export async function fetchTile(
 	return { data: png.data, width: png.width, height: png.height };
 }
 
+/**
+ * Baixa todos os tiles de um grid (mosaico) para um frame e monta
+ * uma única imagem RGBA. Falhas de tiles individuais são toleradas
+ * (o tile fica transparente) para não derrubar o frame inteiro.
+ */
+export async function fetchTileGrid(
+	host: string,
+	framePath: string,
+	norm: NormalizedRegion,
+): Promise<{ data: Buffer; width: number; height: number }> {
+	const { grid, width, height } = norm;
+	const composite = new PNG({ width, height });
+
+	const tasks: Promise<void>[] = [];
+	for (let ty = grid.yMin; ty <= grid.yMax; ty++) {
+		for (let tx = grid.xMin; tx <= grid.xMax; tx++) {
+			tasks.push(
+				(async () => {
+					try {
+						const tile = await fetchTile(host, framePath, {
+							z: grid.z,
+							x: tx,
+							y: ty,
+						});
+						const dstX = (tx - grid.xMin) * 256;
+						const dstY = (ty - grid.yMin) * 256;
+						for (let y = 0; y < 256; y++) {
+							for (let x = 0; x < 256; x++) {
+								const si = (y * 256 + x) * 4;
+								const di = ((dstY + y) * width + (dstX + x)) * 4;
+								composite.data[di] = tile.data[si];
+								composite.data[di + 1] = tile.data[si + 1];
+								composite.data[di + 2] = tile.data[si + 2];
+								composite.data[di + 3] = tile.data[si + 3];
+							}
+						}
+					} catch (err) {
+						logger.warn("TileGrid: tile falhou (mantido vazio)", {
+							tile: `${grid.z}/${tx}/${ty}`,
+							error: String(err),
+						});
+					}
+				})(),
+			);
+		}
+	}
+	await Promise.all(tasks);
+	return { data: composite.data, width, height };
+}
+
 // ============ Análise de frame ============
 
 /**
@@ -191,6 +292,7 @@ export async function fetchTile(
 export function analyzeTile(
 	pixels: { data: Buffer; width: number; height: number },
 	bounds: TileBounds,
+	gridSize = 1,
 ): FrameAnalysis {
 	const { data, width, height } = pixels;
 	const sums = new Map<
@@ -236,7 +338,11 @@ export function analyzeTile(
 	for (const [intensity, bucket] of sums) {
 		const centroidX = bucket.sumX / bucket.count;
 		const centroidY = bucket.sumY / bucket.count;
-		const { lat, lon } = pixelToLatLon(bounds, centroidX, centroidY);
+		const { lat, lon } = pixelToLatLon(
+			bounds,
+			centroidX / gridSize,
+			centroidY / gridSize,
+		);
 		cells.push({
 			intensity,
 			pixelCount: bucket.count,
@@ -362,21 +468,22 @@ export interface NowcastResult {
 export async function analyzeRadarNowcast(
 	host: string,
 	pastFrames: RainViewerFrame[],
-	bounds: TileBounds,
+	region: RegionSpec,
 	frameCount = 3,
 ): Promise<NowcastResult> {
 	// usa os últimos N frames (mais recentes)
 	const frames = pastFrames.slice(-frameCount);
+	const norm = normalizeRegion(region);
 	const analyses: FrameAnalysis[] = [];
 
 	for (const frame of frames) {
 		try {
-			const tile = await fetchTile(host, frame.path, bounds);
-			const analysis = analyzeTile(tile, bounds);
+			const mosaic = await fetchTileGrid(host, frame.path, norm);
+			const analysis = analyzeTile(mosaic, norm.parent, norm.gridSize);
 			analysis.time = frame.time * 1000;
 			analyses.push(analysis);
 		} catch (err) {
-			logger.warn("Radar nowcast: tile fetch failed", {
+			logger.warn("Radar nowcast: mosaico do frame falhou", {
 				path: frame.path,
 				error: String(err),
 			});
