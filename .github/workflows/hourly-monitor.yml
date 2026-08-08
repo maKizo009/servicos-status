@@ -1,10 +1,9 @@
-name: hourly-monitor
+name: radar-monitor
 
 on:
   schedule:
-    # Mesma cadência do cron removido do vercel.json (0 * * * *)
-    # GitHub Actions permite crons de hora em hora no plano free
-    - cron: "0 * * * *"
+    # Leituras do radar a cada 10 min (cadência dos frames do RainViewer)
+    - cron: "*/10 * * * *"
   workflow_dispatch:
 
 jobs:

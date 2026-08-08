@@ -289,8 +289,8 @@ function handleServices(): Response {
 
 let weatherInterval: ReturnType<typeof setInterval> | null = null;
 
-/** TTL do boletim narrativo do nowcast (Camada B): vale até a próxima leitura de radar (15 min). */
-const NOWCAST_BULLETIN_TTL_MS = 900_000;
+/** TTL do boletim narrativo do nowcast (Camada B): vale até a próxima leitura de radar (10 min). */
+const NOWCAST_BULLETIN_TTL_MS = 600_000;
 
 async function syncWeatherCycle(): Promise<WeatherState> {
 	await ensureInitialized();
