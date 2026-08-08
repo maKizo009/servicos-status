@@ -1,4 +1,4 @@
-import type { OperatorConfig, OperatorName } from "./types";
+import type { OperatorConfig, OperatorName } from "./types.js";
 
 export interface AppConfig {
 	telegramBotToken: string;

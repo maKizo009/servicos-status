@@ -1,4 +1,4 @@
-import type { ConnectivityResult } from "../types";
+import type { ConnectivityResult } from "../types.js";
 
 const DEFAULT_HEADERS = {
 	"User-Agent":

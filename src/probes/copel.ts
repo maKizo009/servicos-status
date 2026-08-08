@@ -1,6 +1,6 @@
-import { logger } from "../logger";
-import { type EventTracker, makeHash } from "../state";
-import type { CopelOutage } from "../types";
+import { logger } from "../logger.js";
+import { type EventTracker, makeHash } from "../state.js";
+import type { CopelOutage } from "../types.js";
 
 function normalizeString(str: string): string {
 	return str

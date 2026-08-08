@@ -1,6 +1,6 @@
 import { createHash } from "node:crypto";
-import { getDbClient } from "./db";
-import { logger } from "./logger";
+import { getDbClient } from "./db.js";
+import { logger } from "./logger.js";
 
 export function makeHash(...parts: string[]): string {
 	return createHash("md5").update(parts.join("|")).digest("hex").slice(0, 16);

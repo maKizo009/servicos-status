@@ -1,6 +1,6 @@
-import { logger } from "../logger";
-import { type EventTracker, makeHash } from "../state";
-import type { SaneparInterruption } from "../types";
+import { logger } from "../logger.js";
+import { type EventTracker, makeHash } from "../state.js";
+import type { SaneparInterruption } from "../types.js";
 
 export async function getSaneparViewDomIds(
 	pageUrl: string,

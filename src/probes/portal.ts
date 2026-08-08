@@ -1,4 +1,4 @@
-import type { OperatorName, PortalResult } from "../types";
+import type { OperatorName, PortalResult } from "../types.js";
 
 const DEFAULT_HEADERS = {
 	"User-Agent":

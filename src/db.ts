@@ -1,7 +1,7 @@
 import { mkdirSync } from "node:fs";
 import { dirname } from "node:path";
 import { createClient as createWebClient, type Client } from "@libsql/client/web";
-import { logger } from "./logger";
+import { logger } from "./logger.js";
 import type {
 	BgpResult,
 	ConnectivityResult,
@@ -10,7 +10,7 @@ import type {
 	PortalResult,
 	WeatherBulletin,
 	WeatherRadarData,
-} from "./types";
+} from "./types.js";
 
 let client: Client | null = null;
 

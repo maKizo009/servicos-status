@@ -1,6 +1,6 @@
-import { getLatestRadarCache, saveRadarCache } from "./db";
-import { logger } from "./logger";
-import type { RainViewerFrame, WeatherRadarData, WeatherState, HourlyForecastPoint } from "./types";
+import { getLatestRadarCache, saveRadarCache } from "./db.js";
+import { logger } from "./logger.js";
+import type { RainViewerFrame, WeatherRadarData, WeatherState, HourlyForecastPoint } from "./types.js";
 
 const RAINVIEWER_API_URL = "https://api.rainviewer.com/public/weather-maps.json";
 // Modelo Europeu ECMWF IFS ("O Rei" da meteorologia)

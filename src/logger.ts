@@ -1,4 +1,4 @@
-import type { LogEntry } from "./types";
+import type { LogEntry } from "./types.js";
 
 function writeLog(
 	level: "info" | "warn" | "error",

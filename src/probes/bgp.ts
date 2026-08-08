@@ -1,4 +1,4 @@
-import type { BgpResult, OperatorName } from "../types";
+import type { BgpResult, OperatorName } from "../types.js";
 
 export async function checkBgpPrefixes(
 	asn: number,

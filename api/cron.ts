@@ -1,15 +1,15 @@
-import { runAllChecks } from "../src/checker";
-import { loadConfig } from "../src/config";
+import { runAllChecks } from "../src/checker.js";
+import { loadConfig } from "../src/config.js";
 import {
 	initDb,
 	saveBgpResult,
 	saveConnectivityResult,
 	saveEventLog,
 	savePortalResult,
-} from "../src/db";
-import { EventTracker } from "../src/state";
-import { sendCopelAlert, sendSaneparAlert } from "../src/telegram";
-import { fetchCurrentWeather, fetchRainViewerRadar } from "../src/weather-collector";
+} from "../src/db.js";
+import { EventTracker } from "../src/state.js";
+import { sendCopelAlert, sendSaneparAlert } from "../src/telegram.js";
+import { fetchCurrentWeather, fetchRainViewerRadar } from "../src/weather-collector.js";
 
 export default async function handler(req: any, res: any) {
 	try {

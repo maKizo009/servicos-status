@@ -1,6 +1,6 @@
-import { getCachedIspInfo, saveCachedIspInfo } from "./db";
-import { logger } from "./logger";
-import type { OperatorName } from "./types";
+import { getCachedIspInfo, saveCachedIspInfo } from "./db.js";
+import { logger } from "./logger.js";
+import type { OperatorName } from "./types.js";
 
 export interface IspInfo {
 	ip: string;

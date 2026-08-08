@@ -1,5 +1,5 @@
-import { assessLevel, buildUnifiedReport, runAllChecks } from "./checker";
-import { loadConfig } from "./config";
+import { assessLevel, buildUnifiedReport, runAllChecks } from "./checker.js";
+import { loadConfig } from "./config.js";
 import {
 	closeDb,
 	getDailyStatsSummary,
@@ -16,18 +16,18 @@ import {
 	savePortalResult,
 	saveSignalReport,
 	saveTelemetryLog,
-} from "./db";
-import { detectIsp } from "./isp-detector";
-import { generateAiWeatherBulletin, renderJsonLd, renderLlmsTxt } from "./llm-formatter";
-import { logger } from "./logger";
-import { checkRateLimit } from "./rate-limiter";
-import { EventTracker } from "./state";
+} from "./db.js";
+import { detectIsp } from "./isp-detector.js";
+import { generateAiWeatherBulletin, renderJsonLd, renderLlmsTxt } from "./llm-formatter.js";
+import { logger } from "./logger.js";
+import { checkRateLimit } from "./rate-limiter.js";
+import { EventTracker } from "./state.js";
 import {
 	sendCopelAlert,
 	sendSaneparAlert,
 	sendTelegramAlert,
 	sendUnifiedReport,
-} from "./telegram";
+} from "./telegram.js";
 import type {
 	AlertLevel,
 	BgpResult,
@@ -37,13 +37,13 @@ import type {
 	PortalResult,
 	UnifiedReport,
 	WeatherState,
-} from "./types";
+} from "./types.js";
 import {
 	fetchCurrentWeather,
 	fetchRainViewerRadar,
 	getCachedWeatherState,
 	setCachedWeatherState,
-} from "./weather-collector";
+} from "./weather-collector.js";
 
 const config = loadConfig();
 let isInitialized = false;

@@ -1,12 +1,12 @@
-import type { AppConfig } from "./config";
-import { connectivityTargets } from "./config";
-import { getActiveIspHealthStates, getActiveSignalReports } from "./db";
-import { checkBgpPrefixes } from "./probes/bgp";
-import { checkConnectivity } from "./probes/connectivity";
-import { checkCopel } from "./probes/copel";
-import { checkPortal } from "./probes/portal";
-import { checkSanepar } from "./probes/sanepar";
-import type { EventTracker } from "./state";
+import type { AppConfig } from "./config.js";
+import { connectivityTargets } from "./config.js";
+import { getActiveIspHealthStates, getActiveSignalReports } from "./db.js";
+import { checkBgpPrefixes } from "./probes/bgp.js";
+import { checkConnectivity } from "./probes/connectivity.js";
+import { checkCopel } from "./probes/copel.js";
+import { checkPortal } from "./probes/portal.js";
+import { checkSanepar } from "./probes/sanepar.js";
+import type { EventTracker } from "./state.js";
 import type {
 	BgpResult,
 	ConnectivityResult,
@@ -17,7 +17,7 @@ import type {
 	ServiceHealth,
 	ServiceSource,
 	UnifiedReport,
-} from "./types";
+} from "./types.js";
 
 export interface AllCheckData {
 	operators: {

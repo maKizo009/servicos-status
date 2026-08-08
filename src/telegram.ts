@@ -1,11 +1,11 @@
-import { logger } from "./logger";
+import { logger } from "./logger.js";
 import type {
 	AlertLevel,
 	CopelOutage,
 	PortalResult,
 	SaneparInterruption,
 	UnifiedReport,
-} from "./types";
+} from "./types.js";
 
 interface AlertPayload {
 	botToken: string;
