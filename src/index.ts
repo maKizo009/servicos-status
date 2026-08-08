@@ -381,6 +381,17 @@ export async function handleRequest(req: any): Promise<Response> {
 	const path = url.pathname;
 	const method = (req.method || "GET").toUpperCase();
 
+	if (method === "OPTIONS") {
+		return new Response(null, {
+			status: 204,
+			headers: {
+				"Access-Control-Allow-Origin": "*",
+				"Access-Control-Allow-Methods": "GET, POST, OPTIONS, HEAD",
+				"Access-Control-Allow-Headers": "Content-Type, Authorization",
+			},
+		});
+	}
+
 	// Serve llms.txt endpoints without rate limits
 	if (path === "/llms.txt" || path === "/llms-full.txt") {
 		let state = getCachedWeatherState();

@@ -6,10 +6,13 @@ export default async function handler(req: any, res: any) {
 		if (res && typeof res.status === "function") {
 			const status = response.status;
 			const body = await response.text();
-			const contentType = response.headers.get("content-type") || "application/json";
+			const contentType = response.headers.get("content-type") || "application/json; charset=utf-8";
 			const cacheControl = response.headers.get("cache-control");
 
 			res.setHeader("Content-Type", contentType);
+			res.setHeader("Access-Control-Allow-Origin", "*");
+			res.setHeader("Access-Control-Allow-Methods", "GET, POST, OPTIONS, HEAD");
+			res.setHeader("Access-Control-Allow-Headers", "Content-Type, Authorization");
 			if (cacheControl) {
 				res.setHeader("Cache-Control", cacheControl);
 			}
@@ -19,6 +22,7 @@ export default async function handler(req: any, res: any) {
 	} catch (err: unknown) {
 		const msg = err instanceof Error ? err.message : String(err);
 		if (res && typeof res.status === "function") {
+			res.setHeader("Access-Control-Allow-Origin", "*");
 			return res.status(500).json({ error: msg });
 		}
 		return Response.json({ error: msg }, { status: 500 });

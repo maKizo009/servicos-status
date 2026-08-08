@@ -12,10 +12,6 @@
       "destination": "/src/public/index.html"
     },
     {
-      "source": "/ibge-ipiranga-region.json",
-      "destination": "/src/public/ibge-ipiranga-region.json"
-    },
-    {
       "source": "/api/cron",
       "destination": "/api/cron"
     },
@@ -34,6 +30,10 @@
     {
       "source": "/llms-full.txt",
       "destination": "/api/index"
+    },
+    {
+      "source": "/(.*)",
+      "destination": "/src/public/$1"
     }
   ]
 }
