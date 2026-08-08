@@ -635,11 +635,7 @@ async function main(): Promise<void> {
 		httpPort: config.httpPort,
 	});
 
-	await Promise.all([runChecks(), syncWeatherCycle()]);
-
-	checkInterval = setInterval(runChecks, config.checkIntervalMs);
-	weatherInterval = setInterval(syncWeatherCycle, 900_000);
-
+	// Start HTTP server immediately so Healthcheck probes (Docker, Fly.io, Render) pass right away
 	server = Bun.serve({
 		port: config.httpPort,
 		fetch: handleRequest,
@@ -649,6 +645,14 @@ async function main(): Promise<void> {
 
 	process.on("SIGTERM", gracefulShutdown);
 	process.on("SIGINT", gracefulShutdown);
+
+	// Run initial checks asynchronously without blocking port binding
+	Promise.all([runChecks(), syncWeatherCycle()]).catch((err) => {
+		logger.error("Error during initial check cycle", { error: String(err) });
+	});
+
+	checkInterval = setInterval(runChecks, config.checkIntervalMs);
+	weatherInterval = setInterval(syncWeatherCycle, 900_000);
 }
 
 async function gracefulShutdown(): Promise<void> {

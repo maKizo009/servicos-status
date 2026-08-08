@@ -16,31 +16,14 @@ let client: Client | null = null;
 
 export async function getDbClient(): Promise<Client> {
 	if (!client) {
-		const tursoUrl = process.env.TURSO_DATABASE_URL;
+		const tursoUrl = process.env.TURSO_DATABASE_URL || "libsql://health-lucasmodesto.aws-us-east-2.turso.io";
 		const tursoToken = process.env.TURSO_AUTH_TOKEN;
 
-		if (tursoUrl && tursoUrl.trim().length > 0) {
-			logger.info("Connecting to Turso Cloud SQLite database via Web Client", { url: tursoUrl });
-			client = createWebClient({
-				url: tursoUrl,
-				authToken: tursoToken,
-			});
-		} else if (process.env.VERCEL) {
-			logger.info("Connecting to in-memory SQLite database on Vercel via Web Client");
-			client = createWebClient({
-				url: ":memory:",
-			});
-		} else {
-			const { createClient: createNodeClient } = await import("@libsql/client");
-			const localPath = "data/health.db";
-			try {
-				mkdirSync(dirname(localPath), { recursive: true });
-			} catch {}
-			logger.info("Connecting to local SQLite database via LibSQL Node Client", { path: localPath });
-			client = createNodeClient({
-				url: `file:${localPath}`,
-			});
-		}
+		logger.info("Connecting to Turso Cloud SQLite database via Web Client", { url: tursoUrl });
+		client = createWebClient({
+			url: tursoUrl,
+			authToken: tursoToken,
+		});
 	}
 	return client;
 }
@@ -49,8 +32,8 @@ export async function initDb(): Promise<Client> {
 	const db = await getDbClient();
 
 	try {
-		await db.execute(`
-			CREATE TABLE IF NOT EXISTS portal_results (
+		await db.batch([
+			`CREATE TABLE IF NOT EXISTS portal_results (
 				id INTEGER PRIMARY KEY AUTOINCREMENT,
 				operator TEXT NOT NULL,
 				host TEXT NOT NULL,
@@ -58,11 +41,8 @@ export async function initDb(): Promise<Client> {
 				latency_ms REAL NOT NULL,
 				error TEXT DEFAULT '',
 				timestamp INTEGER NOT NULL
-			)
-		`);
-
-		await db.execute(`
-			CREATE TABLE IF NOT EXISTS connectivity_results (
+			)`,
+			`CREATE TABLE IF NOT EXISTS connectivity_results (
 				id INTEGER PRIMARY KEY AUTOINCREMENT,
 				label TEXT NOT NULL,
 				host TEXT NOT NULL,
@@ -70,11 +50,8 @@ export async function initDb(): Promise<Client> {
 				latency_ms REAL NOT NULL,
 				error TEXT DEFAULT '',
 				timestamp INTEGER NOT NULL
-			)
-		`);
-
-		await db.execute(`
-			CREATE TABLE IF NOT EXISTS bgp_results (
+			)`,
+			`CREATE TABLE IF NOT EXISTS bgp_results (
 				id INTEGER PRIMARY KEY AUTOINCREMENT,
 				operator TEXT NOT NULL,
 				asn INTEGER NOT NULL,
@@ -82,20 +59,14 @@ export async function initDb(): Promise<Client> {
 				prefix_count_v6 INTEGER NOT NULL,
 				timestamp INTEGER NOT NULL,
 				error TEXT DEFAULT ''
-			)
-		`);
-
-		await db.execute(`
-			CREATE TABLE IF NOT EXISTS known_events (
+			)`,
+			`CREATE TABLE IF NOT EXISTS known_events (
 				source TEXT NOT NULL,
 				hash TEXT NOT NULL,
 				created_at INTEGER NOT NULL,
 				PRIMARY KEY (source, hash)
-			)
-		`);
-
-		await db.execute(`
-			CREATE TABLE IF NOT EXISTS signal_reports (
+			)`,
+			`CREATE TABLE IF NOT EXISTS signal_reports (
 				id INTEGER PRIMARY KEY AUTOINCREMENT,
 				operator TEXT NOT NULL,
 				status TEXT NOT NULL,
@@ -103,22 +74,16 @@ export async function initDb(): Promise<Client> {
 				notes TEXT DEFAULT '',
 				reported_at INTEGER NOT NULL,
 				expires_at INTEGER NOT NULL
-			)
-		`);
-
-		await db.execute(`
-			CREATE TABLE IF NOT EXISTS ip_isp_cache (
+			)`,
+			`CREATE TABLE IF NOT EXISTS ip_isp_cache (
 				ip TEXT PRIMARY KEY,
 				operator TEXT,
 				isp_name TEXT NOT NULL,
 				asn TEXT DEFAULT '',
 				is_mobile INTEGER NOT NULL DEFAULT 0,
 				cached_at INTEGER NOT NULL
-			)
-		`);
-
-		await db.execute(`
-			CREATE TABLE IF NOT EXISTS telemetry_logs (
+			)`,
+			`CREATE TABLE IF NOT EXISTS telemetry_logs (
 				id INTEGER PRIMARY KEY AUTOINCREMENT,
 				ip TEXT NOT NULL,
 				operator TEXT,
@@ -126,11 +91,8 @@ export async function initDb(): Promise<Client> {
 				rtt_ms REAL NOT NULL,
 				effective_type TEXT DEFAULT '',
 				timestamp INTEGER NOT NULL
-			)
-		`);
-
-		await db.execute(`
-			CREATE TABLE IF NOT EXISTS isp_health_states (
+			)`,
+			`CREATE TABLE IF NOT EXISTS isp_health_states (
 				isp_name TEXT PRIMARY KEY,
 				operator TEXT,
 				status TEXT NOT NULL,
@@ -140,11 +102,8 @@ export async function initDb(): Promise<Client> {
 				details TEXT NOT NULL,
 				last_updated INTEGER NOT NULL,
 				expires_at INTEGER NOT NULL
-			)
-		`);
-
-		await db.execute(`
-			CREATE TABLE IF NOT EXISTS event_history (
+			)`,
+			`CREATE TABLE IF NOT EXISTS event_history (
 				id INTEGER PRIMARY KEY AUTOINCREMENT,
 				source TEXT NOT NULL,
 				title TEXT NOT NULL,
@@ -152,11 +111,8 @@ export async function initDb(): Promise<Client> {
 				details TEXT DEFAULT '',
 				consumers INTEGER DEFAULT 0,
 				timestamp INTEGER NOT NULL
-			)
-		`);
-
-		await db.execute(`
-			CREATE TABLE IF NOT EXISTS weather_radar_cache (
+			)`,
+			`CREATE TABLE IF NOT EXISTS weather_radar_cache (
 				id INTEGER PRIMARY KEY AUTOINCREMENT,
 				host TEXT NOT NULL,
 				version TEXT NOT NULL,
@@ -164,28 +120,24 @@ export async function initDb(): Promise<Client> {
 				status TEXT NOT NULL,
 				last_success_time INTEGER NOT NULL,
 				timestamp INTEGER NOT NULL
-			)
-		`);
-
-		await db.execute(`
-			CREATE TABLE IF NOT EXISTS weather_bulletins (
+			)`,
+			`CREATE TABLE IF NOT EXISTS weather_bulletins (
 				id INTEGER PRIMARY KEY AUTOINCREMENT,
 				bulletin TEXT NOT NULL,
 				source TEXT NOT NULL,
 				generated_at INTEGER NOT NULL
-			)
-		`);
+			)`,
+			"CREATE INDEX IF NOT EXISTS idx_portal_timestamp ON portal_results(timestamp)",
+			"CREATE INDEX IF NOT EXISTS idx_connectivity_timestamp ON connectivity_results(timestamp)",
+			"CREATE INDEX IF NOT EXISTS idx_bgp_timestamp ON bgp_results(timestamp)",
+			"CREATE INDEX IF NOT EXISTS idx_known_events_source ON known_events(source)",
+			"CREATE INDEX IF NOT EXISTS idx_signal_reports_expires ON signal_reports(expires_at)",
+			"CREATE INDEX IF NOT EXISTS idx_telemetry_timestamp ON telemetry_logs(timestamp)",
+			"CREATE INDEX IF NOT EXISTS idx_event_history_timestamp ON event_history(timestamp)",
+			"CREATE INDEX IF NOT EXISTS idx_weather_bulletins_generated ON weather_bulletins(generated_at)",
+		], "write");
 
-		await db.execute("CREATE INDEX IF NOT EXISTS idx_portal_timestamp ON portal_results(timestamp)");
-		await db.execute("CREATE INDEX IF NOT EXISTS idx_connectivity_timestamp ON connectivity_results(timestamp)");
-		await db.execute("CREATE INDEX IF NOT EXISTS idx_bgp_timestamp ON bgp_results(timestamp)");
-		await db.execute("CREATE INDEX IF NOT EXISTS idx_known_events_source ON known_events(source)");
-		await db.execute("CREATE INDEX IF NOT EXISTS idx_signal_reports_expires ON signal_reports(expires_at)");
-		await db.execute("CREATE INDEX IF NOT EXISTS idx_telemetry_timestamp ON telemetry_logs(timestamp)");
-		await db.execute("CREATE INDEX IF NOT EXISTS idx_event_history_timestamp ON event_history(timestamp)");
-		await db.execute("CREATE INDEX IF NOT EXISTS idx_weather_bulletins_generated ON weather_bulletins(generated_at)");
-
-		logger.info("Database schema initialized successfully via LibSQL");
+		logger.info("Database schema initialized successfully via LibSQL Web batch");
 	} catch (err) {
 		logger.error("Failed to initialize Database schema", { error: String(err) });
 	}
