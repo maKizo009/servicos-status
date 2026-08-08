@@ -131,6 +131,7 @@ export async function generateNowcastBulletin(
 
 		const prompt = `Você é um meteorologista analisando imagens de radar meteorológico (RainViewer, esquema de cores "Universal Blue").
 A imagem mostra 3 frames consecutivos do radar (esquerda = mais antigo, direita = mais recente) da região de Ipiranga/PR, com intervalo de ~10 minutos cada.
+IMPORTANTE: as imagens são de momentos ANTERIORES (o frame mais recente tem alguns minutos de atraso) — a análise não é ao vivo; trate as conclusões como uma projeção de curto prazo.
 
 DADOS DA ANÁLISE COMPUTACIONAL (medições determinísticas, confie neles):
 - Intensidade dominante: ${intensityLabel[nowcast.currentDominant] ?? nowcast.currentDominant} (pico ${nowcast.currentMaxDbz} dBZ)
@@ -140,9 +141,10 @@ DADOS DA ANÁLISE COMPUTACIONAL (medições determinísticas, confie neles):
 Instruções:
 1. Observe as cores na imagem: azul/âmbar = chuva fraca, azul-escuro = moderada, amarelo/laranja = forte, vermelho/rosa = temporal.
 2. Confirme se o deslocamento visual do núcleo bate com a direção medida.
-3. Responda em português brasileiro, no máximo 3 frases, informando ao cidadão de Ipiranga se está vindo chuva e o que esperar nas próximas 1-2 horas.
+3. Responda em português brasileiro, no máximo 4 frases, informando ao cidadão de Ipiranga se está vindo chuva e o que esperar nas próximas 1-2 horas, deixando claro que a análise usa imagens de radar de alguns minutos atrás.
 4. Se o núcleo estiver distante ou sem movimento, diga que não há alerta iminente.
 5. Termine com uma recomendação prática (levar guarda-chuva, atenção à rede elétrica, etc.) se houver risco.
+6. Seja honesto sobre a incerteza: nowcast de curto prazo pode cometer erros (dissipação ou mudança súbita de rumo) — mencione isso de forma natural quando houver risco.
 
 NÃO invente números além dos fornecidos. Seja direto e útil.`;
 
