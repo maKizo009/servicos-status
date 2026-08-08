@@ -669,7 +669,7 @@ async function gracefulShutdown(): Promise<void> {
 	process.exit(0);
 }
 
-if (import.meta.path === Bun.main) {
+if (typeof Bun !== "undefined" && import.meta.path === Bun.main) {
 	main().catch((err: unknown) => {
 		const msg = err instanceof Error ? err.message : String(err);
 		logger.error("Fatal error during startup", { error: msg });
