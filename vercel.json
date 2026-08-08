@@ -1,5 +1,6 @@
 {
   "version": 2,
+  "outputDirectory": "src/public",
   "rewrites": [
     {
       "source": "/",
