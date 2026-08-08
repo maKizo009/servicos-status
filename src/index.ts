@@ -395,7 +395,19 @@ async function syncWeatherCycle(): Promise<WeatherState> {
 	return state;
 }
 
-function getHeader(req: any, name: string): string | null {
+/** Request aceito pelo handler: Web Request nativo ou objeto Node-style */
+interface IncomingRequest {
+	url?: string;
+	method?: string;
+	headers?: {
+		get?: (name: string) => string | null;
+		[name: string]: unknown;
+	};
+	body?: unknown;
+	json?: () => Promise<unknown>;
+}
+
+function getHeader(req: IncomingRequest, name: string): string | null {
 	if (!req) return null;
 	if (req.headers && typeof req.headers.get === "function") {
 		return req.headers.get(name);
@@ -408,7 +420,7 @@ function getHeader(req: any, name: string): string | null {
 	return null;
 }
 
-async function getReqJson(req: any): Promise<any> {
+async function getReqJson(req: IncomingRequest): Promise<unknown> {
 	if (!req) return {};
 	if (req.body && typeof req.body === "object") return req.body;
 	if (typeof req.json === "function") {
@@ -417,10 +429,14 @@ async function getReqJson(req: any): Promise<any> {
 	return {};
 }
 
-export async function handleRequest(req: any): Promise<Response> {
+export async function handleRequest(reqIn: IncomingRequest | string): Promise<Response> {
 	await ensureInitialized();
 
-	let rawUrl = typeof req === "string" ? req : req?.url || "/";
+	// Normaliza: string (URL) vira objeto; Request nativo já é IncomingRequest
+	const req: IncomingRequest =
+		typeof reqIn === "string" ? { url: reqIn, method: "GET" } : reqIn;
+
+	let rawUrl = req.url || "/";
 	if (!rawUrl.startsWith("http://") && !rawUrl.startsWith("https://")) {
 		const host = getHeader(req, "host") || "servicos-status.vercel.app";
 		rawUrl = `http://${host}${rawUrl.startsWith("/") ? "" : "/"}${rawUrl}`;
@@ -696,7 +712,7 @@ async function main(): Promise<void> {
 	// Start HTTP server immediately so Healthcheck probes (Docker, Fly.io, Render) pass right away
 	server = Bun.serve({
 		port: config.httpPort,
-		fetch: handleRequest,
+		fetch: (req: Request) => handleRequest(req as unknown as IncomingRequest),
 	});
 
 	logger.info(`HTTP server listening on :${config.httpPort}`);

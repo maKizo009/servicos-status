@@ -1,5 +1,3 @@
-import { mkdirSync } from "node:fs";
-import { dirname } from "node:path";
 import {
 	type Client,
 	createClient as createWebClient,
