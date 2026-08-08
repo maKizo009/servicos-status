@@ -1,7 +1,6 @@
 import { runAllChecks } from "../src/checker";
 import { loadConfig } from "../src/config";
 import {
-	getDbClient,
 	initDb,
 	saveBgpResult,
 	saveConnectivityResult,
@@ -10,9 +9,9 @@ import {
 } from "../src/db";
 import { EventTracker } from "../src/state";
 import { sendCopelAlert, sendSaneparAlert } from "../src/telegram";
-import { fetchCurrentWeather, fetchRainViewerRadar, saveRadarCache } from "../src/weather-collector";
+import { fetchCurrentWeather, fetchRainViewerRadar } from "../src/weather-collector";
 
-export default async function handler(req: Request): Promise<Response> {
+export default async function handler(req: any, res: any) {
 	try {
 		await initDb();
 		const config = loadConfig();
@@ -52,7 +51,7 @@ export default async function handler(req: Request): Promise<Response> {
 			);
 		}
 
-		return Response.json({
+		const result = {
 			status: "ok",
 			timestamp: Date.now(),
 			weather: {
@@ -65,9 +64,17 @@ export default async function handler(req: Request): Promise<Response> {
 				newCopel: data.newCopelOutages.length,
 				newSanepar: data.newSaneparInterruptions.length,
 			},
-		});
+		};
+
+		if (res && typeof res.status === "function") {
+			return res.status(200).json(result);
+		}
+		return Response.json(result);
 	} catch (err: unknown) {
 		const msg = err instanceof Error ? err.message : String(err);
+		if (res && typeof res.status === "function") {
+			return res.status(500).json({ error: msg, timestamp: Date.now() });
+		}
 		return Response.json({ error: msg, timestamp: Date.now() }, { status: 500 });
 	}
 }

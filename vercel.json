@@ -4,29 +4,29 @@
   "crons": [
     {
       "path": "/api/cron",
-      "schedule": "*/5 * * * *"
+      "schedule": "0 * * * *"
     }
   ],
   "rewrites": [
     {
       "source": "/api/cron",
-      "destination": "/api/cron.ts"
+      "destination": "/api/cron"
     },
     {
       "source": "/api/(.*)",
-      "destination": "/api"
+      "destination": "/api/index"
     },
     {
       "source": "/health",
-      "destination": "/api"
+      "destination": "/api/index"
     },
     {
       "source": "/llms.txt",
-      "destination": "/api"
+      "destination": "/api/index"
     },
     {
       "source": "/llms-full.txt",
-      "destination": "/api"
+      "destination": "/api/index"
     }
   ]
 }

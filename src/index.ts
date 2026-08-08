@@ -346,10 +346,40 @@ async function syncWeatherCycle(): Promise<WeatherState> {
 	return state;
 }
 
-export async function handleRequest(req: Request): Promise<Response> {
+function getHeader(req: any, name: string): string | null {
+	if (!req) return null;
+	if (req.headers && typeof req.headers.get === "function") {
+		return req.headers.get(name);
+	}
+	if (req.headers) {
+		const val = req.headers[name.toLowerCase()];
+		if (Array.isArray(val)) return val[0] || null;
+		if (typeof val === "string") return val;
+	}
+	return null;
+}
+
+async function getReqJson(req: any): Promise<any> {
+	if (!req) return {};
+	if (req.body && typeof req.body === "object") return req.body;
+	if (typeof req.json === "function") {
+		return await req.json().catch(() => ({}));
+	}
+	return {};
+}
+
+export async function handleRequest(req: any): Promise<Response> {
 	await ensureInitialized();
-	const url = new URL(req.url);
+
+	let rawUrl = typeof req === "string" ? req : req?.url || "/";
+	if (!rawUrl.startsWith("http://") && !rawUrl.startsWith("https://")) {
+		const host = getHeader(req, "host") || "servicos-status.vercel.app";
+		rawUrl = `http://${host}${rawUrl.startsWith("/") ? "" : "/"}${rawUrl}`;
+	}
+
+	const url = new URL(rawUrl);
 	const path = url.pathname;
+	const method = (req.method || "GET").toUpperCase();
 
 	// Serve llms.txt endpoints without rate limits
 	if (path === "/llms.txt" || path === "/llms-full.txt") {
@@ -367,8 +397,8 @@ export async function handleRequest(req: Request): Promise<Response> {
 	// Rate limit all /api/* endpoints except /health
 	if (path.startsWith("/api/")) {
 		const ip =
-			req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ||
-			req.headers.get("x-real-ip") ||
+			getHeader(req, "x-forwarded-for")?.split(",")[0]?.trim() ||
+			getHeader(req, "x-real-ip") ||
 			"unknown";
 		const { allowed, retryAfter } = checkRateLimit(ip);
 		if (!allowed) {
@@ -422,6 +452,7 @@ export async function handleRequest(req: Request): Promise<Response> {
 				timestamp: Date.now(),
 			});
 		}
+
 		if (path === "/api/history") return handleHistory(url);
 		if (path === "/api/operators") {
 			return Response.json({ operators: Object.keys(config.operators) });
@@ -429,13 +460,13 @@ export async function handleRequest(req: Request): Promise<Response> {
 		if (path === "/api/bgp") {
 			return Response.json({ results: await getLatestBgpResults(20) });
 		}
-		if (path === "/api/check" && req.method === "POST") {
+		if (path === "/api/check" && method === "POST") {
 			await runChecks();
 			return Response.json({ status: "ok", timestamp: Date.now() });
 		}
-		if (path === "/api/signal-report" && req.method === "POST") {
+		if (path === "/api/signal-report" && method === "POST") {
 			try {
-				const body = (await req.json()) as {
+				const body = (await getReqJson(req)) as {
 					operator: OperatorName;
 					status: "ok" | "degraded" | "down";
 					signalType: string;
@@ -477,18 +508,17 @@ export async function handleRequest(req: Request): Promise<Response> {
 		}
 		if (
 			path === "/api/telemetry" &&
-			(req.method === "HEAD" ||
-				(req.method === "GET" && url.searchParams.has("ping")))
+			(method === "HEAD" || (method === "GET" && url.searchParams.has("ping")))
 		) {
 			return new Response(null, { status: 200 });
 		}
-		if (path === "/api/telemetry" && req.method === "POST") {
+		if (path === "/api/telemetry" && method === "POST") {
 			try {
 				const ip =
-					req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ||
-					req.headers.get("x-real-ip") ||
+					getHeader(req, "x-forwarded-for")?.split(",")[0]?.trim() ||
+					getHeader(req, "x-real-ip") ||
 					"127.0.0.1";
-				const body = (await req.json().catch(() => ({}))) as {
+				const body = (await getReqJson(req)) as {
 					rttMs?: number;
 					effectiveType?: string;
 					operator?: OperatorName;
