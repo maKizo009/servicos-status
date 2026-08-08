@@ -497,6 +497,20 @@ RainViewer API (weather-maps.json)
   → GET /api/weather/nowcast (cache 5 min)
 ```
 
+### Boletim Narrativo (Camada B — VLM NVIDIA NIM)
+
+```
+Camada A (números) + composite PNG 768x256 (3 frames lado a lado)
+  → meta/llama-3.2-90b-vision-instruct (integrate.api.nvidia.com)
+  → prompt meteorológico pt-BR: analisa tons (Universal Blue), confirma
+    deslocamento visual vs direção medida, redige boletim ≤3 frases
+  → WeatherState.nowcastBulletin (source: nvidia_nim_vision | heuristic)
+  → exposto em /api/weather, /llms.txt e /api/weather/json-ld
+  → fallback heurístico determinístico se VLM falhar / sem chave
+```
+
+> ⚠️ O VLM **nunca** é a fonte dos números (isso é a Camada A); ele interpreta a imagem e redige o boletim. Se a chave NVIDIA NIM não estiver configurada, o fallback heurístico assume.
+
 ## Adicionar Novo Serviço (Extensibilidade)
 
 1. Criar probe em `src/probes/novoServico.ts`
