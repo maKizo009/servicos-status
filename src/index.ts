@@ -336,13 +336,15 @@ async function syncWeatherCycle(): Promise<WeatherState> {
 	return state;
 }
 
-async function handleRequest(req: Request): Promise<Response> {
+export async function handleRequest(req: Request): Promise<Response> {
 	const url = new URL(req.url);
 	const path = url.pathname;
 
 	// Serve llms.txt endpoints without rate limits
 	if (path === "/llms.txt" || path === "/llms-full.txt") {
-		const text = renderLlmsTxt(getCachedWeatherState(), lastUnifiedReport);
+		let state = getCachedWeatherState();
+		if (!state) state = await syncWeatherCycle();
+		const text = renderLlmsTxt(state, lastUnifiedReport);
 		return new Response(text, {
 			headers: {
 				"Content-Type": "text/plain; charset=utf-8",
@@ -384,10 +386,13 @@ async function handleRequest(req: Request): Promise<Response> {
 	try {
 		if (path === "/health" || path === "/health/") return handleHealth();
 		if (path === "/api/status") return handleStatus();
-		if (path === "/api/services") return handleServices();
-		if (path === "/api/report") return handleServices();
+		if (path === "/api/services" || path === "/api/report") {
+			if (!lastUnifiedReport) await runChecks();
+			return handleServices();
+		}
 		if (path === "/api/weather" || path === "/api/weather/radar") {
-			const state = getCachedWeatherState();
+			let state = getCachedWeatherState();
+			if (!state) state = await syncWeatherCycle();
 			return Response.json(state || { error: "Sem dados climatológicos no momento" });
 		}
 		if (path === "/api/weather/json-ld") {
@@ -506,10 +511,13 @@ async function handleRequest(req: Request): Promise<Response> {
 				});
 			}
 		}
-		const staticPath = `${import.meta.dir}/public${path === "/" ? "/index.html" : path}`;
-		const staticFile = Bun.file(staticPath);
-		if (await staticFile.exists()) {
-			return new Response(staticFile);
+		// Static file fallback for local Bun runtime
+		if (typeof Bun !== "undefined" && typeof Bun.file === "function") {
+			const staticPath = `${import.meta.dir}/public${path === "/" ? "/index.html" : path}`;
+			const staticFile = Bun.file(staticPath);
+			if (await staticFile.exists()) {
+				return new Response(staticFile);
+			}
 		}
 
 		return new Response("Not found", { status: 404 });
