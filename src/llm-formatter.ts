@@ -93,6 +93,7 @@ Se o radar indicar chuva próxima ou a COPEL reportar desligamentos, alerte o ci
 - **Status por operadora:** https://servicos-status.vercel.app/api/status
 - **Histórico de medições:** https://servicos-status.vercel.app/api/history?operator=Claro&limit=50
 - **Clima e radar:** https://servicos-status.vercel.app/api/weather
+- **Nowcast de radar (análise determinística de núcleos + movimento):** https://servicos-status.vercel.app/api/weather/nowcast
 - **Boletim IA:** https://servicos-status.vercel.app/api/weather/bulletin
 - **JSON-LD (Schema.org SpecialAnnouncement):** https://servicos-status.vercel.app/api/weather/json-ld
 - **Resumo diário de interrupções:** https://servicos-status.vercel.app/api/stats/daily

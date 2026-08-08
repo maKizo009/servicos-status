@@ -28,8 +28,10 @@ flowchart TD
 
 ## 🌦️ Funcionalidades Meteorológicas & Clima
 - **Radar RainViewer 10min**: Animação contínua de mancha de chuva dos últimos 60 minutos e nowcast.
+- **Nowcast Determinístico (Camada A)**: Análise por visão computacional dos tiles do radar — classifica pixels pela paleta oficial Universal Blue (dBZ→cor), agrupa núcleos por intensidade e rastreia movimento/direção/velocidade entre frames (`/api/weather/nowcast`).
 - **Camada Vetorial IBGE**: Limites municipais exatos de Ipiranga (`4110508`) com realce neon e municípios vizinhos (Ponta Grossa, Castro, Prudentópolis, Tibagi, Imbituva, Teixeira Soares, Guamiranga, Ivaí).
 - **Endpoint `/llms.txt`**: Exposição em Markdown denso para assistentes de IA (ChatGPT, Claude, modelos locais).
+- **Botões "Pergunte ao ChatGPT/Claude/Gemini"**: Ação direta no site que abre o chat com prompt montado (lê o `/llms.txt` e resume clima + serviços).
 - **JSON-LD Schema**: Dados estritamente estruturados (`https://schema.org/SpecialAnnouncement`).
 - **Boletins IA (NVIDIA NIM)**: Síntese em linguagem natural gerada por modelos da NVIDIA NIM (`meta/llama-3.1-8b-instruct`) ou engine de regras heurísticas locais.
 
@@ -42,12 +44,13 @@ flowchart TD
 
 ## 🛠️ Stack
 
-- **Runtime:** Bun 1.3+
+- **Runtime:** Bun 1.3+ (local) / Node.js 20+ (Vercel serverless)
 - **Linguagem:** TypeScript
-- **Banco:** SQLite (`bun:sqlite`) com WAL mode
+- **Banco:** Turso Cloud SQLite (`@libsql/client/web`, sem binários nativos) com fallback em memória
 - **Mapas & UI:** Leaflet.js + CartoDB / OpenStreetMap + IBGE GeoJSON
-- **LLM Engine:** NVIDIA NIM API (Llama 3.1) / Local Heuristic Engine
-- **HTTP:** Servidor nativo Bun
+- **LLM Engine:** NVIDIA NIM API (Llama 3.1 / Llama 3.2 Vision) / Gemini API / Local Heuristic Engine
+- **Visão Computacional:** `pngjs` (decodificação de tiles PNG, puro JS — roda na Vercel)
+- **HTTP:** Servidor nativo Bun (local) / funções serverless Vercel (`api/`)
 - **Logs:** JSON estruturado
 
 ---
@@ -58,12 +61,17 @@ Copie `.env.example` para `.env` e preencha:
 
 | Variável | Descrição | Default |
 |---|---|---|
-| `NVIDIA_NIM_API_KEY` | Chave de API da NVIDIA NIM (opcional para boletins IA) | — |
+| `TURSO_DATABASE_URL` | URL do banco Turso Cloud (ex: `libsql://...turso.io`) | fallback em memória |
+| `TURSO_AUTH_TOKEN` | Token de autenticação do Turso | — |
+| `NVIDIA_NIM_API_KEY` | Chave de API da NVIDIA NIM (boletins IA + nowcast VLM) | — |
+| `GEMINI_API_KEY` | Chave da API Gemini (fallback de boletim IA) | — |
 | `TELEGRAM_BOT_TOKEN` | Token do bot Telegram | — |
 | `TELEGRAM_CHAT_ID` | Chat ID para alertas | — |
 | `CHECK_INTERVAL_MS` | Intervalo entre ciclos (ms) | `60000` |
 | `HTTP_PORT` | Porta do servidor | `3030` |
 | `MUNICIPIO` | Município alvo para utilidades | `Ipiranga` |
+| `COPEL_API_URL` | Endpoint de ocorrências da COPEL | padrão público |
+| `SANEPAR_VIEWS_AJAX` / `SANEPAR_PAGE_URL` | Endpoints Sanepar | padrão público |
 
 
 ## Execução
@@ -285,6 +293,95 @@ Lista simples das operadoras configuradas.
 
 ---
 
+#### `GET /api/weather` ⭐
+
+**Estado completo do clima**: temperatura, condição, probabilidade de chuva (ECMWF IFS), vento, umidade, boletim IA e radar RainViewer (frames passados + nowcast).
+
+| Campo | Tipo | Descrição |
+|---|---|---|
+| `municipio` | string | Município alvo |
+| `tempC` | number | Temperatura atual (°C) |
+| `condition` | string | Condição (ex: `"Céu Limpo"`) |
+| `rainProbabilityPct` | number | Probabilidade de chuva (%) |
+| `windKmh` | number | Velocidade do vento (km/h) |
+| `humidityPct` | number | Umidade relativa (%) |
+| `hasRegionalRain` | boolean | Radar detecta núcleos na região |
+| `radar.radar.past[]` | array | Frames de radar dos últimos ~2h |
+| `radar.radar.nowcast[]` | array | Frames de previsão (quando disponíveis) |
+| `bulletin` | object \| null | Boletim IA (NVIDIA NIM / Gemini / heurístico) |
+| `updatedAt` | number | Timestamp da última sincronização |
+
+---
+
+#### `GET /api/weather/nowcast` ⭐ (Novo — Análise Determinística de Radar)
+
+**Nowcast por visão computacional**: baixa os tiles PNG do radar RainViewer da região de Ipiranga (z=7), classifica cada pixel pela **paleta oficial Universal Blue** (dBZ → cor) e rastreia o movimento dos núcleos de chuva entre os últimos 3 frames (~20 min).
+
+É a **Camada A (determinística)** do pipeline de análise — sem LLM, custo zero, ~2-3s de processamento, com cache de 5 min.
+
+| Campo | Tipo | Descrição |
+|---|---|---|
+| `analyzedAt` | number | Timestamp da análise |
+| `frames[]` | array | Frames analisados (até 3) |
+| `frames[].time` | number | Timestamp do frame (epoch ms) |
+| `frames[].maxDbz` | number | dBZ máximo no tile |
+| `frames[].coverage` | number | Fração do tile com precipitação (0-1) |
+| `frames[].cells[]` | array | Núcleos agrupados por intensidade |
+| `cells[].intensity` | string | `"light"` \| `"moderate"` \| `"heavy"` \| `"extreme"` |
+| `cells[].pixelCount` | number | Pixels do núcleo no tile |
+| `cells[].maxDbz` / `meanDbz` | number | dBZ máximo/médio do núcleo |
+| `cells[].centroidX` / `centroidY` | number | Centroide em pixels (0-255) |
+| `cells[].lat` / `lon` | number | Centroide geográfico (Web Mercator) |
+| `movement` | object \| null | Vetor de movimento do núcleo mais intenso |
+| `movement.directionDeg` | number | Direção em graus (0=N, 90=L, 180=S, 270=O) |
+| `movement.speedKmh` | number | Velocidade do núcleo (km/h, haversine) |
+| `movement.intervalMin` | number | Intervalo entre os frames (min) |
+| `currentMaxDbz` | number | dBZ máximo no frame mais recente |
+| `currentDominant` | string | Intensidade dominante no frame mais recente |
+| `nearestCell` | object \| null | Núcleo mais intenso (lat/lon) |
+| `error` | string \| undefined | Mensagem de erro se a análise falhou |
+
+**Tabela de intensidade (dBZ):**
+
+| Intensidade | dBZ | Cor (Universal Blue) |
+|---|---|---|
+| `light` | 5–19 | Âmbar / azul-claro |
+| `moderate` | 20–37 | Azul |
+| `heavy` | 38–47 | Amarelo / laranja |
+| `extreme` | 48+ | Vermelho / rosa |
+
+```json
+{
+  "analyzedAt": 1786226122628,
+  "frames": [
+    {
+      "time": 1786224600000,
+      "cells": [
+        { "intensity": "extreme", "pixelCount": 10, "maxDbz": 48, "meanDbz": 48, "centroidX": 112.2, "centroidY": 5.2, "lat": -24.579, "lon": -49.392 }
+      ],
+      "maxDbz": 48,
+      "coverage": 0.18
+    }
+  ],
+  "movement": {
+    "directionDeg": 91,
+    "speedKmh": 46.7,
+    "intervalMin": 20,
+    "fromLat": -24.5791,
+    "fromLon": -49.3923,
+    "toLat": -24.5831,
+    "toLon": -49.2385
+  },
+  "currentMaxDbz": 48,
+  "currentDominant": "extreme",
+  "nearestCell": { "intensity": "extreme", "lat": -24.5831, "lon": -49.2385 }
+}
+```
+
+> ⚠️ **Limitação honesta**: o nowcast determinístico detecta movimento dos núcleos nos últimos ~20 min e extrapola a tendência. Chuva pode se dissipar (previsão de dissipação exige modelos de escopo maior, como ECMWF). Trate como alerta de curto prazo (30-60 min), não como previsão de longo prazo.
+
+---
+
 ### Endpoints Internos (não expor publicamente)
 
 #### `POST /api/check`
@@ -365,20 +462,39 @@ A cada `UNIFIED_REPORT_INTERVAL_MS` (default: 1h), um relatório consolidado de 
 
 ```
 src/
-├── index.ts          # Entry point, HTTP server, main loop
-├── config.ts         # Config via env vars
-├── types.ts          # Tipos compartilhados
-├── logger.ts         # Log estruturado JSON
-├── telegram.ts       # Envio de alertas Telegram
-├── db.ts             # SQLite (resultados + dedup)
-├── state.ts          # EventTracker (dedup de eventos)
-├── checker.ts        # Orquestrador unificado
+├── index.ts            # Entry point, HTTP server, main loop / handler serverless
+├── config.ts           # Config via env vars
+├── types.ts            # Tipos compartilhados
+├── logger.ts           # Log estruturado JSON
+├── telegram.ts         # Envio de alertas Telegram
+├── db.ts               # Turso SQLite (resultados + dedup + caches)
+├── state.ts            # EventTracker (dedup de eventos)
+├── checker.ts          # Orquestrador unificado
+├── weather-collector.ts # Clima: RainViewer radar + Open-Meteo (ECMWF IFS)
+├── llm-formatter.ts    # llms.txt, JSON-LD e boletins IA (NIM/Gemini/heurístico)
+├── isp-detector.ts     # Detecção de ISP por IP (cache em DB)
+├── rate-limiter.ts     # Rate limit por IP (10 req/min)
+├── radar-analysis.ts   # Camada A: análise determinística de tiles (paleta Universal Blue, núcleos, tracking)
+├── nowcast-service.ts  # Serviço de nowcast com cache TTL 5min (endpoint /api/weather/nowcast)
 └── probes/
-    ├── portal.ts     # Probe portal operadora
+    ├── portal.ts       # Probe portal operadora
     ├── connectivity.ts # Probe conectividade
-    ├── bgp.ts        # Probe BGP
-    ├── copel.ts      # Probe COPEL
-    └── sanepar.ts    # Probe Sanepar
+    ├── bgp.ts          # Probe BGP
+    ├── copel.ts        # Probe COPEL
+    └── sanepar.ts      # Probe Sanepar
+```
+
+### Pipeline de Nowcast (Camada A — determinística)
+
+```
+RainViewer API (weather-maps.json)
+  → frames past (últimos ~2h, tile z=7 região Ipiranga)
+  → decodifica PNG (pngjs)
+  → classifica pixel pela paleta Universal Blue → dBZ + intensidade
+  → agrupa por intensidade, calcula centroide (px → Web Mercator lat/lon)
+  → tracking entre frames (t-20, t-10, agora)
+  → direção (0=N), velocidade (haversine km/h)
+  → GET /api/weather/nowcast (cache 5 min)
 ```
 
 ## Adicionar Novo Serviço (Extensibilidade)
@@ -392,7 +508,17 @@ src/
 5. Se houver alerta por evento, criar `sendNovoServicoAlert()` em `telegram.ts`
 6. Adicionar config no `src/config.ts` e `.env.example`
 
-## Cron / Systemd Timer
+## Cron / Agendamento
+
+### Vercel (produção) — GitHub Actions
+
+O deploy roda na Vercel (plano Hobby, que não permite cron jobs). O agendamento é feito por **GitHub Actions** (`.github/workflows/hourly-monitor.yml`), que dispara o endpoint `/api/cron` a cada hora:
+
+- **Workflow:** `hourly-monitor` — cron `0 * * * *` (hora em hora) + disparo manual (`workflow_dispatch`)
+- **Ação:** `POST https://servicos-status.vercel.app/api/cron` com 3 tentativas (timeout 120s)
+- **Watchdog grátis:** se o site cair, o workflow falha e fica vermelho na aba Actions (notificação por email do GitHub)
+
+### Local (Bun) — systemd timer
 
 Para executar verificações sob demanda via cron:
 
