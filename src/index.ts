@@ -24,6 +24,7 @@ import {
 	renderLlmsTxt,
 } from "./llm-formatter.js";
 import { logger } from "./logger.js";
+import { getRadarNowcast } from "./nowcast-service.js";
 import { checkRateLimit } from "./rate-limiter.js";
 import { EventTracker } from "./state.js";
 import {
@@ -462,6 +463,12 @@ export async function handleRequest(req: any): Promise<Response> {
 			return Response.json(
 				state || { error: "Sem dados climatológicos no momento" },
 			);
+		}
+		if (path === "/api/weather/nowcast") {
+			const nowcast = await getRadarNowcast();
+			return Response.json(nowcast, {
+				headers: { "Cache-Control": "public, max-age=240" },
+			});
 		}
 		if (path === "/api/weather/json-ld") {
 			const jsonLd = renderJsonLd(getCachedWeatherState(), lastUnifiedReport);

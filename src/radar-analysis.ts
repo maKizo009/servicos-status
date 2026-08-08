@@ -351,6 +351,8 @@ export interface NowcastResult {
 	currentDominant: RainIntensity;
 	/** Núcleo mais intenso (lat/lon) no frame mais recente */
 	nearestCell: RainCell | null;
+	/** Mensagem de erro em caso de falha */
+	error?: string;
 }
 
 /**
