@@ -85,6 +85,11 @@
 .layer-btn:hover{color:#fff;background:rgba(255,255,255,.1)}
 .layer-btn.active{background:#0284C7;color:#fff;font-weight:800}
 
+.radar-map-wrapper.is-fullscreen{
+  position:fixed!important;top:0!important;left:0!important;width:100vw!important;
+  height:100vh!important;z-index:99999!important;border-radius:0!important
+}
+
 .radar-time-text{font-size:13px;font-weight:700;font-variant-numeric:tabular-nums;color:#38BDF8;white-space:nowrap}
 
 .weather-sidebar{
@@ -590,6 +595,7 @@ body{font-family:var(--font);background:#F1F5F9;color:var(--text);min-height:100
           <div class="map-layer-selector">
             <button type="button" class="layer-btn active" id="layerStreetBtn">🗺️ Mapa</button>
             <button type="button" class="layer-btn" id="layerSatBtn">🛰️ Satélite HD</button>
+            <button type="button" class="layer-btn" id="btnFullscreen">🖥️ Tela Cheia</button>
           </div>
           <div id="weatherMap"></div>
           <div class="radar-controls-overlay">
@@ -1410,6 +1416,18 @@ async function initWeatherMap() {
     if (!map.hasLayer(satLayer)) map.addLayer(satLayer);
     btnSat.classList.add('active');
     btnStreet?.classList.remove('active');
+  });
+
+  const btnFs = document.getElementById('btnFullscreen');
+  const mapWrapper = document.querySelector('.radar-map-wrapper');
+
+  btnFs?.addEventListener('click', () => {
+    const isFs = mapWrapper?.classList.toggle('is-fullscreen');
+    btnFs.textContent = isFs ? '❌ Sair da Tela Cheia' : '🖥️ Tela Cheia';
+    btnFs.classList.toggle('active', isFs);
+    setTimeout(() => {
+      if (map) map.invalidateSize();
+    }, 100);
   });
 
   // Dedicated Panes for Z-Index layering

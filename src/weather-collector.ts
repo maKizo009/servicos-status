@@ -79,7 +79,7 @@ export async function fetchRainViewerRadar(): Promise<WeatherRadarData> {
 			hasRegionalRain,
 		};
 
-		saveRadarCache(radarData);
+		await saveRadarCache(radarData);
 		logger.info("RainViewer radar data synced successfully", {
 			pastFrames: radarData.radar.past.length,
 			hasRegionalRain,
@@ -90,7 +90,7 @@ export async function fetchRainViewerRadar(): Promise<WeatherRadarData> {
 		const errMsg = err instanceof Error ? err.message : String(err);
 		logger.warn("RainViewer sync failed, applying resilience fallback", { error: errMsg });
 
-		const fallback = getLatestRadarCache();
+		const fallback = await getLatestRadarCache();
 		if (fallback) {
 			fallback.status = "degraded";
 			fallback.error = `Fallback ativado (${errMsg})`;

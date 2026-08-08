@@ -46,8 +46,8 @@ import {
 } from "./weather-collector";
 
 const config = loadConfig();
-const db = initDb();
-const tracker = new EventTracker(db);
+await initDb();
+const tracker = new EventTracker();
 
 const checkResults: Map<OperatorName, CheckResult> = new Map();
 let lastResults: PortalResult[] = [];
@@ -67,9 +67,9 @@ async function runChecks(): Promise<void> {
 	const allBgpResults: BgpResult[] = [];
 
 	for (const op of data.operators) {
-		for (const r of op.portalResults) savePortalResult(r);
-		for (const r of op.connectivityResults) saveConnectivityResult(r);
-		saveBgpResult(op.bgpResult);
+		for (const r of op.portalResults) await savePortalResult(r);
+		for (const r of op.connectivityResults) await saveConnectivityResult(r);
+		await saveBgpResult(op.bgpResult);
 
 		allPortalResults.push(...op.portalResults);
 		allConnResults.push(...op.connectivityResults);
@@ -137,7 +137,7 @@ async function runChecks(): Promise<void> {
 			config.telegramBotToken,
 			config.telegramChatId,
 		);
-		saveEventLog(
+		await saveEventLog(
 			"copel",
 			`Queda de Energia (${outage.ehProgramada ? "Programada" : "Emergencial"})`,
 			outage.bairro || "Ipiranga",
@@ -153,7 +153,7 @@ async function runChecks(): Promise<void> {
 			config.telegramBotToken,
 			config.telegramChatId,
 		);
-		saveEventLog(
+		await saveEventLog(
 			"sanepar",
 			`Interrupção de Água - ${intr.motivo || "Manutenção"}`,
 			intr.bairro || intr.cidade || "Ipiranga",
@@ -163,7 +163,7 @@ async function runChecks(): Promise<void> {
 	}
 
 	// Build and optionally send unified report
-	lastUnifiedReport = buildUnifiedReport(
+	lastUnifiedReport = await buildUnifiedReport(
 		data,
 		config.latencyWarnMs,
 		config.latencyCritMs,
@@ -246,19 +246,19 @@ function handleStatus(): Response {
 	});
 }
 
-function handleHistory(url: URL): Response {
+async function handleHistory(url: URL): Promise<Response> {
 	const operator = url.searchParams.get("operator");
 	const limit = Math.min(Number(url.searchParams.get("limit")) || 100, 1000);
 
 	if (operator) {
-		const history = getPortalHistory(operator, limit);
+		const history = await getPortalHistory(operator, limit);
 		return Response.json({ operator, count: history.length, results: history });
 	}
 
 	return Response.json({
-		portals: getLatestPortalResults(limit),
-		connectivity: getLatestConnectivityResults(limit),
-		bgp: getLatestBgpResults(limit),
+		portals: await getLatestPortalResults(limit),
+		connectivity: await getLatestConnectivityResults(limit),
+		bgp: await getLatestBgpResults(limit),
 	});
 }
 
@@ -278,7 +278,7 @@ async function syncWeatherCycle(): Promise<WeatherState> {
 		fetchCurrentWeather(),
 	]);
 
-	const existingBulletin = getLatestWeatherBulletin();
+	const existingBulletin = await getLatestWeatherBulletin();
 
 	const state: WeatherState = {
 		municipio: config.municipio || "Ipiranga",
@@ -318,7 +318,7 @@ async function syncWeatherCycle(): Promise<WeatherState> {
 			hasRegionalRain: radar.hasRegionalRain,
 		});
 		const newBulletinText = await generateAiWeatherBulletin(state, lastUnifiedReport);
-		const updatedBulletin = getLatestWeatherBulletin();
+		const updatedBulletin = await getLatestWeatherBulletin();
 		state.bulletin = updatedBulletin || {
 			bulletin: newBulletinText,
 			source: "heuristic",
@@ -416,7 +416,7 @@ export async function handleRequest(req: Request): Promise<Response> {
 			return Response.json({ operators: Object.keys(config.operators) });
 		}
 		if (path === "/api/bgp") {
-			return Response.json({ results: getLatestBgpResults(20) });
+			return Response.json({ results: await getLatestBgpResults(20) });
 		}
 		if (path === "/api/check" && req.method === "POST") {
 			await runChecks();
@@ -436,7 +436,7 @@ export async function handleRequest(req: Request): Promise<Response> {
 						{ status: 400, headers: { "Content-Type": "application/json" } },
 					);
 				}
-				const report = saveSignalReport(
+				const report = await saveSignalReport(
 					body.operator,
 					body.status,
 					body.signalType,
@@ -454,13 +454,13 @@ export async function handleRequest(req: Request): Promise<Response> {
 		}
 		if (path === "/api/telemetry/stats") {
 			return Response.json({
-				stats: getTelemetryStats(30),
+				stats: await getTelemetryStats(30),
 				timestamp: Date.now(),
 			});
 		}
 		if (path === "/api/stats/daily" || path === "/api/stats") {
 			return Response.json({
-				daily: getDailyStatsSummary(),
+				daily: await getDailyStatsSummary(),
 				timestamp: Date.now(),
 			});
 		}
@@ -488,7 +488,7 @@ export async function handleRequest(req: Request): Promise<Response> {
 				const rttMs = Number(body.rttMs) || 0;
 				const effectiveType = String(body.effectiveType || "");
 
-				saveTelemetryLog(
+				await saveTelemetryLog(
 					ip,
 					operator,
 					isp.ispName ||

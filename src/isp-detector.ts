@@ -30,7 +30,7 @@ export async function detectIsp(ip: string): Promise<IspInfo> {
 	}
 
 	// 1. Check local DB cache
-	const cached = getCachedIspInfo(ip);
+	const cached = await getCachedIspInfo(ip);
 	if (cached) {
 		return cached;
 	}

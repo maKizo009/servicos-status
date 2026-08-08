@@ -140,14 +140,14 @@ export function assessLevel(
 	return "ok";
 }
 
-export function buildUnifiedReport(
+export async function buildUnifiedReport(
 	data: AllCheckData,
 	latencyWarnMs = 150,
 	latencyCritMs = 300,
-): UnifiedReport {
+): Promise<UnifiedReport> {
 	const services: ServiceHealth[] = [];
-	const signalReports = getActiveSignalReports();
-	const ispHealthStates = getActiveIspHealthStates();
+	const signalReports = await getActiveSignalReports();
+	const ispHealthStates = await getActiveIspHealthStates();
 
 	for (const op of data.operators) {
 		let status = assessLevel(
