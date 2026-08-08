@@ -16,8 +16,15 @@ let client: Client | null = null;
 
 export async function getDbClient(): Promise<Client> {
 	if (!client) {
-		const tursoUrl = process.env.TURSO_DATABASE_URL || process.env.TURSO_URL || "libsql://health-lucasmodesto.aws-us-east-2.turso.io";
+		const tursoUrl = process.env.TURSO_DATABASE_URL || process.env.TURSO_URL;
 		const tursoToken = process.env.TURSO_AUTH_TOKEN || process.env.TURSO_DATABASE_TOKEN || process.env.TURSO_AUTH_KEY;
+
+		if (!tursoUrl) {
+			throw new Error("TURSO_DATABASE_URL or TURSO_URL environment variable is required");
+		}
+		if (!tursoToken) {
+			throw new Error("TURSO_AUTH_TOKEN, TURSO_DATABASE_TOKEN or TURSO_AUTH_KEY environment variable is required");
+		}
 
 		logger.info("Connecting to Turso Cloud SQLite database via Web Client", { url: tursoUrl });
 		client = createWebClient({
