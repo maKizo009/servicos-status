@@ -1,0 +1,35 @@
+name: hourly-monitor
+
+on:
+  schedule:
+    # Mesma cadência do cron removido do vercel.json (0 * * * *)
+    # GitHub Actions permite crons de hora em hora no plano free
+    - cron: "0 * * * *"
+  workflow_dispatch:
+
+jobs:
+  trigger-vercel-cron:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Dispara /api/cron na Vercel
+        shell: bash
+        run: |
+          URL="https://servicos-status.vercel.app/api/cron"
+          echo "==> POST $URL"
+          for attempt in 1 2 3; do
+            HTTP_CODE=$(curl -s -o /tmp/cron_resp.txt -w "%{http_code}" -m 120 \
+              -X POST "$URL" \
+              -H "Content-Type: application/json" \
+              -d '{"source":"github-actions"}')
+            echo "    tentativa $attempt: HTTP $HTTP_CODE"
+            if [ "$HTTP_CODE" = "200" ]; then
+              echo "==> Cron executado com sucesso"
+              cat /tmp/cron_resp.txt
+              exit 0
+            fi
+            echo "    resposta: $(head -c 200 /tmp/cron_resp.txt)"
+            sleep 15
+          done
+          echo "==> FAIL: /api/cron não respondeu 200 após 3 tentativas" >&2
+          exit 1
