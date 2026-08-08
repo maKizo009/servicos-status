@@ -14,7 +14,12 @@ function degreesToCardinal(deg: number): string {
 /** Resumo legível do nowcast para o llms.txt */
 function renderNowcastSection(weather: WeatherState | null): string {
 	const nowcast = weather?.nowcast;
+	const bulletin = weather?.nowcastBulletin?.text;
+
 	if (!nowcast || nowcast.frames.length === 0 || !nowcast.movement) {
+		if (bulletin) {
+			return `## 🔮 Nowcast de Radar (Análise Determinística)\n${bulletin}\n`;
+		}
 		return "## 🔮 Nowcast de Radar (Análise Determinística)\n- Sem núcleos de chuva significativos em movimento na região.\n";
 	}
 
@@ -51,10 +56,12 @@ function renderNowcastSection(weather: WeatherState | null): string {
 		}
 	}
 
+	const bulletinNote = bulletin ? `\n- **Análise IA (VLM):** ${bulletin}` : "";
+
 	return `## 🔮 Nowcast de Radar (Análise Determinística)
 - **Intensidade dominante:** ${intensityLabel[dominant] ?? dominant} (pico ${maxDbz} dBZ)
 - **Movimento do núcleo mais intenso:** direção ${m.directionDeg}° (${dir}), velocidade ${m.speedKmh} km/h (observado em ${m.intervalMin} min de frames)
-- ${etaNote}`;
+- ${etaNote}${bulletinNote}`;
 }
 
 /**
@@ -211,6 +218,7 @@ export function renderJsonLd(
 				}
 			: undefined,
 		bulletin: weather?.bulletin?.bulletin || null,
+		nowcastBulletin: weather?.nowcastBulletin?.text || null,
 		serviceHealth: report?.services.map((s) => ({
 			name: s.name,
 			status: s.status,

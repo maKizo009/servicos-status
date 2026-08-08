@@ -164,5 +164,11 @@ export interface WeatherState {
 	bulletin: WeatherBulletin | null;
 	/** Nowcast determinístico (Camada A) — núcleos + movimento do radar */
 	nowcast?: NowcastResult | null;
+	/** Boletim narrativo do nowcast (Camada B — VLM NIM ou heurística) */
+	nowcastBulletin?: {
+		text: string;
+		source: "nvidia_nim_vision" | "heuristic";
+		generatedAt: number;
+	} | null;
 	updatedAt: number;
 }

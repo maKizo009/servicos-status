@@ -25,6 +25,7 @@ import {
 } from "./llm-formatter.js";
 import { logger } from "./logger.js";
 import { getRadarNowcast } from "./nowcast-service.js";
+import { generateNowcastBulletin } from "./nowcast-vlm.js";
 import { checkRateLimit } from "./rate-limiter.js";
 import { EventTracker } from "./state.js";
 import {
@@ -327,6 +328,21 @@ async function syncWeatherCycle(): Promise<WeatherState> {
 				? `${nowcast.movement.directionDeg}° ${nowcast.movement.speedKmh}km/h`
 				: null,
 		});
+
+		// Camada B: boletim narrativo (VLM NIM ou heurística)
+		if (state.radar) {
+			const bulletin = await generateNowcastBulletin(
+				nowcast,
+				state.radar.host,
+				state.radar.radar.past,
+				{ z: 7, x: 46, y: 73 },
+			);
+			state.nowcastBulletin = bulletin;
+			setCachedWeatherState(state);
+			logger.info("Boletim nowcast (Camada B) gerado", {
+				source: bulletin.source,
+			});
+		}
 	} catch (err) {
 		logger.warn("Nowcast falhou ao integrar ao estado", {
 			error: String(err),
