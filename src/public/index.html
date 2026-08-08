@@ -105,6 +105,24 @@
   font-size:10px;font-weight:800;text-transform:uppercase;padding:3px 8px;border-radius:6px;
   background:rgba(2,132,199,.12);color:#0284C7
 }
+.nowcast-box{
+  background:linear-gradient(135deg,#0F172A 0%,#1E293B 100%);border-radius:12px;padding:14px;
+  display:flex;flex-direction:column;gap:8px;color:#fff;box-shadow:var(--shadow-lg)
+}
+.nowcast-head{display:flex;align-items:center;justify-content:space-between;color:#fff}
+.nowcast-box .nowcast-head span{color:#fff}
+.nowcast-status-row{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.nowcast-intensity-badge{
+  font-size:11px;font-weight:800;padding:4px 10px;border-radius:8px;text-transform:uppercase;
+  background:rgba(16,185,129,.18);color:#34D399;border:1px solid rgba(16,185,129,.4)
+}
+.nowcast-intensity-badge.int-light{background:rgba(251,191,36,.15);color:#FBBF24;border-color:rgba(251,191,36,.4)}
+.nowcast-intensity-badge.int-moderate{background:rgba(59,130,246,.18);color:#60A5FA;border-color:rgba(59,130,246,.4)}
+.nowcast-intensity-badge.int-heavy{background:rgba(249,115,22,.18);color:#FB923C;border-color:rgba(249,115,22,.4)}
+.nowcast-intensity-badge.int-extreme{background:rgba(239,68,68,.2);color:#F87171;border-color:rgba(239,68,68,.5)}
+.nowcast-movement{font-size:12px;font-weight:700;color:#E2E8F0}
+.nowcast-meta{font-size:11px;color:#94A3B8;line-height:1.5}
+.nowcast-text{font-size:12px;color:#CBD5E1;line-height:1.55;margin:0;border-top:1px solid rgba(255,255,255,.1);padding-top:8px}
 .bulletin-text{font-size:13px;color:var(--text);line-height:1.5;font-weight:500}
 
 .rain-tile {
@@ -614,6 +632,19 @@ body{font-family:var(--font);background:#F1F5F9;color:var(--text);min-height:100
               <span class="bulletin-tag" id="bulletinSourceTag">IA Local</span>
             </div>
             <p class="bulletin-text" id="bulletinText">Carregando análise descritiva da situação climatológica de Ipiranga...</p>
+          </div>
+
+          <div class="nowcast-box" id="nowcastBox" style="display:none">
+            <div class="nowcast-head">
+              <span style="font-size:13px;font-weight:800;color:var(--text)">🔮 Nowcast Radar</span>
+              <span class="bulletin-tag" id="nowcastSourceTag">Análise IA</span>
+            </div>
+            <div class="nowcast-status-row">
+              <span class="nowcast-intensity-badge" id="nowcastIntensityBadge">—</span>
+              <span class="nowcast-movement" id="nowcastMovement">—</span>
+            </div>
+            <div class="nowcast-meta" id="nowcastMeta"></div>
+            <p class="nowcast-text" id="nowcastText"></p>
           </div>
 
           <div class="llm-banner-box">
@@ -1532,6 +1563,8 @@ async function fetchWeatherData() {
       if(sEl) sEl.textContent = `IA (${src})`;
     }
 
+    renderNowcastCard(data);
+
     if (data.radar?.radar?.past && data.radar.radar.past.length > 0) {
       const host = data.radar.host || 'https://tilecache.rainviewer.com';
       radarFrames = [...data.radar.radar.past, ...(data.radar.radar.nowcast || [])];
@@ -1564,6 +1597,90 @@ async function fetchWeatherData() {
   } catch (e) {
     console.error("Weather fetch error", e);
   }
+}
+
+function renderNowcastCard(data) {
+  const box = document.getElementById('nowcastBox');
+  if (!box) return;
+
+  const nc = data?.nowcast;
+  const nb = data?.nowcastBulletin;
+  const hasData = nc && nc.frames && nc.frames.length > 0;
+
+  if (!hasData) {
+    box.style.display = 'none';
+    return;
+  }
+  box.style.display = 'flex';
+
+  // Intensidade dominante
+  const badge = document.getElementById('nowcastIntensityBadge');
+  const intensityMap = {
+    light: 'Chuva Fraca',
+    moderate: 'Chuva Moderada',
+    heavy: 'Chuva Forte',
+    extreme: 'Temporal',
+  };
+  const clsMap = { light: 'int-light', moderate: 'int-moderate', heavy: 'int-heavy', extreme: 'int-extreme' };
+  const dom = nc.currentDominant || 'light';
+  if (badge) {
+    badge.textContent = `⚡ ${intensityMap[dom] || dom} · ${nc.currentMaxDbz ?? '?'} dBZ`;
+    badge.className = `nowcast-intensity-badge ${clsMap[dom] || ''}`;
+  }
+
+  // Movimento (direção + velocidade)
+  const mv = document.getElementById('nowcastMovement');
+  const m = nc.movement;
+  if (mv) {
+    if (m && m.speedKmh > 0.5) {
+      const dirs = ['N', 'NE', 'L', 'SE', 'S', 'SO', 'O', 'NO'];
+      const card = dirs[Math.round(m.directionDeg / 45) % 8];
+      mv.innerHTML = `<span style="font-size:16px">🧭</span> Movendo para ${card} (${m.directionDeg}°) · ${m.speedKmh} km/h`;
+    } else {
+      mv.textContent = '🫥 Núcleo praticamente parado';
+    }
+  }
+
+  // Meta: distância até Ipiranga (se o núcleo mais intenso tiver lat/lon)
+  const meta = document.getElementById('nowcastMeta');
+  if (meta) {
+    const cell = nc.nearestCell;
+    if (cell && typeof cell.lat === 'number') {
+      const d = haversineKm(-25.0244, -50.5847, cell.lat, cell.lon);
+      const note = d < 80
+        ? `⚠️ Núcleo a ~${d.toFixed(0)} km de Ipiranga`
+        : `Núcleo a ~${d.toFixed(0)} km de Ipiranga`;
+      const lastFrameTime = nc.frames[nc.frames.length - 1]?.time;
+      const obsNote = lastFrameTime
+        ? `obs. ${new Date(lastFrameTime).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}`
+        : '';
+      const framesNote = ` · ${nc.frames.length} frames (${obsNote})`;
+      meta.textContent = note + framesNote;
+    } else {
+      meta.textContent = `${nc.frames.length} frames analisados`;
+    }
+  }
+
+  // Texto narrativo (Camada B)
+  const txt = document.getElementById('nowcastText');
+  const srcTag = document.getElementById('nowcastSourceTag');
+  if (txt) {
+    if (nb?.text) {
+      txt.textContent = nb.text;
+      if (srcTag) srcTag.textContent = nb.source === 'nvidia_nim_vision' ? 'IA (NIM Vision)' : 'Engine Local';
+    } else {
+      txt.textContent = 'Análise em andamento...';
+    }
+  }
+}
+
+function haversineKm(lat1, lon1, lat2, lon2) {
+  const R = 6371;
+  const dLat = (lat2 - lat1) * Math.PI / 180;
+  const dLon = (lon2 - lon1) * Math.PI / 180;
+  const a = Math.sin(dLat / 2) ** 2 +
+    Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * Math.sin(dLon / 2) ** 2;
+  return 2 * R * Math.asin(Math.sqrt(a));
 }
 
 function showRadarFrame(index) {
