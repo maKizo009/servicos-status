@@ -18,7 +18,11 @@ import {
 	saveTelemetryLog,
 } from "./db.js";
 import { detectIsp } from "./isp-detector.js";
-import { generateAiWeatherBulletin, renderJsonLd, renderLlmsTxt } from "./llm-formatter.js";
+import {
+	generateAiWeatherBulletin,
+	renderJsonLd,
+	renderLlmsTxt,
+} from "./llm-formatter.js";
 import { logger } from "./logger.js";
 import { checkRateLimit } from "./rate-limiter.js";
 import { EventTracker } from "./state.js";
@@ -311,24 +315,33 @@ async function syncWeatherCycle(): Promise<WeatherState> {
 	setCachedWeatherState(state);
 
 	const now = Date.now();
-	const bulletinAgeMs = existingBulletin ? now - existingBulletin.generatedAt : Infinity;
+	const bulletinAgeMs = existingBulletin
+		? now - existingBulletin.generatedAt
+		: Infinity;
 	const isExpired = bulletinAgeMs > 900_000; // 15 min expiration
 	const isRainStatusMismatch = Boolean(
 		radar.hasRegionalRain &&
-		existingBulletin &&
-		(existingBulletin.bulletin.includes("estáveis") ||
-			existingBulletin.bulletin.includes("sem instabilidades") ||
-			existingBulletin.bulletin.includes("estável") ||
-			existingBulletin.bulletin.includes("Nenhuma alteração"))
+			existingBulletin &&
+			(existingBulletin.bulletin.includes("estáveis") ||
+				existingBulletin.bulletin.includes("sem instabilidades") ||
+				existingBulletin.bulletin.includes("estável") ||
+				existingBulletin.bulletin.includes("Nenhuma alteração")),
 	);
 
 	if (!existingBulletin || isExpired || isRainStatusMismatch) {
 		logger.info("Triggering fresh AI Weather Bulletin generation", {
-			reason: !existingBulletin ? "no_bulletin" : isRainStatusMismatch ? "rain_status_mismatch" : "cache_expired",
+			reason: !existingBulletin
+				? "no_bulletin"
+				: isRainStatusMismatch
+					? "rain_status_mismatch"
+					: "cache_expired",
 			bulletinAgeMin: Math.round(bulletinAgeMs / 60000),
 			hasRegionalRain: radar.hasRegionalRain,
 		});
-		const newBulletinText = await generateAiWeatherBulletin(state, lastUnifiedReport);
+		const newBulletinText = await generateAiWeatherBulletin(
+			state,
+			lastUnifiedReport,
+		);
 		const updatedBulletin = await getLatestWeatherBulletin();
 		state.bulletin = updatedBulletin || {
 			bulletin: newBulletinText,
@@ -446,7 +459,9 @@ export async function handleRequest(req: any): Promise<Response> {
 		if (path === "/api/weather" || path === "/api/weather/radar") {
 			let state = getCachedWeatherState();
 			if (!state) state = await syncWeatherCycle();
-			return Response.json(state || { error: "Sem dados climatológicos no momento" });
+			return Response.json(
+				state || { error: "Sem dados climatológicos no momento" },
+			);
 		}
 		if (path === "/api/weather/json-ld") {
 			const jsonLd = renderJsonLd(getCachedWeatherState(), lastUnifiedReport);

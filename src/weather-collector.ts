@@ -1,8 +1,14 @@
 import { getLatestRadarCache, saveRadarCache } from "./db.js";
 import { logger } from "./logger.js";
-import type { RainViewerFrame, WeatherRadarData, WeatherState, HourlyForecastPoint } from "./types.js";
+import type {
+	HourlyForecastPoint,
+	RainViewerFrame,
+	WeatherRadarData,
+	WeatherState,
+} from "./types.js";
 
-const RAINVIEWER_API_URL = "https://api.rainviewer.com/public/weather-maps.json";
+const RAINVIEWER_API_URL =
+	"https://api.rainviewer.com/public/weather-maps.json";
 // Modelo Europeu ECMWF IFS ("O Rei" da meteorologia)
 const OPEN_METEO_API_URL =
 	"https://api.open-meteo.com/v1/forecast?latitude=-25.0244&longitude=-50.5847&current_weather=true&hourly=temperature_2m,relativehumidity_2m,precipitation_probability,precipitation,cloudcover&models=ecmwf_ifs04&timezone=America%2FSao_Paulo";
@@ -17,7 +23,10 @@ export async function fetchRainViewerRadar(): Promise<WeatherRadarData> {
 
 		const res = await fetch(RAINVIEWER_API_URL, {
 			signal: controller.signal,
-			headers: { "User-Agent": "ServicosIpirangaStatus/1.0 (+https://ipiranga.pr.gov.br)" },
+			headers: {
+				"User-Agent":
+					"ServicosIpirangaStatus/1.0 (+https://ipiranga.pr.gov.br)",
+			},
 		});
 		clearTimeout(timeoutId);
 
@@ -88,7 +97,9 @@ export async function fetchRainViewerRadar(): Promise<WeatherRadarData> {
 		return radarData;
 	} catch (err: unknown) {
 		const errMsg = err instanceof Error ? err.message : String(err);
-		logger.warn("RainViewer sync failed, applying resilience fallback", { error: errMsg });
+		logger.warn("RainViewer sync failed, applying resilience fallback", {
+			error: errMsg,
+		});
 
 		const fallback = await getLatestRadarCache();
 		if (fallback) {
@@ -147,7 +158,8 @@ export async function fetchCurrentWeather(): Promise<{
 		const tempC = Math.round(data.current_weather?.temperature ?? 21);
 		const windKmh = Math.round(data.current_weather?.windspeed ?? 12);
 		const code = data.current_weather?.weathercode ?? 0;
-		const rainProbabilityPct = data.hourly?.precipitation_probability?.[0] ?? 15;
+		const rainProbabilityPct =
+			data.hourly?.precipitation_probability?.[0] ?? 15;
 		const humidityPct = data.hourly?.relativehumidity_2m?.[0] ?? 70;
 
 		const hourlyForecast: HourlyForecastPoint[] = [];
@@ -161,7 +173,10 @@ export async function fetchCurrentWeather(): Promise<{
 			const ptTime = new Date(times[i]);
 			if (ptTime.getHours() >= nowHour && hourlyForecast.length < 6) {
 				hourlyForecast.push({
-					time: ptTime.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" }),
+					time: ptTime.toLocaleTimeString("pt-BR", {
+						hour: "2-digit",
+						minute: "2-digit",
+					}),
 					tempC: Math.round(temps[i] ?? tempC),
 					rainProbabilityPct: Math.round(probs[i] ?? rainProbabilityPct),
 					precipitationMm: Number((precips[i] ?? 0).toFixed(1)),
@@ -198,7 +213,9 @@ export async function fetchCurrentWeather(): Promise<{
 			hourlyForecast,
 		};
 	} catch (err: unknown) {
-		logger.warn("Weather forecast fetch failed, using defaults", { error: String(err) });
+		logger.warn("Weather forecast fetch failed, using defaults", {
+			error: String(err),
+		});
 		return {
 			tempC: 22,
 			condition: "Parcialmente Nublado",

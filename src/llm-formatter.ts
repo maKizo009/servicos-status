@@ -41,13 +41,20 @@ export function renderLlmsTxt(
 
 	const copelServices = report?.services.find((s) => s.name === "Copel");
 	const saneparServices = report?.services.find((s) => s.name === "Sanepar");
-	const copelStatus = copelServices ? copelServices.details : "Sem interrupções detectadas";
-	const saneparStatus = saneparServices ? saneparServices.details : "Sem interrupções detectadas";
+	const copelStatus = copelServices
+		? copelServices.details
+		: "Sem interrupções detectadas";
+	const saneparStatus = saneparServices
+		? saneparServices.details
+		: "Sem interrupções detectadas";
 
-	const telecomServices = report?.services.filter((s) => s.category === "telecom") || [];
+	const telecomServices =
+		report?.services.filter((s) => s.category === "telecom") || [];
 	const telecomSummary =
 		telecomServices.length > 0
-			? telecomServices.map((s) => `${s.name}: ${s.status.toUpperCase()}`).join(" | ")
+			? telecomServices
+					.map((s) => `${s.name}: ${s.status.toUpperCase()}`)
+					.join(" | ")
 			: "Claro: OK | Vivo: OK | TIM: OK";
 
 	return `# Status de Serviços e Clima — ${municipio}
@@ -114,7 +121,9 @@ export function renderJsonLd(
 		observation: {
 			temperature: weather ? `${weather.tempC} Cel` : undefined,
 			weatherCondition: weather?.condition,
-			precipitationProbability: weather ? `${weather.rainProbabilityPct}%` : undefined,
+			precipitationProbability: weather
+				? `${weather.rainProbabilityPct}%`
+				: undefined,
 			radarStatus: weather?.radar?.status || "unknown",
 			forecastModel: "ECMWF IFS",
 		},
@@ -138,17 +147,26 @@ export async function generateAiWeatherBulletin(
 	const nimKey = config.nvidiaNimApiKey;
 	const geminiKey = config.geminiApiKey;
 
-	const hourlySummary = weather?.hourlyForecast && weather.hourlyForecast.length > 0
-		? weather.hourlyForecast.slice(0, 4).map((h) => `${h.time}: ${h.tempC}°C (${h.rainProbabilityPct}% chuva${h.precipitationMm > 0 ? `, ${h.precipitationMm}mm` : ""})`).join(" | ")
-		: "Sem dados horários";
+	const hourlySummary =
+		weather?.hourlyForecast && weather.hourlyForecast.length > 0
+			? weather.hourlyForecast
+					.slice(0, 4)
+					.map(
+						(h) =>
+							`${h.time}: ${h.tempC}°C (${h.rainProbabilityPct}% chuva${h.precipitationMm > 0 ? `, ${h.precipitationMm}mm` : ""})`,
+					)
+					.join(" | ")
+			: "Sem dados horários";
 
 	if (nimKey) {
-		const nimModels = Array.from(new Set([
-			config.nvidiaNimModel,
-			"nvidia/nemotron-4-mini-4b-instruct",
-			"meta/llama-3.3-70b-instruct",
-			"google/gemma-2-9b-it",
-		]));
+		const nimModels = Array.from(
+			new Set([
+				config.nvidiaNimModel,
+				"nvidia/nemotron-4-mini-4b-instruct",
+				"meta/llama-3.3-70b-instruct",
+				"google/gemma-2-9b-it",
+			]),
+		);
 
 		const regionalStatus = weather?.hasRegionalRain
 			? "ALERTA CRÍTICO: CHUVA E TEMPESTADE ATIVAS DETECTADAS NO RADAR REGIONAL (CAMPOS GERAIS/IPIRANGA)"
@@ -162,15 +180,19 @@ DADOS DO CLIMA E RADAR EM TEMPO REAL:
 - Serviços Públicos: Copel (${report?.services.find((s) => s.name === "Copel")?.details || "OK"}), Sanepar (${report?.services.find((s) => s.name === "Sanepar")?.details || "OK"})
 
 INSTRUÇÃO OBRIGATÓRIA:
-${weather?.hasRegionalRain 
-  ? "ATENÇÃO: O RADAR INDICA CHUVA/TEMPESTADE ATIVA NA REGIÃO! VOCÊ DEVE OBRIGATORIAMENTE alertar sobre a chuva na região e recomendar atenção com a rede de energia elétrica (COPEL). JAMAIS diga que o tempo está estável ou sem instabilidades!"
-  : "O radar não indica tempestades na região no momento. Faça um resumo conciso da previsão do tempo."}
+${
+	weather?.hasRegionalRain
+		? "ATENÇÃO: O RADAR INDICA CHUVA/TEMPESTADE ATIVA NA REGIÃO! VOCÊ DEVE OBRIGATORIAMENTE alertar sobre a chuva na região e recomendar atenção com a rede de energia elétrica (COPEL). JAMAIS diga que o tempo está estável ou sem instabilidades!"
+		: "O radar não indica tempestades na região no momento. Faça um resumo conciso da previsão do tempo."
+}
 
 Gere um boletim direto de EXATAMENTE 2 FRASES em português.`;
 
 		for (const modelName of nimModels) {
 			try {
-				logger.info(`Trying AI Weather Bulletin via NVIDIA NIM (${modelName})...`);
+				logger.info(
+					`Trying AI Weather Bulletin via NVIDIA NIM (${modelName})...`,
+				);
 				const response = await fetch(config.nvidiaNimEndpoint, {
 					method: "POST",
 					headers: {
@@ -192,14 +214,20 @@ Gere um boletim direto de EXATAMENTE 2 FRASES em português.`;
 					const text = json.choices?.[0]?.message?.content?.trim();
 					if (text) {
 						saveWeatherBulletin(text, "nvidia_nim");
-						logger.info(`NVIDIA NIM bulletin successfully generated using ${modelName}`);
+						logger.info(
+							`NVIDIA NIM bulletin successfully generated using ${modelName}`,
+						);
 						return text;
 					}
 				} else {
-					logger.warn(`NVIDIA NIM model ${modelName} returned HTTP ${response.status}`);
+					logger.warn(
+						`NVIDIA NIM model ${modelName} returned HTTP ${response.status}`,
+					);
 				}
 			} catch (err) {
-				logger.warn(`NVIDIA NIM model ${modelName} failed`, { error: String(err) });
+				logger.warn(`NVIDIA NIM model ${modelName} failed`, {
+					error: String(err),
+				});
 			}
 		}
 	}
@@ -221,7 +249,9 @@ Gere um boletim direto de EXATAMENTE 2 FRASES em português.`;
 			);
 			if (response.ok) {
 				const json = (await response.json()) as {
-					candidates?: Array<{ content?: { parts?: Array<{ text?: string }> } }>;
+					candidates?: Array<{
+						content?: { parts?: Array<{ text?: string }> };
+					}>;
 				};
 				const text = json.candidates?.[0]?.content?.parts?.[0]?.text?.trim();
 				if (text) {

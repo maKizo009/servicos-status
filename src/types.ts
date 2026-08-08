@@ -162,4 +162,3 @@ export interface WeatherState {
 	bulletin: WeatherBulletin | null;
 	updatedAt: number;
 }
-

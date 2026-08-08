@@ -15,7 +15,6 @@ import type {
 	PortalResult,
 	SaneparInterruption,
 	ServiceHealth,
-	ServiceSource,
 	UnifiedReport,
 } from "./types.js";
 

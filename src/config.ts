@@ -82,7 +82,8 @@ export function loadConfig(): AppConfig {
 			process.env.SANEPAR_VIEW_NAME ?? "notices_panel_supply_stop",
 		saneparDisplays: ["supply_stop_desk", "supply_stop_mobile"],
 		nvidiaNimApiKey: process.env.NVIDIA_NIM_API_KEY ?? "",
-		nvidiaNimModel: process.env.NVIDIA_NIM_MODEL ?? "meta/llama-3.1-8b-instruct",
+		nvidiaNimModel:
+			process.env.NVIDIA_NIM_MODEL ?? "meta/llama-3.1-8b-instruct",
 		nvidiaNimEndpoint:
 			process.env.NVIDIA_NIM_ENDPOINT ??
 			"https://integrate.api.nvidia.com/v1/chat/completions",

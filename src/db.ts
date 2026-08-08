@@ -1,6 +1,9 @@
 import { mkdirSync } from "node:fs";
 import { dirname } from "node:path";
-import { createClient as createWebClient, type Client } from "@libsql/client/web";
+import {
+	type Client,
+	createClient as createWebClient,
+} from "@libsql/client/web";
 import { logger } from "./logger.js";
 import type {
 	BgpResult,
@@ -16,10 +19,18 @@ let client: Client | null = null;
 
 export async function getDbClient(): Promise<Client> {
 	if (!client) {
-		const tursoUrl = process.env.TURSO_DATABASE_URL || process.env.TURSO_URL || "libsql://health-lucasmodesto.aws-us-east-2.turso.io";
-		const tursoToken = process.env.TURSO_AUTH_TOKEN || process.env.TURSO_DATABASE_TOKEN || process.env.TURSO_AUTH_KEY;
+		const tursoUrl =
+			process.env.TURSO_DATABASE_URL ||
+			process.env.TURSO_URL ||
+			"libsql://health-lucasmodesto.aws-us-east-2.turso.io";
+		const tursoToken =
+			process.env.TURSO_AUTH_TOKEN ||
+			process.env.TURSO_DATABASE_TOKEN ||
+			process.env.TURSO_AUTH_KEY;
 
-		logger.info("Connecting to Turso Cloud SQLite database via Web Client", { url: tursoUrl });
+		logger.info("Connecting to Turso Cloud SQLite database via Web Client", {
+			url: tursoUrl,
+		});
 		client = createWebClient({
 			url: tursoUrl,
 			authToken: tursoToken,
@@ -32,8 +43,9 @@ export async function initDb(): Promise<Client> {
 	const db = await getDbClient();
 
 	try {
-		await db.batch([
-			`CREATE TABLE IF NOT EXISTS portal_results (
+		await db.batch(
+			[
+				`CREATE TABLE IF NOT EXISTS portal_results (
 				id INTEGER PRIMARY KEY AUTOINCREMENT,
 				operator TEXT NOT NULL,
 				host TEXT NOT NULL,
@@ -42,7 +54,7 @@ export async function initDb(): Promise<Client> {
 				error TEXT DEFAULT '',
 				timestamp INTEGER NOT NULL
 			)`,
-			`CREATE TABLE IF NOT EXISTS connectivity_results (
+				`CREATE TABLE IF NOT EXISTS connectivity_results (
 				id INTEGER PRIMARY KEY AUTOINCREMENT,
 				label TEXT NOT NULL,
 				host TEXT NOT NULL,
@@ -51,7 +63,7 @@ export async function initDb(): Promise<Client> {
 				error TEXT DEFAULT '',
 				timestamp INTEGER NOT NULL
 			)`,
-			`CREATE TABLE IF NOT EXISTS bgp_results (
+				`CREATE TABLE IF NOT EXISTS bgp_results (
 				id INTEGER PRIMARY KEY AUTOINCREMENT,
 				operator TEXT NOT NULL,
 				asn INTEGER NOT NULL,
@@ -60,13 +72,13 @@ export async function initDb(): Promise<Client> {
 				timestamp INTEGER NOT NULL,
 				error TEXT DEFAULT ''
 			)`,
-			`CREATE TABLE IF NOT EXISTS known_events (
+				`CREATE TABLE IF NOT EXISTS known_events (
 				source TEXT NOT NULL,
 				hash TEXT NOT NULL,
 				created_at INTEGER NOT NULL,
 				PRIMARY KEY (source, hash)
 			)`,
-			`CREATE TABLE IF NOT EXISTS signal_reports (
+				`CREATE TABLE IF NOT EXISTS signal_reports (
 				id INTEGER PRIMARY KEY AUTOINCREMENT,
 				operator TEXT NOT NULL,
 				status TEXT NOT NULL,
@@ -75,7 +87,7 @@ export async function initDb(): Promise<Client> {
 				reported_at INTEGER NOT NULL,
 				expires_at INTEGER NOT NULL
 			)`,
-			`CREATE TABLE IF NOT EXISTS ip_isp_cache (
+				`CREATE TABLE IF NOT EXISTS ip_isp_cache (
 				ip TEXT PRIMARY KEY,
 				operator TEXT,
 				isp_name TEXT NOT NULL,
@@ -83,7 +95,7 @@ export async function initDb(): Promise<Client> {
 				is_mobile INTEGER NOT NULL DEFAULT 0,
 				cached_at INTEGER NOT NULL
 			)`,
-			`CREATE TABLE IF NOT EXISTS telemetry_logs (
+				`CREATE TABLE IF NOT EXISTS telemetry_logs (
 				id INTEGER PRIMARY KEY AUTOINCREMENT,
 				ip TEXT NOT NULL,
 				operator TEXT,
@@ -92,7 +104,7 @@ export async function initDb(): Promise<Client> {
 				effective_type TEXT DEFAULT '',
 				timestamp INTEGER NOT NULL
 			)`,
-			`CREATE TABLE IF NOT EXISTS isp_health_states (
+				`CREATE TABLE IF NOT EXISTS isp_health_states (
 				isp_name TEXT PRIMARY KEY,
 				operator TEXT,
 				status TEXT NOT NULL,
@@ -103,7 +115,7 @@ export async function initDb(): Promise<Client> {
 				last_updated INTEGER NOT NULL,
 				expires_at INTEGER NOT NULL
 			)`,
-			`CREATE TABLE IF NOT EXISTS event_history (
+				`CREATE TABLE IF NOT EXISTS event_history (
 				id INTEGER PRIMARY KEY AUTOINCREMENT,
 				source TEXT NOT NULL,
 				title TEXT NOT NULL,
@@ -112,7 +124,7 @@ export async function initDb(): Promise<Client> {
 				consumers INTEGER DEFAULT 0,
 				timestamp INTEGER NOT NULL
 			)`,
-			`CREATE TABLE IF NOT EXISTS weather_radar_cache (
+				`CREATE TABLE IF NOT EXISTS weather_radar_cache (
 				id INTEGER PRIMARY KEY AUTOINCREMENT,
 				host TEXT NOT NULL,
 				version TEXT NOT NULL,
@@ -121,25 +133,31 @@ export async function initDb(): Promise<Client> {
 				last_success_time INTEGER NOT NULL,
 				timestamp INTEGER NOT NULL
 			)`,
-			`CREATE TABLE IF NOT EXISTS weather_bulletins (
+				`CREATE TABLE IF NOT EXISTS weather_bulletins (
 				id INTEGER PRIMARY KEY AUTOINCREMENT,
 				bulletin TEXT NOT NULL,
 				source TEXT NOT NULL,
 				generated_at INTEGER NOT NULL
 			)`,
-			"CREATE INDEX IF NOT EXISTS idx_portal_timestamp ON portal_results(timestamp)",
-			"CREATE INDEX IF NOT EXISTS idx_connectivity_timestamp ON connectivity_results(timestamp)",
-			"CREATE INDEX IF NOT EXISTS idx_bgp_timestamp ON bgp_results(timestamp)",
-			"CREATE INDEX IF NOT EXISTS idx_known_events_source ON known_events(source)",
-			"CREATE INDEX IF NOT EXISTS idx_signal_reports_expires ON signal_reports(expires_at)",
-			"CREATE INDEX IF NOT EXISTS idx_telemetry_timestamp ON telemetry_logs(timestamp)",
-			"CREATE INDEX IF NOT EXISTS idx_event_history_timestamp ON event_history(timestamp)",
-			"CREATE INDEX IF NOT EXISTS idx_weather_bulletins_generated ON weather_bulletins(generated_at)",
-		], "write");
+				"CREATE INDEX IF NOT EXISTS idx_portal_timestamp ON portal_results(timestamp)",
+				"CREATE INDEX IF NOT EXISTS idx_connectivity_timestamp ON connectivity_results(timestamp)",
+				"CREATE INDEX IF NOT EXISTS idx_bgp_timestamp ON bgp_results(timestamp)",
+				"CREATE INDEX IF NOT EXISTS idx_known_events_source ON known_events(source)",
+				"CREATE INDEX IF NOT EXISTS idx_signal_reports_expires ON signal_reports(expires_at)",
+				"CREATE INDEX IF NOT EXISTS idx_telemetry_timestamp ON telemetry_logs(timestamp)",
+				"CREATE INDEX IF NOT EXISTS idx_event_history_timestamp ON event_history(timestamp)",
+				"CREATE INDEX IF NOT EXISTS idx_weather_bulletins_generated ON weather_bulletins(generated_at)",
+			],
+			"write",
+		);
 
-		logger.info("Database schema initialized successfully via LibSQL Web batch");
+		logger.info(
+			"Database schema initialized successfully via LibSQL Web batch",
+		);
 	} catch (err) {
-		logger.error("Failed to initialize Database schema", { error: String(err) });
+		logger.error("Failed to initialize Database schema", {
+			error: String(err),
+		});
 	}
 
 	return db;
@@ -160,7 +178,7 @@ export async function getCachedIspInfo(ip: string): Promise<{
 	});
 
 	if (res.rows.length === 0) return null;
-	const row = res.rows[0] as any;
+	const row = res.rows[0] as Record<string, unknown>;
 
 	return {
 		ip: String(row.ip),
@@ -231,7 +249,7 @@ export async function recalculateIspHealth(
 		args: [ispName, operator ?? "", cutoff],
 	});
 
-	const row = res.rows[0] as any;
+	const row = res.rows[0] as Record<string, unknown>;
 	const sampleCount = Number(row?.sample_count || 1);
 	const avgRttMs = Math.round(Number(row?.avg_rtt || 0));
 	const degradedCount = Number(row?.degraded_count || 0);
@@ -293,7 +311,7 @@ export async function getActiveIspHealthStates(): Promise<IspHealthState[]> {
 		args: [now],
 	});
 
-	return res.rows.map((r: any) => ({
+	return res.rows.map((r: Record<string, unknown>) => ({
 		ispName: String(r.ispName),
 		operator: r.operator ? (r.operator as OperatorName) : null,
 		status: r.status as "ok" | "warn" | "critical",
@@ -313,7 +331,9 @@ export interface TelemetrySummary {
 	degradedCount: number;
 }
 
-export async function getTelemetryStats(windowMinutes = 30): Promise<TelemetrySummary[]> {
+export async function getTelemetryStats(
+	windowMinutes = 30,
+): Promise<TelemetrySummary[]> {
 	const db = await getDbClient();
 	const cutoff = Date.now() - windowMinutes * 60 * 1000;
 	const res = await db.execute({
@@ -328,7 +348,7 @@ export async function getTelemetryStats(windowMinutes = 30): Promise<TelemetrySu
 		args: [cutoff],
 	});
 
-	return res.rows.map((r: any) => ({
+	return res.rows.map((r: Record<string, unknown>) => ({
 		operator: r.op as OperatorName | "Outros",
 		userCount: Number(r.user_count),
 		avgRttMs: Math.round(Number(r.avg_rtt || 0)),
@@ -380,7 +400,7 @@ export async function getActiveSignalReports(): Promise<LocalSignalReport[]> {
 		args: [now],
 	});
 
-	return res.rows.map((r: any) => ({
+	return res.rows.map((r: Record<string, unknown>) => ({
 		operator: r.operator as OperatorName,
 		status: r.status as "ok" | "degraded" | "down",
 		signalType: String(r.signalType),
@@ -394,15 +414,31 @@ export async function savePortalResult(r: PortalResult): Promise<void> {
 	const db = await getDbClient();
 	await db.execute({
 		sql: "INSERT INTO portal_results (operator, host, success, latency_ms, error, timestamp) VALUES (?, ?, ?, ?, ?, ?)",
-		args: [r.operator, r.host, r.success ? 1 : 0, r.latencyMs, r.error, r.timestamp],
+		args: [
+			r.operator,
+			r.host,
+			r.success ? 1 : 0,
+			r.latencyMs,
+			r.error,
+			r.timestamp,
+		],
 	});
 }
 
-export async function saveConnectivityResult(r: ConnectivityResult): Promise<void> {
+export async function saveConnectivityResult(
+	r: ConnectivityResult,
+): Promise<void> {
 	const db = await getDbClient();
 	await db.execute({
 		sql: "INSERT INTO connectivity_results (label, host, success, latency_ms, error, timestamp) VALUES (?, ?, ?, ?, ?, ?)",
-		args: [r.label, r.host, r.success ? 1 : 0, r.latencyMs, r.error, r.timestamp],
+		args: [
+			r.label,
+			r.host,
+			r.success ? 1 : 0,
+			r.latencyMs,
+			r.error,
+			r.timestamp,
+		],
 	});
 }
 
@@ -410,11 +446,20 @@ export async function saveBgpResult(r: BgpResult): Promise<void> {
 	const db = await getDbClient();
 	await db.execute({
 		sql: "INSERT INTO bgp_results (operator, asn, prefix_count_v4, prefix_count_v6, timestamp, error) VALUES (?, ?, ?, ?, ?, ?)",
-		args: [r.operator, r.asn, r.prefixCountV4, r.prefixCountV6, r.timestamp, r.error ?? ""],
+		args: [
+			r.operator,
+			r.asn,
+			r.prefixCountV4,
+			r.prefixCountV6,
+			r.timestamp,
+			r.error ?? "",
+		],
 	});
 }
 
-export async function getLatestPortalResults(limit = 50): Promise<PortalResult[]> {
+export async function getLatestPortalResults(
+	limit = 50,
+): Promise<PortalResult[]> {
 	const db = await getDbClient();
 	const res = await db.execute({
 		sql: `SELECT operator, host, success, latency_ms as latencyMs, error, timestamp
@@ -424,7 +469,7 @@ export async function getLatestPortalResults(limit = 50): Promise<PortalResult[]
 		args: [limit],
 	});
 
-	return res.rows.map((r: any) => ({
+	return res.rows.map((r: Record<string, unknown>) => ({
 		operator: r.operator as OperatorName,
 		host: String(r.host),
 		success: Boolean(r.success),
@@ -434,7 +479,9 @@ export async function getLatestPortalResults(limit = 50): Promise<PortalResult[]
 	}));
 }
 
-export async function getLatestConnectivityResults(limit = 50): Promise<ConnectivityResult[]> {
+export async function getLatestConnectivityResults(
+	limit = 50,
+): Promise<ConnectivityResult[]> {
 	const db = await getDbClient();
 	const res = await db.execute({
 		sql: `SELECT label, host, success, latency_ms as latencyMs, error, timestamp
@@ -444,7 +491,7 @@ export async function getLatestConnectivityResults(limit = 50): Promise<Connecti
 		args: [limit],
 	});
 
-	return res.rows.map((r: any) => ({
+	return res.rows.map((r: Record<string, unknown>) => ({
 		label: String(r.label),
 		host: String(r.host),
 		success: Boolean(r.success),
@@ -464,7 +511,7 @@ export async function getLatestBgpResults(limit = 50): Promise<BgpResult[]> {
 		args: [limit],
 	});
 
-	return res.rows.map((r: any) => ({
+	return res.rows.map((r: Record<string, unknown>) => ({
 		operator: r.operator as OperatorName,
 		asn: Number(r.asn),
 		prefixCountV4: Number(r.prefixCountV4),
@@ -489,7 +536,7 @@ export async function getPortalHistory(
 		args: [operator, limit],
 	});
 
-	return res.rows.map((r: any) => ({
+	return res.rows.map((r: Record<string, unknown>) => ({
 		operator: r.operator as OperatorName,
 		host: String(r.host),
 		success: Boolean(r.success),
@@ -533,43 +580,50 @@ export async function getDailyStatsSummary() {
 		sql: "SELECT COUNT(*) as cnt, COALESCE(SUM(consumers), 0) as totalConsumers FROM event_history WHERE source = 'copel' AND timestamp >= ?",
 		args: [startOfDay],
 	});
-	const copelTodayRow = copelTodayRes.rows[0] as any;
+	const copelTodayRow = copelTodayRes.rows[0] as Record<string, unknown>;
 
 	const copel7DaysRes = await db.execute({
 		sql: "SELECT COUNT(*) as cnt FROM event_history WHERE source = 'copel' AND timestamp >= ?",
 		args: [startOf7Days],
 	});
-	const copel7DaysRow = copel7DaysRes.rows[0] as any;
+	const copel7DaysRow = copel7DaysRes.rows[0] as Record<string, unknown>;
 
 	const saneparTodayRes = await db.execute({
 		sql: "SELECT COUNT(*) as cnt FROM event_history WHERE source = 'sanepar' AND timestamp >= ?",
 		args: [startOfDay],
 	});
-	const saneparTodayRow = saneparTodayRes.rows[0] as any;
+	const saneparTodayRow = saneparTodayRes.rows[0] as Record<string, unknown>;
 
 	const sanepar7DaysRes = await db.execute({
 		sql: "SELECT COUNT(*) as cnt FROM event_history WHERE source = 'sanepar' AND timestamp >= ?",
 		args: [startOf7Days],
 	});
-	const sanepar7DaysRow = sanepar7DaysRes.rows[0] as any;
+	const sanepar7DaysRow = sanepar7DaysRes.rows[0] as Record<string, unknown>;
 
 	const telemetryTodayRes = await db.execute({
 		sql: "SELECT COUNT(*) as cnt FROM telemetry_logs WHERE timestamp >= ?",
 		args: [startOfDay],
 	});
-	const telemetryTodayRow = telemetryTodayRes.rows[0] as any;
+	const telemetryTodayRow = telemetryTodayRes.rows[0] as Record<
+		string,
+		unknown
+	>;
 
-	const logsRes = await db.execute("SELECT id, source, title, bairro, details, consumers, timestamp FROM event_history ORDER BY timestamp DESC LIMIT 30");
+	const logsRes = await db.execute(
+		"SELECT id, source, title, bairro, details, consumers, timestamp FROM event_history ORDER BY timestamp DESC LIMIT 30",
+	);
 
-	const recentLogs: EventLogItem[] = logsRes.rows.map((r: any) => ({
-		id: Number(r.id),
-		source: String(r.source),
-		title: String(r.title),
-		bairro: String(r.bairro ?? ""),
-		details: String(r.details ?? ""),
-		consumers: Number(r.consumers ?? 0),
-		timestamp: Number(r.timestamp),
-	}));
+	const recentLogs: EventLogItem[] = logsRes.rows.map(
+		(r: Record<string, unknown>) => ({
+			id: Number(r.id),
+			source: String(r.source),
+			title: String(r.title),
+			bairro: String(r.bairro ?? ""),
+			details: String(r.details ?? ""),
+			consumers: Number(r.consumers ?? 0),
+			timestamp: Number(r.timestamp),
+		}),
+	);
 
 	return {
 		todayStart: startOfDay,
@@ -607,9 +661,11 @@ export async function saveRadarCache(data: WeatherRadarData): Promise<void> {
 
 export async function getLatestRadarCache(): Promise<WeatherRadarData | null> {
 	const db = await getDbClient();
-	const res = await db.execute("SELECT payload, status, last_success_time FROM weather_radar_cache ORDER BY timestamp DESC LIMIT 1");
+	const res = await db.execute(
+		"SELECT payload, status, last_success_time FROM weather_radar_cache ORDER BY timestamp DESC LIMIT 1",
+	);
 	if (res.rows.length === 0) return null;
-	const row = res.rows[0] as any;
+	const row = res.rows[0] as Record<string, unknown>;
 
 	try {
 		const parsed = JSON.parse(String(row.payload)) as WeatherRadarData;
@@ -641,9 +697,11 @@ export async function saveWeatherBulletin(
 
 export async function getLatestWeatherBulletin(): Promise<WeatherBulletin | null> {
 	const db = await getDbClient();
-	const res = await db.execute("SELECT id, bulletin, source, generated_at as generatedAt FROM weather_bulletins ORDER BY generated_at DESC LIMIT 1");
+	const res = await db.execute(
+		"SELECT id, bulletin, source, generated_at as generatedAt FROM weather_bulletins ORDER BY generated_at DESC LIMIT 1",
+	);
 	if (res.rows.length === 0) return null;
-	const row = res.rows[0] as any;
+	const row = res.rows[0] as Record<string, unknown>;
 
 	return {
 		id: Number(row.id),
