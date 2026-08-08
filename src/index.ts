@@ -46,8 +46,16 @@ import {
 } from "./weather-collector";
 
 const config = loadConfig();
-await initDb();
-const tracker = new EventTracker();
+let isInitialized = false;
+let tracker: EventTracker;
+
+export async function ensureInitialized(): Promise<void> {
+	if (!isInitialized) {
+		await initDb();
+		tracker = new EventTracker();
+		isInitialized = true;
+	}
+}
 
 const checkResults: Map<OperatorName, CheckResult> = new Map();
 let lastResults: PortalResult[] = [];
@@ -57,6 +65,7 @@ let lastUnifiedReportTime = 0;
 let lastUnifiedReport: UnifiedReport | null = null;
 
 async function runChecks(): Promise<void> {
+	await ensureInitialized();
 	logger.info("Starting check cycle");
 
 	const data = await runAllChecks(config, tracker);
@@ -272,6 +281,7 @@ function handleServices(): Response {
 let weatherInterval: ReturnType<typeof setInterval> | null = null;
 
 async function syncWeatherCycle(): Promise<WeatherState> {
+	await ensureInitialized();
 	logger.info("Starting weather & radar sync cycle...");
 	const [radar, weatherInfo] = await Promise.all([
 		fetchRainViewerRadar(),
@@ -337,6 +347,7 @@ async function syncWeatherCycle(): Promise<WeatherState> {
 }
 
 export async function handleRequest(req: Request): Promise<Response> {
+	await ensureInitialized();
 	const url = new URL(req.url);
 	const path = url.pathname;
 
