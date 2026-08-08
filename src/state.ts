@@ -8,13 +8,14 @@ export function makeHash(...parts: string[]): string {
 
 export class EventTracker {
 	private known: Map<string, Set<string>>;
+	private isInit = false;
 
 	constructor() {
 		this.known = new Map();
-		this.load();
 	}
 
-	private async load(): Promise<void> {
+	async init(): Promise<void> {
+		if (this.isInit) return;
 		try {
 			const db = await getDbClient();
 			const res = await db.execute("SELECT source, hash FROM known_events");
@@ -32,6 +33,7 @@ export class EventTracker {
 		} catch (err) {
 			logger.warn("EventTracker load failed", { error: String(err) });
 		}
+		this.isInit = true;
 	}
 
 	isKnown(source: string, hash: string): boolean {

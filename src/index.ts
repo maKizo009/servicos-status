@@ -53,6 +53,7 @@ export async function ensureInitialized(): Promise<void> {
 	if (!isInitialized) {
 		await initDb();
 		tracker = new EventTracker();
+		await tracker.init();
 		isInitialized = true;
 	}
 }

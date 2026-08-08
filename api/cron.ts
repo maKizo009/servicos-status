@@ -16,6 +16,7 @@ export default async function handler(req: any, res: any) {
 		await initDb();
 		const config = loadConfig();
 		const tracker = new EventTracker();
+		await tracker.init();
 
 		const [radar, weatherInfo, data] = await Promise.all([
 			fetchRainViewerRadar(),
