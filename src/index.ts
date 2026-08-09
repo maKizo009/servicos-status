@@ -346,7 +346,14 @@ export async function syncWeatherCycle(): Promise<WeatherState> {
 		fetchCurrentWeather(),
 	]);
 
+	// Boletim da tabela legada (weather_bulletins, formato "NIM texto" que não
+	// é mais gravado): só é usado se FRESCO (<60 min), senão a Camada B
+	// (nowcastBulletin VLM/heurística) é a única fonte do boletim atual.
 	const existingBulletin = await getLatestWeatherBulletin();
+	const freshLegacyBulletin =
+		existingBulletin && Date.now() - existingBulletin.generatedAt < 60 * 60_000
+			? existingBulletin
+			: null;
 
 	const state: WeatherState = {
 		municipio: config.municipio || "Ipiranga",
@@ -361,7 +368,7 @@ export async function syncWeatherCycle(): Promise<WeatherState> {
 			: "Sem instabilidades ativas no radar regional.",
 		hourlyForecast: weatherInfo.hourlyForecast || [],
 		radar,
-		bulletin: existingBulletin,
+		bulletin: freshLegacyBulletin,
 		updatedAt: Date.now(),
 	};
 
@@ -630,8 +637,23 @@ export async function handleRequest(
 		}
 		if (path === "/api/weather/bulletin") {
 			const state = getCachedWeatherState();
+			// Instância fria não tem state em memória: fallback para o último
+			// boletim persistido no Turso (Camada B) — nunca retorna vazio
+			// sem necessidade.
+			const cached = state?.nowcastBulletin ?? state?.bulletin ?? null;
+			if (cached) {
+				const text = "text" in cached ? cached.text : (cached.bulletin ?? null);
+				return Response.json({
+					bulletin: text,
+					source: cached.source ?? null,
+					timestamp: Date.now(),
+				});
+			}
+			const persisted = await getLatestNowcastBulletin();
 			return Response.json({
-				bulletin: state?.bulletin || null,
+				bulletin: persisted?.text ?? null,
+				source: persisted?.source ?? null,
+				generatedAt: persisted?.generatedAt ?? null,
 				timestamp: Date.now(),
 			});
 		}
