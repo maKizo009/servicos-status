@@ -243,6 +243,50 @@ describe("Achado 2 — validação pós-geração do VLM", () => {
 		).toBe(false);
 	});
 
+	test("texto que regurgita o prompt (fonte de verdade) → rejeitado", () => {
+		expect(
+			validateBulletinAgainstVerdict(
+				"A direção e a velocidade medidas são a fonte de verdade. Não invente outra direção. Núcleo afastando-se, sem risco.",
+				{
+					approach: "receding",
+					bearingFromTargetDeg: 40,
+					radialKmh: 25,
+					etaMin: null,
+				},
+			),
+		).toBe(false);
+	});
+
+	test("ECMWF >=50% mas texto prioriza o radar (sem citar o modelo) → ACEITO (radar é a fonte da verdade de curto prazo)", () => {
+		expect(
+			validateBulletinAgainstVerdict(
+				"Não há previsão de chuva nas próximas 1-2 horas para Ipiranga.",
+				{
+					approach: "receding",
+					bearingFromTargetDeg: 40,
+					radialKmh: 25,
+					etaMin: null,
+				},
+				{ rainProbabilityPct: 76, hourlyForecast: [] },
+			),
+		).toBe(true);
+	});
+
+	test("ECMWF >=50% e texto cita a divergência → aceito", () => {
+		expect(
+			validateBulletinAgainstVerdict(
+				"O radar não mostra núcleos no momento, mas o modelo ECMWF indica 76% de chance de chuva nas próximas horas.",
+				{
+					approach: "receding",
+					bearingFromTargetDeg: 40,
+					radialKmh: 25,
+					etaMin: null,
+				},
+				{ rainProbabilityPct: 76, hourlyForecast: [] },
+			),
+		).toBe(true);
+	});
+
 	test("sem veredito e texto normal → aceito", () => {
 		expect(
 			validateBulletinAgainstVerdict(
@@ -285,7 +329,7 @@ describe("Conciliação de fontes (nowcast + ECMWF)", () => {
 		);
 		expect(b.source).toBe("heuristic");
 		expect(b.text).toContain("70%");
-		expect(b.text).toContain("não mostra núcleos significativos");
+		expect(b.text).toContain("não mostra núcleos em movimento");
 	});
 
 	test("sem núcleo + ECMWF baixo → frase simples sem alarme", async () => {
