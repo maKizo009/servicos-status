@@ -32,7 +32,10 @@
     }
   ],
   "functions": {
-    "api/**/*.js": {
+    "api/index.ts": {
+      "includeFiles": "src/data/**"
+    },
+    "api/cron.ts": {
       "includeFiles": "src/data/**"
     }
   }
