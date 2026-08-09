@@ -11,7 +11,7 @@ const RAINVIEWER_API_URL =
 	"https://api.rainviewer.com/public/weather-maps.json";
 // Modelo Europeu ECMWF IFS ("O Rei" da meteorologia)
 const OPEN_METEO_API_URL =
-	"https://api.open-meteo.com/v1/forecast?latitude=-25.0244&longitude=-50.5847&current_weather=true&hourly=temperature_2m,relativehumidity_2m,precipitation_probability,precipitation,cloudcover&models=ecmwf_ifs04&timezone=America%2FSao_Paulo";
+	"https://api.open-meteo.com/v1/forecast?latitude=-25.0244&longitude=-50.5847&current=temperature_2m,relative_humidity_2m,precipitation,wind_speed_10m,weather_code&hourly=temperature_2m,relativehumidity_2m,precipitation_probability,precipitation,cloudcover&models=ecmwf_ifs025&timezone=America%2FSao_Paulo";
 
 let cachedWeatherState: WeatherState | null = null;
 
@@ -141,10 +141,12 @@ export async function fetchCurrentWeather(): Promise<{
 		}
 
 		const data = (await res.json()) as {
-			current_weather?: {
-				temperature?: number;
-				windspeed?: number;
-				weathercode?: number;
+			current?: {
+				temperature_2m?: number;
+				wind_speed_10m?: number;
+				weather_code?: number;
+				relative_humidity_2m?: number;
+				precipitation?: number;
 			};
 			hourly?: {
 				time?: string[];
@@ -155,12 +157,10 @@ export async function fetchCurrentWeather(): Promise<{
 			};
 		};
 
-		const tempC = Math.round(data.current_weather?.temperature ?? 21);
-		const windKmh = Math.round(data.current_weather?.windspeed ?? 12);
-		const code = data.current_weather?.weathercode ?? 0;
-		const rainProbabilityPct =
-			data.hourly?.precipitation_probability?.[0] ?? 15;
-		const humidityPct = data.hourly?.relativehumidity_2m?.[0] ?? 70;
+		const tempC = Math.round(data.current?.temperature_2m ?? 21);
+		const windKmh = Math.round(data.current?.wind_speed_10m ?? 12);
+		const code = data.current?.weather_code ?? 0;
+		const humidityPct = data.current?.relative_humidity_2m ?? 70;
 
 		const hourlyForecast: HourlyForecastPoint[] = [];
 		const times = data.hourly?.time || [];
@@ -169,6 +169,16 @@ export async function fetchCurrentWeather(): Promise<{
 		const precips = data.hourly?.precipitation || [];
 
 		const nowHour = new Date().getHours();
+		// Probabilidade de chuva da hora atual (o índice [0] do forecast é 00:00)
+		let probIndex = 0;
+		for (let i = 0; i < Math.min(times.length, 24); i++) {
+			if (new Date(times[i]).getHours() >= nowHour) {
+				probIndex = i;
+				break;
+			}
+		}
+		const rainProbabilityPct = probs[probIndex] ?? 15;
+
 		for (let i = 0; i < Math.min(times.length, 24); i++) {
 			const ptTime = new Date(times[i]);
 			if (ptTime.getHours() >= nowHour && hourlyForecast.length < 6) {
