@@ -1628,7 +1628,7 @@ function renderNowcastCard(data) {
       const card = dirs[Math.round(m.directionDeg / 45) % 8];
       mv.innerHTML = `<span style="font-size:16px">🧭</span> Movendo para ${card} (${m.directionDeg}°) · ${m.speedKmh} km/h`;
     } else {
-      mv.textContent = '🫥 Núcleo praticamente parado';
+      mv.textContent = '🫥 Movimento não confiável no momento';
     }
   }
 

@@ -193,7 +193,7 @@ Instruções:
 1. Observe as cores na imagem: azul/âmbar = chuva fraca, azul-escuro = moderada, amarelo/laranja = forte, vermelho/rosa = temporal.
 2. A direção e a velocidade MEDIDAS (acima) são a fonte de verdade — use SEMPRE esses valores. Não invente outra direção baseada na imagem; ela pode parecer ambígua.
 3. Responda em português brasileiro, no máximo 3 frases, informando ao cidadão de Ipiranga se está vindo chuva e o que esperar nas próximas 1-2 horas, deixando claro que a análise usa imagens de radar de alguns minutos atrás. Mencione em qual cidade/região o núcleo está (use a localização fornecida acima). Se o núcleo estiver longe de Ipiranga (mais de 80 km), diga que o risco direto para Ipiranga é menor, sem alarmismo.
-4. Se o núcleo estiver distante ou sem movimento, diga que não há alerta iminente.
+4. Se o núcleo estiver distante ou o movimento estiver ausente/não confiável (sem valor medido), diga que não há alerta iminente ou que a trajetória é incerta — não invente direção ou velocidade.
 5. Seja honesto sobre a incerteza: nowcast de curto prazo pode cometer erros (dissipação ou mudança súbita de rumo) — mencione isso de forma natural quando houver risco.
 
 NÃO invente números além dos fornecidos. Seja direto e útil.`;

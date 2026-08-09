@@ -427,6 +427,13 @@ export function trackMovement(
 	const intervalMin = (to.time - from.time) / 60_000;
 	const speedKmh = intervalMin > 0 ? (distKm / intervalMin) * 60 : 0;
 
+	// Velocidade implausível para tempestades (>150 km/h): quase sempre o
+	// núcleo "mais intenso" trocou de identidade entre frames (um dissipou,
+	// outro surgiu longe). Movimento não confiável → trata como ausente.
+	if (speedKmh > 150) {
+		return null;
+	}
+
 	// deslocamento em pixels (para o LLM/UI)
 	const dxPx = b.centroidX - a.centroidX;
 	const dyPx = b.centroidY - a.centroidY;
