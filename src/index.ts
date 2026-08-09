@@ -387,9 +387,12 @@ export async function syncWeatherCycle(): Promise<WeatherState> {
 				extreme: "muito forte (temporal)",
 			};
 			const m = nowcast.movement;
-			const movementTxt = m
-				? ` deslocando-se a ${m.speedKmh} km/h (dir. ${m.directionDeg}°)`
-				: "";
+			// Só descreve deslocamento se houver movimento medido de verdade
+			// (speedKmh > 1); célula estacionária não "se desloca".
+			const movementTxt =
+				m && m.speedKmh > 1
+					? ` deslocando-se a ${m.speedKmh} km/h (dir. ${m.directionDeg}°)`
+					: " (sem movimento significativo detectado no momento)";
 			state.hasRegionalRain = true;
 			state.regionalRainAlert = `🌩️ Núcleo de chuva ${intensityLabel[nowcast.currentDominant] ?? nowcast.currentDominant} detectado pelo radar na região${movementTxt}. Atenção a oscilações na rede elétrica (COPEL).`;
 		}
