@@ -371,6 +371,28 @@ export async function syncWeatherCycle(): Promise<WeatherState> {
 	try {
 		const nowcast = await getRadarNowcast();
 		state.nowcast = nowcast;
+		// FONTE DA VERDADE: o alerta regional (card COPEL, dashboard) passa a
+		// ser dirigido pela análise determinística de dBZ, não pelo scan
+		// primitivo de tile (>1000 bytes = "chuva") do fetchRainViewerRadar.
+		// Se a Camada A diz "sem núcleos", não há alerta de tempestade.
+		if (nowcast.currentDominant === "none" || nowcast.frames.length === 0) {
+			state.hasRegionalRain = false;
+			state.regionalRainAlert =
+				"Sem instabilidades ativas no radar regional (análise determinística de núcleos).";
+		} else {
+			const intensityLabel: Record<string, string> = {
+				light: "fraca",
+				moderate: "moderada",
+				heavy: "forte",
+				extreme: "muito forte (temporal)",
+			};
+			const m = nowcast.movement;
+			const movementTxt = m
+				? ` deslocando-se a ${m.speedKmh} km/h (dir. ${m.directionDeg}°)`
+				: "";
+			state.hasRegionalRain = true;
+			state.regionalRainAlert = `🌩️ Núcleo de chuva ${intensityLabel[nowcast.currentDominant] ?? nowcast.currentDominant} detectado pelo radar na região${movementTxt}. Atenção a oscilações na rede elétrica (COPEL).`;
+		}
 		setCachedWeatherState(state);
 		logger.info("Nowcast integrado ao estado de clima", {
 			dominant: nowcast.currentDominant,
@@ -396,11 +418,18 @@ export async function syncWeatherCycle(): Promise<WeatherState> {
 					source: cachedBulletin.source,
 				});
 			} else {
+				// Concatenação de fontes (ECMWF + radar): o VLM recebe a
+				// previsão numérica junto com o nowcast para decidir de forma
+				// probabilística — e ser honesto quando as fontes divergem.
 				const bulletin = await generateNowcastBulletin(
 					nowcast,
 					state.radar.host,
 					state.radar.radar.past,
 					REGION_TILE,
+					{
+						rainProbabilityPct: weatherInfo.rainProbabilityPct,
+						hourlyForecast: weatherInfo.hourlyForecast || [],
+					},
 				);
 				state.nowcastBulletin = bulletin;
 				await saveNowcastBulletin(bulletin.text, bulletin.source);

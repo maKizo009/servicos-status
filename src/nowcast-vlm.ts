@@ -28,6 +28,20 @@ import {
 
 const FRAMES_IN_COMPOSITE = 3;
 
+/**
+ * Contexto da previsão numérica ECMWF (Open-Meteo) — fonte de médio prazo,
+ * concatenada com o nowcast para a decisão probabilística do VLM.
+ */
+export interface EcmwfContext {
+	rainProbabilityPct: number;
+	hourlyForecast: {
+		time: string;
+		tempC: number;
+		rainProbabilityPct: number;
+		precipitationMm: number;
+	}[];
+}
+
 export interface NowcastBulletin {
 	text: string;
 	source: "nvidia_nim_vision" | "heuristic";
@@ -101,6 +115,7 @@ export async function generateNowcastBulletin(
 	host: string,
 	pastFrames: { time: number; path: string }[],
 	region: RegionSpec,
+	ecmwf?: EcmwfContext,
 ): Promise<NowcastBulletin> {
 	const config = loadConfig();
 	const apiKey = config.nvidiaNimApiKey;
@@ -108,7 +123,7 @@ export async function generateNowcastBulletin(
 	// Sem chave NIM → fallback heurístico (não faz sentido chamar VLM)
 	if (!apiKey) {
 		return {
-			text: buildHeuristicBulletin(nowcast),
+			text: buildHeuristicBulletin(nowcast, ecmwf),
 			source: "heuristic",
 			generatedAt: Date.now(),
 		};
@@ -118,7 +133,7 @@ export async function generateNowcastBulletin(
 		const composite = await buildRadarComposite(host, pastFrames, region);
 		if (!composite) {
 			return {
-				text: buildHeuristicBulletin(nowcast),
+				text: buildHeuristicBulletin(nowcast, ecmwf),
 				source: "heuristic",
 				generatedAt: Date.now(),
 			};
@@ -186,6 +201,24 @@ export async function generateNowcastBulletin(
 			}
 		}
 
+		// Seção de previsão numérica ECMWF (concatenação de fontes): o VLM
+		// pesa o nowcast (curto prazo) contra o modelo numérico (horas).
+		let ecmwfSection = "";
+		if (
+			ecmwf &&
+			(ecmwf.hourlyForecast.length > 0 || ecmwf.rainProbabilityPct > 0)
+		) {
+			const nowPct = Math.round(ecmwf.rainProbabilityPct);
+			const hourly = ecmwf.hourlyForecast
+				.slice(0, 6)
+				.map(
+					(h) =>
+						`- ${h.time}: ${h.rainProbabilityPct}% de chuva (${h.precipitationMm} mm)`,
+				)
+				.join("\n");
+			ecmwfSection = `\nPREVISÃO NUMÉRICA (ECMWF IFS — Open-Meteo, fonte de médio prazo, confie nela para o horizonte de HORAS):\n- Agora: ${nowPct}% de probabilidade de chuva\n${hourly}\n`;
+		}
+
 		const prompt = `Você é um meteorologista analisando imagens de radar meteorológico (RainViewer, esquema de cores "Universal Blue").
 A imagem mostra 3 frames consecutivos do radar (esquerda = mais antigo, direita = mais recente) da região de Ipiranga/PR, com intervalo de ~10 minutos cada.
 IMPORTANTE: as imagens são de momentos ANTERIORES (o frame mais recente tem alguns minutos de atraso) — a análise não é ao vivo; trate as conclusões como uma projeção de curto prazo.
@@ -193,7 +226,7 @@ IMPORTANTE: as imagens são de momentos ANTERIORES (o frame mais recente tem alg
 DADOS DA ANÁLISE COMPUTACIONAL (medições determinísticas, confie neles):
 - Intensidade dominante: ${intensityLabel[nowcast.currentDominant] ?? nowcast.currentDominant} (pico ${nowcast.currentMaxDbz} dBZ)
 - Movimento do núcleo mais intenso: ${m ? `direção ${m.directionDeg}° (${dirLabel}), ${m.speedKmh} km/h` : "sem movimento detectado"}
-${locationNote}${threatNote}- Frames analisados: ${nowcast.frames.length}
+${locationNote}${threatNote}${ecmwfSection}- Frames analisados: ${nowcast.frames.length}
 
 Instruções:
 1. Observe as cores na imagem: azul/âmbar = chuva fraca, azul-escuro = moderada, amarelo/laranja = forte, vermelho/rosa = temporal.
@@ -203,6 +236,7 @@ Instruções:
 5. Se o veredito disser APROXIMANDO-SE, informe o ETA fornecido e alerte com seriedade, mas SEM alarmismo e mencionando a incerteza (pode dissipar ou mudar de rumo).
 6. Se o núcleo estiver distante (mais de 80 km) ou o movimento estiver ausente/não confiável (sem valor medido), diga que não há alerta iminente ou que a trajetória é incerta — não invente direção, velocidade ou ETA.
 7. Seja honesto sobre a incerteza: nowcast de curto prazo pode cometer erros (dissipação ou mudança súbita de rumo) — mencione isso de forma natural quando houver risco.
+8. CONCILIAÇÃO DE FONTES: a PREVISÃO NUMÉRICA (ECMWF) cobre o horizonte de horas e o nowcast o curto prazo. Se o ECMWF indicar probabilidade alta de chuva (>=50%) mas o radar NÃO mostrar núcleos significativos, NÃO diga que "vai chover" nem que "não vai chover" como certeza — diga que o modelo numérico indica X% de chance de chuva nas próximas horas, mas o radar não mostra núcleos no momento (condição de observação estável). Se o ECMWF indicar baixa probabilidade mas o radar mostrar núcleo se aproximando, prevalece o nowcast (radar) para o curto prazo, mas mencione que o modelo numérico vê baixa chance — é sinal de célula isolada que pode dissipar.
 
 NÃO invente números além dos fornecidos. Seja direto e útil.`;
 
@@ -390,7 +424,10 @@ export function validateBulletinAgainstVerdict(
 }
 
 /** Fallback determinístico quando o VLM não está disponível */
-function buildHeuristicBulletin(nowcast: NowcastResult): string {
+function buildHeuristicBulletin(
+	nowcast: NowcastResult,
+	ecmwf?: EcmwfContext,
+): string {
 	const m = nowcast.movement;
 	const dirs = ["N", "NE", "L", "SE", "S", "SO", "O", "NO"];
 	const dirLabel = m ? dirs[Math.round(m.directionDeg / 45) % 8] : null;
@@ -401,9 +438,20 @@ function buildHeuristicBulletin(nowcast: NowcastResult): string {
 		extreme: "muito forte (temporal)",
 	};
 
+	// Conciliação de fontes: nowcast (curto prazo) + ECMWF (horas).
+	const ecmwfPct = ecmwf ? Math.round(ecmwf.rainProbabilityPct) : null;
+	const ecmwfNote =
+		ecmwfPct != null && ecmwfPct > 0
+			? ` O modelo ECMWF indica ${ecmwfPct}% de chance de chuva nas próximas horas${
+					ecmwfPct >= 50 && !m
+						? ", mas o radar não mostra núcleos significativos no momento (condição estável)."
+						: "."
+				}`
+			: "";
+
 	if (!m) {
-		return "Sem núcleos de chuva significativos em movimento na região de Ipiranga no momento.";
+		return `Sem núcleos de chuva significativos em movimento na região de Ipiranga no momento.${ecmwfNote}`;
 	}
 
-	return `Núcleo de chuva ${intensityLabel[nowcast.currentDominant] ?? nowcast.currentDominant} (pico ${nowcast.currentMaxDbz} dBZ) deslocando-se para ${dirLabel} a ${m.speedKmh} km/h. Observação baseada em ${m.intervalMin} min de frames de radar.`;
+	return `Núcleo de chuva ${intensityLabel[nowcast.currentDominant] ?? nowcast.currentDominant} (pico ${nowcast.currentMaxDbz} dBZ) deslocando-se para ${dirLabel} a ${m.speedKmh} km/h. Observação baseada em ${m.intervalMin} min de frames de radar.${ecmwfNote}`;
 }
