@@ -139,7 +139,7 @@ export interface WeatherRadarData {
 export interface WeatherBulletin {
 	id?: number;
 	bulletin: string;
-	source: "nvidia_nim" | "gemini" | "heuristic";
+	source: "nvidia_nim" | "gemini" | "heuristic" | "nvidia_nim_vision";
 	generatedAt: number;
 }
 

@@ -12,40 +12,121 @@
 <style>
 *,*::before,*::after{margin:0;padding:0;box-sizing:border-box}
 :root{
+  /* === Material Design 3 — Tonal Palette (Slate/Sky/Esmeralda) === */
+  --md-sys-color-surface:#F8FAFC;                /* Canvas */
+  --md-sys-color-surface-container-lowest:#FFFFFF;
+  --md-sys-color-surface-container-low:#F1F5F9;  /* Sidebar */
+  --md-sys-color-surface-container:#FFFFFF;       /* Cards */
+  --md-sys-color-surface-container-high:#E2E8F0; /* Headers internos / Badges */
+  --md-sys-color-surface-container-highest:#CBD5E1;
+  --md-sys-color-on-surface:#0F172A;             /* Texto principal */
+  --md-sys-color-on-surface-variant:#475569;     /* Texto secundário */
+  --md-sys-color-outline:#94A3B8;
+  --md-sys-color-outline-variant:#E2E8F0;
+  --md-sys-color-primary:#0284C7;
+  --md-sys-color-on-primary:#FFFFFF;
+  --md-sys-color-primary-container:#E0F2FE;
+  --md-sys-color-on-primary-container:#0369A1;
+  --md-sys-color-secondary-container:#DCFCE7;
+  --md-sys-color-on-secondary-container:#14532D;
+  --md-sys-color-error:#DC2626;
+  --md-sys-color-error-container:#FEE2E2;
+  --md-sys-color-on-error-container:#7F1D1D;
+  --md-elevation-1:0 1px 3px 1px rgba(15,23,42,.08),0 1px 2px 0 rgba(15,23,42,.12);
+  --md-elevation-2:0 2px 6px 2px rgba(15,23,42,.08),0 1px 4px 0 rgba(15,23,42,.12);
+  --md-elevation-3:0 4px 8px 3px rgba(15,23,42,.10),0 1px 3px 0 rgba(15,23,42,.15);
+  --md-shape-corner-small:8px;--md-shape-corner-medium:12px;--md-shape-corner-large:16px;--md-shape-corner-full:9999px;
+
+  /* === Tokens legados (aliases para o M3 — nada quebra) === */
   --s900:#0F172A;--s800:#1E293B;--s700:#334155;--s600:#475569;--s500:#64748B;--s400:#94A3B8;--s300:#CBD5E1;--s200:#E2E8F0;--s100:#F1F5F9;--s50:#F8FAFC;
   --g6:#16A34A;--g5:#22C55E;--g1:#DCFCE7;--g0:#F0FDF4;
   --a5:#D97706;--a4:#F59E0B;--a1:#FEF3C7;--a0:#FFFBEB;
   --r6:#DC2626;--r5:#EF4444;--r1:#FEE2E2;--r0:#FEF2F2;
   --claro:#ED1C24;--vivo:#660099;--tim:#003DA5;--copel:#00923F;--sanepar:#003F87;
-  --surface:#ffffff;--text:#0F172A;--text2:#475569;--text3:#94A3B8;--border:#E2E8F0;
-  --radius:16px;--radius-sm:10px;--shadow:0 4px 6px -1px rgba(0,0,0,.05),0 2px 4px -2px rgba(0,0,0,.05);
-  --shadow-lg:0 10px 15px -3px rgba(0,0,0,.1),0 4px 6px -4px rgba(0,0,0,.1);
-  --shadow-crit:0 0 20px rgba(220,38,38,.2),0 4px 6px -1px rgba(220,38,38,.1);
+  --surface:var(--md-sys-color-surface-container);--text:var(--md-sys-color-on-surface);--text2:var(--md-sys-color-on-surface-variant);--text3:var(--md-sys-color-outline);--border:var(--md-sys-color-outline-variant);
+  --radius:16px;--radius-sm:10px;--shadow:var(--md-elevation-1);--shadow-lg:var(--md-elevation-2);--shadow-crit:0 0 20px rgba(220,38,38,.2),0 4px 6px -1px rgba(220,38,38,.1);
   --font:'Inter',system-ui,-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif
 }
 
+/* === TEMA ESCURO (M3) — preferência do sistema + toggle manual === */
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    color-scheme:dark;
+    --md-sys-color-surface:#0B1120;
+    --md-sys-color-surface-container-lowest:#090D16;
+    --md-sys-color-surface-container-low:#0F172A;
+    --md-sys-color-surface-container:#1E293B;
+    --md-sys-color-surface-container-high:#334155;
+    --md-sys-color-surface-container-highest:#475569;
+    --md-sys-color-on-surface:#F8FAFC;
+    --md-sys-color-on-surface-variant:#CBD5E1;
+    --md-sys-color-outline:#64748B;
+    --md-sys-color-outline-variant:#334155;
+    --md-sys-color-primary:#38BDF8;
+    --md-sys-color-on-primary:#00364A;
+    --md-sys-color-primary-container:#0C4A6E;
+    --md-sys-color-on-primary-container:#E0F2FE;
+    --md-sys-color-secondary-container:#064E3B;
+    --md-sys-color-on-secondary-container:#DCFCE7;
+    --md-sys-color-error:#F87171;
+    --md-sys-color-error-container:#7F1D1D;
+    --md-sys-color-on-error-container:#FEE2E2;
+    --md-elevation-1:0 1px 3px 1px rgba(0,0,0,.4),0 1px 2px 0 rgba(0,0,0,.5);
+    --md-elevation-2:0 2px 6px 2px rgba(0,0,0,.4),0 1px 4px 0 rgba(0,0,0,.5);
+    --md-elevation-3:0 4px 8px 3px rgba(0,0,0,.5),0 1px 3px 0 rgba(0,0,0,.6);
+    /* Cores das marcas ajustadas para contraste WCAG AA no escuro */
+    --copel:#4ADE80;--sanepar:#38BDF8;--claro:#F87171;--vivo:#C084FC;--tim:#60A5FA;
+  }
+}
+:root[data-theme="dark"]{
+  color-scheme:dark;
+  --md-sys-color-surface:#0B1120;
+  --md-sys-color-surface-container-lowest:#090D16;
+  --md-sys-color-surface-container-low:#0F172A;
+  --md-sys-color-surface-container:#1E293B;
+  --md-sys-color-surface-container-high:#334155;
+  --md-sys-color-surface-container-highest:#475569;
+  --md-sys-color-on-surface:#F8FAFC;
+  --md-sys-color-on-surface-variant:#CBD5E1;
+  --md-sys-color-outline:#64748B;
+  --md-sys-color-outline-variant:#334155;
+  --md-sys-color-primary:#38BDF8;
+  --md-sys-color-on-primary:#00364A;
+  --md-sys-color-primary-container:#0C4A6E;
+  --md-sys-color-on-primary-container:#E0F2FE;
+  --md-sys-color-secondary-container:#064E3B;
+  --md-sys-color-on-secondary-container:#DCFCE7;
+  --md-sys-color-error:#F87171;
+  --md-sys-color-error-container:#7F1D1D;
+  --md-sys-color-on-error-container:#FEE2E2;
+  --md-elevation-1:0 1px 3px 1px rgba(0,0,0,.4),0 1px 2px 0 rgba(0,0,0,.5);
+  --md-elevation-2:0 2px 6px 2px rgba(0,0,0,.4),0 1px 4px 0 rgba(0,0,0,.5);
+  --md-elevation-3:0 4px 8px 3px rgba(0,0,0,.5),0 1px 3px 0 rgba(0,0,0,.6);
+  --copel:#4ADE80;--sanepar:#38BDF8;--claro:#F87171;--vivo:#C084FC;--tim:#60A5FA;
+}
+
 .weather-section{
-  margin-top:24px;background:var(--surface);border-radius:var(--radius);border:2px solid var(--border);
-  box-shadow:var(--shadow-lg);overflow:hidden;display:flex;flex-direction:column
+  margin-top:24px;background:var(--md-sys-color-surface-container);border-radius:var(--radius);border:2px solid var(--md-sys-color-outline-variant);
+  box-shadow:var(--md-elevation-2);overflow:hidden;display:flex;flex-direction:column
 }
 .weather-header{
-  background:linear-gradient(135deg,#0F172A 0%,#1E293B 100%);color:#fff;padding:18px 24px;
+  background:var(--md-sys-color-primary-container);color:var(--md-sys-color-on-primary-container);padding:18px 24px;
   display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap
 }
 .weather-title-group{display:flex;align-items:center;gap:12px}
 .weather-icon-box{
-  width:44px;height:44px;background:rgba(56,189,248,.15);border:1px solid rgba(56,189,248,.3);
-  border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:22px
+  width:44px;height:44px;background:rgba(2,132,199,.12);border:1px solid rgba(2,132,199,.3);
+  border-radius:var(--md-shape-corner-medium);display:flex;align-items:center;justify-content:center;font-size:22px
 }
-.weather-title{font-size:18px;font-weight:800;letter-spacing:-.3px}
-.weather-sub{font-size:13px;color:var(--s400)}
+.weather-title{font-size:18px;font-weight:800;letter-spacing:-.3px;color:var(--md-sys-color-on-primary-container)}
+.weather-sub{font-size:13px;color:var(--md-sys-color-on-primary-container);opacity:.75}
 .weather-metrics-bar{
   display:flex;align-items:center;gap:12px;flex-wrap:wrap
 }
 .weather-badge{
-  background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.15);
-  padding:6px 14px;border-radius:10px;font-size:13px;font-weight:700;color:#fff;
-  display:inline-flex;align-items:center;gap:6px
+  background:var(--md-sys-color-surface-container-lowest);border:1px solid var(--md-sys-color-outline-variant);
+  padding:6px 14px;border-radius:var(--md-shape-corner-full);font-size:13px;font-weight:700;color:var(--md-sys-color-on-surface);
+  display:inline-flex;align-items:center;gap:6px;box-shadow:var(--md-elevation-1)
 }
 
 .weather-content-grid{
@@ -61,29 +142,29 @@
 .radar-controls-overlay{
   position:absolute;bottom:16px;left:16px;right:16px;z-index:1000;
   background:rgba(15,23,42,.85);backdrop-filter:blur(12px);
-  border:1px solid rgba(255,255,255,.15);border-radius:14px;padding:12px 18px;
+  border:1px solid rgba(255,255,255,.15);border-radius:var(--md-shape-corner-large);padding:12px 18px;
   display:flex;align-items:center;gap:14px;color:#fff;flex-wrap:wrap;
   box-shadow:0 10px 25px rgba(0,0,0,.4)
 }
 .radar-play-btn{
-  background:#0284C7;border:none;color:#fff;width:38px;height:38px;border-radius:10px;
+  background:var(--md-sys-color-primary);border:none;color:var(--md-sys-color-on-primary);width:38px;height:38px;border-radius:var(--md-shape-corner-medium);
   cursor:pointer;display:flex;align-items:center;justify-content:center;font-weight:800;
   transition:all .2s ease;flex-shrink:0
 }
-.radar-play-btn:hover{background:#0369A1;transform:scale(1.05)}
+.radar-play-btn:hover{filter:brightness(1.1);transform:scale(1.05)}
 .radar-play-btn:active{transform:scale(.95)}
-.radar-slider{flex:1;min-width:120px;accent-color:#38BDF8;cursor:pointer}
+.radar-slider{flex:1;min-width:120px;accent-color:var(--md-sys-color-primary);cursor:pointer}
 .map-layer-selector{
   position:absolute;top:14px;right:14px;z-index:600;display:flex;gap:6px;
-  background:rgba(15,23,42,.85);backdrop-filter:blur(8px);padding:4px;border-radius:10px;
+  background:rgba(15,23,42,.85);backdrop-filter:blur(8px);padding:4px;border-radius:var(--md-shape-corner-medium);
   border:1px solid rgba(255,255,255,.15);box-shadow:0 4px 12px rgba(0,0,0,.3)
 }
 .layer-btn{
   background:transparent;border:none;color:#94a3b8;font-size:11px;font-weight:700;
-  padding:5px 11px;border-radius:7px;cursor:pointer;transition:all .2s ease;display:flex;align-items:center;gap:4px
+  padding:5px 11px;border-radius:var(--md-shape-corner-small);cursor:pointer;transition:all .2s ease;display:flex;align-items:center;gap:4px
 }
 .layer-btn:hover{color:#fff;background:rgba(255,255,255,.1)}
-.layer-btn.active{background:#0284C7;color:#fff;font-weight:800}
+.layer-btn.active{background:var(--md-sys-color-primary);color:#fff;font-weight:800}
 
 .radar-map-wrapper.is-fullscreen{
   position:fixed!important;top:0!important;left:0!important;width:100vw!important;
@@ -93,8 +174,11 @@
 .radar-time-text{font-size:13px;font-weight:700;font-variant-numeric:tabular-nums;color:#38BDF8;white-space:nowrap}
 
 .weather-sidebar{
-  background:var(--s50);padding:20px;border-left:1px solid var(--border);
+  background:var(--md-sys-color-surface-container-low);padding:20px;border-top:1px solid var(--md-sys-color-outline-variant);
   display:flex;flex-direction:column;gap:18px
+}
+@media(min-width:992px){
+  .weather-sidebar{border-top:none;border-left:1px solid var(--md-sys-color-outline-variant)}
 }
 .bulletin-box{
   background:var(--surface);border:1px solid var(--s300);border-radius:12px;padding:14px;
@@ -106,23 +190,24 @@
   background:rgba(2,132,199,.12);color:#0284C7
 }
 .nowcast-box{
-  background:linear-gradient(135deg,#0F172A 0%,#1E293B 100%);border-radius:12px;padding:14px;
-  display:flex;flex-direction:column;gap:8px;color:#fff;box-shadow:var(--shadow-lg)
+  background:var(--md-sys-color-surface-container);border:1px solid var(--md-sys-color-outline-variant);
+  border-radius:var(--md-shape-corner-large);padding:14px;
+  display:flex;flex-direction:column;gap:8px;color:var(--md-sys-color-on-surface);box-shadow:var(--md-elevation-1)
 }
-.nowcast-head{display:flex;align-items:center;justify-content:space-between;color:#fff}
-.nowcast-box .nowcast-head span{color:#fff}
+.nowcast-head{display:flex;align-items:center;justify-content:space-between;color:var(--md-sys-color-on-surface)}
+.nowcast-box .nowcast-head span{color:var(--md-sys-color-on-surface)}
 .nowcast-status-row{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
 .nowcast-intensity-badge{
-  font-size:11px;font-weight:800;padding:4px 10px;border-radius:8px;text-transform:uppercase;
-  background:rgba(16,185,129,.18);color:#34D399;border:1px solid rgba(16,185,129,.4)
+  font-size:11px;font-weight:800;padding:4px 10px;border-radius:var(--md-shape-corner-small);text-transform:uppercase;
+  background:rgba(16,185,129,.18);color:#059669;border:1px solid rgba(16,185,129,.4)
 }
-.nowcast-intensity-badge.int-light{background:rgba(251,191,36,.15);color:#FBBF24;border-color:rgba(251,191,36,.4)}
-.nowcast-intensity-badge.int-moderate{background:rgba(59,130,246,.18);color:#60A5FA;border-color:rgba(59,130,246,.4)}
-.nowcast-intensity-badge.int-heavy{background:rgba(249,115,22,.18);color:#FB923C;border-color:rgba(249,115,22,.4)}
-.nowcast-intensity-badge.int-extreme{background:rgba(239,68,68,.2);color:#F87171;border-color:rgba(239,68,68,.5)}
-.nowcast-movement{font-size:12px;font-weight:700;color:#E2E8F0}
-.nowcast-meta{font-size:11px;color:#94A3B8;line-height:1.5}
-.nowcast-text{font-size:12px;color:#CBD5E1;line-height:1.55;margin:0;border-top:1px solid rgba(255,255,255,.1);padding-top:8px}
+.nowcast-intensity-badge.int-light{background:rgba(217,119,6,.15);color:#B45309;border-color:rgba(217,119,6,.4)}
+.nowcast-intensity-badge.int-moderate{background:rgba(2,132,199,.15);color:#0369A1;border-color:rgba(2,132,199,.4)}
+.nowcast-intensity-badge.int-heavy{background:rgba(234,88,12,.15);color:#C2410C;border-color:rgba(234,88,12,.4)}
+.nowcast-intensity-badge.int-extreme{background:rgba(220,38,38,.16);color:#B91C1C;border-color:rgba(220,38,38,.45)}
+.nowcast-movement{font-size:12px;font-weight:700;color:var(--md-sys-color-on-surface)}
+.nowcast-meta{font-size:11px;color:var(--md-sys-color-on-surface-variant);line-height:1.5}
+.nowcast-text{font-size:12px;color:var(--md-sys-color-on-surface-variant);line-height:1.55;margin:0;border-top:1px solid var(--md-sys-color-outline-variant);padding-top:8px}
 .bulletin-text{font-size:13px;color:var(--text);line-height:1.5;font-weight:500}
 
 .rain-tile {
@@ -132,19 +217,22 @@
 }
 
 .llm-banner-box{
-  background:linear-gradient(135deg,#064E3B 0%,#0F172A 100%);
-  border-radius:12px;padding:14px;color:#fff;display:flex;flex-direction:column;gap:8px
+  background:var(--md-sys-color-surface-container);border:1px solid var(--md-sys-color-outline-variant);
+  border-radius:var(--md-shape-corner-large);padding:14px;color:var(--md-sys-color-on-surface);
+  display:flex;flex-direction:column;gap:8px;box-shadow:var(--md-elevation-1)
 }
+.llm-banner-box>div{color:var(--md-sys-color-on-surface)}
+.llm-banner-box>div[style]{color:var(--md-sys-color-on-surface-variant)}
 .llm-btn{
-  background:rgba(255,255,255,.15);border:1px solid rgba(255,255,255,.25);color:#fff;
-  padding:6px 12px;border-radius:8px;font-size:12px;font-weight:700;cursor:pointer;
+  background:var(--md-sys-color-primary-container);border:1px solid transparent;color:var(--md-sys-color-on-primary-container);
+  padding:6px 12px;border-radius:var(--md-shape-corner-full);font-size:12px;font-weight:700;cursor:pointer;
   transition:all .2s;display:inline-flex;align-items:center;gap:6px;width:fit-content;text-decoration:none
 }
-.llm-btn:hover{background:rgba(255,255,255,.25)}
-.llm-ask{background:rgba(255,255,255,.08)}
-.llm-ask:hover{background:rgba(52,211,153,.35);border-color:rgba(52,211,153,.5)}
+.llm-btn:hover{filter:brightness(.96);box-shadow:var(--md-elevation-1)}
+.llm-ask{background:var(--md-sys-color-secondary-container);color:var(--md-sys-color-on-secondary-container)}
+.llm-ask:hover{filter:brightness(.96)}
 html{font-size:16px;-webkit-font-smoothing:antialiased}
-body{font-family:var(--font);background:#F1F5F9;color:var(--text);min-height:100dvh;display:flex;flex-direction:column}
+body{font-family:var(--font);background:var(--md-sys-color-surface);color:var(--text);min-height:100dvh;display:flex;flex-direction:column}
 
 .container{max-width:1200px;margin:0 auto;padding:0 20px;width:100%}
 
@@ -175,6 +263,14 @@ body{font-family:var(--font);background:#F1F5F9;color:var(--text);min-height:100
 .header-refresh-btn .ri.spinning{animation:spin .8s linear infinite}
 @keyframes spin{to{transform:rotate(360deg)}}
 .header-refresh-btn .ht{font-variant-numeric:tabular-nums;opacity:.9}
+.theme-toggle-btn{
+  display:flex;align-items:center;justify-content:center;width:42px;height:42px;flex-shrink:0;
+  background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.25);border-radius:var(--md-shape-corner-medium);
+  cursor:pointer;font-size:18px;transition:all .2s;backdrop-filter:blur(8px);margin-left:8px
+}
+.theme-toggle-btn:hover{background:rgba(255,255,255,.22);border-color:rgba(255,255,255,.4)}
+.theme-toggle-btn:active{transform:scale(.95)}
+.header-right-group{display:flex;align-items:center}
 .ov-dot{width:10px;height:10px;border-radius:50%;transition:all .3s;flex-shrink:0}
 .ov-dot.ok{background:var(--g5);box-shadow:0 0 10px var(--g5)}
 .ov-dot.warn{background:var(--a4);box-shadow:0 0 10px var(--a4);animation:pulse 1.5s infinite}
@@ -290,6 +386,24 @@ body{font-family:var(--font);background:#F1F5F9;color:var(--text);min-height:100
 }
 @media(min-width:768px){.card.critical{grid-column:span 2}}
 @media(min-width:1100px){.card.critical{grid-column:span 3}}
+
+/* === M3 Mobile refinements === */
+@media (max-width: 480px){
+  .weather-metrics-bar{
+    display:grid;grid-template-columns:1fr 1fr;gap:8px;width:100%
+  }
+  .weather-badge{
+    justify-content:center;font-size:12px;padding:6px 8px
+  }
+  .weather-header{padding:14px 16px}
+  .radar-map-wrapper{height:360px}
+  .map-layer-selector{top:10px;right:10px}
+  .radar-controls-overlay{padding:10px 14px}
+}
+@media (max-width: 640px){
+  .stats-table-wrapper{overflow-x:auto}
+  .stats-table-wrapper table{white-space:nowrap}
+}
 
 .card.warn{border-color:var(--a5)}
 
@@ -551,6 +665,9 @@ body{font-family:var(--font);background:#F1F5F9;color:var(--text);min-height:100
     <span class="ht" id="headerTime" aria-live="polite">--:--</span>
     <span class="ov-dot ok" id="headerDot" role="img" aria-label="Status geral"></span>
   </button>
+  <button class="theme-toggle-btn" id="btnThemeToggle" type="button" aria-label="Alternar tema claro/escuro" title="Alternar tema">
+    <span id="themeToggleIcon">🌙</span>
+  </button>
 </header>
 
 <div class="container">
@@ -613,8 +730,8 @@ body{font-family:var(--font);background:#F1F5F9;color:var(--text);min-height:100
       <div class="weather-content-grid">
         <div class="radar-map-wrapper">
           <div class="map-layer-selector">
-            <button type="button" class="layer-btn active" id="layerStreetBtn">🗺️ Mapa</button>
-            <button type="button" class="layer-btn" id="layerSatBtn">🛰️ Satélite HD</button>
+            <button type="button" class="layer-btn" id="layerStreetBtn">🗺️ Mapa</button>
+            <button type="button" class="layer-btn active" id="layerSatBtn">🛰️ Satélite HD</button>
             <button type="button" class="layer-btn" id="btnFullscreen">🖥️ Tela Cheia</button>
           </div>
           <div id="weatherMap"></div>
@@ -628,7 +745,7 @@ body{font-family:var(--font);background:#F1F5F9;color:var(--text);min-height:100
         <div class="weather-sidebar">
           <div class="bulletin-box">
             <div class="bulletin-head">
-              <span style="font-size:13px;font-weight:800;color:var(--text)">Boletim Climatológico IA</span>
+              <span style="font-size:13px;font-weight:800;color:var(--text)">🤖 Boletim IA do Radar (VLM)</span>
               <span class="bulletin-tag" id="bulletinSourceTag">IA Local</span>
             </div>
             <p class="bulletin-text" id="bulletinText">Carregando análise descritiva da situação climatológica de Ipiranga...</p>
@@ -637,14 +754,12 @@ body{font-family:var(--font);background:#F1F5F9;color:var(--text);min-height:100
           <div class="nowcast-box" id="nowcastBox" style="display:none">
             <div class="nowcast-head">
               <span style="font-size:13px;font-weight:800;color:var(--text)">🔮 Nowcast Radar</span>
-              <span class="bulletin-tag" id="nowcastSourceTag">Análise IA</span>
             </div>
             <div class="nowcast-status-row">
               <span class="nowcast-intensity-badge" id="nowcastIntensityBadge">—</span>
               <span class="nowcast-movement" id="nowcastMovement">—</span>
             </div>
             <div class="nowcast-meta" id="nowcastMeta"></div>
-            <p class="nowcast-text" id="nowcastText"></p>
           </div>
 
           <div class="llm-banner-box">
@@ -1439,7 +1554,8 @@ async function initWeatherMap() {
     opacity: 0.95
   });
 
-  streetLayer.addTo(map);
+  // Mapa de satélite HD como padrão (mais fácil de visualizar — pedido do usuário)
+  satLayer.addTo(map);
 
   // Toggle Map Base Layers
   const btnStreet = document.getElementById('layerStreetBtn');
@@ -1550,7 +1666,7 @@ async function fetchWeatherData() {
       const bEl = document.getElementById('bulletinText');
       const sEl = document.getElementById('bulletinSourceTag');
       if(bEl) bEl.textContent = data.bulletin.bulletin;
-      const src = data.bulletin.source === 'nvidia_nim' ? 'NVIDIA NIM' : data.bulletin.source === 'gemini' ? 'Gemini' : 'Engine Local';
+      const src = data.bulletin.source === 'nvidia_nim_vision' ? 'VLM Vision' : data.bulletin.source === 'nvidia_nim' ? 'NVIDIA NIM' : data.bulletin.source === 'gemini' ? 'Gemini' : 'Engine Local';
       if(sEl) sEl.textContent = `IA (${src})`;
     }
 
@@ -1651,18 +1767,6 @@ function renderNowcastCard(data) {
       meta.textContent = `${nc.frames.length} frames analisados`;
     }
   }
-
-  // Texto narrativo (Camada B)
-  const txt = document.getElementById('nowcastText');
-  const srcTag = document.getElementById('nowcastSourceTag');
-  if (txt) {
-    if (nb?.text) {
-      txt.textContent = nb.text;
-      if (srcTag) srcTag.textContent = nb.source === 'nvidia_nim_vision' ? 'IA (NIM Vision)' : 'Engine Local';
-    } else {
-      txt.textContent = 'Análise em andamento...';
-    }
-  }
 }
 
 function haversineKm(lat1, lon1, lat2, lon2) {
@@ -1716,9 +1820,38 @@ document.getElementById('radarSlider')?.addEventListener('input', (e) => {
 });
 
 document.addEventListener('DOMContentLoaded', () => {
+  initThemeToggle();
   initWeatherMap();
 });
 setTimeout(initWeatherMap, 600);
+
+// ==== Toggle de tema claro/escuro (Material Design 3) ====
+function initThemeToggle() {
+  const btn = document.getElementById('btnThemeToggle');
+  const icon = document.getElementById('themeToggleIcon');
+  const storedTheme = localStorage.getItem('theme');
+  const systemPrefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+  let currentTheme = storedTheme || (systemPrefersDark ? 'dark' : 'light');
+
+  function applyTheme(theme) {
+    const root = document.documentElement;
+    if (theme === 'dark') {
+      root.setAttribute('data-theme', 'dark');
+    } else {
+      root.removeAttribute('data-theme');
+    }
+    if (icon) icon.textContent = theme === 'dark' ? '☀️' : '🌙';
+    localStorage.setItem('theme', theme);
+  }
+
+  applyTheme(currentTheme);
+
+  btn?.addEventListener('click', () => {
+    const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+    currentTheme = isDark ? 'light' : 'dark';
+    applyTheme(currentTheme);
+  });
+}
 
 // ==== LLM-friendly: perguntar direto ao assistente de IA ====
 function askAI(provider) {

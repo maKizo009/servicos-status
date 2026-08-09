@@ -20,11 +20,7 @@ import {
 	saveTelemetryLog,
 } from "./db.js";
 import { detectIsp } from "./isp-detector.js";
-import {
-	generateAiWeatherBulletin,
-	renderJsonLd,
-	renderLlmsTxt,
-} from "./llm-formatter.js";
+import { renderJsonLd, renderLlmsTxt } from "./llm-formatter.js";
 import { logger } from "./logger.js";
 import { getRadarNowcast, REGION_TILE } from "./nowcast-service.js";
 import { generateNowcastBulletin } from "./nowcast-vlm.js";
@@ -363,49 +359,23 @@ export async function syncWeatherCycle(): Promise<WeatherState> {
 					source: bulletin.source,
 				});
 			}
+
+			// O boletim principal do dashboard/llms.txt é o texto do VLM vision.
+			// O antigo "NIM texto" (Llama 8b) foi removido — um único boletim
+			// coeso, gerado a partir dos dados do radar + veredito de ameaça.
+			if (state.nowcastBulletin) {
+				state.bulletin = {
+					bulletin: state.nowcastBulletin.text,
+					source: state.nowcastBulletin.source,
+					generatedAt: state.nowcastBulletin.generatedAt,
+				};
+			}
 			setCachedWeatherState(state);
 		}
 	} catch (err) {
 		logger.warn("Nowcast falhou ao integrar ao estado", {
 			error: String(err),
 		});
-	}
-
-	const now = Date.now();
-	const bulletinAgeMs = existingBulletin
-		? now - existingBulletin.generatedAt
-		: Infinity;
-	const isExpired = bulletinAgeMs > 900_000; // 15 min expiration
-	const isRainStatusMismatch = Boolean(
-		radar.hasRegionalRain &&
-			existingBulletin &&
-			(existingBulletin.bulletin.includes("estáveis") ||
-				existingBulletin.bulletin.includes("sem instabilidades") ||
-				existingBulletin.bulletin.includes("estável") ||
-				existingBulletin.bulletin.includes("Nenhuma alteração")),
-	);
-
-	if (!existingBulletin || isExpired || isRainStatusMismatch) {
-		logger.info("Triggering fresh AI Weather Bulletin generation", {
-			reason: !existingBulletin
-				? "no_bulletin"
-				: isRainStatusMismatch
-					? "rain_status_mismatch"
-					: "cache_expired",
-			bulletinAgeMin: Math.round(bulletinAgeMs / 60000),
-			hasRegionalRain: radar.hasRegionalRain,
-		});
-		const newBulletinText = await generateAiWeatherBulletin(
-			state,
-			lastUnifiedReport,
-		);
-		const updatedBulletin = await getLatestWeatherBulletin();
-		state.bulletin = updatedBulletin || {
-			bulletin: newBulletinText,
-			source: "heuristic",
-			generatedAt: now,
-		};
-		setCachedWeatherState(state);
 	}
 
 	logger.info("Weather & radar sync cycle completed", {
