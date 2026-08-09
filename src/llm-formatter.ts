@@ -54,8 +54,8 @@ function renderNowcastSection(weather: WeatherState | null): string {
 	const maxDbz = nowcast.currentMaxDbz;
 
 	// Estimativa de chegada ao município (distância aproximada até Ipiranga)
-	// -25.0244, -50.5847
-	const cell = nowcast.nearestCell;
+	// -25.0244, -50.5847. Prioridade: núcleo mais ameaçador (threats[0]).
+	const cell = nowcast.threats[0] ?? nowcast.nearestCell;
 	let etaNote = "";
 	if (cell && m.speedKmh > 1) {
 		const R = 6371;

@@ -83,6 +83,21 @@ export interface RainCell {
 	/** Centroide geográfico (Web Mercator) */
 	lat: number;
 	lon: number;
+	/** Vetor de movimento INDIVIDUAL do núcleo (associado entre frames), se houver */
+	trackedMovement?: MovementVector | null;
+}
+
+/**
+ * Núcleo avaliado contra um alvo (ex.: Ipiranga). Cada núcleo forte/extremo
+ * recebe seu próprio veredicto — o sistema NÃO se limita ao mais intenso.
+ */
+export interface ThreatCell extends RainCell {
+	/** Distância haversine do núcleo até o alvo (km) */
+	distToTargetKm: number;
+	/** Movimento individual do núcleo (pode ser null se não associável) */
+	movement: MovementVector | null;
+	/** Veredicto de ameaça determinístico (null se sem movimento confiável) */
+	threat: ThreatVerdict | null;
 }
 
 export interface FrameAnalysis {
@@ -285,9 +300,30 @@ export async function fetchTileGrid(
 
 // ============ Análise de frame ============
 
+/** Área mínima (px) para um componente ser considerado núcleo (descarta ruído). */
+const MIN_CELL_PIXELS = 8;
+
+/** Vizinhança 8 (inclui diagonais) para unir pixels do mesmo núcleo. */
+const NEIGHBORS: ReadonlyArray<readonly [number, number]> = [
+	[-1, -1],
+	[0, -1],
+	[1, -1],
+	[-1, 0],
+	[1, 0],
+	[-1, 1],
+	[0, 1],
+	[1, 1],
+];
+
 /**
- * Analisa um tile: classifica cada pixel, agrupa por intensidade e
- * calcula centroides (pixels + geográficos via Web Mercator).
+ * Analisa um tile/mosaico: SEGMENTA núcleos por componentes conexas
+ * (flood-fill em pixels >= moderate) em vez de agrupar por nível de
+ * intensidade. Cada núcleo geográfico separado vira uma RainCell com
+ * centroide próprio — dois núcleos fortes distantes NÃO viram um
+ * centroide médio (bug anterior que mascarava núcleos ameaçadores).
+ *
+ * Chuva leve (< moderate) é tratada como fundo: não vira núcleo próprio
+ * (evita um "mar" de chuva fraca conectando tudo), mas conta na coverage.
  */
 export function analyzeTile(
 	pixels: { data: Buffer; width: number; height: number },
@@ -295,73 +331,100 @@ export function analyzeTile(
 	gridSize = 1,
 ): FrameAnalysis {
 	const { data, width, height } = pixels;
-	const sums = new Map<
-		Exclude<RainIntensity, "none">,
-		{
-			count: number;
-			sumDbz: number;
-			sumX: number;
-			sumY: number;
-			maxDbz: number;
-		}
-	>();
+	const n = width * height;
+
+	// Classifica todos os pixels uma única vez (dBZ por pixel; -999 = sem dado)
+	const dbzGrid = new Int16Array(n).fill(-999);
 	let maxDbz = -100;
 	let precipPixels = 0;
-
-	for (let y = 0; y < height; y++) {
-		for (let x = 0; x < width; x++) {
-			const idx = (y * width + x) * 4;
-			const r = data[idx];
-			const g = data[idx + 1];
-			const b = data[idx + 2];
-			const a = data[idx + 3];
-			const cls = classifyPixel(r, g, b, a);
-			if (!cls) continue;
-			const intensity = cls.intensity;
-			if (intensity === "none") continue;
-			precipPixels++;
-			if (cls.dbz > maxDbz) maxDbz = cls.dbz;
-			let bucket = sums.get(intensity);
-			if (!bucket) {
-				bucket = { count: 0, sumDbz: 0, sumX: 0, sumY: 0, maxDbz: -100 };
-				sums.set(intensity, bucket);
-			}
-			bucket.count++;
-			bucket.sumDbz += cls.dbz;
-			bucket.sumX += x;
-			bucket.sumY += y;
-			if (cls.dbz > bucket.maxDbz) bucket.maxDbz = cls.dbz;
-		}
+	for (let i = 0; i < n; i++) {
+		const idx = i * 4;
+		const cls = classifyPixel(
+			data[idx],
+			data[idx + 1],
+			data[idx + 2],
+			data[idx + 3],
+		);
+		if (!cls || cls.intensity === "none") continue;
+		dbzGrid[i] = Math.round(cls.dbz);
+		precipPixels++;
+		if (cls.dbz > maxDbz) maxDbz = cls.dbz;
 	}
 
+	// Flood-fill (BFS) sobre pixels >= moderate → componentes conexos
+	const visited = new Uint8Array(n);
 	const cells: RainCell[] = [];
-	for (const [intensity, bucket] of sums) {
-		const centroidX = bucket.sumX / bucket.count;
-		const centroidY = bucket.sumY / bucket.count;
+	const queue: number[] = [];
+
+	for (let start = 0; start < n; start++) {
+		if (visited[start] || dbzGrid[start] < INTENSITY_THRESHOLDS.moderate) {
+			continue;
+		}
+		// BFS a partir de `start`
+		visited[start] = 1;
+		queue.length = 0;
+		queue.push(start);
+		let count = 0;
+		let sumDbz = 0;
+		let sumX = 0;
+		let sumY = 0;
+		let cellMaxDbz = -100;
+		while (queue.length > 0) {
+			const p = queue.pop();
+			if (p === undefined) break;
+			const px = p % width;
+			const py = (p / width) | 0;
+			const dbz = dbzGrid[p];
+			count++;
+			sumDbz += dbz;
+			sumX += px;
+			sumY += py;
+			if (dbz > cellMaxDbz) cellMaxDbz = dbz;
+			for (const [dx, dy] of NEIGHBORS) {
+				const nx = px + dx;
+				const ny = py + dy;
+				if (nx < 0 || ny < 0 || nx >= width || ny >= height) continue;
+				const np = ny * width + nx;
+				if (visited[np] || dbzGrid[np] < INTENSITY_THRESHOLDS.moderate) {
+					continue;
+				}
+				visited[np] = 1;
+				queue.push(np);
+			}
+		}
+		if (count < MIN_CELL_PIXELS) continue;
+		const centroidX = sumX / count;
+		const centroidY = sumY / count;
 		const { lat, lon } = pixelToLatLon(
 			bounds,
 			centroidX / gridSize,
 			centroidY / gridSize,
 		);
+		// Componente só contém pixels >= moderate (20 dBZ) → nunca "none"
+		const intensity = intensityFromDbz(cellMaxDbz) as Exclude<
+			RainIntensity,
+			"none"
+		>;
 		cells.push({
 			intensity,
-			pixelCount: bucket.count,
-			maxDbz: bucket.maxDbz,
-			meanDbz: bucket.sumDbz / bucket.count,
+			pixelCount: count,
+			maxDbz: cellMaxDbz,
+			meanDbz: sumDbz / count,
 			centroidX,
 			centroidY,
 			lat,
 			lon,
 		});
 	}
-	// Ordena do mais intenso para o menos intenso
+
+	// Ordena do mais intenso para o menos intenso (mantém cells[0] = mais intenso)
 	cells.sort((a, b) => b.maxDbz - a.maxDbz);
 
 	return {
 		time: 0, // preenchido pelo caller
 		cells,
 		maxDbz: maxDbz > -100 ? maxDbz : -100,
-		coverage: precipPixels / (width * height),
+		coverage: precipPixels / n,
 	};
 }
 
@@ -403,52 +466,6 @@ export function haversineKm(
 			Math.cos((lat2 * Math.PI) / 180) *
 			Math.sin(dLon / 2) ** 2;
 	return 2 * R * Math.asin(Math.sqrt(a));
-}
-
-/**
- * Calcula o vetor de movimento do núcleo mais intenso entre dois frames.
- * Retorna direção (0=N, sentido horário), velocidade km/h e o intervalo.
- */
-export function trackMovement(
-	from: FrameAnalysis,
-	to: FrameAnalysis,
-): MovementVector | null {
-	const a = from.cells.find((c) => c.intensity !== "light");
-	const b = to.cells.find((c) => c.intensity !== "light");
-	if (!a || !b) return null;
-
-	// direção: norte = 0°, leste = 90° (sentido horário a partir do norte)
-	const dLon = b.lon - a.lon;
-	const dLat = b.lat - a.lat;
-	const bearingRad = Math.atan2(dLon, dLat); // atan2(E, N)
-	const directionDeg = ((bearingRad * 180) / Math.PI + 360) % 360;
-
-	const distKm = haversineKm(a.lat, a.lon, b.lat, b.lon);
-	const intervalMin = (to.time - from.time) / 60_000;
-	const speedKmh = intervalMin > 0 ? (distKm / intervalMin) * 60 : 0;
-
-	// Velocidade implausível para tempestades (>150 km/h): quase sempre o
-	// núcleo "mais intenso" trocou de identidade entre frames (um dissipou,
-	// outro surgiu longe). Movimento não confiável → trata como ausente.
-	if (speedKmh > 150) {
-		return null;
-	}
-
-	// deslocamento em pixels (para o LLM/UI)
-	const dxPx = b.centroidX - a.centroidX;
-	const dyPx = b.centroidY - a.centroidY;
-
-	return {
-		directionDeg: Math.round(directionDeg),
-		speedKmh: Math.round(speedKmh * 10) / 10,
-		intervalMin,
-		dxPx: Math.round(dxPx),
-		dyPx: Math.round(dyPx),
-		fromLat: a.lat,
-		fromLon: a.lon,
-		toLat: b.lat,
-		toLon: b.lon,
-	};
 }
 
 // ============ Análise de ameaça (aproximação/afastamento) ============
@@ -553,6 +570,94 @@ export function projectCell(
 	);
 }
 
+/**
+ * Associa núcleos entre dois frames por proximidade geográfica e calcula
+ * o vetor de movimento INDIVIDUAL de cada núcleo do frame mais novo.
+ * Núcleo sem par próximo (ou velocidade implausível) fica com null.
+ */
+export function associateMovements(
+	older: FrameAnalysis,
+	newer: FrameAnalysis,
+	maxAssocKm = 80,
+): void {
+	for (const cell of newer.cells) {
+		let best: RainCell | null = null;
+		let bestDist = Infinity;
+		for (const oc of older.cells) {
+			const d = haversineKm(cell.lat, cell.lon, oc.lat, oc.lon);
+			if (d < bestDist) {
+				bestDist = d;
+				best = oc;
+			}
+		}
+		if (!best || bestDist > maxAssocKm) {
+			cell.trackedMovement = null;
+			continue;
+		}
+		const dLon = cell.lon - best.lon;
+		const dLat = cell.lat - best.lat;
+		const bearingRad = Math.atan2(dLon, dLat); // atan2(E, N)
+		const directionDeg = ((bearingRad * 180) / Math.PI + 360) % 360;
+		const intervalMin = (newer.time - older.time) / 60_000;
+		const speedKmh = intervalMin > 0 ? (bestDist / intervalMin) * 60 : 0;
+		// Velocidade implausível (>150 km/h): associação espúria (núcleo
+		// dissipou e outro surgiu perto). Não confiável → sem movimento.
+		if (speedKmh > 150) {
+			cell.trackedMovement = null;
+			continue;
+		}
+		cell.trackedMovement = {
+			directionDeg: Math.round(directionDeg),
+			speedKmh: Math.round(speedKmh * 10) / 10,
+			intervalMin,
+			dxPx: Math.round(cell.centroidX - best.centroidX),
+			dyPx: Math.round(cell.centroidY - best.centroidY),
+			fromLat: best.lat,
+			fromLon: best.lon,
+			toLat: cell.lat,
+			toLon: cell.lon,
+		};
+	}
+}
+
+/**
+ * Avalia TODOS os núcleos fortes/extremos contra um alvo (ex.: Ipiranga).
+ * Cada núcleo recebe distância + veredicto de ameaça com seu movimento
+ * individual. Ordena por perigo: aproximando (menor ETA) → mais próximo.
+ */
+export function assessAllThreats(
+	cells: RainCell[],
+	targetLat: number,
+	targetLon: number,
+): ThreatCell[] {
+	return cells
+		.filter((c) => c.intensity === "heavy" || c.intensity === "extreme")
+		.map((c) => {
+			const movement = c.trackedMovement ?? null;
+			const threat = movement
+				? assessThreat(c.lat, c.lon, movement, targetLat, targetLon)
+				: null;
+			return {
+				...c,
+				distToTargetKm: haversineKm(c.lat, c.lon, targetLat, targetLon),
+				movement,
+				threat,
+			};
+		})
+		.sort((a, b) => {
+			const pa = a.threat?.approach === "approaching" ? 0 : 1;
+			const pb = b.threat?.approach === "approaching" ? 0 : 1;
+			if (pa !== pb) return pa - pb;
+			if (
+				a.threat?.approach === "approaching" &&
+				b.threat?.approach === "approaching"
+			) {
+				return (a.threat.etaMin ?? Infinity) - (b.threat.etaMin ?? Infinity);
+			}
+			return a.distToTargetKm - b.distToTargetKm;
+		});
+}
+
 // ============ Orquestração ============
 
 export interface NowcastResult {
@@ -566,19 +671,25 @@ export interface NowcastResult {
 	currentDominant: RainIntensity;
 	/** Núcleo mais intenso (lat/lon) no frame mais recente */
 	nearestCell: RainCell | null;
+	/** TODOS os núcleos fortes/extremos avaliados contra Ipiranga (ordenados por perigo) */
+	threats: ThreatCell[];
 	/** Mensagem de erro em caso de falha */
 	error?: string;
 }
 
 /**
  * Pipeline completo: baixa os N frames mais recentes (tiles da região),
- * analisa cada um e calcula o vetor de movimento.
+ * analisa cada um (segmentação por componentes conexas), associa núcleos
+ * entre frames (movimento individual) e avalia todos os núcleos fortes
+ * contra o alvo. `target` opcional (lat/lon de Ipiranga); sem ele,
+ * threats = [].
  */
 export async function analyzeRadarNowcast(
 	host: string,
 	pastFrames: RainViewerFrame[],
 	region: RegionSpec,
 	frameCount = 3,
+	target?: { lat: number; lon: number },
 ): Promise<NowcastResult> {
 	// usa os últimos N frames (mais recentes)
 	const frames = pastFrames.slice(-frameCount);
@@ -607,27 +718,38 @@ export async function analyzeRadarNowcast(
 			currentMaxDbz: -100,
 			currentDominant: "none",
 			nearestCell: null,
+			threats: [],
 		};
 	}
 
-	// movimento entre o primeiro e o último frame analisado
-	const movement =
-		analyses.length >= 2
-			? trackMovement(analyses[0], analyses[analyses.length - 1])
-			: null;
+	// Associa núcleos entre frames CONSECUTIVOS → movimento individual por núcleo
+	for (let i = 1; i < analyses.length; i++) {
+		associateMovements(analyses[i - 1], analyses[i]);
+	}
 
+	// Movimento global: o do núcleo mais intenso do último frame (retrocompatível)
 	const latest = analyses[analyses.length - 1];
+	const globalMovement =
+		latest.cells.find((c) => c.trackedMovement)?.trackedMovement ?? null;
+
 	const dominant =
 		latest.cells.find((c) => c.intensity !== "light")?.intensity ??
 		latest.cells[0]?.intensity ??
 		"none";
 
+	// Avalia TODOS os núcleos fortes/extremos contra o alvo
+	const threats =
+		target && latest.cells.length > 0
+			? assessAllThreats(latest.cells, target.lat, target.lon)
+			: [];
+
 	return {
 		analyzedAt: Date.now(),
 		frames: analyses,
-		movement,
+		movement: globalMovement,
 		currentMaxDbz: latest.maxDbz,
 		currentDominant: dominant,
 		nearestCell: latest.cells[0] ?? null,
+		threats,
 	};
 }

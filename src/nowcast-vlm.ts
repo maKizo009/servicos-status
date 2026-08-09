@@ -151,11 +151,14 @@ export async function generateNowcastBulletin(
 
 		// Localização determinística do núcleo (município real via malha IBGE —
 		// point-in-polygon). O VLM NUNCA calcula isso, apenas repete o dado fornecido.
-		const cell = nowcast.nearestCell;
+		// Prioridade: o núcleo mais AMEAÇADOR (threats[0], já avaliado contra
+		// Ipiranga); fallback para o mais intenso (nearestCell).
+		const cell = nowcast.threats[0] ?? nowcast.nearestCell;
 		let locationNote = "";
 		let threatNote = "";
 		// Veredito determinístico exposto para validação pós-geração (Achado 2).
-		let verdict: ThreatVerdict | null = null;
+		// Para threats[0] o veredicto já vem calculado; senão calcula do movimento global.
+		let verdict: ThreatVerdict | null = nowcast.threats[0]?.threat ?? null;
 		if (cell && typeof cell.lat === "number") {
 			const { municipio, fallbackUsado } = getMunicipioComFallback(
 				cell.lat,
@@ -168,12 +171,23 @@ export async function generateNowcastBulletin(
 			const metodo = fallbackUsado
 				? " (referência regional — fora da malha IBGE)"
 				: "";
-			locationNote = `- Núcleo mais intenso em (${cell.lat.toFixed(2)}, ${cell.lon.toFixed(2)}): município ${nome}${metodo}; dista ${Math.round(ipirangaKm)} km de Ipiranga\n`;
+			locationNote = `- Núcleo mais ameaçador em (${cell.lat.toFixed(2)}, ${cell.lon.toFixed(2)}): município ${nome}${metodo}; dista ${Math.round(ipirangaKm)} km de Ipiranga\n`;
 
 			// Veredicto de ameaça DETERMINÍSTICO (Camada A): o VLM nunca decide
 			// se o núcleo vem ou não para Ipiranga — recebe a conclusão pronta.
-			if (m) {
-				verdict = assessThreat(cell.lat, cell.lon, m, -25.0244, -50.5847);
+			// Usa o movimento INDIVIDUAL do núcleo (threats[0].movement) quando
+			// disponível; fallback para o movimento global do nowcast.
+			const cellMovement = cell.movement ?? m;
+			if (cellMovement) {
+				if (!verdict) {
+					verdict = assessThreat(
+						cell.lat,
+						cell.lon,
+						cellMovement,
+						-25.0244,
+						-50.5847,
+					);
+				}
 				const approachLabel: Record<ThreatVerdict["approach"], string> = {
 					approaching: `APROXIMANDO-SE de Ipiranga (ETA ~${Math.round(verdict.etaMin ?? 0)} min, se mantiver curso e intensidade)`,
 					receding:
@@ -187,7 +201,7 @@ export async function generateNowcastBulletin(
 				// em 30/60/120 min (extrapolação linear). As "próximas cidades".
 				const projections = [30, 60, 120]
 					.map((t) => {
-						const p = projectCell(cell.lat, cell.lon, m, t);
+						const p = projectCell(cell.lat, cell.lon, cellMovement, t);
 						const pm = getMunicipioComFallback(p.lat, p.lon, haversineKm);
 						return { t, ...p, nome: pm.municipio?.nome ?? null };
 					})
