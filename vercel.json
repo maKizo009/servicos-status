@@ -30,5 +30,10 @@
       "source": "/(.*)",
       "destination": "/src/public/$1"
     }
-  ]
+  ],
+  "functions": {
+    "api/**/*.js": {
+      "includeFiles": "src/data/**"
+    }
+  }
 }

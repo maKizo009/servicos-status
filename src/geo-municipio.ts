@@ -1,4 +1,5 @@
-import prMalha from "./data/pr-municipios.json";
+import { readFileSync } from "node:fs";
+import { fileURLToPath } from "node:url";
 
 /**
  * Geolocalização por point-in-polygon usando a Malha Municipal do IBGE (PR).
@@ -11,6 +12,11 @@ import prMalha from "./data/pr-municipios.json";
  * Fonte: https://servicodados.ibge.gov.br/api/v3/malhas/estados/41?formato=application/vnd.geo+json
  * Gerado offline por scripts/build-malha-pr.ts → src/data/pr-municipios.json
  * Formato: [{ c: codigoIBGE, n: nome, g: anéis[][lon,lat] }]
+ *
+ * NOTA (Vercel serverless): o JSON é lido via readFileSync em vez de
+ * `import ... with { type: "json" }` porque o transpile per-file da Vercel
+ * não preserva o import attribute → ERR_IMPORT_ATTRIBUTE_MISSING no Node 22.
+ * new URL(...) é rastreado pelo nft e o arquivo vai junto no pacote.
  */
 
 export interface Municipio {
@@ -28,7 +34,17 @@ interface MalhaEntry {
 	g: Ring[];
 }
 
-const malha = prMalha as MalhaEntry[];
+let malha: MalhaEntry[] | null = null;
+
+function getMalha(): MalhaEntry[] {
+	if (!malha) {
+		const path = fileURLToPath(
+			new URL("./data/pr-municipios.json", import.meta.url),
+		);
+		malha = JSON.parse(readFileSync(path, "utf8")) as MalhaEntry[];
+	}
+	return malha;
+}
 
 /**
  * Ray casting: ponto [lon, lat] dentro de um anel fechado?
@@ -64,7 +80,7 @@ function pointInRings(lon: number, lat: number, rings: Ring[]): boolean {
  * A ordem do array é por código IBGE (ordenação determinística do build).
  */
 export function getMunicipio(lat: number, lon: number): Municipio | null {
-	for (const m of malha) {
+	for (const m of getMalha()) {
 		if (pointInRings(lon, lat, m.g)) {
 			return { codigo: m.c, nome: m.n };
 		}
