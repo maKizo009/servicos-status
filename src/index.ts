@@ -1,4 +1,10 @@
-import { assessLevel, buildUnifiedReport, runAllChecks } from "./checker.js";
+import {
+	assessLevel,
+	buildUnifiedReport,
+	DEBOUNCE_THRESHOLD,
+	deriveProbeStatus,
+	runAllChecks,
+} from "./checker.js";
 import { loadConfig } from "./config.js";
 import {
 	closeDb,
@@ -20,7 +26,11 @@ import {
 	saveTelemetryLog,
 } from "./db.js";
 import { detectIsp } from "./isp-detector.js";
-import { renderJsonLd, renderLlmsTxt } from "./llm-formatter.js";
+import {
+	renderJsonLd,
+	renderLlmsInstructions,
+	renderLlmsTxt,
+} from "./llm-formatter.js";
 import { logger } from "./logger.js";
 import { getRadarNowcast, REGION_TILE } from "./nowcast-service.js";
 import { generateNowcastBulletin } from "./nowcast-vlm.js";
@@ -69,11 +79,42 @@ let currentLevel: AlertLevel = "ok";
 let lastUnifiedReportTime = 0;
 let lastUnifiedReport: UnifiedReport | null = null;
 
+/**
+ * Debounce de falhas (Achado 4): contagem de ciclos consecutivos em que cada
+ * host não respondeu (failure ou timeout). Só promove a "critical" após
+ * DEBOUNCE_THRESHOLD ciclos. Resetado quando o host volta a responder.
+ */
+const failureCounts = new Map<string, number>();
+
+function updateFailureCounts(
+	results: Array<{
+		host: string;
+		success: boolean;
+		error: string;
+		probeStatus?: "ok" | "timeout" | "failure";
+	}>,
+): void {
+	for (const r of results) {
+		if (deriveProbeStatus(r) === "ok") {
+			failureCounts.set(r.host, 0);
+		} else {
+			failureCounts.set(r.host, (failureCounts.get(r.host) ?? 0) + 1);
+		}
+	}
+}
+
 async function runChecks(): Promise<void> {
 	await ensureInitialized();
 	logger.info("Starting check cycle");
 
 	const data = await runAllChecks(config, tracker);
+
+	// Atualiza debounce ANTES de classificar (Achado 4): falha isolada = warn,
+	// N consecutivas = critical.
+	for (const op of data.operators) {
+		updateFailureCounts(op.portalResults);
+		updateFailureCounts(op.connectivityResults);
+	}
 
 	// Save operator results to DB and update in-memory state
 	const allPortalResults: PortalResult[] = [];
@@ -95,6 +136,8 @@ async function runChecks(): Promise<void> {
 			op.bgpResult,
 			config.latencyWarnMs,
 			config.latencyCritMs,
+			failureCounts,
+			DEBOUNCE_THRESHOLD,
 		);
 		checkResults.set(op.name, {
 			operator: op.name,
@@ -115,6 +158,8 @@ async function runChecks(): Promise<void> {
 		allBgpResults,
 		config.latencyWarnMs,
 		config.latencyCritMs,
+		failureCounts,
+		DEBOUNCE_THRESHOLD,
 	);
 	if (newLevel !== currentLevel) {
 		currentLevel = newLevel;
@@ -181,6 +226,8 @@ async function runChecks(): Promise<void> {
 		data,
 		config.latencyWarnMs,
 		config.latencyCritMs,
+		failureCounts,
+		DEBOUNCE_THRESHOLD,
 	);
 	const now = Date.now();
 	if (
@@ -235,12 +282,14 @@ function handleStatus(): Response {
 			success: p.success,
 			latencyMs: p.latencyMs,
 			error: p.error,
+			probeStatus: p.probeStatus ?? deriveProbeStatus(p),
 		})),
 		connectivity: r.connectivityResults.map((c) => ({
 			label: c.label,
 			success: c.success,
 			latencyMs: c.latencyMs,
 			error: c.error,
+			probeStatus: c.probeStatus ?? deriveProbeStatus(c),
 		})),
 		bgp: r.bgpResult
 			? {
@@ -454,12 +503,30 @@ export async function handleRequest(
 	// Serve llms.txt endpoints without rate limits
 	if (path === "/llms.txt" || path === "/llms-full.txt") {
 		let state = getCachedWeatherState();
-		if (!state) state = await syncWeatherCycle();
+		// Staleness check (Achado 1): igual ao /api/weather — não servir estado
+		// velho de instância quente. O sync reutiliza o boletim persistido no
+		// Turso enquanto < 10 min, então não gasta cota NIM à toa.
+		if (!state || Date.now() - state.updatedAt > 600_000) {
+			state = await syncWeatherCycle();
+		}
 		const text = renderLlmsTxt(state, lastUnifiedReport);
 		return new Response(text, {
 			headers: {
 				"Content-Type": "text/plain; charset=utf-8",
-				"Cache-Control": "public, max-age=300",
+				// max-age reduzido + stale-while-revalidate: dado fresco com
+				// latência de origem escondida da CDN.
+				"Cache-Control": "public, max-age=120, stale-while-revalidate=60",
+			},
+		});
+	}
+
+	// Instruções para agentes separadas dos dados (Achado 7): /llms.txt só tem
+	// dado + metadados; o imperativo fica aqui, fora do payload de dados.
+	if (path === "/llms-instructions.txt") {
+		return new Response(renderLlmsInstructions(), {
+			headers: {
+				"Content-Type": "text/plain; charset=utf-8",
+				"Cache-Control": "public, max-age=3600",
 			},
 		});
 	}

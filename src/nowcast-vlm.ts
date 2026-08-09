@@ -139,6 +139,8 @@ export async function generateNowcastBulletin(
 		const cell = nowcast.nearestCell;
 		let locationNote = "";
 		let threatNote = "";
+		// Veredito determinístico exposto para validação pós-geração (Achado 2).
+		let verdict: ThreatVerdict | null = null;
 		if (cell && typeof cell.lat === "number") {
 			const { municipio, fallbackUsado } = getMunicipioComFallback(
 				cell.lat,
@@ -156,7 +158,7 @@ export async function generateNowcastBulletin(
 			// Veredicto de ameaça DETERMINÍSTICO (Camada A): o VLM nunca decide
 			// se o núcleo vem ou não para Ipiranga — recebe a conclusão pronta.
 			if (m) {
-				const verdict = assessThreat(cell.lat, cell.lon, m, -25.0244, -50.5847);
+				verdict = assessThreat(cell.lat, cell.lon, m, -25.0244, -50.5847);
 				const approachLabel: Record<ThreatVerdict["approach"], string> = {
 					approaching: `APROXIMANDO-SE de Ipiranga (ETA ~${Math.round(verdict.etaMin ?? 0)} min, se mantiver curso e intensidade)`,
 					receding:
@@ -257,6 +259,16 @@ NÃO invente números além dos fornecidos. Seja direto e útil.`;
 					continue;
 				}
 
+				// Validação pós-geração (Achado 2): o texto NUNCA pode
+				// contradizer os números determinísticos da Camada A. Se
+				// contradizer, tenta o próximo modelo; no fim cai na heurística.
+				if (!validateBulletinAgainstVerdict(text, verdict)) {
+					logger.warn("Camada B: texto rejeitado pela validação", {
+						model,
+					});
+					continue;
+				}
+
 				logger.info("Camada B: boletim nowcast gerado via NIM vision", {
 					model,
 				});
@@ -288,6 +300,93 @@ NÃO invente números além dos fornecidos. Seja direto e útil.`;
 			generatedAt: Date.now(),
 		};
 	}
+}
+
+/**
+ * Valida o texto gerado pelo VLM contra o veredito determinístico (Achado 2).
+ * O LLM NUNCA é a fonte dos números; se o texto contradiz a Camada A
+ * (veredito de aproximação ou ETA), é descartado e cai no fallback heurístico.
+ * Retorna true quando o texto é aceitável.
+ */
+export function validateBulletinAgainstVerdict(
+	text: string,
+	verdict: ThreatVerdict | null,
+): boolean {
+	// 1. Padrões de prompt injection / instruções embutidas no texto gerado.
+	if (
+		/(ignore|esqueça|esqueca|desconsidere|system prompt|instru(?:ções|coes).*(?:anterior|acima)|você agora é|a partir de agora)/i.test(
+			text,
+		)
+	) {
+		logger.warn("Camada B: texto rejeitado (padrões de injection)", { text });
+		return false;
+	}
+
+	if (!verdict) return true;
+
+	const lower = text.toLowerCase();
+
+	// 2. Veredito AFASTANDO-SE/tangencial mas o texto sugere aproximação.
+	if (verdict.approach !== "approaching") {
+		const hasNegation =
+			/(não|nada|nulo|praticamente nulo|sem risco|afastando|de raspão|tangencial)/i.test(
+				lower,
+			);
+		const saysApproaching =
+			/(aproximando|vindo (?:em direção|para)|chegando|rumo a|em direção a|atingir|alcançar)/i.test(
+				lower,
+			);
+		if (saysApproaching && !hasNegation) {
+			logger.warn(
+				"Camada B: texto contradiz veredito (aproximação vs afastamento)",
+				{ verdict: verdict.approach, text },
+			);
+			return false;
+		}
+	}
+
+	// 3. Veredito APROXIMANDO-SE: qualquer ETA citado deve bater com o
+	// calculado (tolerância de 35% — o caso real "196 min vs 1-2 horas" cai
+	// fora disso e é rejeitado). Compostos "X horas e Y min" contam como um
+	// único valor (ex: "3 horas e 15 minutos" = 195 min, não 3h E 15min).
+	if (verdict.approach === "approaching" && verdict.etaMin != null) {
+		const minutes: number[] = [];
+		const consumed: Array<[number, number]> = [];
+		for (const cm of text.matchAll(
+			/(\d{1,2})\s*(?:horas?|h)\s*e\s+(\d{1,3})\s*(?:min|minutos?)\b/gi,
+		)) {
+			const total = Number(cm[1]) * 60 + Number(cm[2]);
+			if (Number.isFinite(total) && total > 0) minutes.push(total);
+			consumed.push([cm.index ?? 0, (cm.index ?? 0) + cm[0].length]);
+		}
+		const isConsumed = (idx: number): boolean =>
+			consumed.some(([s, e]) => idx >= s && idx < e);
+		for (const hh of text.matchAll(/(\d{1,2})\s*(?:horas?|h)\b/gi)) {
+			if (isConsumed(hh.index ?? 0)) continue;
+			const v = Number(hh[1]) * 60;
+			if (Number.isFinite(v) && v > 0) minutes.push(v);
+		}
+		for (const mm of text.matchAll(/(\d{1,3})\s*(?:min|minutos?)\b/gi)) {
+			if (isConsumed(mm.index ?? 0)) continue;
+			const v = Number(mm[1]);
+			if (Number.isFinite(v) && v > 0) minutes.push(v);
+		}
+		for (const c of minutes) {
+			if (!Number.isFinite(c) || c <= 0) continue;
+			const ratio = Math.abs(c - verdict.etaMin) / verdict.etaMin;
+			if (ratio > 0.35) {
+				logger.warn("Camada B: ETA citado diverge do cálculo determinístico", {
+					etaVlm: c,
+					etaCalc: Math.round(verdict.etaMin),
+					ratio,
+					text,
+				});
+				return false;
+			}
+		}
+	}
+
+	return true;
 }
 
 /** Fallback determinístico quando o VLM não está disponível */

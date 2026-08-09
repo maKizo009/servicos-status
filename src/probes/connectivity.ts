@@ -1,4 +1,4 @@
-import type { ConnectivityResult } from "../types.js";
+import type { ConnectivityResult, ProbeStatus } from "../types.js";
 
 const DEFAULT_HEADERS = {
 	"User-Agent":
@@ -13,6 +13,30 @@ export async function checkConnectivity(
 	const start = performance.now();
 	const timestamp = Date.now();
 
+	const ok = (latencyMs: number, error = ""): ConnectivityResult => ({
+		label,
+		host,
+		success: true,
+		latencyMs,
+		error,
+		timestamp,
+		probeStatus: "ok" satisfies ProbeStatus,
+	});
+
+	const fail = (
+		latencyMs: number,
+		error: string,
+		probeStatus: ProbeStatus = "failure",
+	): ConnectivityResult => ({
+		label,
+		host,
+		success: false,
+		latencyMs,
+		error,
+		timestamp,
+		probeStatus,
+	});
+
 	try {
 		const response = await fetch(`https://${host}`, {
 			method: "HEAD",
@@ -22,27 +46,15 @@ export async function checkConnectivity(
 		});
 		const latencyMs = performance.now() - start;
 		const isSuccess = response.status < 500;
-		return {
-			label,
-			host,
-			success: isSuccess,
-			latencyMs,
-			error: isSuccess ? "" : `HTTP ${response.status} ${response.statusText}`,
-			timestamp,
-		};
+		return isSuccess
+			? ok(latencyMs)
+			: fail(latencyMs, `HTTP ${response.status} ${response.statusText}`);
 	} catch (err: unknown) {
 		const latencyMs = performance.now() - start;
 		const msg = err instanceof Error ? err.message : String(err);
 		if (msg.includes("timeout") || msg.includes("timed out")) {
-			return {
-				label,
-				host,
-				success: false,
-				latencyMs: timeoutMs,
-				error: "Timeout",
-				timestamp,
-			};
+			return fail(timeoutMs, "Timeout", "timeout");
 		}
-		return { label, host, success: false, latencyMs, error: msg, timestamp };
+		return fail(latencyMs, msg);
 	}
 }

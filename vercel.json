@@ -27,6 +27,10 @@
       "destination": "/api/index"
     },
     {
+      "source": "/llms-instructions.txt",
+      "destination": "/api/index"
+    },
+    {
       "source": "/(.*)",
       "destination": "/src/public/$1"
     }

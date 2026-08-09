@@ -1,4 +1,4 @@
-import type { OperatorName, PortalResult } from "../types.js";
+import type { PortalResult, ProbeStatus } from "../types.js";
 
 const DEFAULT_HEADERS = {
 	"User-Agent":
@@ -8,11 +8,35 @@ const DEFAULT_HEADERS = {
 
 export async function checkPortal(
 	host: string,
-	operator: OperatorName,
+	operator: PortalResult["operator"],
 	timeoutMs: number,
 ): Promise<PortalResult> {
 	const start = performance.now();
 	const timestamp = Date.now();
+
+	const ok = (latencyMs: number, error = ""): PortalResult => ({
+		operator,
+		host,
+		success: true,
+		latencyMs,
+		error,
+		timestamp,
+		probeStatus: "ok" satisfies ProbeStatus,
+	});
+
+	const fail = (
+		latencyMs: number,
+		error: string,
+		probeStatus: ProbeStatus = "failure",
+	): PortalResult => ({
+		operator,
+		host,
+		success: false,
+		latencyMs,
+		error,
+		timestamp,
+		probeStatus,
+	});
 
 	try {
 		const response = await fetch(`https://${host}`, {
@@ -22,14 +46,9 @@ export async function checkPortal(
 		});
 		const latencyMs = performance.now() - start;
 		const isSuccess = response.status < 500;
-		return {
-			operator,
-			host,
-			success: isSuccess,
-			latencyMs,
-			error: isSuccess ? "" : `HTTP ${response.status} ${response.statusText}`,
-			timestamp,
-		};
+		return isSuccess
+			? ok(latencyMs)
+			: fail(latencyMs, `HTTP ${response.status} ${response.statusText}`);
 	} catch (err: unknown) {
 		const latencyMs = performance.now() - start;
 		const msg = err instanceof Error ? err.message : String(err);
@@ -42,25 +61,14 @@ export async function checkPortal(
 				});
 				const retryLatency = performance.now() - start;
 				const isSuccess = response.status < 500;
-				return {
-					operator,
-					host,
-					success: isSuccess,
-					latencyMs: retryLatency,
-					error: isSuccess
-						? ""
-						: `HTTP ${response.status} ${response.statusText}`,
-					timestamp,
-				};
+				return isSuccess
+					? ok(retryLatency)
+					: fail(
+							retryLatency,
+							`HTTP ${response.status} ${response.statusText}`,
+						);
 			} catch {
-				return {
-					operator,
-					host,
-					success: false,
-					latencyMs,
-					error: `SSL fallback failed: ${msg}`,
-					timestamp,
-				};
+				return fail(latencyMs, `SSL fallback failed: ${msg}`);
 			}
 		}
 		if (
@@ -68,25 +76,14 @@ export async function checkPortal(
 			msg.includes("getaddrinfo") ||
 			msg.includes("ENOTFOUND")
 		) {
-			return {
-				operator,
-				host,
-				success: false,
-				latencyMs: 0,
-				error: `DNS fail: ${msg}`,
-				timestamp,
-			};
+			return fail(0, `DNS fail: ${msg}`);
 		}
 		if (msg.includes("timeout") || msg.includes("timed out")) {
-			return {
-				operator,
-				host,
-				success: false,
-				latencyMs: timeoutMs,
-				error: "Timeout",
-				timestamp,
-			};
+			// Timeout é indeterminado (Achado 4): pode ser o serviço OU o
+			// monitor/rede. assessLevel() decide o peso com base no controle
+			// de conectividade + debounce.
+			return fail(timeoutMs, "Timeout", "timeout");
 		}
-		return { operator, host, success: false, latencyMs, error: msg, timestamp };
+		return fail(latencyMs, msg);
 	}
 }

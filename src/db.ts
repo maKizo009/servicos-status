@@ -481,6 +481,14 @@ export async function getLatestPortalResults(
 		latencyMs: Number(r.latencyMs),
 		error: String(r.error ?? ""),
 		timestamp: Number(r.timestamp),
+		// Dados antigos não têm probeStatus; deriva de success/error.
+		probeStatus: r.success
+			? "ok"
+			: String(r.error ?? "")
+						.toLowerCase()
+						.includes("timeout")
+				? "timeout"
+				: "failure",
 	}));
 }
 
@@ -503,6 +511,14 @@ export async function getLatestConnectivityResults(
 		latencyMs: Number(r.latencyMs),
 		error: String(r.error ?? ""),
 		timestamp: Number(r.timestamp),
+		// Dados antigos não têm probeStatus; deriva de success/error.
+		probeStatus: r.success
+			? "ok"
+			: String(r.error ?? "")
+						.toLowerCase()
+						.includes("timeout")
+				? "timeout"
+				: "failure",
 	}));
 }
 
@@ -548,6 +564,14 @@ export async function getPortalHistory(
 		latencyMs: Number(r.latencyMs),
 		error: String(r.error ?? ""),
 		timestamp: Number(r.timestamp),
+		// Dados antigos não têm probeStatus; deriva de success/error.
+		probeStatus: r.success
+			? "ok"
+			: String(r.error ?? "")
+						.toLowerCase()
+						.includes("timeout")
+				? "timeout"
+				: "failure",
 	}));
 }
 
