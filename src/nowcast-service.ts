@@ -15,8 +15,13 @@ import {
 
 const TTL_MS = 5 * 60_000;
 
-/** Tile z=7 que cobre Ipiranga e arredores (mesma região do weather-collector) */
-const REGION_TILE = { z: 7, x: 46, y: 73 } as const;
+/**
+ * Tile z=7 (46,73) — ZOOM MÁXIMO real do radar RainViewer.
+ * Testado em 08/08/2026: z≥8 retorna um PNG de erro de ~1.3KB
+ * ("zoom level not supported") cujo texto branco é classificado pela
+ * paleta como 68+ dBZ → falso positivo. Não subir além de z=7.
+ */
+export const REGION_TILE = { z: 7, x: 46, y: 73 } as const;
 
 let cached: { result: NowcastResult; at: number } | null = null;
 
@@ -33,7 +38,7 @@ export async function getRadarNowcast(): Promise<NowcastResult> {
 			radar = await fetchRainViewerRadar();
 		}
 
-		// 2. analisa os 3 frames mais recentes da região
+		// 2. analisa os 3 frames mais recentes da região (tile z=7)
 		const result = await analyzeRadarNowcast(
 			radar.host,
 			radar.radar.past,

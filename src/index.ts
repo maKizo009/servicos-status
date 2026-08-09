@@ -26,7 +26,7 @@ import {
 	renderLlmsTxt,
 } from "./llm-formatter.js";
 import { logger } from "./logger.js";
-import { getRadarNowcast } from "./nowcast-service.js";
+import { getRadarNowcast, REGION_TILE } from "./nowcast-service.js";
 import { generateNowcastBulletin } from "./nowcast-vlm.js";
 import { checkRateLimit } from "./rate-limiter.js";
 import { EventTracker } from "./state.js";
@@ -355,7 +355,7 @@ export async function syncWeatherCycle(): Promise<WeatherState> {
 					nowcast,
 					state.radar.host,
 					state.radar.radar.past,
-					{ z: 7, x: 46, y: 73 },
+					REGION_TILE,
 				);
 				state.nowcastBulletin = bulletin;
 				await saveNowcastBulletin(bulletin.text, bulletin.source);
