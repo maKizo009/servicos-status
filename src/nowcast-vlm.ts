@@ -1,5 +1,6 @@
 import { PNG } from "pngjs";
 import { loadConfig } from "./config.js";
+import { getMunicipioComFallback } from "./geo-municipio.js";
 import { logger } from "./logger.js";
 import type { NowcastResult } from "./radar-analysis.js";
 import {
@@ -23,46 +24,6 @@ import {
  */
 
 const FRAMES_IN_COMPOSITE = 3;
-
-/** Cidades da região (Campos Gerais/PR + vizinhança) para referência geográfica do VLM. */
-const REGION_CITIES: ReadonlyArray<{ name: string; lat: number; lon: number }> =
-	[
-		{ name: "Ipiranga", lat: -25.0244, lon: -50.5847 },
-		{ name: "Ponta Grossa", lat: -25.095, lon: -50.158 },
-		{ name: "Tibagi", lat: -24.512, lon: -50.414 },
-		{ name: "Telêmaco Borba", lat: -24.324, lon: -50.616 },
-		{ name: "Imbituva", lat: -25.229, lon: -50.6 },
-		{ name: "Prudentópolis", lat: -25.212, lon: -50.978 },
-		{ name: "Reserva", lat: -24.65, lon: -50.85 },
-		{ name: "Carambeí", lat: -24.952, lon: -50.103 },
-		{ name: "Castro", lat: -24.79, lon: -50.011 },
-		{ name: "Piraí do Sul", lat: -24.526, lon: -49.948 },
-		{ name: "Jaguariaíva", lat: -24.252, lon: -49.706 },
-		{ name: "Arapoti", lat: -24.16, lon: -49.827 },
-		{ name: "Ventania", lat: -24.246, lon: -50.242 },
-		{ name: "Ortigueira", lat: -24.208, lon: -50.944 },
-		{ name: "Curitiba", lat: -25.429, lon: -49.271 },
-		{ name: "Palmeira", lat: -25.429, lon: -50.003 },
-		{ name: "Teixeira Soares", lat: -25.369, lon: -50.46 },
-		{ name: "São João do Triunfo", lat: -25.683, lon: -50.295 },
-		{ name: "Ivaí", lat: -25.008, lon: -50.858 },
-		{ name: "Campina Grande do Sul", lat: -25.305, lon: -49.055 },
-	];
-
-/** Cidade da lista mais próxima de um ponto (haversine, determinístico). */
-function nearestCity(
-	lat: number,
-	lon: number,
-): { name: string; distanceKm: number } {
-	let best: { name: string; distanceKm: number } | null = null;
-	for (const c of REGION_CITIES) {
-		const d = haversineKm(lat, lon, c.lat, c.lon);
-		if (!best || d < best.distanceKm) {
-			best = { name: c.name, distanceKm: d };
-		}
-	}
-	return best ?? { name: "região", distanceKm: 0 };
-}
 
 export interface NowcastBulletin {
 	text: string;
@@ -170,14 +131,23 @@ export async function generateNowcastBulletin(
 			extreme: "muito forte (temporal)",
 		};
 
-		// Localização determinística do núcleo (cidade mais próxima via haversine) —
-		// o VLM NUNCA calcula isso, apenas repete o dado fornecido.
+		// Localização determinística do núcleo (município real via malha IBGE —
+		// point-in-polygon). O VLM NUNCA calcula isso, apenas repete o dado fornecido.
 		const cell = nowcast.nearestCell;
 		let locationNote = "";
 		if (cell && typeof cell.lat === "number") {
-			const city = nearestCity(cell.lat, cell.lon);
+			const { municipio, fallbackUsado } = getMunicipioComFallback(
+				cell.lat,
+				cell.lon,
+				haversineKm,
+			);
 			const ipirangaKm = haversineKm(cell.lat, cell.lon, -25.0244, -50.5847);
-			locationNote = `- Núcleo mais intenso em (${cell.lat.toFixed(2)}, ${cell.lon.toFixed(2)}): cidade mais próxima ${city.name} (a ${Math.round(city.distanceKm)} km); dista ${Math.round(ipirangaKm)} km de Ipiranga\n`;
+			const nome =
+				municipio?.nome ?? `(${cell.lat.toFixed(2)}, ${cell.lon.toFixed(2)})`;
+			const metodo = fallbackUsado
+				? " (referência regional — fora da malha IBGE)"
+				: "";
+			locationNote = `- Núcleo mais intenso em (${cell.lat.toFixed(2)}, ${cell.lon.toFixed(2)}): município ${nome}${metodo}; dista ${Math.round(ipirangaKm)} km de Ipiranga\n`;
 		}
 
 		const prompt = `Você é um meteorologista analisando imagens de radar meteorológico (RainViewer, esquema de cores "Universal Blue").
@@ -192,7 +162,7 @@ ${locationNote}- Frames analisados: ${nowcast.frames.length}
 Instruções:
 1. Observe as cores na imagem: azul/âmbar = chuva fraca, azul-escuro = moderada, amarelo/laranja = forte, vermelho/rosa = temporal.
 2. A direção e a velocidade MEDIDAS (acima) são a fonte de verdade — use SEMPRE esses valores. Não invente outra direção baseada na imagem; ela pode parecer ambígua.
-3. Responda em português brasileiro, no máximo 3 frases, informando ao cidadão de Ipiranga se está vindo chuva e o que esperar nas próximas 1-2 horas, deixando claro que a análise usa imagens de radar de alguns minutos atrás. Mencione em qual cidade/região o núcleo está (use a localização fornecida acima). Se o núcleo estiver longe de Ipiranga (mais de 80 km), diga que o risco direto para Ipiranga é menor, sem alarmismo.
+3. Responda em português brasileiro, no máximo 3 frases, informando ao cidadão de Ipiranga se está vindo chuva e o que esperar nas próximas 1-2 horas, deixando claro que a análise usa imagens de radar de alguns minutos atrás. Mencione em qual MUNICÍPIO o núcleo está (use SOMENTE o município fornecido na localização acima — ele é a fonte oficial; não troque por outra cidade da região por conta própria). Se o núcleo estiver longe de Ipiranga (mais de 80 km), diga que o risco direto para Ipiranga é menor, sem alarmismo.
 4. Se o núcleo estiver distante ou o movimento estiver ausente/não confiável (sem valor medido), diga que não há alerta iminente ou que a trajetória é incerta — não invente direção ou velocidade.
 5. Seja honesto sobre a incerteza: nowcast de curto prazo pode cometer erros (dissipação ou mudança súbita de rumo) — mencione isso de forma natural quando houver risco.
 
