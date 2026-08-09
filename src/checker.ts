@@ -1,6 +1,7 @@
 import type { AppConfig } from "./config.js";
 import { connectivityTargets } from "./config.js";
 import { getActiveIspHealthStates, getActiveSignalReports } from "./db.js";
+import { logger } from "./logger.js";
 import { checkBgpPrefixes } from "./probes/bgp.js";
 import { checkConnectivity } from "./probes/connectivity.js";
 import { checkCopel } from "./probes/copel.js";
@@ -13,6 +14,7 @@ import type {
 	CopelOutage,
 	OperatorName,
 	PortalResult,
+	ProbeStatus,
 	SaneparInterruption,
 	ServiceHealth,
 	UnifiedReport,
@@ -100,15 +102,65 @@ export async function runAllChecks(
 	};
 }
 
+/**
+ * Deriva a classificação fina de uma sondagem. Usa `probeStatus` quando
+ * presente (probes atuais) ou infere de success/error (dados antigos do DB).
+ */
+export function deriveProbeStatus(r: {
+	success: boolean;
+	error?: string;
+	probeStatus?: ProbeStatus;
+}): ProbeStatus {
+	if (r.probeStatus) return r.probeStatus;
+	if (r.success) return "ok";
+	if ((r.error ?? "").toLowerCase().includes("timeout")) return "timeout";
+	return "failure";
+}
+
+/**
+ * Número de ciclos consecutivos de falha exigidos para promover uma sondagem
+ * a "critical" (debounce — Achado 4). Com checkIntervalMs=60s, 2 = ~2 min.
+ */
+export const DEBOUNCE_THRESHOLD = 2;
+
+/**
+ * Classifica o nível de saúde de uma operadora.
+ *
+ * Semântica corrigida (Achados 3 e 4):
+ * - Falha CONFIRMADA de portal (DNS/HTTP>=500/SSL) → critical somente após
+ *   `debounceThreshold` ciclos consecutivos (1ª falha = warn).
+ * - Timeout de portal é INDETERMINADO: pesa como critical apenas quando o
+ *   controle de conectividade (Google/Cloudflare) está OK (rede do monitor
+ *   saudável → provável problema na operadora) E debounced. Com conectividade
+ *   também falhando, é problema do monitor → warn.
+ * - Latência alta de portal (>latencyCritMs) → warn (portal lento ≠ rede fora).
+ * - Latência alta de conectividade → critical (rede lenta de verdade).
+ * - Falha de conectividade → critical quando debounced.
+ */
 export function assessLevel(
 	portals: PortalResult[],
 	connectivity: ConnectivityResult[],
 	bgp: BgpResult | BgpResult[] | null,
 	latencyWarnMs = 150,
 	latencyCritMs = 300,
+	failureCounts: Map<string, number> = new Map(),
+	debounceThreshold = DEBOUNCE_THRESHOLD,
 ): "ok" | "warn" | "critical" {
-	const portalFailures = portals.filter((p) => !p.success).length;
-	const connFailures = connectivity.filter((c) => !c.success).length;
+	const isFailure = (r: {
+		host: string;
+		success: boolean;
+		error: string;
+		probeStatus?: ProbeStatus;
+	}) => deriveProbeStatus(r) === "failure";
+	const isTimeout = (r: {
+		success: boolean;
+		error: string;
+		probeStatus?: ProbeStatus;
+	}) => deriveProbeStatus(r) === "timeout";
+	// Debounce: falha só é "confirmada" após N ciclos consecutivos.
+	const confirmed = (host: string, failed: boolean): boolean =>
+		!failed || (failureCounts.get(host) ?? 0) >= debounceThreshold;
+
 	const bgpList = Array.isArray(bgp) ? bgp : bgp ? [bgp] : [];
 	const bgpZeroPrefixes = bgpList.some(
 		(b) =>
@@ -119,30 +171,98 @@ export function assessLevel(
 			b.asn > 0,
 	);
 
-	const criticalLatency =
-		portals.some((p) => p.latencyMs > latencyCritMs && p.success) ||
-		connectivity.some((c) => c.latencyMs > latencyCritMs && c.success);
+	// Controle de rede do monitor: pelo menos um alvo de conectividade OK.
+	const connOk = connectivity.some((c) => c.success);
+
+	// Falhas confirmadas (debounced)
+	const portalFailures = portals.filter(isFailure);
+	const confirmedPortalFailures = portalFailures.filter((p) =>
+		confirmed(p.host, true),
+	);
+	const connFailures = connectivity.filter(isFailure);
+	const confirmedConnFailures = connFailures.filter((c) =>
+		confirmed(c.host, true),
+	);
+
+	// Timeouts de portal: indeterminados; pesam como critical só com rede do
+	// monitor saudável (connOk) E debounced.
+	const portalTimeouts = portals.filter(isTimeout);
+	const criticalPortalTimeouts =
+		connOk &&
+		portalTimeouts.length > 0 &&
+		portalTimeouts.every((p) => confirmed(p.host, true));
+	const connTimeouts = connectivity.filter(isTimeout);
+
+	// Latência
+	const criticalLatencyConnectivity = connectivity.some(
+		(c) => c.latencyMs > latencyCritMs && c.success,
+	);
+	const criticalLatencyPortal = portals.some(
+		(p) => p.latencyMs > latencyCritMs && p.success,
+	);
 
 	if (
-		portalFailures > 0 ||
-		connFailures > 0 ||
+		confirmedPortalFailures.length > 0 ||
+		confirmedConnFailures.length > 0 ||
+		criticalPortalTimeouts ||
 		bgpZeroPrefixes ||
-		criticalLatency
+		criticalLatencyConnectivity
 	)
 		return "critical";
 
 	const highLatency =
 		portals.some((p) => p.latencyMs > latencyWarnMs && p.success) ||
 		connectivity.some((c) => c.latencyMs > latencyWarnMs && c.success);
-	if (highLatency) return "warn";
+
+	if (
+		portalFailures.length > 0 ||
+		connFailures.length > 0 ||
+		connTimeouts.length > 0 ||
+		portalTimeouts.length > 0 ||
+		highLatency ||
+		criticalLatencyPortal
+	)
+		return "warn";
 
 	return "ok";
+}
+
+/**
+ * Dedupe de ocorrências COPEL por idOcorrencia (Achado 6): mesma ocorrência
+ * listada 2x (ex: múltiplos grupos de consumidores) não conta dobrado.
+ * Mantém a versão com maior qtdConsumidores. Exportada para teste.
+ */
+export function dedupeCopelOutages(outages: CopelOutage[]): {
+	unique: CopelOutage[];
+	duplicates: number;
+} {
+	const dedupKey = (o: CopelOutage): string =>
+		o.idOcorrencia || `${o.bairro}|${o.dataInicio}`;
+	const seen = new Map<string, CopelOutage>();
+	let duplicates = 0;
+	for (const o of outages) {
+		const k = dedupKey(o);
+		const prev = seen.get(k);
+		if (prev) {
+			duplicates++;
+			// Mantém a versão com maior qtdConsumidores como proxy de
+			// atualização; pode ser ajustado se a API expor timestamps.
+			if ((o.qtdConsumidores || 0) > (prev.qtdConsumidores || 0)) {
+				seen.set(k, o);
+			}
+		} else {
+			seen.set(k, o);
+		}
+	}
+	return { unique: [...seen.values()], duplicates };
 }
 
 export async function buildUnifiedReport(
 	data: AllCheckData,
 	latencyWarnMs = 150,
 	latencyCritMs = 300,
+	failureCounts: Map<string, number> = new Map(),
+	debounceThreshold = DEBOUNCE_THRESHOLD,
 ): Promise<UnifiedReport> {
 	const services: ServiceHealth[] = [];
 	const signalReports = await getActiveSignalReports();
@@ -155,10 +275,17 @@ export async function buildUnifiedReport(
 			op.bgpResult,
 			latencyWarnMs,
 			latencyCritMs,
+			failureCounts,
+			debounceThreshold,
 		);
-		const portalFailures = op.portalResults.filter((p) => !p.success).length;
+		const portalFailures = op.portalResults.filter(
+			(p) => deriveProbeStatus(p) === "failure",
+		).length;
+		const portalTimeouts = op.portalResults.filter(
+			(p) => deriveProbeStatus(p) === "timeout",
+		).length;
 		const connFailures = op.connectivityResults.filter(
-			(c) => !c.success,
+			(c) => deriveProbeStatus(c) === "failure",
 		).length;
 		const bgpFail =
 			op.bgpResult &&
@@ -196,17 +323,38 @@ export async function buildUnifiedReport(
 		} else if (status === "critical") {
 			const parts: string[] = [];
 			if (portalFailures > 0)
-				parts.push(`${portalFailures} portal(is) fora do ar`);
+				parts.push(`${portalFailures} portal(is) com falha confirmada`);
+			if (portalTimeouts > 0)
+				parts.push(`${portalTimeouts} portal(is) sem resposta (timeout)`);
 			if (connFailures > 0)
 				parts.push(`${connFailures} teste(s) de conectividade falharam`);
 			if (bgpFail) parts.push("0 prefixos BGP anunciados");
 			if (
-				op.portalResults.some((p) => p.latencyMs > latencyCritMs && p.success)
+				op.connectivityResults.some(
+					(c) => c.latencyMs > latencyCritMs && c.success,
+				)
 			)
-				parts.push("Latência crítica no portal (>300ms)");
+				parts.push("Latência crítica de rede (>300ms)");
 			details = parts.join(", ") || "Falha de serviço";
 		} else if (status === "warn") {
-			details = "Latência elevada detectada no portal (>150ms)";
+			const parts: string[] = [];
+			if (portalFailures > 0)
+				parts.push(`${portalFailures} portal(is) com falha confirmada`);
+			if (portalTimeouts > 0)
+				parts.push(
+					`${portalTimeouts} portal(is) sem resposta (timeout — aguardando confirmação)`,
+				);
+			if (connFailures > 0)
+				parts.push(`${connFailures} teste(s) de conectividade falharam`);
+			if (
+				op.portalResults.some((p) => p.latencyMs > latencyCritMs && p.success)
+			)
+				parts.push("Portal lento (>300ms)");
+			if (
+				op.portalResults.some((p) => p.latencyMs > latencyWarnMs && p.success)
+			)
+				parts.push("Latência elevada no portal (>150ms)");
+			details = parts.join(", ") || "Latência elevada detectada";
 		}
 
 		services.push({
@@ -226,7 +374,21 @@ export async function buildUnifiedReport(
 	}
 
 	const copelStatus = data.copelOutages.length > 0 ? "critical" : "ok";
-	const copelTotalConsumers = data.copelOutages.reduce(
+
+	// Dedupe por idOcorrencia (Achado 6): mesma ocorrência listada 2x (ex:
+	// múltiplos grupos de consumidores) não deve contar dobrado na soma.
+	const { unique: uniqueOutages, duplicates: copelDupes } = dedupeCopelOutages(
+		data.copelOutages,
+	);
+	if (copelDupes > 0) {
+		logger.warn("COPEL: idOcorrencia duplicado detectado na mesma leitura", {
+			dupes: copelDupes,
+			ocorrenciasBrutas: data.copelOutages.length,
+			ocorrenciasUnicas: uniqueOutages.length,
+		});
+	}
+
+	const copelTotalConsumers = uniqueOutages.reduce(
 		(sum, o) => sum + (o.qtdConsumidores || 0),
 		0,
 	);
@@ -243,15 +405,16 @@ export async function buildUnifiedReport(
 			copelStatus === "ok"
 				? "Sem ocorrências"
 				: copelTotalConsumers > 0
-					? `${copelTotalConsumers} UCs sem energia em ${data.copelOutages.length} ocorrência(s)`
-					: `${data.copelOutages.length} ocorrência(s)`,
+					? `${copelTotalConsumers} UCs sem energia em ${uniqueOutages.length} ocorrência(s)`
+					: `${uniqueOutages.length} ocorrência(s)`,
 		timestamp: data.timestamp,
 		data: {
-			activeEvents: data.copelOutages,
+			activeEvents: uniqueOutages,
 			newEvents: data.newCopelOutages,
 			totalConsumers: copelTotalConsumers,
 			cityTotalConsumers,
 			pctAffected,
+			duplicatesFound: copelDupes,
 		},
 	});
 

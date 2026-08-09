@@ -30,7 +30,7 @@ flowchart TD
 - **Radar RainViewer 10min**: Animação contínua de mancha de chuva dos últimos 60 minutos e nowcast.
 - **Nowcast Determinístico (Camada A)**: Análise por visão computacional dos tiles do radar — classifica pixels pela paleta oficial Universal Blue (dBZ→cor), agrupa núcleos por intensidade e rastreia movimento/direção/velocidade entre frames (`/api/weather/nowcast`).
 - **Camada Vetorial IBGE**: Limites municipais exatos de Ipiranga (`4110508`) com realce neon e municípios vizinhos (Ponta Grossa, Castro, Prudentópolis, Tibagi, Imbituva, Teixeira Soares, Guamiranga, Ivaí).
-- **Endpoint `/llms.txt`**: Exposição em Markdown denso para assistentes de IA (ChatGPT, Claude, modelos locais).
+- **Endpoint `/llms.txt`**: Exposição em Markdown denso para assistentes de IA (ChatGPT, Claude, modelos locais). Contém apenas dados + metadados; as instruções de uso ficam em `/llms-instructions.txt` (separação dado/instrução contra prompt injection).
 - **Botões "Pergunte ao ChatGPT/Claude/Gemini"**: Ação direta no site que abre o chat com prompt montado (lê o `/llms.txt` e resume clima + serviços).
 - **JSON-LD Schema**: Dados estritamente estruturados (`https://schema.org/SpecialAnnouncement`).
 - **Boletins IA (NVIDIA NIM)**: Síntese em linguagem natural gerada por modelos da NVIDIA NIM (`meta/llama-3.1-8b-instruct`) ou engine de regras heurísticas locais.

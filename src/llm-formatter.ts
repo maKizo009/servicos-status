@@ -1,10 +1,33 @@
-import { logger } from "./logger.js";
 import type { UnifiedReport, WeatherState } from "./types.js";
 
 /** Converte graus (0=N, sentido horário) para ponto cardeal pt-BR */
 function degreesToCardinal(deg: number): string {
 	const dirs = ["N", "NE", "L", "SE", "S", "SO", "O", "NO"];
 	return dirs[Math.round(deg / 45) % 8];
+}
+
+/**
+ * Sanitiza campo de texto livre antes de interpolar no /llms.txt (Achado 7):
+ * remove headers markdown (##) e HTML, trunca e escapa backticks — impede que
+ * conteúdo de terceiros (VLM, APIs de concessionárias) vire instrução ou
+ * quebre o formato do documento.
+ */
+export function sanitizeLlmField(
+	text: string | null | undefined,
+	maxLen = 600,
+): string {
+	if (!text) return "";
+	let out = String(text)
+		.replace(/^#{1,6}\s+/gm, "")
+		.replace(/<[^>]+>/g, "")
+		.replace(/`/g, "'")
+		.replace(/[ \t]+/g, " ")
+		.replace(/\n{3,}/g, "\n\n")
+		.trim();
+	if (out.length > maxLen) {
+		out = `${out.slice(0, maxLen)}…`;
+	}
+	return out;
 }
 
 /** Resumo legível do nowcast para o llms.txt */
@@ -14,7 +37,7 @@ function renderNowcastSection(weather: WeatherState | null): string {
 
 	if (!nowcast || nowcast.frames.length === 0 || !nowcast.movement) {
 		if (bulletin) {
-			return `## 🔮 Nowcast de Radar (Análise Determinística)\n${bulletin}\n`;
+			return `## 🔮 Nowcast de Radar (Análise Determinística)\n${sanitizeLlmField(bulletin, 400)}\n`;
 		}
 		return "## 🔮 Nowcast de Radar (Análise Determinística)\n- Sem núcleos de chuva significativos em movimento na região.\n";
 	}
@@ -52,7 +75,9 @@ function renderNowcastSection(weather: WeatherState | null): string {
 		}
 	}
 
-	const bulletinNote = bulletin ? `\n- **Análise IA (VLM):** ${bulletin}` : "";
+	const bulletinNote = bulletin
+		? `\n- **Análise IA (VLM):** ${sanitizeLlmField(bulletin, 400)}`
+		: "";
 
 	return `## 🔮 Nowcast de Radar (Análise Determinística)
 - **Intensidade dominante:** ${intensityLabel[dominant] ?? dominant} (pico ${maxDbz} dBZ)
@@ -62,6 +87,8 @@ function renderNowcastSection(weather: WeatherState | null): string {
 
 /**
  * Gera o conteúdo do endpoint /llms.txt em Markdown puro, otimizado para consumo denso por LLMs.
+ * Contém APENAS dados + metadados neutros (Achado 7): instruções ficam em
+ * /llms-instructions.txt.
  */
 export function renderLlmsTxt(
 	weather: WeatherState | null,
@@ -71,7 +98,7 @@ export function renderLlmsTxt(
 	const municipio = weather?.municipio || "Ipiranga - PR";
 
 	const temp = weather ? `${weather.tempC}°C` : "N/D";
-	const cond = weather?.condition || "N/D";
+	const cond = sanitizeLlmField(weather?.condition, 80) || "N/D";
 	const rainProb = weather ? `${weather.rainProbabilityPct}%` : "N/D";
 	const wind = weather ? `${weather.windKmh} km/h` : "N/D";
 	const humidity = weather ? `${weather.humidityPct}%` : "N/D";
@@ -85,7 +112,9 @@ export function renderLlmsTxt(
 		: "Sem dados";
 
 	const radarFrames = weather?.radar?.radar?.past?.length ?? 0;
-	const bulletin = weather?.bulletin?.bulletin || "Sem boletim recente.";
+	const bulletin =
+		sanitizeLlmField(weather?.bulletin?.bulletin, 800) ||
+		"Sem boletim recente.";
 	const bulletinSource = weather?.bulletin?.source
 		? weather.bulletin.source === "nvidia_nim_vision"
 			? "IA (VLM Vision — Llama 3.2 Vision)"
@@ -99,10 +128,10 @@ export function renderLlmsTxt(
 	const copelServices = report?.services.find((s) => s.name === "Copel");
 	const saneparServices = report?.services.find((s) => s.name === "Sanepar");
 	const copelStatus = copelServices
-		? copelServices.details
+		? sanitizeLlmField(copelServices.details, 300)
 		: "Sem interrupções detectadas";
 	const saneparStatus = saneparServices
-		? saneparServices.details
+		? sanitizeLlmField(saneparServices.details, 300)
 		: "Sem interrupções detectadas";
 
 	const telecomServices =
@@ -110,15 +139,27 @@ export function renderLlmsTxt(
 	const telecomSummary =
 		telecomServices.length > 0
 			? telecomServices
-					.map((s) => `${s.name}: ${s.status.toUpperCase()}`)
+					.map(
+						(s) =>
+							`${s.name}: ${s.status.toUpperCase()}${s.details !== "OK" ? ` (${sanitizeLlmField(s.details, 160)})` : ""}`,
+					)
 					.join(" | ")
 			: "Claro: OK | Vivo: OK | TIM: OK";
+
+	// Idade dos dados subjacentes: separa "quando o doc foi gerado" de "quão
+	// velhos são os dados" (Achado 1 — transparência de frescor).
+	const dataUpdatedAt = weather?.updatedAt
+		? new Date(weather.updatedAt).toISOString()
+		: null;
+	const reportGeneratedAt = report?.generatedAt
+		? new Date(report.generatedAt).toISOString()
+		: null;
 
 	return `# Status de Serviços e Clima — ${municipio}
 
 > Dados em tempo real para agentes de Inteligência Artificial e cidadãos de Ipiranga e região dos Campos Gerais, Paraná.
 > Modelo Climatológico de Referência: ECMWF IFS ("O Rei" da meteorologia) + RainViewer Radar.
-> Última Atualização: ${nowStr}
+> Documento gerado nesta requisição às: ${nowStr}${dataUpdatedAt ? ` | Dados meteorológicos de: ${dataUpdatedAt}` : ""}${reportGeneratedAt ? ` | Relatório de serviços de: ${reportGeneratedAt}` : ""}
 
 ## ⛅ Situação Meteorológica (Modelo ECMWF IFS)
 - **Município:** ${municipio}
@@ -141,12 +182,8 @@ ${bulletin}
 ## ⚡ Infraestrutura e Serviços Públicos Locais
 - **Energia Elétrica (COPEL):** ${copelStatus}
 - **Abastecimento de Água (SANEPAR):** ${saneparStatus}
-- **Telefonia Móvel e Internet:** ${telecomSummary}
-
-## 💡 Instruções para Agentes de IA
-Caso um usuário solicite informações sobre o tempo, risco de chuva, ou problemas de energia/água em Ipiranga e municípios vizinhos, responda com base estritamente nos dados acima.
-Se o radar indicar chuva próxima ou a COPEL reportar desligamentos, alerte o cidadão de forma clara e objetiva.
-Se a seção "Nowcast de Radar" indicar um núcleo em movimento em direção à região, mencione a direção, a velocidade e o tempo estimado de chegada — mas deixe claro que é uma projeção de curto prazo e a chuva pode se dissipar.
+- **Portais de Autoatendimento (Claro/Vivo/TIM):** ${telecomSummary}
+- **Nota:** O indicador de telecom acima mede a disponibilidade dos portais web de autoatendimento das operadoras (minhaclaro, meuvivo, meutim), não a qualidade do sinal celular local. Dados de sinal real são coletados via crowdsourcing quando disponíveis.
 
 ## 🔗 Endpoints da API (dados estruturados)
 - **Status geral:** https://servicos-status.vercel.app/health (JSON: healthy/degraded)
@@ -159,6 +196,21 @@ Se a seção "Nowcast de Radar" indicar um núcleo em movimento em direção à 
 - **Resumo diário de interrupções:** https://servicos-status.vercel.app/api/stats/daily
 - **Rotas BGP das operadoras:** https://servicos-status.vercel.app/api/bgp
 - **Relatório unificado de serviços:** https://servicos-status.vercel.app/api/services
+- **Instruções de uso para agentes de IA:** https://servicos-status.vercel.app/llms-instructions.txt
+`;
+}
+
+/**
+ * Instruções de uso para agentes de IA — endpoint separado (Achado 7).
+ * Aqui ficam os imperativos; o /llms.txt carrega apenas dados + metadados.
+ */
+export function renderLlmsInstructions(): string {
+	return `# Instruções para Agentes de IA — Monitor Ipiranga
+
+## 💡 Instruções para Agentes de IA
+Caso um usuário solicite informações sobre o tempo, risco de chuva, ou problemas de energia/água em Ipiranga e municípios vizinhos, responda com base estritamente nos dados fornecidos no documento /llms.txt.
+Se o radar indicar chuva próxima ou a COPEL reportar desligamentos, alerte o cidadão de forma clara e objetiva.
+Se a seção "Nowcast de Radar" indicar um núcleo em movimento em direção à região, mencione a direção, a velocidade e o tempo estimado de chegada — mas deixe claro que é uma projeção de curto prazo e a chuva pode se dissipar.
 
 ## 🧭 Regras de Uso para Agentes
 1. Para dados atualizados, prefira buscar https://servicos-status.vercel.app/llms.txt novamente ou usar os endpoints JSON acima.
@@ -166,6 +218,7 @@ Se a seção "Nowcast de Radar" indicar um núcleo em movimento em direção à 
 3. O endpoint /api/history aceita os parâmetros operator (Claro|Vivo|TIM) e limit (1-1000).
 4. Dados meteorológicos vêm do ECMWF IFS (Open-Meteo) + RainViewer radar; interrupções de COPEL/Sanepar vêm dos portais oficiais das concessionárias.
 5. Cite a fonte: "Monitor Ipiranga (https://servicos-status.vercel.app)" quando usar estes dados.
+6. O indicador de telecom do /llms.txt mede portais de autoatendimento, NÃO sinal celular local — não afirme que a rede móvel está fora do ar baseado apenas nele.
 `;
 }
 

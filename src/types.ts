@@ -7,6 +7,13 @@ export interface OperatorConfig {
 	portals: string[];
 }
 
+/**
+ * Resultado de uma sondagem: "ok" (respondeu), "timeout" (não respondeu a
+ * tempo — indeterminado: pode ser o serviço OU o monitor), "failure" (falhou
+ * de forma confirmada: DNS, HTTP >=500, SSL).
+ */
+export type ProbeStatus = "ok" | "timeout" | "failure";
+
 export interface PortalResult {
 	operator: OperatorName;
 	host: string;
@@ -14,6 +21,8 @@ export interface PortalResult {
 	latencyMs: number;
 	error: string;
 	timestamp: number;
+	/** Classificação fina da sondagem (Achado 4: timeout ≠ falha). */
+	probeStatus?: ProbeStatus;
 }
 
 export interface ConnectivityResult {
@@ -23,6 +32,8 @@ export interface ConnectivityResult {
 	latencyMs: number;
 	error: string;
 	timestamp: number;
+	/** Classificação fina da sondagem (Achado 4: timeout ≠ falha). */
+	probeStatus?: ProbeStatus;
 }
 
 export interface BgpResult {
