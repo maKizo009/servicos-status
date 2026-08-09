@@ -202,7 +202,7 @@
 .bulletin-head{display:flex;align-items:center;justify-content:space-between}
 .bulletin-tag{
   font-size:10px;font-weight:600;letter-spacing:.4px;text-transform:uppercase;padding:3px 8px;border-radius:6px;
-  background:var(--md-sys-color-primary-container);color:var(--md-sys-color-on-primary-container)
+  background:var(--g1);color:var(--g6)
 }
 .nowcast-box{
   background:var(--md-sys-color-surface-container);border:1px solid var(--md-sys-color-outline-variant);
@@ -217,7 +217,7 @@
   background:var(--g1);color:var(--g6);border:1px solid var(--g5)
 }
 .nowcast-intensity-badge.int-light{background:var(--a1);color:var(--a5);border-color:var(--a4)}
-.nowcast-intensity-badge.int-moderate{background:var(--md-sys-color-primary-container);color:var(--md-sys-color-on-primary-container);border-color:var(--md-sys-color-primary)}
+.nowcast-intensity-badge.int-moderate{background:var(--g1);color:var(--g6);border-color:var(--g5)}
 .nowcast-intensity-badge.int-heavy{background:var(--r1);color:var(--r6);border-color:var(--r5)}
 .nowcast-intensity-badge.int-extreme{background:var(--r1);color:var(--r6);border-color:var(--r6);font-weight:800}
 .nowcast-movement{font-size:12.5px;font-weight:500;color:var(--md-sys-color-on-surface)}
@@ -239,7 +239,7 @@
 .llm-banner-box>div{color:var(--md-sys-color-on-surface)}
 .llm-banner-box>div[style]{color:var(--md-sys-color-on-surface-variant)}
 .llm-btn{
-  background:var(--md-sys-color-primary-container);border:1px solid transparent;color:var(--md-sys-color-on-primary-container);
+  background:var(--g1);border:1px solid transparent;color:var(--g6);
   padding:5px 12px;border-radius:var(--md-shape-corner-full);font-size:12px;font-weight:500;cursor:pointer;
   transition:all .2s;display:inline-flex;align-items:center;gap:6px;width:fit-content;text-decoration:none
 }
@@ -602,7 +602,7 @@ body{font-family:var(--font);background:var(--md-sys-color-surface);color:var(--
   display:inline-flex;align-items:center;gap:6px;transition:all .2s ease;
   border:1px solid var(--md-sys-color-outline-variant);line-height:1
 }
-.source-link-btn:hover{background:var(--md-sys-color-primary-container);color:var(--md-sys-color-on-primary-container);border-color:var(--md-sys-color-primary)}
+.source-link-btn:hover{background:var(--g1);color:var(--g6);border-color:var(--g5)}
 
 /* Tabs Navigation */
 .tabs-nav{
@@ -615,7 +615,7 @@ body{font-family:var(--font);background:var(--md-sys-color-surface);color:var(--
   display:flex;align-items:center;gap:8px;border-radius:8px 8px 0 0
 }
 .tab-btn.active{
-  color:var(--text);border-bottom-color:var(--md-sys-color-primary);background:var(--md-sys-color-primary-container);font-weight:600
+  color:var(--text);border-bottom-color:var(--g6);background:var(--g1);font-weight:600
 }
 .tab-btn:hover:not(.active){color:var(--text);background:var(--md-sys-color-surface-container-high)}
 
@@ -664,7 +664,7 @@ body{font-family:var(--font);background:var(--md-sys-color-surface);color:var(--
 .error-state p{font-size:14px;max-width:420px}
 .error-state button{
   margin-top:12px;padding:10px 28px;border:none;border-radius:var(--md-shape-corner-medium);
-  background:var(--md-sys-color-primary);color:var(--md-sys-color-on-primary);font-size:14px;font-weight:500;cursor:pointer;transition:all .2s
+  background:var(--g6);color:#fff;font-size:14px;font-weight:500;cursor:pointer;transition:all .2s
 }
 .error-state button:hover{filter:brightness(1.08)}
 </style>
@@ -780,7 +780,6 @@ body{font-family:var(--font);background:var(--md-sys-color-surface);color:var(--
               <span class="nowcast-movement" id="nowcastMovement">—</span>
             </div>
             <div class="nowcast-meta" id="nowcastMeta"></div>
-            <p class="nowcast-text" id="nowcastText"></p>
           </div>
 
           <div class="llm-banner-box">
@@ -1793,13 +1792,10 @@ function renderNowcastCard(data) {
     }
   }
 
-  // Texto narrativo (Camada B — VLM vision). É o MESMO texto do boletim
-  // principal; mantido aqui também para o card Nowcast ser auto-contido.
+  // Texto narrativo (Camada B — VLM vision) vive SOMENTE no boletim principal.
+  // (O card Nowcast mostra apenas dados determinísticos — sem duplicação.)
   const txt = document.getElementById('nowcastText');
-  if (txt) {
-    const rawText = nb?.text || 'Análise em andamento...';
-    txt.textContent = rawText.replace(/\*\*/g, '');
-  }
+  if (txt) txt.remove();
 }
 
 function haversineKm(lat1, lon1, lat2, lon2) {
