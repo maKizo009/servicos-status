@@ -16,7 +16,10 @@ import {
 	deriveProbeStatus,
 } from "../src/checker.js";
 import { sanitizeLlmField } from "../src/llm-formatter.js";
-import { validateBulletinAgainstVerdict } from "../src/nowcast-vlm.js";
+import {
+	generateNowcastBulletin,
+	validateBulletinAgainstVerdict,
+} from "../src/nowcast-vlm.js";
 import type {
 	ConnectivityResult,
 	CopelOutage,
@@ -247,6 +250,69 @@ describe("Achado 2 — validação pós-geração do VLM", () => {
 				null,
 			),
 		).toBe(true);
+	});
+});
+
+describe("Conciliação de fontes (nowcast + ECMWF)", () => {
+	const noCell: Parameters<typeof generateNowcastBulletin>[0] = {
+		analyzedAt: Date.now(),
+		frames: [],
+		movement: null,
+		currentMaxDbz: -100,
+		currentDominant: "none",
+		nearestCell: null,
+	};
+
+	const region = { z: 7, x: 46, y: 73 } as const;
+
+	test("sem núcleo no radar + ECMWF alto → heurística cita a divergência (não afirma certeza)", async () => {
+		const b = await generateNowcastBulletin(
+			noCell,
+			"https://tilecache.rainviewer.com",
+			[],
+			region,
+			{
+				rainProbabilityPct: 70,
+				hourlyForecast: [
+					{
+						time: "14:00",
+						tempC: 24,
+						rainProbabilityPct: 70,
+						precipitationMm: 2.5,
+					},
+				],
+			},
+		);
+		expect(b.source).toBe("heuristic");
+		expect(b.text).toContain("70%");
+		expect(b.text).toContain("não mostra núcleos significativos");
+	});
+
+	test("sem núcleo + ECMWF baixo → frase simples sem alarme", async () => {
+		const b = await generateNowcastBulletin(
+			noCell,
+			"https://tilecache.rainviewer.com",
+			[],
+			region,
+			{
+				rainProbabilityPct: 10,
+				hourlyForecast: [],
+			},
+		);
+		expect(b.text).toContain("Sem núcleos");
+		expect(b.text).toContain("10%");
+	});
+
+	test("sem ECMWF → texto legado sem menção a modelo numérico", async () => {
+		const b = await generateNowcastBulletin(
+			noCell,
+			"https://tilecache.rainviewer.com",
+			[],
+			region,
+		);
+		expect(b.text).toBe(
+			"Sem núcleos de chuva significativos em movimento na região de Ipiranga no momento.",
+		);
 	});
 });
 
