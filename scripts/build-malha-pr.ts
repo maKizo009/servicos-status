@@ -5,8 +5,13 @@
  *  1. Malha municipal do PR em GeoJSON (API de Malhas v3)
  *  2. Nomes dos municípios (API de Localidades v1)
  *
- * E gera `src/data/pr-municipios.json` num formato compacto:
- *   [{ c: "4100103", n: "Abatiá", g: [[[lon,lat],...],...] }, ...]
+ * E gera `src/data/pr-municipios.ts` — um módulo TS com os dados embutidos
+ * (não JSON): o bundler da Vercel (esbuild, transpile per-file) NÃO suporta
+ * import de JSON no Node 22 sem import attribute (ERR_IMPORT_ATTRIBUTE_MISSING),
+ * e readFileSync depende de includeFiles que nem sempre resolve. Um módulo .ts
+ * vai junto no bundle sem nenhuma dessas dores.
+ *
+ * Formato: [{ c: "4100103", n: "Abatiá", g: [[[lon,lat],...],...] }, ...]
  *   - c = código IBGE do município (7 dígitos)
  *   - n = nome do município
  *   - g = anéis dos polígonos (GeoJSON: [lon, lat]), arredondados a 4 casas
@@ -19,7 +24,7 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
-const OUT = join(__dirname, "..", "src", "data", "pr-municipios.json");
+const OUT = join(__dirname, "..", "src", "data", "pr-municipios.ts");
 
 const MALHA_URL =
 	"https://servicodados.ibge.gov.br/api/v3/malhas/estados/41?formato=application/vnd.geo+json&qualidade=intermediaria&intrarregiao=municipio";
@@ -76,7 +81,11 @@ async function main(): Promise<void> {
 	compact.sort((a, b) => a.c.localeCompare(b.c));
 
 	mkdirSync(dirname(OUT), { recursive: true });
-	writeFileSync(OUT, JSON.stringify(compact));
+	// Módulo TS com os dados embutidos (compatível com bundle da Vercel)
+	writeFileSync(
+		OUT,
+		`// GERADO por scripts/build-malha-pr.ts — não editar à mão.\n// Malha Municipal do Paraná (IBGE) — ${compact.length} municípios.\n// Formato: { c: codigoIBGE, n: nome, g: anéis[][lon,lat] }\nconst MALHA_PR = ${JSON.stringify(compact)} as const;\nexport default MALHA_PR;\n`,
+	);
 	console.log(
 		`✅ ${OUT} gerado: ${compact.length} municípios, ${(
 			JSON.stringify(compact).length / 1024

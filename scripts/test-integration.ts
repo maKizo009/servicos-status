@@ -6,12 +6,12 @@
 import { getMunicipioComFallback } from "../src/geo-municipio.js";
 import { haversineKm } from "../src/radar-analysis.js";
 
-// 1. Import do JSON funciona (memória do processo)
+// 1. Import do módulo TS funciona (memória do processo)
 const memBefore = process.memoryUsage().heapUsed / 1024 / 1024;
-const { default: malha } = await import("../src/data/pr-municipios.json");
+const { default: malha } = await import("../src/data/pr-municipios.ts");
 const memAfter = process.memoryUsage().heapUsed / 1024 / 1024;
 console.log(
-	`✅ Malha carregada: ${(malha as unknown[]).length} municípios | heap +${(memAfter - memBefore).toFixed(1)} MB`,
+	`✅ Malha carregada: ${(malha as unknown as unknown[]).length} municípios | heap +${(memAfter - memBefore).toFixed(1)} MB`,
 );
 
 // 2. Simula o núcleo real detectado (09/08/2026) — antigo nearestCity dizia

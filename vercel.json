@@ -30,13 +30,5 @@
       "source": "/(.*)",
       "destination": "/src/public/$1"
     }
-  ],
-  "functions": {
-    "api/index.ts": {
-      "includeFiles": "src/data/**"
-    },
-    "api/cron.ts": {
-      "includeFiles": "src/data/**"
-    }
-  }
+  ]
 }
