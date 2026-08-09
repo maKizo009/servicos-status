@@ -38,11 +38,11 @@ export async function getRadarNowcast(): Promise<NowcastResult> {
 			radar = await fetchRainViewerRadar();
 		}
 
-		// 2. analisa os 3 frames mais recentes da região (mosaico z=9)
+		// 2. analisa os 3 frames mais recentes da região (tile z=7)
 		const result = await analyzeRadarNowcast(
 			radar.host,
 			radar.radar.past,
-			REGION_GRID,
+			REGION_TILE,
 			3,
 		);
 
