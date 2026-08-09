@@ -221,6 +221,10 @@
 .nowcast-intensity-badge.int-heavy{background:var(--r1);color:var(--r6);border-color:var(--r5)}
 .nowcast-intensity-badge.int-extreme{background:var(--r1);color:var(--r6);border-color:var(--r6);font-weight:800}
 .nowcast-movement{font-size:12.5px;font-weight:500;color:var(--md-sys-color-on-surface)}
+/* Seta de direção dos núcleos de chuva no mapa (discreta, sem fundo de marker padrão) */
+.cell-arrow-icon{background:transparent;border:none}
+.cell-arrow-icon svg{filter:drop-shadow(0 0 2px rgba(0,0,0,.55));transform-origin:center;transform-box:fill-box}
+.cell-arrow-trail{pointer-events:none;opacity:.55}
 .nowcast-meta{font-size:11.5px;color:var(--md-sys-color-on-surface-variant);line-height:1.5;font-weight:400}
 .nowcast-text{font-size:13px;color:var(--md-sys-color-on-surface-variant);line-height:1.6;margin:0;border-top:1px solid var(--md-sys-color-outline-variant);padding-top:10px;font-weight:400}
 .bulletin-text{font-size:13.5px;color:var(--text);line-height:1.6;font-weight:400}
@@ -1752,6 +1756,9 @@ function renderNowcastCard(data) {
   const nb = data?.nowcastBulletin;
   const hasData = nc && nc.frames && nc.frames.length > 0;
 
+  // Setas de direção dos núcleos no mapa (projeção da rota)
+  renderCellArrows(nc);
+
   if (!hasData) {
     box.style.display = 'none';
     return;
@@ -1819,6 +1826,120 @@ function haversineKm(lat1, lon1, lat2, lon2) {
   const a = Math.sin(dLat / 2) ** 2 +
     Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * Math.sin(dLon / 2) ** 2;
   return 2 * R * Math.asin(Math.sqrt(a));
+}
+
+// ============ Setas de direção dos núcleos no mapa ============
+// Camada com as setas SVG (discretas) mostrando a rota de cada núcleo:
+// a seta fica PROJETADA À FRENTE do núcleo (na direção do movimento),
+// para ficar visível para onde a célula está indo. Atualizada a cada
+// fetch do /api/weather (cache nowcast ~5 min no backend).
+
+let cellArrowLayer = null; // L.layerGroup com as setas atuais
+let cellArrowPoints = [];  // último nowcast usado (para legendas/tooltips)
+
+/** Ponto de destino após percorrer distKm a partir de lat/lon no bearing (0=N). */
+function destinationPoint(lat, lon, bearingDeg, distKm) {
+  const R = 6371;
+  const brg = bearingDeg * Math.PI / 180;
+  const d = distKm / R;
+  const lat1 = lat * Math.PI / 180;
+  const lon1 = lon * Math.PI / 180;
+  const lat2 = Math.asin(Math.sin(lat1) * Math.cos(d) + Math.cos(lat1) * Math.sin(d) * Math.cos(brg));
+  const lon2 = lon1 + Math.atan2(
+    Math.sin(brg) * Math.sin(d) * Math.cos(lat1),
+    Math.cos(d) - Math.sin(lat1) * Math.sin(lat2)
+  );
+  return { lat: lat2 * 180 / Math.PI, lon: ((lon2 * 180 / Math.PI + 540) % 360) - 180 };
+}
+
+/** Cor da seta conforme a intensidade do núcleo (paleta do dashboard). */
+function arrowColorForIntensity(intensity) {
+  const map = {
+    extreme: '#ef4444',
+    heavy: '#f59e0b',
+    moderate: '#38bdf8',
+    light: '#94a3b8',
+  };
+  return map[intensity] || '#f59e0b';
+}
+
+/**
+ * Desenha (ou atualiza) as setas de direção dos núcleos no mapa.
+ * `nowcast` = data.nowcast do /api/weather. Núcleos sem movimento
+ * confiável (speed <= 1 km/h ou sem associação) não ganham seta.
+ */
+function renderCellArrows(nowcast) {
+  if (!map || !nowcast) return;
+  if (cellArrowLayer) {
+    map.removeLayer(cellArrowLayer);
+    cellArrowLayer = null;
+  }
+  cellArrowPoints = [];
+
+  const latest = nowcast.frames && nowcast.frames[nowcast.frames.length - 1];
+  if (!latest || !latest.cells || latest.cells.length === 0) return;
+
+  const layer = L.layerGroup();
+  const PROJECT_MINUTES = 30; // projeção da ponta da seta (rota visível)
+
+  latest.cells.forEach((cell) => {
+    const mv = cell.trackedMovement;
+    // Só seta para núcleo com movimento medido de verdade
+    if (!mv || mv.speedKmh <= 1) return;
+
+    // Ponta da seta: projeção linear de PROJECT_MINUTES na direção do movimento
+    const leadKm = Math.max((mv.speedKmh * PROJECT_MINUTES) / 60, 5);
+    const tip = destinationPoint(cell.lat, cell.lon, mv.directionDeg, leadKm);
+    const color = arrowColorForIntensity(cell.intensity);
+
+    // Rastro fino (núcleo → ponta) para mostrar o caminho
+    const trail = L.polyline(
+      [[cell.lat, cell.lon], [tip.lat, tip.lon]],
+      {
+        color,
+        weight: 2,
+        opacity: 0.45,
+        dashArray: '4 6',
+        className: 'cell-arrow-trail',
+        interactive: false,
+      }
+    );
+    layer.addLayer(trail);
+
+    // Seta SVG na ponta, rotacionada para a direção do movimento
+    const arrowSvg = `<svg width="26" height="26" viewBox="0 0 26 26" style="transform:rotate(${mv.directionDeg}deg)">
+      <path d="M13 2 L18 11 L14.5 11 L14.5 24 L11.5 24 L11.5 11 L8 11 Z" fill="${color}" stroke="#fff" stroke-width="1"/>
+    </svg>`;
+    const icon = L.divIcon({
+      className: 'cell-arrow-icon',
+      html: arrowSvg,
+      iconSize: [26, 26],
+      iconAnchor: [13, 13],
+    });
+    const marker = L.marker([tip.lat, tip.lon], {
+      icon,
+      interactive: false,
+      keyboard: false,
+      zIndexOffset: 500,
+    });
+    layer.addLayer(marker);
+
+    cellArrowPoints.push({
+      lat: tip.lat,
+      lon: tip.lon,
+      cellLat: cell.lat,
+      cellLon: cell.lon,
+      directionDeg: mv.directionDeg,
+      speedKmh: mv.speedKmh,
+      intensity: cell.intensity,
+      maxDbz: cell.maxDbz,
+    });
+  });
+
+  if (cellArrowPoints.length > 0) {
+    cellArrowLayer = layer;
+    layer.addTo(map);
+  }
 }
 
 function showRadarFrame(index) {

@@ -16,12 +16,31 @@ import {
 const TTL_MS = 5 * 60_000;
 
 /**
- * Tile z=7 (46,73) — ZOOM MÁXIMO real do radar RainViewer.
- * Testado em 08/08/2026: z≥8 retorna um PNG de erro de ~1.3KB
- * ("zoom level not supported") cujo texto branco é classificado pela
- * paleta como 68+ dBZ → falso positivo. Não subir além de z=7.
+ * Grid 4x4 de tiles z=7 (44-47 × 72-75) centrado em Ipiranga.
+ *
+ * Ipiranga fica na borda OESTE do tile 46/73 — um tile único não enxerga
+ * núcleos vindo de oeste/norte (caso real 2026-08-09: núcleo de 53 dBZ no
+ * tile 45/73 invisível para o nowcast). O grid 4x4 cobre lon -53.4..-47.8
+ * e lat -22..-29: captura células vindo de qualquer quadrante.
+ *
+ * gridSize=4 (potência de 2) é obrigatório para a conversão px→lat/lon do
+ * normalizeRegion/pixelToLatLon (parent z=5). Grid 3x3 quebraria a conta.
  */
-export const REGION_TILE = { z: 7, x: 46, y: 73 } as const;
+export const REGION_GRID = {
+	z: 7,
+	xMin: 44,
+	yMin: 72,
+	xMax: 47,
+	yMax: 75,
+} as const;
+
+/**
+ * Alvo do nowcast: Ipiranga/PR. Valor histórico do projeto (hardcoded em
+ * llm-formatter, nowcast-vlm e frontend) centralizado aqui. Nota: pode
+ * estar ~50km ao norte do centro oficial do município (-25.478, -50.583)
+ * — verificar com o Dave antes de corrigir (afeta ETA/veredictos).
+ */
+export const TARGET_IPIRANGA = { lat: -25.0244, lon: -50.5847 } as const;
 
 let cached: { result: NowcastResult; at: number } | null = null;
 
@@ -38,18 +57,22 @@ export async function getRadarNowcast(): Promise<NowcastResult> {
 			radar = await fetchRainViewerRadar();
 		}
 
-		// 2. analisa os 3 frames mais recentes da região (tile z=7)
+		// 2. analisa os 3 frames mais recentes do grid 4x4 da região,
+		//    avaliando TODOS os núcleos fortes contra Ipiranga
 		const result = await analyzeRadarNowcast(
 			radar.host,
 			radar.radar.past,
-			REGION_TILE,
+			REGION_GRID,
 			3,
+			TARGET_IPIRANGA,
 		);
 
 		cached = { result, at: Date.now() };
 		logger.info("Nowcast calculado", {
 			frames: result.frames.length,
 			maxDbz: result.currentMaxDbz,
+			cells: result.frames[result.frames.length - 1]?.cells.length ?? 0,
+			threats: result.threats.length,
 			movement: result.movement
 				? `${result.movement.directionDeg}° ${result.movement.speedKmh}km/h`
 				: null,
@@ -64,6 +87,7 @@ export async function getRadarNowcast(): Promise<NowcastResult> {
 			currentMaxDbz: -100,
 			currentDominant: "none",
 			nearestCell: null,
+			threats: [],
 			error: err instanceof Error ? err.message : String(err),
 		};
 	}

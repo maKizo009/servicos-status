@@ -32,7 +32,7 @@ import {
 	renderLlmsTxt,
 } from "./llm-formatter.js";
 import { logger } from "./logger.js";
-import { getRadarNowcast, REGION_TILE } from "./nowcast-service.js";
+import { getRadarNowcast, REGION_GRID } from "./nowcast-service.js";
 import { generateNowcastBulletin } from "./nowcast-vlm.js";
 import { checkRateLimit } from "./rate-limiter.js";
 import { EventTracker } from "./state.js";
@@ -394,6 +394,25 @@ export async function syncWeatherCycle(): Promise<WeatherState> {
 				extreme: "muito forte (temporal)",
 			};
 			const m = nowcast.movement;
+			// O núcleo mais AMEAÇADOR (aproximando de Ipiranga com menor ETA)
+			// tem prioridade sobre o mais intenso — o alerta fala do perigo real.
+			const topThreat = nowcast.threats[0] ?? null;
+			const threatLabel =
+				topThreat &&
+				topThreat.intensity !== "light" &&
+				topThreat.intensity !== "moderate"
+					? (intensityLabel[topThreat.intensity] ?? topThreat.intensity)
+					: null;
+			const threatTxt = topThreat
+				? ` Núcleo ${threatLabel ?? "de chuva"} a ~${Math.round(topThreat.distToTargetKm)} km de Ipiranga${
+						topThreat.threat?.approach === "approaching" &&
+						topThreat.threat.etaMin != null
+							? `, aproximando-se (ETA ~${Math.round(topThreat.threat.etaMin)} min)`
+							: topThreat.threat?.approach === "approaching"
+								? ", aproximando-se"
+								: ""
+					}.`
+				: "";
 			// Só descreve deslocamento se houver movimento medido de verdade
 			// (speedKmh > 1); célula estacionária não "se desloca".
 			const movementTxt =
@@ -401,7 +420,7 @@ export async function syncWeatherCycle(): Promise<WeatherState> {
 					? ` deslocando-se a ${m.speedKmh} km/h (dir. ${m.directionDeg}°)`
 					: " (sem movimento significativo detectado no momento)";
 			state.hasRegionalRain = true;
-			state.regionalRainAlert = `🌩️ Núcleo de chuva ${intensityLabel[nowcast.currentDominant] ?? nowcast.currentDominant} detectado pelo radar na região${movementTxt}. Atenção a oscilações na rede elétrica (COPEL).`;
+			state.regionalRainAlert = `🌩️ Núcleo de chuva ${intensityLabel[nowcast.currentDominant] ?? nowcast.currentDominant} detectado pelo radar na região${movementTxt}${threatTxt} Atenção a oscilações na rede elétrica (COPEL).`;
 		}
 		setCachedWeatherState(state);
 		logger.info("Nowcast integrado ao estado de clima", {
@@ -435,7 +454,7 @@ export async function syncWeatherCycle(): Promise<WeatherState> {
 					nowcast,
 					state.radar.host,
 					state.radar.radar.past,
-					REGION_TILE,
+					REGION_GRID,
 					{
 						rainProbabilityPct: weatherInfo.rainProbabilityPct,
 						hourlyForecast: weatherInfo.hourlyForecast || [],
