@@ -7,9 +7,9 @@ import {
 	saveEventLog,
 	savePortalResult,
 } from "../src/db.js";
+import { syncWeatherCycle } from "../src/index.js";
 import { EventTracker } from "../src/state.js";
 import { sendCopelAlert, sendSaneparAlert } from "../src/telegram.js";
-import { fetchCurrentWeather, fetchRainViewerRadar } from "../src/weather-collector.js";
 
 export default async function handler(req: any, res: any) {
 	try {
@@ -18,9 +18,11 @@ export default async function handler(req: any, res: any) {
 		const tracker = new EventTracker();
 		await tracker.init();
 
-		const [radar, weatherInfo, data] = await Promise.all([
-			fetchRainViewerRadar(),
-			fetchCurrentWeather(),
+		// Ciclo completo: clima + radar + nowcast (Camada A) + boletim NIM (Camada B),
+		// em paralelo com os checks de serviços. O texto da Camada B é persistido no
+		// Turso, então qualquer instância do /api/weather serve o texto atualizado.
+		const [weatherState, data] = await Promise.all([
+			syncWeatherCycle(),
 			runAllChecks(config, tracker),
 		]);
 
@@ -56,10 +58,16 @@ export default async function handler(req: any, res: any) {
 			status: "ok",
 			timestamp: Date.now(),
 			weather: {
-				tempC: weatherInfo.tempC,
-				condition: weatherInfo.condition,
-				hasRegionalRain: radar.hasRegionalRain,
+				tempC: weatherState.tempC,
+				condition: weatherState.condition,
+				hasRegionalRain: weatherState.hasRegionalRain,
 			},
+			nowcastBulletin: weatherState.nowcastBulletin
+				? {
+						generatedAt: weatherState.nowcastBulletin.generatedAt,
+						source: weatherState.nowcastBulletin.source,
+					}
+				: null,
 			checks: {
 				operators: data.operators.length,
 				newCopel: data.newCopelOutages.length,
