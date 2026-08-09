@@ -16,17 +16,12 @@ import {
 const TTL_MS = 5 * 60_000;
 
 /**
- * Grid de tiles z=9 (4x4) cobrindo a mesma área do antigo tile z=7 (46,73):
- * x 184-187, y 292-295. Resolução ~4x melhor na localização dos núcleos
- * (~70km/tile → ~17km/tile) mantendo a cobertura regional.
+ * Tile z=7 (46,73) — ZOOM MÁXIMO real do radar RainViewer.
+ * Testado em 08/08/2026: z≥8 retorna um PNG de erro de ~1.3KB
+ * ("zoom level not supported") cujo texto branco é classificado pela
+ * paleta como 68+ dBZ → falso positivo. Não subir além de z=7.
  */
-export const REGION_GRID = {
-	z: 9,
-	xMin: 184,
-	yMin: 292,
-	xMax: 187,
-	yMax: 295,
-} as const;
+export const REGION_TILE = { z: 7, x: 46, y: 73 } as const;
 
 let cached: { result: NowcastResult; at: number } | null = null;
 
