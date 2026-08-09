@@ -168,48 +168,82 @@ Instruções:
 
 NÃO invente números além dos fornecidos. Seja direto e útil.`;
 
-		const response = await fetch(config.nvidiaNimEndpoint, {
-			method: "POST",
-			headers: {
-				Authorization: `Bearer ${apiKey}`,
-				"Content-Type": "application/json",
-			},
-			body: JSON.stringify({
-				model: "meta/llama-3.2-90b-vision-instruct",
-				messages: [
-					{
-						role: "user",
-						content: [
-							{ type: "text", text: prompt },
+		// Tenta o modelo vision 90B (mais capaz) e cai para o 11B (mais rápido)
+		// se o primeiro falhar/timeout — o free tier da NIM tem fila e o 90B
+		// frequentemente estoura timeouts curtos.
+		const visionModels = [
+			"meta/llama-3.2-90b-vision-instruct",
+			"meta/llama-3.2-11b-vision-instruct",
+		];
+
+		for (const model of visionModels) {
+			try {
+				const response = await fetch(config.nvidiaNimEndpoint, {
+					method: "POST",
+					headers: {
+						Authorization: `Bearer ${apiKey}`,
+						"Content-Type": "application/json",
+					},
+					body: JSON.stringify({
+						model,
+						messages: [
 							{
-								type: "image_url",
-								image_url: { url: composite.dataUrl },
+								role: "user",
+								content: [
+									{ type: "text", text: prompt },
+									{
+										type: "image_url",
+										image_url: { url: composite.dataUrl },
+									},
+								],
 							},
 						],
-					},
-				],
-				max_tokens: 300,
-				temperature: 0.4,
-			}),
-			signal: AbortSignal.timeout(30_000),
-		});
+						max_tokens: 300,
+						temperature: 0.4,
+					}),
+					signal: AbortSignal.timeout(90_000),
+				});
 
-		if (!response.ok) {
-			throw new Error(`NIM vision HTTP ${response.status}`);
+				if (!response.ok) {
+					logger.warn("Camada B: NIM vision HTTP", {
+						model,
+						status: response.status,
+					});
+					continue;
+				}
+
+				const json = (await response.json()) as {
+					choices?: Array<{ message?: { content?: string } }>;
+				};
+				const text = json.choices?.[0]?.message?.content?.trim();
+				if (!text) {
+					logger.warn("Camada B: NIM vision retornou vazio", { model });
+					continue;
+				}
+
+				logger.info("Camada B: boletim nowcast gerado via NIM vision", {
+					model,
+				});
+				return { text, source: "nvidia_nim_vision", generatedAt: Date.now() };
+			} catch (err) {
+				logger.warn("Camada B: NIM vision falhou, tentando próximo modelo", {
+					model,
+					error: String(err),
+				});
+			}
 		}
 
-		const json = (await response.json()) as {
-			choices?: Array<{ message?: { content?: string } }>;
+		// Todos os modelos vision falharam → fallback determinístico
+		logger.warn(
+			"Camada B: todos os modelos vision falharam, usando heurística",
+		);
+		return {
+			text: buildHeuristicBulletin(nowcast),
+			source: "heuristic",
+			generatedAt: Date.now(),
 		};
-		const text = json.choices?.[0]?.message?.content?.trim();
-		if (!text) throw new Error("VLM retornou vazio");
-
-		logger.info("Camada B: boletim nowcast gerado via NIM vision", {
-			model: "meta/llama-3.2-90b-vision-instruct",
-		});
-		return { text, source: "nvidia_nim_vision", generatedAt: Date.now() };
 	} catch (err) {
-		logger.warn("Camada B: VLM falhou, usando heurística", {
+		logger.warn("Camada B: VLM falhou no composite/prompt, usando heurística", {
 			error: String(err),
 		});
 		return {
