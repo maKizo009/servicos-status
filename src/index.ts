@@ -533,7 +533,12 @@ export async function handleRequest(
 		}
 		if (path === "/api/weather" || path === "/api/weather/radar") {
 			let state = getCachedWeatherState();
-			if (!state) state = await syncWeatherCycle();
+			// Instância quente serve state velho (cache em memória é por instância);
+			// refaz o sync se o state tem mais de 10 min. O NIM não é chamado à toa:
+			// o sync reutiliza o boletim persistido no Turso enquanto < 10 min.
+			if (!state || Date.now() - state.updatedAt > 600_000) {
+				state = await syncWeatherCycle();
+			}
 			return Response.json(
 				state || { error: "Sem dados climatológicos no momento" },
 				{ headers: { "Cache-Control": "public, max-age=30" } },
