@@ -451,6 +451,108 @@ export function trackMovement(
 	};
 }
 
+// ============ Análise de ameaça (aproximação/afastamento) ============
+
+/** Ponto de destino após percorrer distKm a partir de lat/lon no bearing (0=N). */
+export function destinationPoint(
+	lat: number,
+	lon: number,
+	bearingDeg: number,
+	distKm: number,
+): { lat: number; lon: number } {
+	const R = 6371;
+	const brg = (bearingDeg * Math.PI) / 180;
+	const d = distKm / R;
+	const lat1 = (lat * Math.PI) / 180;
+	const lon1 = (lon * Math.PI) / 180;
+	const lat2 = Math.asin(
+		Math.sin(lat1) * Math.cos(d) + Math.cos(lat1) * Math.sin(d) * Math.cos(brg),
+	);
+	const lon2 =
+		lon1 +
+		Math.atan2(
+			Math.sin(brg) * Math.sin(d) * Math.cos(lat1),
+			Math.cos(d) - Math.sin(lat1) * Math.sin(lat2),
+		);
+	return {
+		lat: (lat2 * 180) / Math.PI,
+		lon: (((lon2 * 180) / Math.PI + 540) % 360) - 180,
+	};
+}
+
+/**
+ * Veredicto de ameaça de um núcleo em movimento em relação a um alvo.
+ *
+ * Calcula a componente radial da velocidade do núcleo na direção do alvo:
+ *   - approaching: a distância núcleo→alvo está DIMINUINDO (vem em direção)
+ *   - receding: a distância está AUMENTANDO (está indo embora)
+ *   - crossing: trajetória tangencial (passa de raspão, sem aproximar)
+ *
+ * Isto é a Camada A: o VLM NUNCA decide isso, apenas narra o veredicto.
+ */
+export interface ThreatVerdict {
+	/** Bearing do núcleo visto do alvo (0=N, 90=L) */
+	bearingFromTargetDeg: number;
+	/** Componente radial da velocidade: <0 aproximando, >0 afastando (km/h) */
+	radialKmh: number;
+	approach: "approaching" | "receding" | "crossing";
+	/** ETA em minutos se approaching, senão null */
+	etaMin: number | null;
+}
+
+export function assessThreat(
+	cellLat: number,
+	cellLon: number,
+	movement: { directionDeg: number; speedKmh: number },
+	targetLat: number,
+	targetLon: number,
+): ThreatVerdict {
+	// Bearing do alvo → núcleo (direção em que o núcleo está, vista do alvo)
+	const dLat = ((cellLat - targetLat) * Math.PI) / 180;
+	const dLon = ((cellLon - targetLon) * Math.PI) / 180;
+	const lat1 = (targetLat * Math.PI) / 180;
+	const lat2 = (cellLat * Math.PI) / 180;
+	const y = Math.sin(dLon) * Math.cos(lat2);
+	const x =
+		Math.cos(lat1) * Math.sin(lat2) -
+		Math.sin(lat1) * Math.cos(lat2) * Math.cos(dLon);
+	const bearingFromTargetDeg = ((Math.atan2(y, x) * 180) / Math.PI + 360) % 360;
+
+	// Componente da velocidade do núcleo na direção do alvo.
+	// cos(ângulo entre movimento e bearing) → +1 = na direção do alvo,
+	// -1 = na direção oposta. Multiplicando pela velocidade:
+	//   negativo = aproximando do alvo, positivo = afastando.
+	const deltaDeg = movement.directionDeg - bearingFromTargetDeg;
+	const radialKmh = movement.speedKmh * Math.cos((deltaDeg * Math.PI) / 180);
+
+	const distKm = haversineKm(cellLat, cellLon, targetLat, targetLon);
+	let approach: ThreatVerdict["approach"] = "crossing";
+	if (radialKmh < -2) approach = "approaching";
+	else if (radialKmh > 2) approach = "receding";
+
+	const etaMin =
+		approach === "approaching" && Math.abs(radialKmh) > 1
+			? (distKm / Math.abs(radialKmh)) * 60
+			: null;
+
+	return { bearingFromTargetDeg, radialKmh, approach, etaMin };
+}
+
+/** Projeção da posição do núcleo em t minutos (extrapolação linear). */
+export function projectCell(
+	lat: number,
+	lon: number,
+	movement: { directionDeg: number; speedKmh: number },
+	minutes: number,
+): { lat: number; lon: number } {
+	return destinationPoint(
+		lat,
+		lon,
+		movement.directionDeg,
+		(movement.speedKmh * minutes) / 60,
+	);
+}
+
 // ============ Orquestração ============
 
 export interface NowcastResult {

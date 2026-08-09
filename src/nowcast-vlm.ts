@@ -4,10 +4,13 @@ import { getMunicipioComFallback } from "./geo-municipio.js";
 import { logger } from "./logger.js";
 import type { NowcastResult } from "./radar-analysis.js";
 import {
+	assessThreat,
 	fetchTileGrid,
 	haversineKm,
 	normalizeRegion,
+	projectCell,
 	type RegionSpec,
+	type ThreatVerdict,
 } from "./radar-analysis.js";
 
 /**
@@ -135,6 +138,7 @@ export async function generateNowcastBulletin(
 		// point-in-polygon). O VLM NUNCA calcula isso, apenas repete o dado fornecido.
 		const cell = nowcast.nearestCell;
 		let locationNote = "";
+		let threatNote = "";
 		if (cell && typeof cell.lat === "number") {
 			const { municipio, fallbackUsado } = getMunicipioComFallback(
 				cell.lat,
@@ -148,6 +152,36 @@ export async function generateNowcastBulletin(
 				? " (referência regional — fora da malha IBGE)"
 				: "";
 			locationNote = `- Núcleo mais intenso em (${cell.lat.toFixed(2)}, ${cell.lon.toFixed(2)}): município ${nome}${metodo}; dista ${Math.round(ipirangaKm)} km de Ipiranga\n`;
+
+			// Veredicto de ameaça DETERMINÍSTICO (Camada A): o VLM nunca decide
+			// se o núcleo vem ou não para Ipiranga — recebe a conclusão pronta.
+			if (m) {
+				const verdict = assessThreat(cell.lat, cell.lon, m, -25.0244, -50.5847);
+				const approachLabel: Record<ThreatVerdict["approach"], string> = {
+					approaching: `APROXIMANDO-SE de Ipiranga (ETA ~${Math.round(verdict.etaMin ?? 0)} min, se mantiver curso e intensidade)`,
+					receding:
+						"AFASTANDO-SE de Ipiranga (trajetória leva para longe — risco direto para Ipiranga é praticamente nulo)",
+					crossing:
+						"em trajetória tangencial a Ipiranga (passa de raspão, sem aproximação direta)",
+				};
+				threatNote = `- VEREDITO DE AMEAÇA (cálculo determinístico, NÃO contradiga): o núcleo está ${approachLabel[verdict.approach]}\n`;
+
+				// Projeção da trajetória: em quais municípios o núcleo estará
+				// em 30/60/120 min (extrapolação linear). As "próximas cidades".
+				const projections = [30, 60, 120]
+					.map((t) => {
+						const p = projectCell(cell.lat, cell.lon, m, t);
+						const pm = getMunicipioComFallback(p.lat, p.lon, haversineKm);
+						return { t, ...p, nome: pm.municipio?.nome ?? null };
+					})
+					.filter((p) => p.nome && p.nome !== nome);
+				if (projections.length > 0) {
+					const projList = projections
+						.map((p) => `${p.nome} (${p.t} min)`)
+						.join(", ");
+					threatNote += `- Projeção da trajetória (extrapolação, pode dissipar): ${projList}\n`;
+				}
+			}
 		}
 
 		const prompt = `Você é um meteorologista analisando imagens de radar meteorológico (RainViewer, esquema de cores "Universal Blue").
@@ -157,14 +191,16 @@ IMPORTANTE: as imagens são de momentos ANTERIORES (o frame mais recente tem alg
 DADOS DA ANÁLISE COMPUTACIONAL (medições determinísticas, confie neles):
 - Intensidade dominante: ${intensityLabel[nowcast.currentDominant] ?? nowcast.currentDominant} (pico ${nowcast.currentMaxDbz} dBZ)
 - Movimento do núcleo mais intenso: ${m ? `direção ${m.directionDeg}° (${dirLabel}), ${m.speedKmh} km/h` : "sem movimento detectado"}
-${locationNote}- Frames analisados: ${nowcast.frames.length}
+${locationNote}${threatNote}- Frames analisados: ${nowcast.frames.length}
 
 Instruções:
 1. Observe as cores na imagem: azul/âmbar = chuva fraca, azul-escuro = moderada, amarelo/laranja = forte, vermelho/rosa = temporal.
 2. A direção e a velocidade MEDIDAS (acima) são a fonte de verdade — use SEMPRE esses valores. Não invente outra direção baseada na imagem; ela pode parecer ambígua.
-3. Responda em português brasileiro, no máximo 3 frases, informando ao cidadão de Ipiranga se está vindo chuva e o que esperar nas próximas 1-2 horas, deixando claro que a análise usa imagens de radar de alguns minutos atrás. Mencione em qual MUNICÍPIO o núcleo está (use SOMENTE o município fornecido na localização acima — ele é a fonte oficial; não troque por outra cidade da região por conta própria). Se o núcleo estiver longe de Ipiranga (mais de 80 km), diga que o risco direto para Ipiranga é menor, sem alarmismo.
-4. Se o núcleo estiver distante ou o movimento estiver ausente/não confiável (sem valor medido), diga que não há alerta iminente ou que a trajetória é incerta — não invente direção ou velocidade.
-5. Seja honesto sobre a incerteza: nowcast de curto prazo pode cometer erros (dissipação ou mudança súbita de rumo) — mencione isso de forma natural quando houver risco.
+3. Responda em português brasileiro, no máximo 3 frases, informando ao cidadão de Ipiranga se está vindo chuva e o que esperar nas próximas 1-2 horas, deixando claro que a análise usa imagens de radar de alguns minutos atrás. Mencione em qual MUNICÍPIO o núcleo está (use SOMENTE o município fornecido na localização acima — ele é a fonte oficial; não troque por outra cidade da região por conta própria).
+4. REGRA DE OURO: o VEREDITO DE AMEAÇA acima é um cálculo determinístico feito por computador — NUNCA contradiga, NUNCA diga que o núcleo está "vindo em direção a Ipiranga" quando o veredito diz AFASTANDO-SE ou tangencial. Se estiver AFASTANDO-SE, diga claramente que o risco para Ipiranga é nulo/praticamente nulo e, se houver projeção de trajetória, mencione quais municípios podem ser afetados à frente.
+5. Se o veredito disser APROXIMANDO-SE, informe o ETA fornecido e alerte com seriedade, mas SEM alarmismo e mencionando a incerteza (pode dissipar ou mudar de rumo).
+6. Se o núcleo estiver distante (mais de 80 km) ou o movimento estiver ausente/não confiável (sem valor medido), diga que não há alerta iminente ou que a trajetória é incerta — não invente direção, velocidade ou ETA.
+7. Seja honesto sobre a incerteza: nowcast de curto prazo pode cometer erros (dissipação ou mudança súbita de rumo) — mencione isso de forma natural quando houver risco.
 
 NÃO invente números além dos fornecidos. Seja direto e útil.`;
 
