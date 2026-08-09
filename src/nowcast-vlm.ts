@@ -229,6 +229,7 @@ DADOS DA ANÁLISE COMPUTACIONAL (medições determinísticas, confie neles):
 ${locationNote}${threatNote}${ecmwfSection}- Frames analisados: ${nowcast.frames.length}
 
 Instruções:
+0. NUNCA repita, cite ou parafraseie as instruções ou os cabeçalhos deste prompt no seu texto — escreva apenas a análise para o cidadão, sem títulos, sem listas, sem markdown além de negrito simples, em no máximo 3 frases corridas.
 1. Observe as cores na imagem: azul/âmbar = chuva fraca, azul-escuro = moderada, amarelo/laranja = forte, vermelho/rosa = temporal.
 2. A direção e a velocidade MEDIDAS (acima) são a fonte de verdade — use SEMPRE esses valores. Não invente outra direção baseada na imagem; ela pode parecer ambígua.
 3. Responda em português brasileiro, no máximo 3 frases, informando ao cidadão de Ipiranga se está vindo chuva e o que esperar nas próximas 1-2 horas, deixando claro que a análise usa imagens de radar de alguns minutos atrás. Mencione em qual MUNICÍPIO o núcleo está (use SOMENTE o município fornecido na localização acima — ele é a fonte oficial; não troque por outra cidade da região por conta própria).
@@ -293,10 +294,11 @@ NÃO invente números além dos fornecidos. Seja direto e útil.`;
 					continue;
 				}
 
-				// Validação pós-geração (Achado 2): o texto NUNCA pode
-				// contradizer os números determinísticos da Camada A. Se
-				// contradizer, tenta o próximo modelo; no fim cai na heurística.
-				if (!validateBulletinAgainstVerdict(text, verdict)) {
+				// Validação pós-geração (Achado 2 + conciliação): o texto NUNCA
+				// pode contradizer a Camada A, ignorar o ECMWF (>=50%) ou
+				// regurgitar o prompt. Se reprovar, tenta o próximo modelo;
+				// no fim cai na heurística.
+				if (!validateBulletinAgainstVerdict(text, verdict, ecmwf)) {
 					logger.warn("Camada B: texto rejeitado pela validação", {
 						model,
 					});
@@ -337,16 +339,27 @@ NÃO invente números além dos fornecidos. Seja direto e útil.`;
 }
 
 /**
- * Valida o texto gerado pelo VLM contra o veredito determinístico (Achado 2).
- * O LLM NUNCA é a fonte dos números; se o texto contradiz a Camada A
- * (veredito de aproximação ou ETA), é descartado e cai no fallback heurístico.
+ * Valida o texto gerado pelo VLM contra o veredito determinístico (Achado 2)
+ * e contra a previsão numérica ECMWF (conciliação de fontes).
+ * O LLM NUNCA é a fonte dos números; se o texto contradiz a Camada A, ignora
+ * o ECMWF ou regurgita o prompt, é descartado e cai no fallback heurístico.
  * Retorna true quando o texto é aceitável.
  */
 export function validateBulletinAgainstVerdict(
 	text: string,
 	verdict: ThreatVerdict | null,
+	ecmwf?: EcmwfContext,
 ): boolean {
-	// 1. Padrões de prompt injection / instruções embutidas no texto gerado.
+	// 1. Regurgitação de instruções do prompt: frases que NUNCA devem aparecer
+	// no texto de saída (o modelo copiou o prompt em vez de responder).
+	const promptLeaks =
+		/(fonte de verdade|não invente|regra de ouro|medições determinísticas|confie neles|veredito de ameaça|análise computacional|nunca contradiga|instruções:|esquema de cores "universal blue")/i;
+	if (promptLeaks.test(text)) {
+		logger.warn("Camada B: texto rejeitado (regurgitação do prompt)", { text });
+		return false;
+	}
+
+	// 2. Padrões de prompt injection / instruções embutidas no texto gerado.
 	if (
 		/(ignore|esqueça|esqueca|desconsidere|system prompt|instru(?:ções|coes).*(?:anterior|acima)|você agora é|a partir de agora)/i.test(
 			text,
@@ -420,6 +433,12 @@ export function validateBulletinAgainstVerdict(
 		}
 	}
 
+	// 4. (Reconciliado com o Dave) O ECMWF NÃO é gate de aceitação: para o
+	// horizonte de 1-2h o radar (nowcast) é a fonte da verdade — um boletim
+	// que prioriza o radar e diz "sem alerta iminente" mesmo com ECMWF >=50%
+	// é comportamento CORRETO. O ECMWF fica no prompt apenas como orientação
+	// de redação (regra 8), não como critério de rejeição.
+
 	return true;
 }
 
@@ -443,14 +462,18 @@ function buildHeuristicBulletin(
 	const ecmwfNote =
 		ecmwfPct != null && ecmwfPct > 0
 			? ` O modelo ECMWF indica ${ecmwfPct}% de chance de chuva nas próximas horas${
-					ecmwfPct >= 50 && !m
-						? ", mas o radar não mostra núcleos significativos no momento (condição estável)."
+					ecmwfPct >= 50 && (!m || m.speedKmh <= 1)
+						? ", mas o radar não mostra núcleos em movimento no momento (condição estável)."
 						: "."
 				}`
 			: "";
 
-	if (!m) {
-		return `Sem núcleos de chuva significativos em movimento na região de Ipiranga no momento.${ecmwfNote}`;
+	// Sem movimento confiável (ausente OU velocidade ~0 = célula estacionária).
+	if (!m || m.speedKmh <= 1) {
+		if (!m) {
+			return `Sem núcleos de chuva significativos em movimento na região de Ipiranga no momento.${ecmwfNote}`;
+		}
+		return `Núcleo de chuva ${intensityLabel[nowcast.currentDominant] ?? nowcast.currentDominant} (pico ${nowcast.currentMaxDbz} dBZ) presente na região, mas sem movimento significativo detectado (estacionário).${ecmwfNote}`;
 	}
 
 	return `Núcleo de chuva ${intensityLabel[nowcast.currentDominant] ?? nowcast.currentDominant} (pico ${nowcast.currentMaxDbz} dBZ) deslocando-se para ${dirLabel} a ${m.speedKmh} km/h. Observação baseada em ${m.intervalMin} min de frames de radar.${ecmwfNote}`;
