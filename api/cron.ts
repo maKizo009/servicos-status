@@ -22,6 +22,7 @@ export default async function handler(req: any, res: any) {
 				: null,
 			hasNimKey: Boolean(process.env.NVIDIA_NIM_API_KEY),
 		};
+		// Teste texto-only
 		try {
 			const t0 = Date.now();
 			const r = await fetch(
@@ -44,10 +45,77 @@ export default async function handler(req: any, res: any) {
 			out.textTest = {
 				status: r.status,
 				ms: Date.now() - t0,
-				body: (await r.text()).slice(0, 200),
 			};
 		} catch (e: unknown) {
-			out.textTest = {
+			out.textTest = { error: e instanceof Error ? e.message : String(e) };
+		}
+		// Teste com imagem: reproduz o fluxo real (composite + chamada)
+		try {
+			const idx = await fetch(
+				"https://api.rainviewer.com/public/weather-maps.json",
+				{ signal: AbortSignal.timeout(15_000) },
+			).then((r) => r.json());
+			const { buildRadarComposite } = await import(
+				"../src/nowcast-vlm.js"
+			);
+			const { REGION_GRID, TARGET_IPIRANGA } = await import(
+				"../src/nowcast-service.js"
+			);
+			const t1 = Date.now();
+			const composite = await buildRadarComposite(
+				idx.host,
+				idx.radar?.past ?? [],
+				REGION_GRID,
+				{ target: TARGET_IPIRANGA },
+			);
+			out.composite = {
+				ok: Boolean(composite),
+				ms: Date.now() - t1,
+				width: composite?.width,
+				height: composite?.height,
+				dataUrlLen: composite ? composite.dataUrl.length : 0,
+			};
+			if (composite) {
+				const base64 = composite.dataUrl.replace(
+					/^data:image\/png;base64,/,
+					"",
+				);
+				const t2 = Date.now();
+				const r = await fetch(
+					`https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-lite-latest:generateContent?key=${process.env.GEMINI_API_KEY}`,
+					{
+						method: "POST",
+						headers: { "Content-Type": "application/json" },
+						body: JSON.stringify({
+							contents: [
+								{
+									role: "user",
+									parts: [
+										{
+											text: "Em 1 frase: o radar está limpo ao redor do pin IPIRANGA?",
+										},
+										{
+											inline_data: {
+												mime_type: "image/png",
+												data: base64,
+											},
+										},
+									],
+								},
+							],
+							generationConfig: { maxOutputTokens: 50 },
+						}),
+						signal: AbortSignal.timeout(60_000),
+					},
+				);
+				out.imageTest = {
+					status: r.status,
+					ms: Date.now() - t2,
+					body: (await r.text()).slice(0, 300),
+				};
+			}
+		} catch (e: unknown) {
+			out.imageTest = {
 				error: e instanceof Error ? e.message : String(e),
 			};
 		}
