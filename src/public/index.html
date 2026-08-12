@@ -4,6 +4,13 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Monitor Ipiranga — Status dos Serviços</title>
+<link rel="manifest" href="/manifest.webmanifest">
+<meta name="theme-color" content="#00923F">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Monitor Ipiranga">
+<link rel="apple-touch-icon" href="/icons/icon-192.png">
+<link rel="icon" type="image/png" sizes="192x192" href="/icons/icon-192.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
@@ -294,6 +301,15 @@ body{font-family:var(--font);background:var(--md-sys-color-surface);color:var(--
 }
 .theme-toggle-btn:hover{background:rgba(255,255,255,.2);border-color:rgba(255,255,255,.35)}
 .theme-toggle-btn:active{transform:scale(.95)}
+.push-btn{
+  display:flex;align-items:center;gap:6px;height:40px;padding:0 14px;flex-shrink:0;
+  background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.2);border-radius:var(--md-shape-corner-full);
+  cursor:pointer;font-size:13px;font-weight:600;color:#fff;transition:all .2s;backdrop-filter:blur(8px);margin-left:8px;font-family:inherit
+}
+.push-btn:hover{background:rgba(255,255,255,.2);border-color:rgba(255,255,255,.35)}
+.push-btn:active{transform:scale(.95)}
+.push-btn.on{background:rgba(0,146,63,.85);border-color:rgba(255,255,255,.35)}
+.push-btn.denied{opacity:.55}
 .header-right-group{display:flex;align-items:center}
 .ov-dot{width:9px;height:9px;border-radius:50%;transition:all .3s;flex-shrink:0}
 .ov-dot.ok{background:var(--g5);box-shadow:0 0 8px var(--g5)}
@@ -689,6 +705,10 @@ body{font-family:var(--font);background:var(--md-sys-color-surface);color:var(--
       <div style="font-size:12px;opacity:.85;font-weight:500">Status em tempo real das utilidades e telecomunicações</div>
     </div>
   </div>
+  <button class="push-btn" id="btnPush" type="button" aria-label="Ativar alertas no celular" title="Receber alertas de tempestade, energia e água no celular" style="display:none">
+    <span id="pushBtnIcon">🔔</span>
+    <span id="pushBtnText">Alertas</span>
+  </button>
   <button class="header-refresh-btn" id="btnRefresh" type="button" aria-label="Atualizar dados do monitoramento">
     <svg class="ri" id="refreshIcon" viewBox="0 0 24 24"><path d="M17.65 6.35C16.2 4.9 14.21 4 12 4c-4.42 0-7.99 3.58-7.99 8s3.57 8 7.99 8c3.73 0 6.84-2.55 7.73-6h-2.08c-.82 2.33-3.04 4-5.65 4-3.31 0-6-2.69-6-6s2.69-6 6-6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z"/></svg>
     <span class="ht" id="headerTime" aria-live="polite">--:--</span>
@@ -2081,6 +2101,107 @@ function copyPrompt(provider, text) {
     }
   }).catch(() => {});
 }
+</script>
+<script>
+/* ===== Push Web (PWA) — alertas no celular ===== */
+(function () {
+  const btn = document.getElementById('btnPush');
+  const iconEl = document.getElementById('pushBtnIcon');
+  const textEl = document.getElementById('pushBtnText');
+  let swReg = null;
+  let vapidKey = null;
+
+  function urlBase64ToUint8Array(base64String) {
+    const padding = '='.repeat((4 - (base64String.length % 4)) % 4);
+    const base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/');
+    const raw = atob(base64);
+    const out = new Uint8Array(raw.length);
+    for (let i = 0; i < raw.length; i++) out[i] = raw.charCodeAt(i);
+    return out;
+  }
+
+  function setState(state) {
+    if (!btn) return;
+    btn.classList.remove('on', 'denied');
+    if (state === 'on') { btn.classList.add('on'); iconEl.textContent = '✅'; textEl.textContent = 'Alertas ativos'; }
+    else if (state === 'denied') { btn.classList.add('denied'); iconEl.textContent = '🔕'; textEl.textContent = 'Notificações bloqueadas'; }
+    else if (state === 'off') { iconEl.textContent = '🔔'; textEl.textContent = 'Ativar alertas'; }
+  }
+
+  async function refreshState() {
+    if (!('serviceWorker' in navigator) || !('PushManager' in window)) return;
+    try {
+      swReg = await navigator.serviceWorker.getRegistration();
+      if (!swReg) swReg = await navigator.serviceWorker.register('/sw.js');
+      const sub = await swReg.pushManager.getSubscription();
+      setState(sub ? 'on' : 'off');
+    } catch (e) { console.warn('push: estado', e); }
+  }
+
+  async function subscribe() {
+    if (!swReg || !vapidKey) return;
+    try {
+      const sub = await swReg.pushManager.subscribe({
+        userVisibleOnly: true,
+        applicationServerKey: urlBase64ToUint8Array(vapidKey),
+      });
+      const body = JSON.stringify({
+        endpoint: sub.endpoint,
+        keys: { p256dh: btoa(String.fromCharCode.apply(null, new Uint8Array(sub.getKey('p256dh')))), auth: btoa(String.fromCharCode.apply(null, new Uint8Array(sub.getKey('auth')))) },
+      });
+      const res = await fetch('/api/push/subscribe', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body,
+      });
+      if (res.ok) { setState('on'); return true; }
+      console.warn('push: subscribe falhou', res.status);
+    } catch (e) { console.warn('push: subscribe', e); }
+    return false;
+  }
+
+  async function unsubscribe() {
+    if (!swReg) return;
+    try {
+      const sub = await swReg.pushManager.getSubscription();
+      if (sub) {
+        await fetch('/api/push/unsubscribe', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ endpoint: sub.endpoint }),
+        });
+        await sub.unsubscribe();
+      }
+      setState('off');
+    } catch (e) { console.warn('push: unsubscribe', e); }
+  }
+
+  async function init() {
+    if (!('serviceWorker' in navigator) || !('PushManager' in window) || !btn) return;
+    try {
+      const res = await fetch('/api/push/status');
+      const status = await res.json();
+      if (!status.configured || !status.vapidPublicKey) return;
+      vapidKey = status.vapidPublicKey;
+      btn.style.display = 'flex';
+      if (Notification.permission === 'denied') { setState('denied'); return; }
+      swReg = await navigator.serviceWorker.register('/sw.js');
+      const sub = await swReg.pushManager.getSubscription();
+      setState(sub ? 'on' : 'off');
+      btn.addEventListener('click', async () => {
+        const sub = await swReg.pushManager.getSubscription();
+        if (sub) { await unsubscribe(); return; }
+        if (Notification.permission === 'denied') { setState('denied'); return; }
+        const perm = await Notification.requestPermission();
+        if (perm === 'granted') { await subscribe(); } else if (perm === 'denied') { setState('denied'); }
+      });
+    } catch (e) { console.warn('push: init', e); }
+  }
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', init);
+  } else { init(); }
+})();
 </script>
 </body>
 </html>

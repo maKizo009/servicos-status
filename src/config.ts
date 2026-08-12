@@ -30,6 +30,10 @@ export interface AppConfig {
 	geminiApiKey: string;
 	weatherModel: string;
 	municipio: string;
+	// Push Web (PWA)
+	vapidPublicKey: string;
+	vapidPrivateKey: string;
+	vapidSubject: string;
 	unifiedReportIntervalMs: number;
 	// Turso Cloud Database
 	tursoDatabaseUrl: string;
@@ -90,6 +94,9 @@ export function loadConfig(): AppConfig {
 		geminiApiKey: process.env.GEMINI_API_KEY ?? "",
 		weatherModel: process.env.WEATHER_MODEL ?? "ecmwf_ifs04",
 		municipio: process.env.MUNICIPIO ?? "Ipiranga",
+		vapidPublicKey: process.env.VAPID_PUBLIC_KEY ?? "",
+		vapidPrivateKey: process.env.VAPID_PRIVATE_KEY ?? "",
+		vapidSubject: process.env.VAPID_SUBJECT ?? "mailto:andredobrawl7@gmail.com",
 		unifiedReportIntervalMs: envInt("UNIFIED_REPORT_INTERVAL_MS", 3_600_000),
 		tursoDatabaseUrl: process.env.TURSO_DATABASE_URL ?? "",
 		tursoAuthToken: process.env.TURSO_AUTH_TOKEN ?? "",

@@ -143,6 +143,17 @@ export async function initDb(): Promise<Client> {
 				source TEXT NOT NULL,
 				generated_at INTEGER NOT NULL
 			)`,
+				`CREATE TABLE IF NOT EXISTS push_subscriptions (
+				endpoint TEXT PRIMARY KEY,
+				p256dh TEXT NOT NULL,
+				auth TEXT NOT NULL,
+				created_at INTEGER NOT NULL,
+				last_seen_at INTEGER NOT NULL
+			)`,
+				`CREATE TABLE IF NOT EXISTS push_sent (
+				evento TEXT PRIMARY KEY,
+				enviado_at INTEGER NOT NULL
+			)`,
 				"CREATE INDEX IF NOT EXISTS idx_portal_timestamp ON portal_results(timestamp)",
 				"CREATE INDEX IF NOT EXISTS idx_connectivity_timestamp ON connectivity_results(timestamp)",
 				"CREATE INDEX IF NOT EXISTS idx_bgp_timestamp ON bgp_results(timestamp)",

@@ -14,7 +14,7 @@
     "declarationMap": true,
     "sourceMap": true,
     "outDir": "./dist",
-    "types": ["bun"]
+    "types": ["bun", "web-push"]
   },
   "include": ["src/**/*.ts", "api/**/*.ts"],
   "exclude": ["node_modules", "dist"]
