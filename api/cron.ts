@@ -119,6 +119,64 @@ export default async function handler(req: any, res: any) {
 				error: e instanceof Error ? e.message : String(e),
 			};
 		}
+		// Teste do fluxo COMPLETO da Camada B (nowcast real + composite +
+		// prompt real + Gemini): reproduz exatamente o syncWeatherCycle.
+		try {
+			const { analyzeRadarNowcast } = await import(
+				"../src/radar-analysis.js"
+			);
+			const { generateNowcastBulletin } = await import(
+				"../src/nowcast-vlm.js"
+			);
+			const { REGION_GRID: RG, TARGET_IPIRANGA: TI } = await import(
+				"../src/nowcast-service.js"
+			);
+			const idx = await fetch(
+				"https://api.rainviewer.com/public/weather-maps.json",
+				{ signal: AbortSignal.timeout(15_000) },
+			).then((r) => r.json());
+			const t3 = Date.now();
+			const nowcast = await analyzeRadarNowcast(
+				idx.host,
+				idx.radar?.past ?? [],
+				RG,
+				3,
+				TI,
+			);
+			const nearestAlert = nowcast.threats.find(
+				(t) => t.relevanceZone === "alert",
+			);
+			const nearestWatch = nowcast.threats.find(
+				(t) => t.relevanceZone === "watch",
+			);
+			const alertLevel = nearestAlert
+				? "alert"
+				: nearestWatch
+					? "watch"
+					: "monitor";
+			const b = await generateNowcastBulletin(
+				nowcast,
+				idx.host,
+				idx.radar?.past ?? [],
+				RG,
+				{ rainProbabilityPct: 16, hourlyForecast: [] },
+				{
+					alertLevel,
+					nearestThreatKm: nowcast.threats[0]
+						? Math.round(nowcast.threats[0].distToTargetKm)
+						: null,
+				},
+			);
+			out.fullFlow = {
+				ms: Date.now() - t3,
+				source: b.source,
+				text: b.text.slice(0, 300),
+			};
+		} catch (e: unknown) {
+			out.fullFlow = {
+				error: e instanceof Error ? e.message : String(e),
+			};
+		}
 		if (res && typeof res.status === "function") {
 			return res.status(200).json(out);
 		}
