@@ -4,7 +4,6 @@ export interface AppConfig {
 	telegramBotToken: string;
 	telegramChatId: string;
 	checkIntervalMs: number;
-	portalTimeoutMs: number;
 	connectivityTimeoutMs: number;
 	bgpTimeoutMs: number;
 	httpPort: number;
@@ -63,7 +62,6 @@ export function loadConfig(): AppConfig {
 		telegramBotToken: process.env.TELEGRAM_BOT_TOKEN ?? "",
 		telegramChatId: process.env.TELEGRAM_CHAT_ID ?? "",
 		checkIntervalMs: envInt("CHECK_INTERVAL_MS", 60_000),
-		portalTimeoutMs: envInt("PORTAL_TIMEOUT_MS", 10_000),
 		connectivityTimeoutMs: envInt("CONNECTIVITY_TIMEOUT_MS", 5_000),
 		bgpTimeoutMs: envInt("BGP_TIMEOUT_MS", 15_000),
 		httpPort: envInt("HTTP_PORT", 3030),
@@ -73,9 +71,9 @@ export function loadConfig(): AppConfig {
 		lossOk: envInt("LOSS_OK", 0),
 		lossWarn: envInt("LOSS_WARN", 10),
 		operators: {
-			Claro: { asn: 28573, portals: ["minhaclaro.claro.com.br"] },
-			Vivo: { asn: 27699, portals: ["meuvivo.vivo.com.br"] },
-			TIM: { asn: 26615, portals: ["meutim.tim.com.br"] },
+			Claro: { asn: 28573 },
+			Vivo: { asn: 27699 },
+			TIM: { asn: 26615 },
 		},
 		copelApiUrl:
 			process.env.COPEL_API_URL ??

@@ -49,10 +49,13 @@ data = json.load(sys.stdin)
 print('  Operadores:')
 for op in data.get('operators', []):
     print(f'    {op[\"operator\"]}: {op.get(\"status\",\"?\")}')
-    for p in op.get('portals', []):
-        lat = f'{p.get(\"latencyMs\",\"?\")}ms'
-        st = 'OK' if p.get('success') else 'FALHA'
-        print(f'      Portal {p.get(\"host\",\"?\")}: {st} ({lat})')
+    for c in op.get('connectivity', []):
+        lat = f'{c.get(\"latencyMs\",\"?\")}ms'
+        st = 'OK' if c.get('success') else 'FALHA'
+        print(f'      Conectividade {c.get(\"host\",\"?\")}: {st} ({lat})')
+    bgp = op.get('bgp')
+    if bgp:
+        print(f'      BGP AS{bgp.get(\"asn\",\"?\")}: {bgp.get(\"prefixCountV4\",0)} v4 / {bgp.get(\"prefixCountV6\",0)} v6 prefixos')
 " 2>&1 | tee -a "$LOG"
 
 # 5. Verificar logs recentes do container para erros

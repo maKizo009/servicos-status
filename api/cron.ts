@@ -1,11 +1,11 @@
 import { runAllChecks } from "../src/checker.js";
 import { loadConfig } from "../src/config.js";
+import { formatCopelPrevisao } from "../src/copel-format.js";
 import {
 	initDb,
 	saveBgpResult,
 	saveConnectivityResult,
 	saveEventLog,
-	savePortalResult,
 } from "../src/db.js";
 import { syncWeatherCycle } from "../src/index.js";
 import { sendEventPush } from "../src/push.js";
@@ -71,7 +71,6 @@ export default async function handler(req: any, res: any) {
 		]);
 
 		for (const op of data.operators) {
-			for (const r of op.portalResults) await savePortalResult(r);
 			for (const r of op.connectivityResults) await saveConnectivityResult(r);
 			await saveBgpResult(op.bgpResult);
 		}
@@ -85,13 +84,13 @@ export default async function handler(req: any, res: any) {
 			await sendEventPush(
 				"copel",
 				`⚡ Queda de energia em ${outage.bairro || "Ipiranga"} (COPEL)`,
-				`${outage.qtdConsumidores || 0} consumidores afetados | Previsão: ${outage.previsaoRestabelecimento || "Sem previsão"}`,
+				`${outage.qtdConsumidores || 0} consumidores afetados | Previsão: ${formatCopelPrevisao(outage)}`,
 			);
 			await saveEventLog(
 				"copel",
 				`Queda de Energia (${outage.ehProgramada ? "Programada" : "Emergencial"})`,
 				outage.bairro || "Ipiranga",
-				`Equipe: ${outage.statusEquipe || "Pendente"} | Previsão: ${outage.previsaoRestabelecimento || "Sem previsão"}`,
+				`Equipe: ${outage.statusEquipe || "Pendente"} | Previsão: ${formatCopelPrevisao(outage)}`,
 				outage.qtdConsumidores || 0,
 			);
 		}
