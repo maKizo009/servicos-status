@@ -125,6 +125,7 @@ body{font-family:Inter,system-ui,sans-serif;background:var(--md-sys-color-surfac
   </div>
 </div>
 
+<script src="/vendor/webauthn-browser.js"></script>
 <script>
 const $ = (id) => document.getElementById(id);
 let statsTimer = null;
@@ -227,37 +228,23 @@ $('btnLogout').addEventListener('click', async () => {
 });
 
 /* ===== WebAuthn — impressão digital / passkey ===== */
-function bufToB64url(buf) {
-  let bin = '';
-  const bytes = new Uint8Array(buf);
-  for (let i = 0; i < bytes.length; i++) bin += String.fromCharCode(bytes[i]);
-  return btoa(bin).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
-}
+// Usa @simplewebauthn/browser (bundle local em /vendor/webauthn-browser.js):
+// converte o challenge para ArrayBuffer e formata as respostas no formato
+// JSON esperado pelo servidor (evita o erro "challenge is not ArrayBuffer").
 
 async function bioLogin() {
-  if (!window.PublicKeyCredential) { $('loginError').textContent = 'Seu navegador não suporta passkeys.'; return; }
+  if (!window.PublicKeyCredential || !window.SimpleWebAuthnBrowser) { $('loginError').textContent = 'Seu navegador não suporta passkeys.'; return; }
   $('btnBioLogin').disabled = true;
   $('loginError').textContent = '';
   try {
     const res = await fetch('/api/admin/webauthn/login/begin', { method: 'POST', credentials: 'same-origin' });
     if (res.status === 404) { $('loginError').textContent = 'Nenhuma impressão digital registrada ainda. Entre com senha e registre.'; return; }
     const { options } = await res.json();
-    const cred = await navigator.credentials.get({ publicKey: options });
-    const body = {
-      id: cred.id,
-      rawId: bufToB64url(cred.rawId),
-      type: cred.type,
-      response: {
-        clientDataJSON: bufToB64url(cred.response.clientDataJSON),
-        authenticatorData: bufToB64url(cred.response.authenticatorData),
-        signature: bufToB64url(cred.response.signature),
-        userHandle: cred.response.userHandle ? bufToB64url(cred.response.userHandle) : null,
-      },
-    };
+    const cred = await SimpleWebAuthnBrowser.startAuthentication(options);
     const fin = await fetch('/api/admin/webauthn/login/complete', {
       method: 'POST', credentials: 'same-origin',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(body),
+      body: JSON.stringify(cred),
     });
     if (fin.ok) {
       show('app'); loadStats();
@@ -277,26 +264,17 @@ async function bioLogin() {
 $('btnBioLogin').addEventListener('click', bioLogin);
 
 async function registerBiometria() {
-  if (!window.PublicKeyCredential) { alert('Seu navegador não suporta passkeys.'); return; }
+  if (!window.PublicKeyCredential || !window.SimpleWebAuthnBrowser) { alert('Seu navegador não suporta passkeys.'); return; }
   $('btnBiometria').disabled = true;
   try {
     const res = await fetch('/api/admin/webauthn/register/begin', { method: 'POST', credentials: 'same-origin' });
     if (!res.ok) { alert('Erro ao iniciar registro.'); return; }
     const { options } = await res.json();
-    const cred = await navigator.credentials.create({ publicKey: options });
-    const body = {
-      id: cred.id,
-      rawId: bufToB64url(cred.rawId),
-      type: cred.type,
-      response: {
-        clientDataJSON: bufToB64url(cred.response.clientDataJSON),
-        attestationObject: bufToB64url(cred.response.attestationObject),
-      },
-    };
+    const cred = await SimpleWebAuthnBrowser.startRegistration(options);
     const fin = await fetch('/api/admin/webauthn/register/complete', {
       method: 'POST', credentials: 'same-origin',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(body),
+      body: JSON.stringify(cred),
     });
     const d = await fin.json();
     if (d.ok) { alert('✅ Impressão digital registrada! Agora pode entrar com biometria.'); }

@@ -253,19 +253,41 @@ export async function getAdminStats(): Promise<AdminStats> {
 
 // ============ WebAuthn (impressão digital / passkey) ============
 
-const WEBAUTHN_RP_ID = "servicos-status.vercel.app";
-const WEBAUTHN_ORIGIN = "https://servicos-status.vercel.app";
+/** Domínios aceitos para passkey (rpID = host da request, validado aqui). */
+const WEBAUTHN_ALLOWED_HOSTS = [
+	"servicos-status.vercel.app",
+	"os-status.vercel.app", // alias legado que o Dave usa — manter funcionando
+] as const;
+
 const CHALLENGE_TTL_MS = 5 * 60_000;
+
+function normalizeHost(host: string | null): string | null {
+	if (!host) return null;
+	return host.split(":")[0].toLowerCase();
+}
+
+function hostAllowed(host: string | null): boolean {
+	const h = normalizeHost(host);
+	return (
+		h !== null && (WEBAUTHN_ALLOWED_HOSTS as readonly string[]).includes(h)
+	);
+}
+
+function isValidOrigin(origin: string | null): boolean {
+	if (!origin) return false;
+	try {
+		const u = new URL(origin);
+		return hostAllowed(u.hostname) && u.protocol === "https:";
+	} catch {
+		return false;
+	}
+}
 
 interface WebauthnCredential {
 	id: string;
 	publicKey: string;
 	counter: number;
 	transports: string[];
-}
-
-function isValidOrigin(origin: string | null): boolean {
-	return origin === WEBAUTHN_ORIGIN;
 }
 
 async function getCredentials(): Promise<WebauthnCredential[]> {
@@ -316,18 +338,21 @@ async function takeChallenge(
 }
 
 /** Passo 1 do registro de passkey (exige sessão por senha). */
-export async function webauthnRegisterBegin(): Promise<{
-	options: PublicKeyCredentialCreationOptionsJSON;
-} | null> {
+export async function webauthnRegisterBegin(
+	host: string | null,
+): Promise<{ options: PublicKeyCredentialCreationOptionsJSON } | null> {
+	if (!hostAllowed(host)) return null;
+	const rpID = normalizeHost(host)!;
 	const { generateRegistrationOptions } = await import(
 		"@simplewebauthn/server"
 	);
 	const creds = await getCredentials();
 	const options = await generateRegistrationOptions({
 		rpName: "Monitor Ipiranga",
-		rpID: WEBAUTHN_RP_ID,
+		rpID,
 		userName: adminEmail(),
 		userDisplayName: "Admin",
+		userID: Buffer.from(adminEmail()).subarray(0, 16),
 		timeout: 60_000,
 		attestationType: "none",
 		authenticatorSelection: {
@@ -370,8 +395,8 @@ export async function webauthnRegisterComplete(
 		const verification = await verifyRegistrationResponse({
 			response: body as RegistrationResponseJSON,
 			expectedChallenge: challenge,
-			expectedOrigin: WEBAUTHN_ORIGIN,
-			expectedRPID: WEBAUTHN_RP_ID,
+			expectedOrigin: origin!,
+			expectedRPID: normalizeHost(new URL(origin!).hostname)!,
 		});
 		if (!verification.verified || !verification.registrationInfo) {
 			return { ok: false, error: "Verificação falhou" };
@@ -400,16 +425,18 @@ export async function webauthnRegisterComplete(
 }
 
 /** Passo 1 do login com passkey: gera o desafio para o autenticador. */
-export async function webauthnLoginBegin(): Promise<{
-	options: PublicKeyCredentialRequestOptionsJSON;
-} | null> {
+export async function webauthnLoginBegin(
+	host: string | null,
+): Promise<{ options: PublicKeyCredentialRequestOptionsJSON } | null> {
+	if (!hostAllowed(host)) return null;
+	const rpID = normalizeHost(host)!;
 	const { generateAuthenticationOptions } = await import(
 		"@simplewebauthn/server"
 	);
 	const creds = await getCredentials();
 	if (creds.length === 0) return null;
 	const options = await generateAuthenticationOptions({
-		rpID: WEBAUTHN_RP_ID,
+		rpID,
 		timeout: 60_000,
 		allowCredentials: creds.map((c) => ({
 			id: c.id,
@@ -453,8 +480,8 @@ export async function webauthnLoginComplete(
 		const verification = await verifyAuthenticationResponse({
 			response: res,
 			expectedChallenge: challenge,
-			expectedOrigin: WEBAUTHN_ORIGIN,
-			expectedRPID: WEBAUTHN_RP_ID,
+			expectedOrigin: origin!,
+			expectedRPID: normalizeHost(new URL(origin!).hostname)!,
 			credential: {
 				id: cred.id,
 				publicKey: new Uint8Array(Buffer.from(cred.publicKey, "base64")),
