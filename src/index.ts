@@ -880,7 +880,7 @@ export async function handleRequest(
 				});
 			}
 			const { webauthnRegisterBegin } = await import("./admin.js");
-			const out = await webauthnRegisterBegin();
+			const out = await webauthnRegisterBegin(getHeader(req, "host"));
 			if (!out) {
 				return new Response(
 					JSON.stringify({ error: "WebAuthn indisponível" }),
@@ -905,7 +905,7 @@ export async function handleRequest(
 		}
 		if (path === "/api/admin/webauthn/login/begin" && method === "POST") {
 			const { webauthnLoginBegin } = await import("./admin.js");
-			const out = await webauthnLoginBegin();
+			const out = await webauthnLoginBegin(getHeader(req, "host"));
 			if (!out) {
 				return new Response(
 					JSON.stringify({ error: "Nenhuma passkey registrada" }),
