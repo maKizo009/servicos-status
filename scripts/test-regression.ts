@@ -380,39 +380,39 @@ describe("Incidente 2026-08-12 — gates de relevância (zonas)", () => {
 	const { classifyRelevanceZone } = require("../src/radar-analysis.js");
 
 	test("núcleo extreme a 589 km estacionário → monitor (nunca alert)", () => {
-		expect(
-			classifyRelevanceZone(589, "crossing", null, "extreme", 0),
-		).toBe("monitor");
+		expect(classifyRelevanceZone(589, "crossing", null, "extreme", 0)).toBe(
+			"monitor",
+		);
 	});
 
 	test("núcleo heavy a 336 km approaching ETA 488 min → monitor (caso real)", () => {
-		expect(
-			classifyRelevanceZone(336, "approaching", 488, "heavy", 49.5),
-		).toBe("monitor");
+		expect(classifyRelevanceZone(336, "approaching", 488, "heavy", 49.5)).toBe(
+			"monitor",
+		);
 	});
 
 	test("núcleo heavy a 60 km approaching ETA 45 min → alert", () => {
-		expect(
-			classifyRelevanceZone(60, "approaching", 45, "heavy", 40),
-		).toBe("alert");
+		expect(classifyRelevanceZone(60, "approaching", 45, "heavy", 40)).toBe(
+			"alert",
+		);
 	});
 
 	test("núcleo a 120 km approaching ETA 200 min → watch", () => {
-		expect(
-			classifyRelevanceZone(120, "approaching", 200, "heavy", 35),
-		).toBe("watch");
+		expect(classifyRelevanceZone(120, "approaching", 200, "heavy", 35)).toBe(
+			"watch",
+		);
 	});
 
 	test("núcleo extreme a 30 km receding → monitor (afastando-se)", () => {
-		expect(
-			classifyRelevanceZone(30, "receding", null, "extreme", 25),
-		).toBe("monitor");
+		expect(classifyRelevanceZone(30, "receding", null, "extreme", 25)).toBe(
+			"monitor",
+		);
 	});
 
 	test("núcleo extreme a 40 km sem movimento → alert (fallback de segurança)", () => {
-		expect(
-			classifyRelevanceZone(40, null, null, "extreme", null),
-		).toBe("alert");
+		expect(classifyRelevanceZone(40, null, null, "extreme", null)).toBe(
+			"alert",
+		);
 	});
 });
 
@@ -459,5 +459,44 @@ describe("Incidente 2026-08-12 — proporcionalidade e distância na validação
 				{ alertLevel: "alert", nearestThreatKm: 45 },
 			),
 		).toBe(true);
+	});
+});
+
+describe("Malha tri-estado (PR+SC+SP) — resolução de município", () => {
+	const { getMunicipio } = require("../src/geo-municipio.js");
+
+	test("núcleo no oeste de SC resolve município REAL (incidente Prudentópolis)", () => {
+		const m = getMunicipio(-26.592, -52.922);
+		expect(m).not.toBeNull();
+		expect(m?.uf).toBe("SC");
+		expect(m?.nome).toBe("Irati"); // Irati/SC (4207858), não Prudentópolis
+	});
+
+	test("Xanxerê/SC → SC", () => {
+		const m = getMunicipio(-26.87, -52.4);
+		expect(m?.nome).toBe("Xanxerê");
+		expect(m?.uf).toBe("SC");
+	});
+
+	test("São Paulo/SP → SP", () => {
+		const m = getMunicipio(-23.55, -46.63);
+		expect(m?.nome).toBe("São Paulo");
+		expect(m?.uf).toBe("SP");
+	});
+
+	test("Irati/PR (centro) → PR, desambigua da Irati/SC", () => {
+		const m = getMunicipio(-25.47, -50.65);
+		expect(m?.nome).toBe("Irati");
+		expect(m?.uf).toBe("PR");
+	});
+
+	test("Ipiranga/PR continua resolvendo", () => {
+		const m = getMunicipio(-25.0244, -50.5847);
+		expect(m?.nome).toBe("Ipiranga");
+		expect(m?.uf).toBe("PR");
+	});
+
+	test("ponto fora dos 3 estados → null (fallback assume)", () => {
+		expect(getMunicipio(-20.5, -54.5)).toBeNull(); // MS
 	});
 });
