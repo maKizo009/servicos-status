@@ -64,6 +64,13 @@ const config = loadConfig();
 let isInitialized = false;
 let tracker: EventTracker;
 
+/** Origens permitidas no CORS (whitelist — nunca `*`). */
+const ALLOWED_ORIGINS = new Set([
+	"https://servicos-status.vercel.app",
+	"https://os-status.vercel.app",
+	"http://localhost:3030",
+]);
+
 export async function ensureInitialized(): Promise<void> {
 	if (!isInitialized) {
 		await initDb();
@@ -312,7 +319,13 @@ function handleStatus(): Response {
 
 async function handleHistory(url: URL): Promise<Response> {
 	const operator = url.searchParams.get("operator");
-	const limit = Math.min(Number(url.searchParams.get("limit")) || 100, 1000);
+	// Clamp de input: limit ausente/0/negativo/NaN vira 100; teto de 1000
+	// (achado pentest: limit=-5 retornava o histórico inteiro).
+	const limitRaw = Number(url.searchParams.get("limit"));
+	const limit =
+		Number.isFinite(limitRaw) && limitRaw > 0
+			? Math.min(Math.floor(limitRaw), 1000)
+			: 100;
 
 	if (operator) {
 		const history = await getPortalHistory(operator, limit);
@@ -554,6 +567,14 @@ function getHeader(req: IncomingRequest, name: string): string | null {
 	return null;
 }
 
+function getClientIp(req: IncomingRequest): string {
+	return (
+		getHeader(req, "x-forwarded-for")?.split(",")[0]?.trim() ||
+		getHeader(req, "x-real-ip") ||
+		"unknown"
+	);
+}
+
 async function getReqJson(req: IncomingRequest): Promise<unknown> {
 	if (!req) return {};
 	if (req.body && typeof req.body === "object") return req.body;
@@ -583,13 +604,45 @@ export async function handleRequest(
 	const method = (req.method || "GET").toUpperCase();
 
 	if (method === "OPTIONS") {
-		return new Response(null, {
-			status: 204,
-			headers: {
-				"Access-Control-Allow-Origin": "*",
-				"Access-Control-Allow-Methods": "GET, POST, OPTIONS, HEAD",
-				"Access-Control-Allow-Headers": "Content-Type, Authorization",
-			},
+		const origin = getHeader(req, "origin");
+		const headers: Record<string, string> = {
+			"Access-Control-Allow-Methods": "GET, POST, OPTIONS, HEAD",
+			"Access-Control-Allow-Headers": "Content-Type, Authorization",
+		};
+		if (origin && ALLOWED_ORIGINS.has(origin)) {
+			headers["Access-Control-Allow-Origin"] = origin;
+			headers["Vary"] = "Origin";
+		}
+		return new Response(null, { status: 204, headers });
+	}
+
+	// Rotas de leitura: rejeitar métodos de escrita (405) em vez de responder
+	// 200 para POST/PUT/DELETE/PATCH (achado pentest 2026-08-12).
+	const READ_ONLY_PATHS = new Set([
+		"/health",
+		"/llms.txt",
+		"/llms-full.txt",
+		"/llms-instructions.txt",
+		"/api/status",
+		"/api/services",
+		"/api/report",
+		"/api/weather",
+		"/api/weather/radar",
+		"/api/weather/nowcast",
+		"/api/weather/json-ld",
+		"/api/weather/bulletin",
+		"/api/history",
+		"/api/operators",
+		"/api/bgp",
+		"/api/stats/daily",
+		"/api/stats",
+		"/api/telemetry/stats",
+		"/api/push/status",
+	]);
+	if (READ_ONLY_PATHS.has(path) && method !== "GET" && method !== "HEAD") {
+		return new Response(JSON.stringify({ error: "Método não permitido" }), {
+			status: 405,
+			headers: { "Content-Type": "application/json", Allow: "GET, HEAD" },
 		});
 	}
 
@@ -626,10 +679,7 @@ export async function handleRequest(
 
 	// Rate limit all /api/* endpoints except /health
 	if (path.startsWith("/api/")) {
-		const ip =
-			getHeader(req, "x-forwarded-for")?.split(",")[0]?.trim() ||
-			getHeader(req, "x-real-ip") ||
-			"unknown";
+		const ip = getClientIp(req);
 		// Telemetria (pageview/heartbeat) e admin têm rate limits próprios
 		// (o heartbeat roda a cada 60s por sessão — o limite comum de 10/min
 		// bloquearia o próprio site).
@@ -753,6 +803,20 @@ export async function handleRequest(
 			return Response.json({ results: await getLatestBgpResults(20) });
 		}
 		if (path === "/api/check" && method === "POST") {
+			// Dispara ciclo completo (probes externos + NIM + Telegram): só
+			// com Bearer CRON_SECRET — nunca público (achado pentest:
+			// qualquer um gastava cota e spammava alertas).
+			const cronSecret = loadConfig().cronSecret;
+			const auth = getHeader(req, "authorization") ?? "";
+			if (!cronSecret || auth !== `Bearer ${cronSecret}`) {
+				return new Response(
+					JSON.stringify({ error: "Não autorizado" }),
+					{
+						status: 401,
+						headers: { "Content-Type": "application/json" },
+					},
+				);
+			}
 			await runChecks();
 			return Response.json({ status: "ok", timestamp: Date.now() });
 		}
@@ -774,8 +838,9 @@ export async function handleRequest(
 				await trackEvent(tipo, body?.sessionId ? String(body.sessionId) : null);
 				return Response.json({ status: "ok", timestamp: Date.now() });
 			} catch (err: unknown) {
-				const msg = err instanceof Error ? err.message : String(err);
-				return new Response(JSON.stringify({ error: msg }), {
+				const errMsg = err instanceof Error ? err.message : String(err);
+				logger.error("Handler error", { path, error: errMsg });
+				return new Response(JSON.stringify({ error: "Requisição inválida" }), {
 					status: 400,
 					headers: { "Content-Type": "application/json" },
 				});
@@ -783,6 +848,26 @@ export async function handleRequest(
 		}
 		// ===== Painel Admin (só o dono) =====
 		if (path === "/api/admin/login" && method === "POST") {
+			// Rate limit dedicado de login (5/min por IP), além do escopo
+			// "admin" (20/min): corta rajadas de brute force. O atraso fixo
+			// de 1.2s abaixo desacelera tentativas distribuídas.
+			const { allowed, retryAfter } = checkRateLimitScope(
+				getClientIp(req),
+				5,
+				"login",
+			);
+			if (!allowed) {
+				return new Response(
+					JSON.stringify({ error: "Too many requests", retryAfter }),
+					{
+						status: 429,
+						headers: {
+							"Content-Type": "application/json",
+							"Retry-After": String(retryAfter),
+						},
+					},
+				);
+			}
 			const {
 				adminConfigured,
 				adminEmail,
@@ -846,7 +931,9 @@ export async function handleRequest(
 			const authed = verifySessionToken(token);
 			return Response.json({
 				authed,
-				configured: adminConfigured(),
+				// Não expor "admin existe" para quem não está autenticado
+				// (achado pentest: recon via /api/admin/me sem auth).
+				configured: authed ? adminConfigured() : false,
 				email: authed ? adminEmail() : null,
 				timestamp: Date.now(),
 			});
@@ -968,8 +1055,9 @@ export async function handleRequest(
 				});
 				return Response.json({ status: "ok", timestamp: Date.now() });
 			} catch (err: unknown) {
-				const msg = err instanceof Error ? err.message : String(err);
-				return new Response(JSON.stringify({ error: msg }), {
+				const errMsg = err instanceof Error ? err.message : String(err);
+				logger.error("Handler error", { path, error: errMsg });
+				return new Response(JSON.stringify({ error: "Requisição inválida" }), {
 					status: 400,
 					headers: { "Content-Type": "application/json" },
 				});
@@ -988,14 +1076,33 @@ export async function handleRequest(
 				await removePushSubscription(body.endpoint);
 				return Response.json({ status: "ok", timestamp: Date.now() });
 			} catch (err: unknown) {
-				const msg = err instanceof Error ? err.message : String(err);
-				return new Response(JSON.stringify({ error: msg }), {
+				const errMsg = err instanceof Error ? err.message : String(err);
+				logger.error("Handler error", { path, error: errMsg });
+				return new Response(JSON.stringify({ error: "Requisição inválida" }), {
 					status: 400,
 					headers: { "Content-Type": "application/json" },
 				});
 			}
 		}
 		if (path === "/api/push/test" && method === "POST") {
+			// Push para TODOS os inscritos do PWA: exige sessão admin
+			// (achado pentest: endpoint público spammava todos os usuários).
+			const { getSessionTokenFromCookie, verifySessionToken } = await import(
+				"./admin.js"
+			);
+			if (
+				!verifySessionToken(
+					getSessionTokenFromCookie(getHeader(req, "cookie")),
+				)
+			) {
+				return new Response(
+					JSON.stringify({ error: "Não autenticado" }),
+					{
+						status: 401,
+						headers: { "Content-Type": "application/json" },
+					},
+				);
+			}
 			// Envia um push de teste pra todos os inscritos (validar o fluxo).
 			const { sendPushAlert } = await import("./push.js");
 			const r = await sendPushAlert(
@@ -1025,11 +1132,14 @@ export async function handleRequest(
 					body.signalType,
 					body.notes ?? "",
 				);
-				await runChecks();
+				// Sem runChecks por request (achado pentest: cada POST público
+				// rodava probes + NIM + alertas — DoS de custo). O ciclo roda
+				// no cron (/api/cron) e no intervalo do worker.
 				return Response.json({ status: "ok", report, timestamp: Date.now() });
 			} catch (err: unknown) {
-				const msg = err instanceof Error ? err.message : String(err);
-				return new Response(JSON.stringify({ error: msg }), {
+				const errMsg = err instanceof Error ? err.message : String(err);
+				logger.error("Handler error", { path, error: errMsg });
+				return new Response(JSON.stringify({ error: "Requisição inválida" }), {
 					status: 400,
 					headers: { "Content-Type": "application/json" },
 				});
@@ -1055,10 +1165,7 @@ export async function handleRequest(
 		}
 		if (path === "/api/telemetry" && method === "POST") {
 			try {
-				const ip =
-					getHeader(req, "x-forwarded-for")?.split(",")[0]?.trim() ||
-					getHeader(req, "x-real-ip") ||
-					"127.0.0.1";
+				const ip = getClientIp(req) === "unknown" ? "127.0.0.1" : getClientIp(req);
 				const body = (await getReqJson(req)) as {
 					rttMs?: number;
 					effectiveType?: string;
@@ -1078,7 +1185,8 @@ export async function handleRequest(
 					rttMs,
 					effectiveType,
 				);
-				await runChecks();
+				// Sem runChecks por request (achado pentest: DoS de custo —
+				// cada POST de telemetria rodava probes + NIM + alertas).
 
 				return Response.json({
 					status: "ok",
@@ -1086,8 +1194,9 @@ export async function handleRequest(
 					timestamp: Date.now(),
 				});
 			} catch (err: unknown) {
-				const msg = err instanceof Error ? err.message : String(err);
-				return new Response(JSON.stringify({ error: msg }), {
+				const errMsg = err instanceof Error ? err.message : String(err);
+				logger.error("Handler error", { path, error: errMsg });
+				return new Response(JSON.stringify({ error: "Requisição inválida" }), {
 					status: 400,
 					headers: { "Content-Type": "application/json" },
 				});
@@ -1105,8 +1214,14 @@ export async function handleRequest(
 		return new Response("Not found", { status: 404 });
 	} catch (err: unknown) {
 		const msg = err instanceof Error ? err.message : String(err);
-		logger.error("API error", { path, error: msg });
-		return new Response(JSON.stringify({ error: msg }), {
+		logger.error("API error", {
+			path,
+			error: msg,
+			stack: err instanceof Error ? err.stack : undefined,
+		});
+		// Nunca vazar mensagens internas (stack/paths de arquivos) pro cliente
+		// (achado pentest: catch devolvia {error: msg} em 500).
+		return new Response(JSON.stringify({ error: "Erro interno" }), {
 			status: 500,
 			headers: { "Content-Type": "application/json" },
 		});
