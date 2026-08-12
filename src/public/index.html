@@ -765,7 +765,7 @@ body{font-family:var(--font);background:var(--md-sys-color-surface);color:var(--
     </div>
   </div>
   <button class="push-btn" id="btnPush" type="button" aria-label="Ativar alertas no celular" title="Receber alertas de tempestade, energia e água no celular" style="display:none">
-    <span id="pushBtnIcon">🔔</span>
+    <span id="pushBtnIcon" aria-hidden="true"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg></span>
     <span id="pushBtnText">Alertas</span>
   </button>
   <button class="push-btn" id="btnInstall" type="button" aria-label="Instalar o app" title="Instalar o Monitor Ipiranga no celular" style="display:none">⬇️ Instalar app</button>
@@ -2254,12 +2254,20 @@ function copyPrompt(provider, text) {
     } catch (e) { console.warn('toast', e); }
   }
 
+  // Ícones de sino (SVG discreto, padronizado com o design do site — mesmo
+  // traço fino dos demais ícones do header).
+  const BELL_SVG = {
+    off: '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>',
+    on: '<svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor" aria-hidden="true"><path d="M12 22c1.1 0 2-.9 2-2h-4c0 1.1.9 2 2 2zm6-6v-5c0-3.07-1.63-5.64-4.5-6.32V4c0-.83-.67-1.5-1.5-1.5s-1.5.67-1.5 1.5v.68C7.64 5.36 6 7.92 6 11v5l-2 2v1h16v-1l-2-2zm-2 0H8v-6c0-2.48 1.51-4.5 4-4.5s4 2.02 4 4.5v6z"/></svg>',
+    denied: '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8.7 3A6 6 0 0 1 18 8a21.3 21.3 0 0 0 .6 5"/><path d="M17 17H3s3-2 3-9a4.67 4.67 0 0 1 .3-1.7"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/><path d="m2 2 20 20"/></svg>',
+  };
+
   function setState(state) {
     if (!btn) return;
     btn.classList.remove('on', 'denied');
-    if (state === 'on') { btn.classList.add('on'); iconEl.textContent = '✅'; textEl.textContent = 'Alertas ativos'; }
-    else if (state === 'denied') { btn.classList.add('denied'); iconEl.textContent = '🔕'; textEl.textContent = 'Notificações bloqueadas'; }
-    else if (state === 'off') { iconEl.textContent = '🔔'; textEl.textContent = 'Ativar alertas'; }
+    if (state === 'on') { btn.classList.add('on'); iconEl.innerHTML = BELL_SVG.on; textEl.textContent = 'Alertas ativos'; }
+    else if (state === 'denied') { btn.classList.add('denied'); iconEl.innerHTML = BELL_SVG.denied; textEl.textContent = 'Notificações bloqueadas'; }
+    else if (state === 'off') { iconEl.innerHTML = BELL_SVG.off; textEl.textContent = 'Ativar alertas'; }
   }
 
   async function refreshState() {
@@ -2313,9 +2321,19 @@ function copyPrompt(provider, text) {
   async function init() {
     if (!('serviceWorker' in navigator) || !('PushManager' in window) || !btn) return;
     try {
-      const res = await fetch('/api/push/status');
-      const status = await res.json();
-      if (!status.configured || !status.vapidPublicKey) return;
+      // cache: 'no-store' + retry: um 429/erro transitório do status não pode
+      // fazer o botão sumir (bug 2026-08-12: rate limit no /api/push/status
+      // escondia o botão silenciosamente).
+      let status = null;
+      for (let attempt = 0; attempt < 3 && !status; attempt++) {
+        try {
+          const res = await fetch('/api/push/status', { cache: 'no-store' });
+          if (res.ok) status = await res.json();
+          else if (res.status !== 429) break; // erro real, não vai mudar
+        } catch (e) { /* tenta de novo */ }
+        if (!status && attempt < 2) await new Promise((r) => setTimeout(r, 1200 * (attempt + 1)));
+      }
+      if (!status || !status.configured || !status.vapidPublicKey) return;
       vapidKey = status.vapidPublicKey;
       btn.style.display = 'flex';
       // Registra o SW mesmo com notificação negada — a instalação do PWA
