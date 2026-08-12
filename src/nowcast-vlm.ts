@@ -1,6 +1,6 @@
 import { PNG } from "pngjs";
 import { type AppConfig, loadConfig } from "./config.js";
-import { getMunicipioComFallback } from "./geo-municipio.js";
+import { rotularLocalizacao } from "./geo-municipio.js";
 import { logger } from "./logger.js";
 import type { NowcastResult } from "./radar-analysis.js";
 import {
@@ -492,19 +492,14 @@ export async function generateNowcastBulletin(
 		// Para threats[0] o veredicto já vem calculado; senão calcula do movimento global.
 		let verdict: ThreatVerdict | null = nowcast.threats[0]?.threat ?? null;
 		if (cell && typeof cell.lat === "number") {
-			const { municipio, fallbackUsado } = getMunicipioComFallback(
-				cell.lat,
-				cell.lon,
-				haversineKm,
-			);
 			const ipirangaKm = haversineKm(cell.lat, cell.lon, -25.0244, -50.5847);
-			const nome =
-				municipio?.nome ?? `(${cell.lat.toFixed(2)}, ${cell.lon.toFixed(2)})`;
-			const metodo = fallbackUsado
-				? " (referência regional — fora da malha IBGE)"
-				: "";
-			const ufTxt = municipio ? ` (${municipio.uf})` : "";
-			locationNote = `- Núcleo mais ameaçador em (${cell.lat.toFixed(2)}, ${cell.lon.toFixed(2)}): município ${nome}${ufTxt}${metodo}; dista ${Math.round(ipirangaKm)} km de Ipiranga\n`;
+			// Rótulo honesto: município real (malha IBGE), referência regional só
+			// se perto (≤80 km) ou "região do {UF}" — nunca um município a
+			// centenas de km (incidente 2026-08-12: núcleo no RS citado como
+			// "São João do Triunfo").
+			const rotulo = rotularLocalizacao(cell.lat, cell.lon, haversineKm);
+			const ufTxt = rotulo.uf ? ` (${rotulo.uf})` : "";
+			locationNote = `- Núcleo mais ameaçador em (${cell.lat.toFixed(2)}, ${cell.lon.toFixed(2)}): ${rotulo.nome}${ufTxt}${rotulo.metodo}; dista ${Math.round(ipirangaKm)} km de Ipiranga\n`;
 
 			// Veredicto de ameaça DETERMINÍSTICO (Camada A): o VLM nunca decide
 			// se o núcleo vem ou não para Ipiranga — recebe a conclusão pronta.
@@ -532,18 +527,20 @@ export async function generateNowcastBulletin(
 
 				// Projeção da trajetória: em quais municípios o núcleo estará
 				// em 30/60/120 min (extrapolação linear). As "próximas cidades".
+				// Só cita município REAL (malha) ou referência próxima — projeção
+				// caindo fora da malha longe de tudo não vira nome inventado.
 				const projections = [30, 60, 120]
 					.map((t) => {
 						const p = projectCell(cell.lat, cell.lon, cellMovement, t);
-						const pm = getMunicipioComFallback(p.lat, p.lon, haversineKm);
+						const pr = rotularLocalizacao(p.lat, p.lon, haversineKm);
 						return {
 							t,
 							...p,
-							nome: pm.municipio?.nome ?? null,
-							uf: pm.municipio?.uf ?? null,
+							nome: pr.municipio?.nome ?? null,
+							uf: pr.municipio?.uf ?? null,
 						};
 					})
-					.filter((p) => p.nome && p.nome !== nome);
+					.filter((p) => p.nome && p.nome !== rotulo.nome);
 				if (projections.length > 0) {
 					const projList = projections
 						.map((p) => `${p.nome}${p.uf ? ` (${p.uf})` : ""} (${p.t} min)`)
@@ -578,12 +575,9 @@ export async function generateNowcastBulletin(
 			numberedLegend =
 				numberedThreats
 					.map((t, i) => {
-						const { municipio } = getMunicipioComFallback(
-							t.lat,
-							t.lon,
-							haversineKm,
-						);
-						return `- Núcleo ${i + 1} (círculo ${i + 1} na imagem): município ${municipio?.nome ?? "fora da malha"}${municipio ? ` (${municipio.uf})` : ""} (${t.lat.toFixed(2)}, ${t.lon.toFixed(2)}), ${intensityLabel[t.intensity] ?? t.intensity}, ~${Math.round(t.distToTargetKm)} km de Ipiranga`;
+						const rot = rotularLocalizacao(t.lat, t.lon, haversineKm);
+						const rotUf = rot.uf ? ` (${rot.uf})` : "";
+						return `- Núcleo ${i + 1} (círculo ${i + 1} na imagem): ${rot.nome}${rotUf}${rot.metodo} (${t.lat.toFixed(2)}, ${t.lon.toFixed(2)}), ${intensityLabel[t.intensity] ?? t.intensity}, ~${Math.round(t.distToTargetKm)} km de Ipiranga`;
 					})
 					.join("\n") + "\n";
 		}
