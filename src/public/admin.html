@@ -162,7 +162,7 @@ function renderCards(s) {
     { label: 'Acessos hoje', value: fmt(s.acessos.hoje), sub: `${fmt(s.acessos.semana)} na semana · ${fmt(s.acessos.total)} total`, accent: true },
     { label: 'Acessos simultâneos', value: fmt(s.sessoesAtivasAgora), sub: 'sessões ativas agora (3 min)' },
     { label: 'Sessões ativas (24h)', value: fmt(s.sessoesAtivas24h), sub: `${fmt(s.sessoesHoje)} novas hoje` },
-    { label: 'Instalações do app', value: fmt(s.instalacoesPwa), sub: 'PWA adicionado à tela inicial' },
+    { label: 'Instalações do app', value: fmt(s.instalacoesPwa), sub: `PWA adicionado à tela inicial · ${fmt(s.instalacoesDispositivos)} dispositivo(s) distinto(s)` },
     { label: 'Inscritos nos alertas', value: fmt(s.inscritosPush), sub: 'push ativos' },
   ];
   $('cards').innerHTML = cards.map((c) => `

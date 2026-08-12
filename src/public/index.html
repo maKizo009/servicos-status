@@ -2409,9 +2409,17 @@ function copyPrompt(provider, text) {
     };
     track('pageview');
     setInterval(() => track('heartbeat'), 60000);
-    window.addEventListener('appinstalled', () => track('install'));
-    // Fallback: navegadores sem beforeinstallprompt (iOS Safari) marcam install no 2º pageview
-    if (window.matchMedia('(display-mode: standalone)').matches) track('install');
+    window.addEventListener('appinstalled', function () {
+      localStorage.setItem('mi_installed', '1');
+      track('install');
+    });
+    // Fallback: navegadores sem beforeinstallprompt (iOS Safari) marcam install
+    // no modo standalone — mas UMA vez por dispositivo (guard local), não a cada
+    // abertura do app (achado 2026-08-12: contador inflava a cada pageview).
+    if (!localStorage.getItem('mi_installed') && window.matchMedia('(display-mode: standalone)').matches) {
+      localStorage.setItem('mi_installed', '1');
+      track('install');
+    }
   } catch (e) { console.warn('telemetria', e); }
 })();
 </script>
