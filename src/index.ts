@@ -863,6 +863,79 @@ export async function handleRequest(
 			}
 			return Response.json(await getAdminStats());
 		}
+		// ===== WebAuthn (impressão digital / passkey) =====
+		const authOk = await (async () => {
+			const { getSessionTokenFromCookie, verifySessionToken } = await import(
+				"./admin.js"
+			);
+			return verifySessionToken(
+				getSessionTokenFromCookie(getHeader(req, "cookie")),
+			);
+		})();
+		if (path === "/api/admin/webauthn/register/begin" && method === "POST") {
+			if (!authOk) {
+				return new Response(JSON.stringify({ error: "Não autenticado" }), {
+					status: 401,
+					headers: { "Content-Type": "application/json" },
+				});
+			}
+			const { webauthnRegisterBegin } = await import("./admin.js");
+			const out = await webauthnRegisterBegin();
+			if (!out) {
+				return new Response(
+					JSON.stringify({ error: "WebAuthn indisponível" }),
+					{ status: 500, headers: { "Content-Type": "application/json" } },
+				);
+			}
+			return Response.json(out);
+		}
+		if (path === "/api/admin/webauthn/register/complete" && method === "POST") {
+			if (!authOk) {
+				return new Response(JSON.stringify({ error: "Não autenticado" }), {
+					status: 401,
+					headers: { "Content-Type": "application/json" },
+				});
+			}
+			const { webauthnRegisterComplete } = await import("./admin.js");
+			const out = await webauthnRegisterComplete(
+				await getReqJson(req),
+				getHeader(req, "origin"),
+			);
+			return Response.json(out, { status: out.ok ? 200 : 400 });
+		}
+		if (path === "/api/admin/webauthn/login/begin" && method === "POST") {
+			const { webauthnLoginBegin } = await import("./admin.js");
+			const out = await webauthnLoginBegin();
+			if (!out) {
+				return new Response(
+					JSON.stringify({ error: "Nenhuma passkey registrada" }),
+					{ status: 404, headers: { "Content-Type": "application/json" } },
+				);
+			}
+			return Response.json(out);
+		}
+		if (path === "/api/admin/webauthn/login/complete" && method === "POST") {
+			const { sessionCookie, webauthnLoginComplete } = await import(
+				"./admin.js"
+			);
+			const out = await webauthnLoginComplete(
+				await getReqJson(req),
+				getHeader(req, "origin"),
+			);
+			if (!out.ok || !out.token) {
+				return new Response(JSON.stringify({ error: out.error ?? "Falha" }), {
+					status: 400,
+					headers: { "Content-Type": "application/json" },
+				});
+			}
+			return new Response(JSON.stringify({ status: "ok" }), {
+				status: 200,
+				headers: {
+					"Content-Type": "application/json",
+					"Set-Cookie": sessionCookie(out.token),
+				},
+			});
+		}
 		// ===== Push Web (PWA) — inscrições e teste =====
 		if (path === "/api/push/status") {
 			const { countPushSubscriptions, pushConfigured } = await import(
