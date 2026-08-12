@@ -10,7 +10,8 @@
  * VAPID keys: geradas com `generateVAPIDKeys()` (lib web-push) e configuradas
  * nas envs da Vercel (VAPID_PUBLIC_KEY / VAPID_PRIVATE_KEY / VAPID_SUBJECT).
  */
-import { sendNotification, setVapidDetails } from "web-push";
+import webpush from "web-push";
+const { sendNotification, setVapidDetails } = webpush;
 import { loadConfig } from "./config.js";
 import { getDbClient } from "./db.js";
 import { logger } from "./logger.js";
