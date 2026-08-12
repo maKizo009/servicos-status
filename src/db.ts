@@ -150,6 +150,11 @@ export async function initDb(): Promise<Client> {
 				session_id TEXT,
 				ts INTEGER NOT NULL
 			)`,
+			// Dedup de instalação: 1 evento 'install' por dispositivo (session_id).
+			// Sem isso, cada abertura do app em modo standalone contava +1 install
+			// (achado 2026-08-12 — número de instalações inflado no painel).
+			`CREATE UNIQUE INDEX IF NOT EXISTS idx_app_events_install_once
+				ON app_events(session_id) WHERE tipo='install'`,
 				`CREATE TABLE IF NOT EXISTS app_sessions (
 				session_id TEXT PRIMARY KEY,
 				first_seen INTEGER NOT NULL,

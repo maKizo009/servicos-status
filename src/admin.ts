@@ -131,10 +131,20 @@ export async function trackEvent(
 ): Promise<void> {
 	const db = await getDbClient();
 	const now = Date.now();
-	await db.execute({
-		sql: "INSERT INTO app_events (tipo, session_id, ts) VALUES (?, ?, ?)",
-		args: [tipo, sessionId ?? null, now],
-	});
+	if (tipo === "install") {
+		// INSERT OR IGNORE + índice único parcial: 1 install por session_id.
+		// O frontend pode mandar install repetido (abertura standalone) — o
+		// banco ignora os duplicados (achado 2026-08-12).
+		await db.execute({
+			sql: "INSERT OR IGNORE INTO app_events (tipo, session_id, ts) VALUES ('install', ?, ?)",
+			args: [sessionId, now],
+		});
+	} else {
+		await db.execute({
+			sql: "INSERT INTO app_events (tipo, session_id, ts) VALUES (?, ?, ?)",
+			args: [tipo, sessionId ?? null, now],
+		});
+	}
 	if (sessionId && (tipo === "pageview" || tipo === "heartbeat")) {
 		await db.execute({
 			sql: `INSERT INTO app_sessions (session_id, first_seen, last_seen)
@@ -162,6 +172,7 @@ export interface AdminStats {
 	geradoEm: number;
 	acessos: { hoje: number; semana: number; total: number };
 	instalacoesPwa: number;
+	instalacoesDispositivos: number;
 	inscritosPush: number;
 	sessoesAtivasAgora: number;
 	sessoesAtivas24h: number;
@@ -190,6 +201,7 @@ export async function getAdminStats(): Promise<AdminStats> {
 		pvSemana,
 		pvTotal,
 		installs,
+		installsDevices,
 		push,
 		ativosAgora,
 		ativos24h,
@@ -205,6 +217,10 @@ export async function getAdminStats(): Promise<AdminStats> {
 		),
 		count("SELECT COUNT(*) AS n FROM app_events WHERE tipo='pageview'", []),
 		count("SELECT COUNT(*) AS n FROM app_events WHERE tipo='install'", []),
+		count(
+			"SELECT COUNT(DISTINCT session_id) AS n FROM app_events WHERE tipo='install' AND session_id IS NOT NULL",
+			[],
+		),
 		count("SELECT COUNT(*) AS n FROM push_subscriptions", []),
 		count("SELECT COUNT(*) AS n FROM app_sessions WHERE last_seen >= ?", [
 			ativoAgora,
@@ -243,6 +259,7 @@ export async function getAdminStats(): Promise<AdminStats> {
 		geradoEm: now,
 		acessos: { hoje: pvHoje, semana: pvSemana, total: pvTotal },
 		instalacoesPwa: installs,
+		instalacoesDispositivos: installsDevices,
 		inscritosPush: push,
 		sessoesAtivasAgora: ativosAgora,
 		sessoesAtivas24h: ativos24h,
