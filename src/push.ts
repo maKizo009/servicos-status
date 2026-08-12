@@ -70,6 +70,42 @@ export async function listPushSubscriptions(): Promise<PushSubscription[]> {
 }
 
 /**
+ * Lista inscrições com metadados para o painel admin (ver QUEM está inscrito):
+ * host do push service (fcm/mozilla/apple) + datas. Ajuda a distinguir
+ * inscrições reais de visitantes das sintéticas de teste.
+ */
+export interface PushSubscriptionMeta {
+	endpoint: string;
+	host: string;
+	createdAt: number;
+	lastSeenAt: number;
+}
+
+export async function listPushSubscriptionsMeta(): Promise<
+	PushSubscriptionMeta[]
+> {
+	const db = await getDbClient();
+	const res = await db.execute(
+		"SELECT endpoint, created_at, last_seen_at FROM push_subscriptions ORDER BY created_at DESC",
+	);
+	return res.rows.map((r) => {
+		const endpoint = String(r.endpoint);
+		let host = "";
+		try {
+			host = new URL(endpoint).host;
+		} catch {
+			host = "desconhecido";
+		}
+		return {
+			endpoint,
+			host,
+			createdAt: Number(r.created_at),
+			lastSeenAt: Number(r.last_seen_at),
+		};
+	});
+}
+
+/**
  * Cooldown por evento: só envia de novo depois de ttlMs (ex: alerta de
  * temporal não repete a cada ciclo de 10 min — 1x por hora).
  */

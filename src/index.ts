@@ -671,10 +671,14 @@ export async function handleRequest(
 	// Rate limit all /api/* endpoints except /health
 	if (path.startsWith("/api/")) {
 		const ip = getClientIp(req);
-		// Telemetria (pageview/heartbeat) e admin têm rate limits próprios
-		// (o heartbeat roda a cada 60s por sessão — o limite comum de 10/min
-		// bloquearia o próprio site).
-		if (path === "/api/track") {
+		// /api/push/status é config PÚBLICA do botão de notificações (VAPID
+		// pública + contagem): o frontend consulta no load de toda página.
+		// Rate limit comum (10/min) fazia o botão SUMIR silenciosamente quando
+		// o visitante recarregava muito (bug reportado 2026-08-12). Sem
+		// rate limit, como /health — endpoint leve e sem dados sensíveis.
+		if (path === "/api/push/status") {
+			// sem rate limit — o botão precisa responder sempre
+		} else if (path === "/api/track") {
 			const { allowed, retryAfter } = checkRateLimitScope(ip, 120, "track");
 			if (!allowed) {
 				return new Response(
@@ -940,6 +944,25 @@ export async function handleRequest(
 				});
 			}
 			return Response.json(await getAdminStats());
+		}
+		// Lista de inscritos nos alertas (para o dono ver QUEM está inscrito —
+		// host do push service + datas; ajuda a separar visitantes reais das
+		// inscrições sintéticas de teste). Autenticado como o resto do admin.
+		if (path === "/api/admin/push-subscriptions" && method === "GET") {
+			const { getSessionTokenFromCookie, verifySessionToken } = await import(
+				"./admin.js"
+			);
+			const token = getSessionTokenFromCookie(getHeader(req, "cookie"));
+			if (!verifySessionToken(token)) {
+				return new Response(JSON.stringify({ error: "Não autenticado" }), {
+					status: 401,
+					headers: { "Content-Type": "application/json" },
+				});
+			}
+			const { listPushSubscriptionsMeta } = await import("./push.js");
+			return Response.json({
+				subscriptions: await listPushSubscriptionsMeta(),
+			});
 		}
 		// ===== WebAuthn (impressão digital / passkey) =====
 		const authOk = await (async () => {
