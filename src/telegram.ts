@@ -2,10 +2,10 @@ import { logger } from "./logger.js";
 import type {
 	AlertLevel,
 	CopelOutage,
-	PortalResult,
 	SaneparInterruption,
 	UnifiedReport,
 } from "./types.js";
+import { formatCopelDuration, formatCopelPrevisao } from "./copel-format.js";
 
 interface AlertPayload {
 	botToken: string;
@@ -14,7 +14,6 @@ interface AlertPayload {
 	operatorResults: {
 		operator: string;
 		status: string;
-		portals: PortalResult[];
 	}[];
 	summary: string;
 }
@@ -28,15 +27,7 @@ function buildAlertText(payload: AlertPayload): string {
 	const header = `${emoji[payload.level]} *Monitor de Conectividade - Ipiranga/PR*\n${payload.summary}\n`;
 
 	const body = payload.operatorResults
-		.map((op) => {
-			const portalLines = op.portals
-				.map(
-					(p) =>
-						`  ${p.success ? "✅" : "❌"} ${p.host} - ${p.latencyMs.toFixed(0)}ms${p.error ? ` (${p.error})` : ""}`,
-				)
-				.join("\n");
-			return `*${op.operator}* (${op.status})\n${portalLines}`;
-		})
+		.map((op) => `*${op.operator}* (${op.status})`)
 		.join("\n\n");
 
 	return `${header}\n${body}\n\n🕐 ${new Date().toISOString()}`;
@@ -111,14 +102,15 @@ export async function sendCopelAlert(
 	const tag = outage.ehProgramada
 		? "⚡️ *DESLIGAMENTO PROGRAMADO*"
 		: "🔴 *FALTA DE ENERGIA (Emergência)*";
-	const previsao = outage.previsaoRestabelecimento || "Sem previsão";
+	const previsao = formatCopelPrevisao(outage);
+	const duracao = formatCopelDuration(outage.faixaDuracao);
 
 	const text = `${tag} - IPIRANGA/PR
 
 📍 *Local:* ${outage.bairro}, Ipiranga
 🆔 *Ocorrência:* #${outage.numeroSequencial}
 📅 *Início:* ${outage.dataInicio}
-⏱️ *Duração estimada:* ${outage.faixaDuracao}
+⏱️ *Duração estimada:* ${duracao || "Não informada"}
 🔌 *Previsão de retorno:* ${previsao}
 👥 *Consumidores afetados:* ${outage.qtdConsumidores}
 📋 *Status:* ${outage.statusEquipe}

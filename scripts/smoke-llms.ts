@@ -36,7 +36,7 @@ const report: UnifiedReport = {
 			name: "Claro",
 			category: "telecom",
 			status: "warn",
-			details: "Portal lento (>300ms)",
+			details: "1 teste(s) de conectividade falharam",
 			timestamp: Date.now(),
 		},
 		{
@@ -63,11 +63,11 @@ const checks: Record<string, boolean> = {
 	"link para /llms-instructions.txt presente": txt.includes(
 		"/llms-instructions.txt",
 	),
-	"rótulo novo 'Portais de Autoatendimento'": txt.includes(
-		"Portais de Autoatendimento (Claro/Vivo/TIM)",
+	"rótulo 'Telecomunicações (Claro/Vivo/TIM)'": txt.includes(
+		"Telecomunicações (Claro/Vivo/TIM)",
 	),
-	"nota sobre portal ≠ sinal celular": txt.includes(
-		"não a qualidade do sinal celular local",
+	"nota sobre telecom ≠ sinal celular": txt.includes(
+		"não mede a qualidade do sinal celular em tempo real",
 	),
 	"timestamp de geração da requisição": txt.includes(
 		"Documento gerado nesta requisição às:",
@@ -82,7 +82,7 @@ const checks: Record<string, boolean> = {
 		"Instruções para Agentes de IA",
 	),
 	"instruções mencionam que telecom ≠ sinal": instructions.includes(
-		"NÃO sinal celular local",
+		"NÃO sinal celular em tempo real",
 	),
 };
 
@@ -97,7 +97,7 @@ console.log("\n--- SEÇÃO TELECOM ---");
 console.log(
 	txt
 		.split("\n")
-		.filter((l) => l.includes("Portais") || l.includes("Nota:"))
+		.filter((l) => l.includes("Telecomunicações") || l.includes("Nota:"))
 		.join("\n"),
 );
 process.exit(ok ? 0 : 1);

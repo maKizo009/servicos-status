@@ -5,7 +5,6 @@ import { logger } from "./logger.js";
 import { checkBgpPrefixes } from "./probes/bgp.js";
 import { checkConnectivity } from "./probes/connectivity.js";
 import { checkCopel } from "./probes/copel.js";
-import { checkPortal } from "./probes/portal.js";
 import { checkSanepar } from "./probes/sanepar.js";
 import type { EventTracker } from "./state.js";
 import type {
@@ -13,7 +12,6 @@ import type {
 	ConnectivityResult,
 	CopelOutage,
 	OperatorName,
-	PortalResult,
 	ProbeStatus,
 	SaneparInterruption,
 	ServiceHealth,
@@ -23,7 +21,6 @@ import type {
 export interface AllCheckData {
 	operators: {
 		name: OperatorName;
-		portalResults: PortalResult[];
 		connectivityResults: ConnectivityResult[];
 		bgpResult: BgpResult;
 	}[];
@@ -43,14 +40,8 @@ export async function runAllChecks(
 
 	for (const [opName, opCfg] of Object.entries(config.operators) as [
 		OperatorName,
-		{ asn: number; portals: string[] },
+		{ asn: number },
 	][]) {
-		const portalResults = await Promise.all(
-			opCfg.portals.map((host) =>
-				checkPortal(host, opName, config.portalTimeoutMs),
-			),
-		);
-
 		const connectivityResults = await Promise.all(
 			connectivityTargets.map((t) =>
 				checkConnectivity(t.host, t.label, config.connectivityTimeoutMs),
@@ -65,7 +56,6 @@ export async function runAllChecks(
 
 		operatorResults.push({
 			name: opName,
-			portalResults,
 			connectivityResults,
 			bgpResult,
 		});
@@ -126,19 +116,20 @@ export const DEBOUNCE_THRESHOLD = 2;
 /**
  * Classifica o nível de saúde de uma operadora.
  *
- * Semântica corrigida (Achados 3 e 4):
- * - Falha CONFIRMADA de portal (DNS/HTTP>=500/SSL) → critical somente após
- *   `debounceThreshold` ciclos consecutivos (1ª falha = warn).
- * - Timeout de portal é INDETERMINADO: pesa como critical apenas quando o
- *   controle de conectividade (Google/Cloudflare) está OK (rede do monitor
- *   saudável → provável problema na operadora) E debounced. Com conectividade
- *   também falhando, é problema do monitor → warn.
- * - Latência alta de portal (>latencyCritMs) → warn (portal lento ≠ rede fora).
- * - Latência alta de conectividade → critical (rede lenta de verdade).
- * - Falha de conectividade → critical quando debounced.
+ * Semântica corrigida (Achados 3 e 4) e simplificada (2026-08-12: removido o
+ * probe de portal das operadoras — ping em minhaclaro/meuvivo/meutim não mede
+ * a rede da operadora, só o site de autoatendimento; fora do escopo do
+ * monitor, que não tem como testar a conexão das operadoras diretamente):
+ * - Falha CONFIRMADA de conectividade (DNS/HTTP>=500/SSL) → critical após
+ *   `debounceThreshold` ciclos (1ª falha = warn).
+ * - Timeout de conectividade é INDETERMINADO (problema do monitor ou da rede
+ *   dele) → warn.
+ * - Latência alta de conectividade (>latencyCritMs) → critical (rede lenta de
+ *   verdade no monitor — sinal de problema de rede regional).
+ * - BGP: 0 prefixos anunciados (sem erro) → critical (rede da operadora não
+ *   está anunciando rotas — dado real vindo do RIPE).
  */
 export function assessLevel(
-	portals: PortalResult[],
 	connectivity: ConnectivityResult[],
 	bgp: BgpResult | BgpResult[] | null,
 	latencyWarnMs = 150,
@@ -171,57 +162,29 @@ export function assessLevel(
 			b.asn > 0,
 	);
 
-	// Controle de rede do monitor: pelo menos um alvo de conectividade OK.
-	const connOk = connectivity.some((c) => c.success);
-
-	// Falhas confirmadas (debounced)
-	const portalFailures = portals.filter(isFailure);
-	const confirmedPortalFailures = portalFailures.filter((p) =>
-		confirmed(p.host, true),
-	);
 	const connFailures = connectivity.filter(isFailure);
 	const confirmedConnFailures = connFailures.filter((c) =>
 		confirmed(c.host, true),
 	);
-
-	// Timeouts de portal: indeterminados; pesam como critical só com rede do
-	// monitor saudável (connOk) E debounced.
-	const portalTimeouts = portals.filter(isTimeout);
-	const criticalPortalTimeouts =
-		connOk &&
-		portalTimeouts.length > 0 &&
-		portalTimeouts.every((p) => confirmed(p.host, true));
 	const connTimeouts = connectivity.filter(isTimeout);
 
 	// Latência
 	const criticalLatencyConnectivity = connectivity.some(
 		(c) => c.latencyMs > latencyCritMs && c.success,
 	);
-	const criticalLatencyPortal = portals.some(
-		(p) => p.latencyMs > latencyCritMs && p.success,
-	);
 
 	if (
-		confirmedPortalFailures.length > 0 ||
 		confirmedConnFailures.length > 0 ||
-		criticalPortalTimeouts ||
 		bgpZeroPrefixes ||
 		criticalLatencyConnectivity
 	)
 		return "critical";
 
-	const highLatency =
-		portals.some((p) => p.latencyMs > latencyWarnMs && p.success) ||
-		connectivity.some((c) => c.latencyMs > latencyWarnMs && c.success);
+	const highLatency = connectivity.some(
+		(c) => c.latencyMs > latencyWarnMs && c.success,
+	);
 
-	if (
-		portalFailures.length > 0 ||
-		connFailures.length > 0 ||
-		connTimeouts.length > 0 ||
-		portalTimeouts.length > 0 ||
-		highLatency ||
-		criticalLatencyPortal
-	)
+	if (connFailures.length > 0 || connTimeouts.length > 0 || highLatency)
 		return "warn";
 
 	return "ok";
@@ -270,7 +233,6 @@ export async function buildUnifiedReport(
 
 	for (const op of data.operators) {
 		let status = assessLevel(
-			op.portalResults,
 			op.connectivityResults,
 			op.bgpResult,
 			latencyWarnMs,
@@ -278,12 +240,6 @@ export async function buildUnifiedReport(
 			failureCounts,
 			debounceThreshold,
 		);
-		const portalFailures = op.portalResults.filter(
-			(p) => deriveProbeStatus(p) === "failure",
-		).length;
-		const portalTimeouts = op.portalResults.filter(
-			(p) => deriveProbeStatus(p) === "timeout",
-		).length;
 		const connFailures = op.connectivityResults.filter(
 			(c) => deriveProbeStatus(c) === "failure",
 		).length;
@@ -322,10 +278,6 @@ export async function buildUnifiedReport(
 			details = crowdsourcedIspState.details;
 		} else if (status === "critical") {
 			const parts: string[] = [];
-			if (portalFailures > 0)
-				parts.push(`${portalFailures} portal(is) com falha confirmada`);
-			if (portalTimeouts > 0)
-				parts.push(`${portalTimeouts} portal(is) sem resposta (timeout)`);
 			if (connFailures > 0)
 				parts.push(`${connFailures} teste(s) de conectividade falharam`);
 			if (bgpFail) parts.push("0 prefixos BGP anunciados");
@@ -338,22 +290,14 @@ export async function buildUnifiedReport(
 			details = parts.join(", ") || "Falha de serviço";
 		} else if (status === "warn") {
 			const parts: string[] = [];
-			if (portalFailures > 0)
-				parts.push(`${portalFailures} portal(is) com falha confirmada`);
-			if (portalTimeouts > 0)
-				parts.push(
-					`${portalTimeouts} portal(is) sem resposta (timeout — aguardando confirmação)`,
-				);
 			if (connFailures > 0)
 				parts.push(`${connFailures} teste(s) de conectividade falharam`);
 			if (
-				op.portalResults.some((p) => p.latencyMs > latencyCritMs && p.success)
+				op.connectivityResults.some(
+					(c) => c.latencyMs > latencyWarnMs && c.success,
+				)
 			)
-				parts.push("Portal lento (>300ms)");
-			if (
-				op.portalResults.some((p) => p.latencyMs > latencyWarnMs && p.success)
-			)
-				parts.push("Latência elevada no portal (>150ms)");
+				parts.push("Latência elevada de rede (>150ms)");
 			details = parts.join(", ") || "Latência elevada detectada";
 		}
 
@@ -364,7 +308,6 @@ export async function buildUnifiedReport(
 			details,
 			timestamp: data.timestamp,
 			data: {
-				portalResults: op.portalResults,
 				connectivityResults: op.connectivityResults,
 				bgp: op.bgpResult,
 				signalReport: activeSignalReport ?? null,
@@ -397,6 +340,12 @@ export async function buildUnifiedReport(
 		((copelTotalConsumers / cityTotalConsumers) * 100).toFixed(2),
 	);
 
+	// Desligamentos PROGRAMADOS (lembrete no topo da página): ocorrências
+	// com eh_programada=true. A API da Copel (mapa_poligonos_data) expõe a
+	// lista na MESMA resposta das emergências — campo eh_programada — e o
+	// probe já filtra por município; aqui só separamos para a UI.
+	const scheduledOutages = uniqueOutages.filter((o) => o.ehProgramada);
+
 	services.push({
 		name: "Copel",
 		category: "utility",
@@ -415,6 +364,7 @@ export async function buildUnifiedReport(
 			cityTotalConsumers,
 			pctAffected,
 			duplicatesFound: copelDupes,
+			scheduledOutages,
 		},
 	});
 

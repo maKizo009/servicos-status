@@ -4,7 +4,6 @@ export type OperatorName = "Claro" | "Vivo" | "TIM";
 
 export interface OperatorConfig {
 	asn: number;
-	portals: string[];
 }
 
 /**
@@ -13,17 +12,6 @@ export interface OperatorConfig {
  * de forma confirmada: DNS, HTTP >=500, SSL).
  */
 export type ProbeStatus = "ok" | "timeout" | "failure";
-
-export interface PortalResult {
-	operator: OperatorName;
-	host: string;
-	success: boolean;
-	latencyMs: number;
-	error: string;
-	timestamp: number;
-	/** Classificação fina da sondagem (Achado 4: timeout ≠ falha). */
-	probeStatus?: ProbeStatus;
-}
 
 export interface ConnectivityResult {
 	label: string;
@@ -58,7 +46,6 @@ export interface LocalSignalReport {
 
 export interface CheckResult {
 	operator: OperatorName;
-	portalResults: PortalResult[];
 	connectivityResults: ConnectivityResult[];
 	bgpResult: BgpResult | null;
 	status: "ok" | "warn" | "critical";

@@ -8,7 +8,6 @@ import type {
 	ConnectivityResult,
 	LocalSignalReport,
 	OperatorName,
-	PortalResult,
 	WeatherBulletin,
 	WeatherRadarData,
 } from "./types.js";
@@ -43,15 +42,6 @@ export async function initDb(): Promise<Client> {
 	try {
 		await db.batch(
 			[
-				`CREATE TABLE IF NOT EXISTS portal_results (
-				id INTEGER PRIMARY KEY AUTOINCREMENT,
-				operator TEXT NOT NULL,
-				host TEXT NOT NULL,
-				success INTEGER NOT NULL,
-				latency_ms REAL NOT NULL,
-				error TEXT DEFAULT '',
-				timestamp INTEGER NOT NULL
-			)`,
 				`CREATE TABLE IF NOT EXISTS connectivity_results (
 				id INTEGER PRIMARY KEY AUTOINCREMENT,
 				label TEXT NOT NULL,
@@ -178,7 +168,6 @@ export async function initDb(): Promise<Client> {
 				purpose TEXT NOT NULL,
 				ts INTEGER NOT NULL
 			)`,
-				"CREATE INDEX IF NOT EXISTS idx_portal_timestamp ON portal_results(timestamp)",
 				"CREATE INDEX IF NOT EXISTS idx_connectivity_timestamp ON connectivity_results(timestamp)",
 				"CREATE INDEX IF NOT EXISTS idx_bgp_timestamp ON bgp_results(timestamp)",
 				"CREATE INDEX IF NOT EXISTS idx_known_events_source ON known_events(source)",
@@ -453,21 +442,6 @@ export async function getActiveSignalReports(): Promise<LocalSignalReport[]> {
 	}));
 }
 
-export async function savePortalResult(r: PortalResult): Promise<void> {
-	const db = await getDbClient();
-	await db.execute({
-		sql: "INSERT INTO portal_results (operator, host, success, latency_ms, error, timestamp) VALUES (?, ?, ?, ?, ?, ?)",
-		args: [
-			r.operator,
-			r.host,
-			r.success ? 1 : 0,
-			r.latencyMs,
-			r.error,
-			r.timestamp,
-		],
-	});
-}
-
 export async function saveConnectivityResult(
 	r: ConnectivityResult,
 ): Promise<void> {
@@ -498,36 +472,6 @@ export async function saveBgpResult(r: BgpResult): Promise<void> {
 			r.error ?? "",
 		],
 	});
-}
-
-export async function getLatestPortalResults(
-	limit = 50,
-): Promise<PortalResult[]> {
-	const db = await getDbClient();
-	const res = await db.execute({
-		sql: `SELECT operator, host, success, latency_ms as latencyMs, error, timestamp
-       FROM portal_results
-       ORDER BY timestamp DESC
-       LIMIT ?`,
-		args: [limit],
-	});
-
-	return res.rows.map((r: Record<string, unknown>) => ({
-		operator: r.operator as OperatorName,
-		host: String(r.host),
-		success: Boolean(r.success),
-		latencyMs: Number(r.latencyMs),
-		error: String(r.error ?? ""),
-		timestamp: Number(r.timestamp),
-		// Dados antigos não têm probeStatus; deriva de success/error.
-		probeStatus: r.success
-			? "ok"
-			: String(r.error ?? "")
-						.toLowerCase()
-						.includes("timeout")
-				? "timeout"
-				: "failure",
-	}));
 }
 
 export async function getLatestConnectivityResults(
@@ -578,38 +522,6 @@ export async function getLatestBgpResults(limit = 50): Promise<BgpResult[]> {
 		samplePrefixes: [],
 		timestamp: Number(r.timestamp),
 		error: r.error ? String(r.error) : undefined,
-	}));
-}
-
-export async function getPortalHistory(
-	operator: string,
-	limit = 100,
-): Promise<PortalResult[]> {
-	const db = await getDbClient();
-	const res = await db.execute({
-		sql: `SELECT operator, host, success, latency_ms as latencyMs, error, timestamp
-       FROM portal_results
-       WHERE operator = ?
-       ORDER BY timestamp DESC
-       LIMIT ?`,
-		args: [operator, limit],
-	});
-
-	return res.rows.map((r: Record<string, unknown>) => ({
-		operator: r.operator as OperatorName,
-		host: String(r.host),
-		success: Boolean(r.success),
-		latencyMs: Number(r.latencyMs),
-		error: String(r.error ?? ""),
-		timestamp: Number(r.timestamp),
-		// Dados antigos não têm probeStatus; deriva de success/error.
-		probeStatus: r.success
-			? "ok"
-			: String(r.error ?? "")
-						.toLowerCase()
-						.includes("timeout")
-				? "timeout"
-				: "failure",
 	}));
 }
 

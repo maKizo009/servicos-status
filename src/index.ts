@@ -12,16 +12,13 @@ import {
 	getLatestBgpResults,
 	getLatestConnectivityResults,
 	getLatestNowcastBulletin,
-	getLatestPortalResults,
 	getLatestWeatherBulletin,
-	getPortalHistory,
 	getTelemetryStats,
 	initDb,
 	saveBgpResult,
 	saveConnectivityResult,
 	saveEventLog,
 	saveNowcastBulletin,
-	savePortalResult,
 	saveSignalReport,
 	saveTelemetryLog,
 } from "./db.js";
@@ -48,7 +45,6 @@ import type {
 	CheckResult,
 	ConnectivityResult,
 	OperatorName,
-	PortalResult,
 	RainAlertLevel,
 	UnifiedReport,
 	WeatherState,
@@ -81,7 +77,7 @@ export async function ensureInitialized(): Promise<void> {
 }
 
 const checkResults: Map<OperatorName, CheckResult> = new Map();
-let lastResults: PortalResult[] = [];
+let lastResults: ConnectivityResult[] = [];
 
 let currentLevel: AlertLevel = "ok";
 let lastUnifiedReportTime = 0;
@@ -120,26 +116,21 @@ async function runChecks(): Promise<void> {
 	// Atualiza debounce ANTES de classificar (Achado 4): falha isolada = warn,
 	// N consecutivas = critical.
 	for (const op of data.operators) {
-		updateFailureCounts(op.portalResults);
 		updateFailureCounts(op.connectivityResults);
 	}
 
 	// Save operator results to DB and update in-memory state
-	const allPortalResults: PortalResult[] = [];
 	const allConnResults: ConnectivityResult[] = [];
 	const allBgpResults: BgpResult[] = [];
 
 	for (const op of data.operators) {
-		for (const r of op.portalResults) await savePortalResult(r);
 		for (const r of op.connectivityResults) await saveConnectivityResult(r);
 		await saveBgpResult(op.bgpResult);
 
-		allPortalResults.push(...op.portalResults);
 		allConnResults.push(...op.connectivityResults);
 		allBgpResults.push(op.bgpResult);
 
 		const opLevel = assessLevel(
-			op.portalResults,
 			op.connectivityResults,
 			op.bgpResult,
 			config.latencyWarnMs,
@@ -149,7 +140,6 @@ async function runChecks(): Promise<void> {
 		);
 		checkResults.set(op.name, {
 			operator: op.name,
-			portalResults: op.portalResults,
 			connectivityResults: op.connectivityResults,
 			bgpResult: op.bgpResult,
 			status: opLevel,
@@ -157,11 +147,10 @@ async function runChecks(): Promise<void> {
 		});
 	}
 
-	lastResults = allPortalResults;
+	lastResults = allConnResults;
 
 	// Operator aggregated alert (only on level change — existing behavior)
 	const newLevel = assessLevel(
-		allPortalResults,
 		allConnResults,
 		allBgpResults,
 		config.latencyWarnMs,
@@ -191,7 +180,6 @@ async function runChecks(): Promise<void> {
 						: r.status === "warn"
 							? "⚠️ Atenção"
 							: "❌ Crítico",
-				portals: r.portalResults,
 			})),
 			summary,
 		});
@@ -251,8 +239,6 @@ async function runChecks(): Promise<void> {
 	}
 
 	logger.info("Check cycle completed", {
-		totalPortals: allPortalResults.length,
-		portalsOk: allPortalResults.filter((r) => r.success).length,
 		activeCopel: data.copelOutages.length,
 		newCopel: data.newCopelOutages.length,
 		activeSanepar: data.saneparInterruptions.length,
@@ -285,13 +271,6 @@ function handleStatus(): Response {
 	const results = [...checkResults.entries()].map(([name, r]) => ({
 		operator: name,
 		status: r.status,
-		portals: r.portalResults.map((p) => ({
-			host: p.host,
-			success: p.success,
-			latencyMs: p.latencyMs,
-			error: p.error,
-			probeStatus: p.probeStatus ?? deriveProbeStatus(p),
-		})),
 		connectivity: r.connectivityResults.map((c) => ({
 			label: c.label,
 			success: c.success,
@@ -318,7 +297,6 @@ function handleStatus(): Response {
 }
 
 async function handleHistory(url: URL): Promise<Response> {
-	const operator = url.searchParams.get("operator");
 	// Clamp de input: limit ausente/0/negativo/NaN vira 100; teto de 1000
 	// (achado pentest: limit=-5 retornava o histórico inteiro).
 	const limitRaw = Number(url.searchParams.get("limit"));
@@ -327,13 +305,7 @@ async function handleHistory(url: URL): Promise<Response> {
 			? Math.min(Math.floor(limitRaw), 1000)
 			: 100;
 
-	if (operator) {
-		const history = await getPortalHistory(operator, limit);
-		return Response.json({ operator, count: history.length, results: history });
-	}
-
 	return Response.json({
-		portals: await getLatestPortalResults(limit),
 		connectivity: await getLatestConnectivityResults(limit),
 		bgp: await getLatestBgpResults(limit),
 	});
@@ -1258,7 +1230,6 @@ async function runOnce(): Promise<void> {
 	const data = await runAllChecks(config, tracker);
 
 	for (const op of data.operators) {
-		for (const r of op.portalResults) savePortalResult(r);
 		for (const r of op.connectivityResults) saveConnectivityResult(r);
 		saveBgpResult(op.bgpResult);
 	}

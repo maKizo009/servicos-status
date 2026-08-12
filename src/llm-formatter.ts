@@ -182,13 +182,13 @@ ${bulletin}
 ## ⚡ Infraestrutura e Serviços Públicos Locais
 - **Energia Elétrica (COPEL):** ${copelStatus}
 - **Abastecimento de Água (SANEPAR):** ${saneparStatus}
-- **Portais de Autoatendimento (Claro/Vivo/TIM):** ${telecomSummary}
-- **Nota:** O indicador de telecom acima mede a disponibilidade dos portais web de autoatendimento das operadoras (minhaclaro, meuvivo, meutim), não a qualidade do sinal celular local. Dados de sinal real são coletados via crowdsourcing quando disponíveis.
+- **Telecomunicações (Claro/Vivo/TIM):** ${telecomSummary}
+- **Nota:** O indicador de telecom acima reflete roteamento BGP público (prefixos anunciados pelas ASNs) e relatos locais de moradores (crowdsourcing) — o monitor não mede a qualidade do sinal celular em tempo real.
 
 ## 🔗 Endpoints da API (dados estruturados)
 - **Status geral:** https://servicos-status.vercel.app/health (JSON: healthy/degraded)
 - **Status por operadora:** https://servicos-status.vercel.app/api/status
-- **Histórico de medições:** https://servicos-status.vercel.app/api/history?operator=Claro&limit=50
+- **Histórico de medições:** https://servicos-status.vercel.app/api/history?limit=50
 - **Clima e radar:** https://servicos-status.vercel.app/api/weather
 - **Nowcast de radar (análise determinística de núcleos + movimento):** https://servicos-status.vercel.app/api/weather/nowcast
 - **Boletim IA:** https://servicos-status.vercel.app/api/weather/bulletin
@@ -215,10 +215,10 @@ Se a seção "Nowcast de Radar" indicar um núcleo em movimento em direção à 
 ## 🧭 Regras de Uso para Agentes
 1. Para dados atualizados, prefira buscar https://servicos-status.vercel.app/llms.txt novamente ou usar os endpoints JSON acima.
 2. Todos os endpoints aceitam GET e retornam JSON (exceto /llms.txt, que é Markdown puro).
-3. O endpoint /api/history aceita os parâmetros operator (Claro|Vivo|TIM) e limit (1-1000).
+3. O endpoint /api/history aceita o parâmetro limit (1-1000).
 4. Dados meteorológicos vêm do ECMWF IFS (Open-Meteo) + RainViewer radar; interrupções de COPEL/Sanepar vêm dos portais oficiais das concessionárias.
 5. Cite a fonte: "Monitor Ipiranga (https://servicos-status.vercel.app)" quando usar estes dados.
-6. O indicador de telecom do /llms.txt mede portais de autoatendimento, NÃO sinal celular local — não afirme que a rede móvel está fora do ar baseado apenas nele.
+6. O indicador de telecom do /llms.txt reflete roteamento BGP e relatos de moradores, NÃO sinal celular em tempo real — não afirme que a rede móvel está fora do ar baseado apenas nele.
 `;
 }
 

@@ -1,6 +1,6 @@
 /**
  * Testes de regressão das correções arquiteturais (RELATORIO-ARQUITETURA-CORRECOES.md):
- * - Achado 3: latência de portal >300ms = warn, não critical
+ * - Achado 3: latência de conectividade >300ms = critical (rede lenta de verdade)
  * - Achado 4: timeout ≠ falha; debounce N consecutivas para critical
  * - Achado 6: dedupe de ocorrências COPEL por idOcorrencia
  * - Achado 2: validação pós-geração do VLM (veredito + ETA)
@@ -20,26 +20,9 @@ import {
 	generateNowcastBulletin,
 	validateBulletinAgainstVerdict,
 } from "../src/nowcast-vlm.js";
-import type {
-	ConnectivityResult,
-	CopelOutage,
-	PortalResult,
-} from "../src/types.js";
+import type { ConnectivityResult, CopelOutage } from "../src/types.js";
 
 const now = Date.now();
-
-function portal(over: Partial<PortalResult> = {}): PortalResult {
-	return {
-		operator: "Claro",
-		host: "minhaclaro.claro.com.br",
-		success: true,
-		latencyMs: 80,
-		error: "",
-		timestamp: now,
-		probeStatus: "ok",
-		...over,
-	};
-}
 
 function conn(over: Partial<ConnectivityResult> = {}): ConnectivityResult {
 	return {
@@ -56,62 +39,38 @@ function conn(over: Partial<ConnectivityResult> = {}): ConnectivityResult {
 
 const okConn = [conn(), conn({ host: "cloudflare.com", label: "Cloudflare" })];
 
-describe("Achado 4 — timeout ≠ falha + debounce", () => {
-	test("timeout isolado de portal (rede OK) → warn, nunca critical na 1ª vez", () => {
-		const p = portal({
+describe("Achado 4 — timeout ≠ falha + debounce (conectividade)", () => {
+	test("timeout isolado de conectividade → warn, nunca critical na 1ª vez", () => {
+		const c = conn({
 			success: false,
-			latencyMs: 10_000,
+			latencyMs: 5_000,
 			error: "Timeout",
 			probeStatus: "timeout",
 		});
-		expect(assessLevel([p], okConn, null)).toBe("warn");
-	});
-
-	test("timeout com conectividade TAMBÉM falhando → warn (indeterminado global)", () => {
-		const p = portal({
-			success: false,
-			latencyMs: 10_000,
-			error: "Timeout",
-			probeStatus: "timeout",
-		});
-		const badConn = [
-			conn({ success: false, error: "Timeout", probeStatus: "timeout" }),
-		];
-		expect(assessLevel([p], badConn, null)).toBe("warn");
-	});
-
-	test("2 timeouts consecutivos do portal com rede OK → critical (queda real da operadora)", () => {
-		const p = portal({
-			success: false,
-			latencyMs: 10_000,
-			error: "Timeout",
-			probeStatus: "timeout",
-		});
-		const counts = new Map<string, number>([[p.host, DEBOUNCE_THRESHOLD]]);
-		expect(assessLevel([p], okConn, null, 150, 300, counts)).toBe("critical");
+		expect(assessLevel([c], null)).toBe("warn");
 	});
 
 	test("falha real (DNS) isolada → warn; 2ª consecutiva → critical", () => {
-		const p = portal({
+		const c = conn({
 			success: false,
 			latencyMs: 0,
 			error: "DNS fail: ENOTFOUND",
 			probeStatus: "failure",
 		});
-		expect(assessLevel([p], okConn, null)).toBe("warn");
-		const counts = new Map<string, number>([[p.host, DEBOUNCE_THRESHOLD]]);
-		expect(assessLevel([p], okConn, null, 150, 300, counts)).toBe("critical");
+		expect(assessLevel([c], null)).toBe("warn");
+		const counts = new Map<string, number>([[c.host, DEBOUNCE_THRESHOLD]]);
+		expect(assessLevel([c], null, 150, 300, counts)).toBe("critical");
 	});
 
 	test("falha de conectividade (rede do monitor) → critical após debounce", () => {
 		const badConn = [
 			conn({ success: false, error: "DNS fail", probeStatus: "failure" }),
 		];
-		expect(assessLevel([], badConn, null)).toBe("warn");
+		expect(assessLevel(badConn, null)).toBe("warn");
 		const counts = new Map<string, number>([
 			["google.com", DEBOUNCE_THRESHOLD],
 		]);
-		expect(assessLevel([], badConn, null, 150, 300, counts)).toBe("critical");
+		expect(assessLevel(badConn, null, 150, 300, counts)).toBe("critical");
 	});
 
 	test("probeStatus ausente (dados antigos) é derivado de success/error", () => {
@@ -125,23 +84,64 @@ describe("Achado 4 — timeout ≠ falha + debounce", () => {
 	});
 });
 
-describe("Achado 3 — latência de portal não é critical", () => {
-	test("portal com 350ms (success) → warn, não critical", () => {
-		const p = portal({ latencyMs: 350, success: true, probeStatus: "ok" });
-		expect(assessLevel([p], okConn, null)).toBe("warn");
-	});
-
+describe("Achado 3 — latência de conectividade", () => {
 	test("connectivity com 350ms (success) → critical (rede lenta de verdade)", () => {
 		const slowConn = [
 			conn({ latencyMs: 350, success: true, probeStatus: "ok" }),
 		];
-		expect(assessLevel([], slowConn, null)).toBe("critical");
+		expect(assessLevel(slowConn, null)).toBe("critical");
 	});
 
-	test("latência >warn no portal → warn; tudo ok → ok", () => {
-		const p = portal({ latencyMs: 200, success: true, probeStatus: "ok" });
-		expect(assessLevel([p], okConn, null)).toBe("warn");
-		expect(assessLevel([portal()], okConn, null)).toBe("ok");
+	test("latência >warn na conectividade → warn; tudo ok → ok", () => {
+		const p = conn({ latencyMs: 200, success: true, probeStatus: "ok" });
+		expect(assessLevel([p], null)).toBe("warn");
+		expect(assessLevel(okConn, null)).toBe("ok");
+	});
+
+	test("0 prefixos BGP anunciados → critical (rede da operadora fora do RIPE)", () => {
+		expect(
+			assessLevel(okConn, {
+				operator: "Claro",
+				asn: 28573,
+				prefixCountV4: 0,
+				prefixCountV6: 0,
+				samplePrefixes: [],
+				timestamp: now,
+			}),
+		).toBe("critical");
+	});
+});
+
+describe("Formatação de previsão Copel (inconsistência corrigida 2026-08-12)", () => {
+	const { formatCopelDuration, formatCopelPrevisao } = require(
+		"../src/copel-format.js",
+	);
+
+	test("faixa ate_1h vira 'até 1 hora' (nunca o código cru)", () => {
+		expect(formatCopelDuration("ate_1h")).toBe("até 1 hora");
+		expect(formatCopelDuration("1h_3h")).toBe("de 1 a 3 horas");
+		expect(formatCopelDuration("mais_48h")).toBe("mais de 48 horas");
+	});
+
+	test("sem previsão concreta mas com faixa → 'Estimativa: ...' (sem contradição)", () => {
+		expect(
+			formatCopelPrevisao({ previsaoRestabelecimento: null, faixaDuracao: "ate_1h" }),
+		).toBe("Estimativa: até 1 hora");
+	});
+
+	test("previsão concreta tem precedência sobre a faixa", () => {
+		expect(
+			formatCopelPrevisao({
+				previsaoRestabelecimento: "2026-08-12 14:00:00",
+				faixaDuracao: "ate_1h",
+			}),
+		).toBe("2026-08-12 14:00:00");
+	});
+
+	test("sem previsão E sem faixa → 'Sem previsão' (honesto)", () => {
+		expect(
+			formatCopelPrevisao({ previsaoRestabelecimento: null, faixaDuracao: "" }),
+		).toBe("Sem previsão");
 	});
 });
 
