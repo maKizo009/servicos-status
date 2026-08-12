@@ -271,9 +271,10 @@ body{font-family:var(--font);background:var(--md-sys-color-surface);color:var(--
 .header{
   background:linear-gradient(135deg,#064E3B 0%,#047857 50%,#059669 100%);
   padding:14px 24px;color:#fff;display:flex;align-items:center;justify-content:space-between;
-  box-shadow:0 2px 10px rgba(4,120,87,.2);position:relative;z-index:10
+  box-shadow:0 2px 10px rgba(4,120,87,.2);position:relative;z-index:10;
+  flex-wrap:wrap;row-gap:8px
 }
-.header-left{display:flex;align-items:center;gap:14px}
+.header-left{display:flex;align-items:center;gap:14px;flex:1 1 auto;min-width:0}
 .header-shield{
   width:40px;height:40px;background:rgba(255,255,255,.15);backdrop-filter:blur(8px);
   border-radius:var(--md-shape-corner-medium);display:flex;align-items:center;justify-content:center;flex-shrink:0;
@@ -454,6 +455,8 @@ body{font-family:var(--font);background:var(--md-sys-color-surface);color:var(--
   .radar-map-wrapper{height:360px}
   .map-layer-selector{top:10px;right:10px}
   .radar-controls-overlay{padding:10px 14px}
+  .header{padding:12px 16px}
+  .header-refresh-btn{padding:7px 10px}
 }
 @media (max-width: 640px){
   .stats-table-wrapper{overflow-x:auto}
