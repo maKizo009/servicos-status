@@ -8,7 +8,7 @@
     },
     {
       "source": "/admin",
-      "destination": "/src/public/admin.html"
+      "destination": "/admin.html"
     },
     {
       "source": "/api/cron",
