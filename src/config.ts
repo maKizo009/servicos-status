@@ -93,7 +93,7 @@ export function loadConfig(): AppConfig {
 		saneparDisplays: ["supply_stop_desk", "supply_stop_mobile"],
 		nvidiaNimApiKey: process.env.NVIDIA_NIM_API_KEY ?? "",
 		nvidiaNimModel:
-			process.env.NVIDIA_NIM_MODEL ?? "meta/llama-3.1-8b-instruct",
+			process.env.NVIDIA_NIM_MODEL ?? "minimaxai/minimax-m3",
 		nvidiaNimEndpoint:
 			process.env.NVIDIA_NIM_ENDPOINT ??
 			"https://integrate.api.nvidia.com/v1/chat/completions",
