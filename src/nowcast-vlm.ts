@@ -168,6 +168,10 @@ async function callOpenCodeVision(
 		},
 		body: JSON.stringify({
 			model: config.openCodeVlmModel,
+			// thinking desabilitado: o MiniMax M3 raciocina antes de responder
+			// (bloco <think>) — desligar corta tokens de saída (custo) e
+			// latência; o strip abaixo fica como defesa em profundidade.
+			thinking: { type: "disabled" },
 			messages: [
 				{
 					role: "user",
