@@ -1613,6 +1613,7 @@ let streetLayer = null;
 let satLayer = null;
 let radarFrames = [];
 let radarTileLayers = [];
+let radarPastCount = 0;
 let currentFrameIndex = 0;
 let isPlaying = false;
 let playInterval = null;
@@ -1767,7 +1768,10 @@ async function fetchWeatherData() {
 
     if (data.radar?.radar?.past && data.radar.radar.past.length > 0) {
       const host = data.radar.host || 'https://tilecache.rainviewer.com';
-      radarFrames = [...data.radar.radar.past, ...(data.radar.radar.nowcast || [])];
+      const pastFrames = data.radar.radar.past;
+      const nowcastFrames = data.radar.radar.nowcast || [];
+      radarFrames = [...pastFrames, ...nowcastFrames];
+      radarPastCount = pastFrames.length;
 
       radarTileLayers.forEach(l => map.removeLayer(l));
       radarTileLayers = [];
@@ -1789,7 +1793,11 @@ async function fetchWeatherData() {
       const slider = document.getElementById('radarSlider');
       if(slider) {
         slider.max = Math.max(0, radarFrames.length - 1);
-        currentFrameIndex = radarFrames.length - 1;
+        // Frame padrão = último frame REAL (past), NÃO a previsão (nowcast):
+        // o nowcast do RainViewer pode estar vazio ou com tiles sem dados na
+        // região — com a previsão selecionada o radar "some" do mapa
+        // (incidente 2026-08-12: mapa limpo com '10:30 (Previsão)' ativo).
+        currentFrameIndex = Math.max(0, radarPastCount - 1);
         slider.value = currentFrameIndex;
         showRadarFrame(currentFrameIndex);
       }
@@ -2004,7 +2012,10 @@ function showRadarFrame(index) {
   if (frame && frame.time) {
     const dt = new Date(frame.time * 1000);
     const timeStr = dt.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
-    const isNowcast = index >= (radarFrames.length - 2);
+    // "Previsão" só quando o frame É do nowcast (índice ≥ radarPastCount) —
+    // antes marcava os 2 últimos frames como previsão mesmo quando eram
+    // frames reais (incidente 2026-08-12: '10:30 (Previsão)' com nowcast vazio).
+    const isNowcast = index >= radarPastCount;
     const lbl = document.getElementById('radarTimeLabel');
     if(lbl) lbl.textContent = `${timeStr} ${isNowcast ? '(Previsão)' : ''}`;
   }
