@@ -15,11 +15,17 @@ import {
 	scryptSync,
 	timingSafeEqual,
 } from "node:crypto";
+import type {
+	AuthenticationResponseJSON,
+	AuthenticatorTransportFuture,
+	PublicKeyCredentialCreationOptionsJSON,
+	PublicKeyCredentialRequestOptionsJSON,
+	RegistrationResponseJSON,
+} from "@simplewebauthn/server";
 import { loadConfig } from "./config.js";
 import { getDbClient } from "./db.js";
-import { logger } from "./logger.js";
 
-const SESSION_TTL_MS = 12 * 60 * 60_000;
+const SESSION_TTL_MS = 30 * 24 * 60 * 60_000; // 30 dias (sessão pessoal do Dave)
 
 // ============ Senha (scrypt) ============
 
@@ -243,4 +249,230 @@ export async function getAdminStats(): Promise<AdminStats> {
 		sessoesHoje,
 		acessosPorHora,
 	};
+}
+
+// ============ WebAuthn (impressão digital / passkey) ============
+
+const WEBAUTHN_RP_ID = "servicos-status.vercel.app";
+const WEBAUTHN_ORIGIN = "https://servicos-status.vercel.app";
+const CHALLENGE_TTL_MS = 5 * 60_000;
+
+interface WebauthnCredential {
+	id: string;
+	publicKey: string;
+	counter: number;
+	transports: string[];
+}
+
+function isValidOrigin(origin: string | null): boolean {
+	return origin === WEBAUTHN_ORIGIN;
+}
+
+async function getCredentials(): Promise<WebauthnCredential[]> {
+	const db = await getDbClient();
+	const res = await db.execute(
+		"SELECT id, public_key, counter, transports FROM webauthn_credentials",
+	);
+	return res.rows.map((r) => ({
+		id: String(r.id),
+		publicKey: String(r.public_key),
+		counter: Number(r.counter),
+		transports: JSON.parse(String(r.transports ?? "[]")) as string[],
+	}));
+}
+
+async function saveChallenge(
+	challenge: string,
+	email: string,
+	purpose: "register" | "login",
+): Promise<void> {
+	const db = await getDbClient();
+	await db.execute({
+		sql: `INSERT INTO webauthn_challenges (challenge, email, purpose, ts) VALUES (?, ?, ?, ?)
+      ON CONFLICT(challenge) DO UPDATE SET email=excluded.email, purpose=excluded.purpose, ts=excluded.ts`,
+		args: [challenge, email, purpose, Date.now()],
+	});
+}
+
+async function takeChallenge(
+	challenge: string,
+	purpose: "register" | "login",
+): Promise<string | null> {
+	const db = await getDbClient();
+	const res = await db.execute({
+		sql: "SELECT email, ts FROM webauthn_challenges WHERE challenge = ? AND purpose = ?",
+		args: [challenge, purpose],
+	});
+	// Consome o challenge (uso único) antes de validar
+	await db.execute({
+		sql: "DELETE FROM webauthn_challenges WHERE challenge = ?",
+		args: [challenge],
+	});
+	if (res.rows.length === 0) return null;
+	// TTL de 5 min — challenge velho nunca é aceito
+	const ts = Number(res.rows[0].ts);
+	if (Date.now() - ts >= CHALLENGE_TTL_MS) return null;
+	return String(res.rows[0].email);
+}
+
+/** Passo 1 do registro de passkey (exige sessão por senha). */
+export async function webauthnRegisterBegin(): Promise<{
+	options: PublicKeyCredentialCreationOptionsJSON;
+} | null> {
+	const { generateRegistrationOptions } = await import(
+		"@simplewebauthn/server"
+	);
+	const creds = await getCredentials();
+	const options = await generateRegistrationOptions({
+		rpName: "Monitor Ipiranga",
+		rpID: WEBAUTHN_RP_ID,
+		userName: adminEmail(),
+		userDisplayName: "Admin",
+		timeout: 60_000,
+		attestationType: "none",
+		authenticatorSelection: {
+			authenticatorAttachment: "platform",
+			userVerification: "required",
+		},
+		excludeCredentials: creds.map((c) => ({
+			id: c.id,
+			transports: c.transports as AuthenticatorTransportFuture[],
+		})),
+	});
+	await saveChallenge(options.challenge, adminEmail(), "register");
+	return { options };
+}
+
+/** Passo 2 do registro: verifica a resposta do autenticador e salva a credencial. */
+export async function webauthnRegisterComplete(
+	body: unknown,
+	origin: string | null,
+): Promise<{ ok: boolean; error?: string }> {
+	const { verifyRegistrationResponse } = await import("@simplewebauthn/server");
+	if (!isValidOrigin(origin)) return { ok: false, error: "Origin inválida" };
+	const res = body as {
+		response?: { clientDataJSON?: string; attestationObject?: string };
+	};
+	const challenge = (() => {
+		try {
+			const cd = JSON.parse(
+				Buffer.from(res.response?.clientDataJSON ?? "", "base64url").toString(),
+			) as { challenge?: string };
+			return cd.challenge ?? "";
+		} catch {
+			return "";
+		}
+	})();
+	const email = await takeChallenge(challenge, "register");
+	if (!email) return { ok: false, error: "Challenge inválido/expirado" };
+
+	try {
+		const verification = await verifyRegistrationResponse({
+			response: body as RegistrationResponseJSON,
+			expectedChallenge: challenge,
+			expectedOrigin: WEBAUTHN_ORIGIN,
+			expectedRPID: WEBAUTHN_RP_ID,
+		});
+		if (!verification.verified || !verification.registrationInfo) {
+			return { ok: false, error: "Verificação falhou" };
+		}
+		const { credential } = verification.registrationInfo;
+		const db = await getDbClient();
+		await db.execute({
+			sql: `INSERT INTO webauthn_credentials (id, public_key, counter, transports, created_at)
+        VALUES (?, ?, ?, ?, ?)
+        ON CONFLICT(id) DO UPDATE SET public_key=excluded.public_key, counter=excluded.counter, transports=excluded.transports`,
+			args: [
+				credential.id,
+				Buffer.from(credential.publicKey).toString("base64"),
+				credential.counter,
+				JSON.stringify([]),
+				Date.now(),
+			],
+		});
+		return { ok: true };
+	} catch (err) {
+		return {
+			ok: false,
+			error: err instanceof Error ? err.message : String(err),
+		};
+	}
+}
+
+/** Passo 1 do login com passkey: gera o desafio para o autenticador. */
+export async function webauthnLoginBegin(): Promise<{
+	options: PublicKeyCredentialRequestOptionsJSON;
+} | null> {
+	const { generateAuthenticationOptions } = await import(
+		"@simplewebauthn/server"
+	);
+	const creds = await getCredentials();
+	if (creds.length === 0) return null;
+	const options = await generateAuthenticationOptions({
+		rpID: WEBAUTHN_RP_ID,
+		timeout: 60_000,
+		allowCredentials: creds.map((c) => ({
+			id: c.id,
+			type: "public-key" as const,
+			transports: c.transports as AuthenticatorTransportFuture[],
+		})),
+		userVerification: "required",
+	});
+	await saveChallenge(options.challenge, adminEmail(), "login");
+	return { options };
+}
+
+/** Passo 2 do login: verifica a assinatura e abre a sessão. */
+export async function webauthnLoginComplete(
+	body: unknown,
+	origin: string | null,
+): Promise<{ ok: boolean; token?: string; error?: string }> {
+	const { verifyAuthenticationResponse } = await import(
+		"@simplewebauthn/server"
+	);
+	if (!isValidOrigin(origin)) return { ok: false, error: "Origin inválida" };
+	const res = body as AuthenticationResponseJSON;
+	const challenge = (() => {
+		try {
+			const cd = JSON.parse(
+				Buffer.from(res.response?.clientDataJSON ?? "", "base64url").toString(),
+			) as { challenge?: string };
+			return cd.challenge ?? "";
+		} catch {
+			return "";
+		}
+	})();
+	const email = await takeChallenge(challenge, "login");
+	if (!email) return { ok: false, error: "Challenge inválido/expirado" };
+
+	const creds = await getCredentials();
+	const cred = creds.find((c) => c.id === res.id);
+	if (!cred) return { ok: false, error: "Credencial não encontrada" };
+
+	try {
+		const verification = await verifyAuthenticationResponse({
+			response: res,
+			expectedChallenge: challenge,
+			expectedOrigin: WEBAUTHN_ORIGIN,
+			expectedRPID: WEBAUTHN_RP_ID,
+			credential: {
+				id: cred.id,
+				publicKey: new Uint8Array(Buffer.from(cred.publicKey, "base64")),
+				counter: cred.counter,
+			},
+		});
+		if (!verification.verified)
+			return { ok: false, error: "Assinatura inválida" };
+		const db = await getDbClient();
+		await db.execute({
+			sql: "UPDATE webauthn_credentials SET counter = ? WHERE id = ?",
+			args: [verification.authenticationInfo.newCounter, cred.id],
+		});
+		return { ok: true, token: createSessionToken() };
+	} catch (err) {
+		return {
+			ok: false,
+			error: err instanceof Error ? err.message : String(err),
+		};
+	}
 }

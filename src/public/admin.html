@@ -91,6 +91,7 @@ body{font-family:Inter,system-ui,sans-serif;background:var(--md-sys-color-surfac
     Painel Admin
     <small>Monitor Ipiranga</small>
   </div>
+  <button class="btn" id="btnBiometria" style="display:none">🔐 Registrar impressão digital</button>
   <button class="btn" id="btnLogout" style="display:none">Sair</button>
 </header>
 
@@ -107,6 +108,7 @@ body{font-family:Inter,system-ui,sans-serif;background:var(--md-sys-color-surfac
       <input type="password" id="inPass" placeholder="••••••••" autocomplete="current-password">
     </div>
     <button class="btn primary btn-block" id="btnLogin">Entrar</button>
+    <button class="btn btn-block" id="btnBioLogin" style="margin-top:10px">🔐 Entrar com impressão digital</button>
     <div class="error" id="loginError"></div>
   </div>
 </div>
@@ -179,7 +181,7 @@ async function init() {
   try {
     const res = await fetch('/api/admin/me', { credentials: 'same-origin' });
     const me = await res.json();
-    if (me.authed) { show('app'); loadStats(); statsTimer = setInterval(loadStats, 60_000); return; }
+    if (me.authed) { show('app'); $('btnBiometria').style.display = 'inline-flex'; loadStats(); statsTimer = setInterval(loadStats, 60_000); return; }
   } catch {}
   show('login');
 }
@@ -200,6 +202,7 @@ $('btnLogin').addEventListener('click', async () => {
     });
     if (res.ok) {
       show('app');
+      $('btnBiometria').style.display = 'inline-flex';
       loadStats();
       statsTimer = setInterval(loadStats, 60_000);
     } else {
@@ -222,6 +225,90 @@ $('btnLogout').addEventListener('click', async () => {
   $('inPass').value = '';
   show('login');
 });
+
+/* ===== WebAuthn — impressão digital / passkey ===== */
+function bufToB64url(buf) {
+  let bin = '';
+  const bytes = new Uint8Array(buf);
+  for (let i = 0; i < bytes.length; i++) bin += String.fromCharCode(bytes[i]);
+  return btoa(bin).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+}
+
+async function bioLogin() {
+  if (!window.PublicKeyCredential) { $('loginError').textContent = 'Seu navegador não suporta passkeys.'; return; }
+  $('btnBioLogin').disabled = true;
+  $('loginError').textContent = '';
+  try {
+    const res = await fetch('/api/admin/webauthn/login/begin', { method: 'POST', credentials: 'same-origin' });
+    if (res.status === 404) { $('loginError').textContent = 'Nenhuma impressão digital registrada ainda. Entre com senha e registre.'; return; }
+    const { options } = await res.json();
+    const cred = await navigator.credentials.get({ publicKey: options });
+    const body = {
+      id: cred.id,
+      rawId: bufToB64url(cred.rawId),
+      type: cred.type,
+      response: {
+        clientDataJSON: bufToB64url(cred.response.clientDataJSON),
+        authenticatorData: bufToB64url(cred.response.authenticatorData),
+        signature: bufToB64url(cred.response.signature),
+        userHandle: cred.response.userHandle ? bufToB64url(cred.response.userHandle) : null,
+      },
+    };
+    const fin = await fetch('/api/admin/webauthn/login/complete', {
+      method: 'POST', credentials: 'same-origin',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    });
+    if (fin.ok) {
+      show('app'); loadStats();
+      statsTimer = setInterval(loadStats, 60000);
+      $('btnBiometria').style.display = 'inline-flex';
+    } else {
+      const d = await fin.json().catch(() => ({}));
+      $('loginError').textContent = d.error || 'Falha na verificação biométrica.';
+    }
+  } catch (e) {
+    $('loginError').textContent = e.name === 'NotAllowedError' ? 'Autenticação cancelada.' : 'Erro: ' + e.message;
+  } finally {
+    $('btnBioLogin').disabled = false;
+  }
+}
+
+$('btnBioLogin').addEventListener('click', bioLogin);
+
+async function registerBiometria() {
+  if (!window.PublicKeyCredential) { alert('Seu navegador não suporta passkeys.'); return; }
+  $('btnBiometria').disabled = true;
+  try {
+    const res = await fetch('/api/admin/webauthn/register/begin', { method: 'POST', credentials: 'same-origin' });
+    if (!res.ok) { alert('Erro ao iniciar registro.'); return; }
+    const { options } = await res.json();
+    const cred = await navigator.credentials.create({ publicKey: options });
+    const body = {
+      id: cred.id,
+      rawId: bufToB64url(cred.rawId),
+      type: cred.type,
+      response: {
+        clientDataJSON: bufToB64url(cred.response.clientDataJSON),
+        attestationObject: bufToB64url(cred.response.attestationObject),
+      },
+    };
+    const fin = await fetch('/api/admin/webauthn/register/complete', {
+      method: 'POST', credentials: 'same-origin',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    });
+    const d = await fin.json();
+    if (d.ok) { alert('✅ Impressão digital registrada! Agora pode entrar com biometria.'); }
+    else { alert('Falha no registro: ' + (d.error || 'desconhecida')); }
+  } catch (e) {
+    alert(e.name === 'NotAllowedError' ? 'Registro cancelado.' : 'Erro: ' + e.message);
+  } finally {
+    $('btnBiometria').disabled = false;
+  }
+}
+
+$('btnBiometria').addEventListener('click', registerBiometria);
 
 init();
 </script>

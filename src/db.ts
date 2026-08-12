@@ -165,6 +165,19 @@ export async function initDb(): Promise<Client> {
 				first_seen INTEGER NOT NULL,
 				last_seen INTEGER NOT NULL
 			)`,
+				`CREATE TABLE IF NOT EXISTS webauthn_credentials (
+				id TEXT PRIMARY KEY,
+				public_key TEXT NOT NULL,
+				counter INTEGER NOT NULL DEFAULT 0,
+				transports TEXT DEFAULT '[]',
+				created_at INTEGER NOT NULL
+			)`,
+				`CREATE TABLE IF NOT EXISTS webauthn_challenges (
+				challenge TEXT PRIMARY KEY,
+				email TEXT NOT NULL,
+				purpose TEXT NOT NULL,
+				ts INTEGER NOT NULL
+			)`,
 				"CREATE INDEX IF NOT EXISTS idx_portal_timestamp ON portal_results(timestamp)",
 				"CREATE INDEX IF NOT EXISTS idx_connectivity_timestamp ON connectivity_results(timestamp)",
 				"CREATE INDEX IF NOT EXISTS idx_bgp_timestamp ON bgp_results(timestamp)",
