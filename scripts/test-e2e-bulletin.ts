@@ -1,6 +1,7 @@
 /**
  * Teste E2E Camada B: gera o boletim REAL via Gemini com o composite anotado.
- * Uso: GEMINI_API_KEY=... bun run scripts/test-e2e-bulletin.ts
+ * Uso: GEMINI_API_KEY=<sua-chave> bun run scripts/test-e2e-bulletin.ts
+ * NUNCA commitar a chave real — só via variável de ambiente / secrets manager.
  */
 
 import { REGION_GRID, TARGET_IPIRANGA } from "../src/nowcast-service.js";

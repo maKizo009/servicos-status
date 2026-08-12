@@ -18,8 +18,47 @@ import {
 
 export default async function handler(req: any, res: any) {
 	try {
-		await initDb();
+		// ===== Auth do cron (achado pentest 2026-08-12) =====
+		// Sem proteção, qualquer um disparava o ciclo completo (cota NIM +
+		// Telegram + push pra todos os inscritos). Agora exige:
+		//   - Authorization: Bearer <CRON_SECRET>  (disparo manual/automação),
+		//   - OU header x-vercel-cron: 1           (cron nativo do Vercel).
+		// x-vercel-cron é spoofable (header simples) — por isso o rate limit
+		// dedicado (2/min/IP) abaixo segura abuso mesmo com header falso.
 		const config = loadConfig();
+		const headers = req?.headers ?? {};
+		const auth = headers.authorization ?? headers.Authorization ?? "";
+		const isVercelCron = headers["x-vercel-cron"] === "1";
+		const cronSecret = config.cronSecret;
+		const authed =
+			(cronSecret && auth === `Bearer ${cronSecret}`) ||
+			(cronSecret && isVercelCron) ||
+			(!cronSecret && isVercelCron);
+		if (!authed) {
+			if (res && typeof res.status === "function") {
+				return res.status(401).json({ error: "Não autorizado" });
+			}
+			return Response.json({ error: "Não autorizado" }, { status: 401 });
+		}
+		const ip = String(headers["x-forwarded-for"] ?? "unknown")
+			.split(",")[0]
+			.trim();
+		const { checkRateLimitScope } = await import("../src/rate-limiter.js");
+		const { allowed, retryAfter } = checkRateLimitScope(ip, 2, "cron");
+		if (!allowed) {
+			if (res && typeof res.status === "function") {
+				return res
+					.status(429)
+					.setHeader("Retry-After", String(retryAfter))
+					.json({ error: "Too many requests", retryAfter });
+			}
+			return Response.json(
+				{ error: "Too many requests", retryAfter },
+				{ status: 429 },
+			);
+		}
+
+		await initDb();
 		const tracker = new EventTracker();
 		await tracker.init();
 

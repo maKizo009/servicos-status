@@ -38,6 +38,7 @@ export interface AppConfig {
 	adminEmail: string;
 	adminPasswordHash: string;
 	sessionSecret: string;
+	cronSecret: string;
 	unifiedReportIntervalMs: number;
 	// Turso Cloud Database
 	tursoDatabaseUrl: string;
@@ -104,6 +105,7 @@ export function loadConfig(): AppConfig {
 		adminEmail: process.env.ADMIN_EMAIL ?? "",
 		adminPasswordHash: process.env.ADMIN_PASSWORD_HASH ?? "",
 		sessionSecret: process.env.SESSION_SECRET ?? "",
+		cronSecret: process.env.CRON_SECRET ?? "",
 		unifiedReportIntervalMs: envInt("UNIFIED_REPORT_INTERVAL_MS", 3_600_000),
 		tursoDatabaseUrl: process.env.TURSO_DATABASE_URL ?? "",
 		tursoAuthToken: process.env.TURSO_AUTH_TOKEN ?? "",

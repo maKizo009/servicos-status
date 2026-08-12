@@ -971,6 +971,10 @@ const ICON={
 };
 
 const $=(s)=>document.querySelector(s);
+/* Escapa HTML — dados externos (probes/COPEL/SANEPAR/VLM) NUNCA entram
+   no innerHTML sem passar aqui (achado pentest 2026-08-12: XSS via
+   cs.details/item.bairro/item.title). */
+function esc(v){return String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
 let lastFetch=0;
 
 function fmtTime(ts){
@@ -1088,8 +1092,8 @@ function updateBanner(services){
 
     let detailsHtml='';
     for(const cs of criticalSvcs){
-      detailsHtml+=`<div class="banner-detail-item" onclick="scrollToCard('${cs.name}')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();scrollToCard('${cs.name}');}" role="button" tabindex="0" title="Clique para focar no card do serviço">
-        🔴 <strong>${cs.name}:</strong> ${cs.details}
+      detailsHtml+=`<div class="banner-detail-item" onclick="scrollToCard('${esc(cs.name)}')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();scrollToCard('${esc(cs.name)}');}" role="button" tabindex="0" title="Clique para focar no card do serviço">
+        🔴 <strong>${esc(cs.name)}:</strong> ${esc(cs.details)}
         <span class="banner-jump-tag">Ver card ➔</span>
       </div>`;
     }
@@ -1105,8 +1109,8 @@ function updateBanner(services){
 
     let detailsHtml='';
     for(const ws of warnSvcs){
-      detailsHtml+=`<div class="banner-detail-item" onclick="scrollToCard('${ws.name}')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();scrollToCard('${ws.name}');}" role="button" tabindex="0" title="Clique para focar no card do serviço">
-        ⚠️ <strong>${ws.name}:</strong> ${ws.details}
+      detailsHtml+=`<div class="banner-detail-item" onclick="scrollToCard('${esc(ws.name)}')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();scrollToCard('${esc(ws.name)}');}" role="button" tabindex="0" title="Clique para focar no card do serviço">
+        ⚠️ <strong>${esc(ws.name)}:</strong> ${esc(ws.details)}
         <span class="banner-jump-tag">Ver card ➔</span>
       </div>`;
     }
@@ -1385,7 +1389,7 @@ function renderCards(services){
           portalsHtml+=`<div class="portal-row">
             <div class="portal-host">
               ${p.success && !isCrit ? ICON.ok : ICON.error}
-              <span>${p.host} (Portal Web)</span>
+              <span>${esc(p.host)} (Portal Web)</span>
             </div>
             <div>
               <span class="portal-status-tag ${tagCls}">${tagText}</span>
@@ -1424,9 +1428,9 @@ function renderCards(services){
     }
 
     const officialUrl = OFFICIAL_URLS[name] || null;
-    const sourceBtnHtml = officialUrl ? `<a href="${officialUrl}" target="_blank" rel="noopener noreferrer" class="source-link-btn" title="Verificar no site oficial">Fonte Oficial ↗</a>` : '';
+    const sourceBtnHtml = officialUrl ? `<a href="${esc(officialUrl)}" target="_blank" rel="noopener noreferrer" class="source-link-btn" title="Verificar no site oficial">Fonte Oficial ↗</a>` : '';
 
-    html+=`<div class="card ${st}" data-name="${name}">
+    html+=`<div class="card ${st}" data-name="${esc(name)}">
       <div class="card-crit-bar"></div>
       <div class="card-inner">
         <div class="card-head">
@@ -1434,10 +1438,10 @@ function renderCards(services){
             <div class="card-icon ${br.cls}">${ico}</div>
             <div class="card-name-group">
               <div class="card-name">
-                ${br.label}
+                ${esc(br.label)}
                 <span class="card-cb ${br.cat}">${br.cat==='telecom'?'Telefonia':'Utilidade'}</span>
               </div>
-              <div class="card-sub">${br.desc}</div>
+              <div class="card-sub">${esc(br.desc)}</div>
             </div>
           </div>
           <div class="card-status-badge ${st}">${stLabel}</div>
@@ -1574,9 +1578,9 @@ async function fetchStats(){
 
       rowsHtml += `<tr>
         <td style="font-weight:700;white-space:nowrap">${dtStr}</td>
-        <td><span class="badge-source ${srcBadge}">${srcName}</span></td>
-        <td style="font-weight:700">${item.bairro || 'Ipiranga'}</td>
-        <td>${item.title} ${item.details ? `<br><small style="color:var(--text2)">${item.details}</small>` : ''}</td>
+        <td><span class="badge-source ${srcBadge}">${esc(srcName)}</span></td>
+        <td style="font-weight:700">${esc(item.bairro || 'Ipiranga')}</td>
+        <td>${esc(item.title)} ${item.details ? `<br><small style="color:var(--text2)">${esc(item.details)}</small>` : ''}</td>
         <td style="font-weight:800;color:${item.consumers > 0 ? 'var(--r6)' : 'var(--text3)'}">${item.consumers > 0 ? item.consumers.toLocaleString('pt-BR') + ' UCs' : '-'}</td>
       </tr>`;
     }
@@ -1831,7 +1835,7 @@ function renderNowcastCard(data) {
     if (m && m.speedKmh > 0.5) {
       const dirs = ['N', 'NE', 'L', 'SE', 'S', 'SO', 'O', 'NO'];
       const card = dirs[Math.round(m.directionDeg / 45) % 8];
-      mv.innerHTML = `<span style="font-size:16px">🧭</span> Movendo para ${card} (${m.directionDeg}°) · ${m.speedKmh} km/h`;
+      mv.innerHTML = `<span style="font-size:16px">🧭</span> Movendo para ${esc(card)} (${esc(m.directionDeg)}°) · ${esc(m.speedKmh)} km/h`;
     } else {
       mv.textContent = '🫥 Movimento não confiável no momento';
     }
