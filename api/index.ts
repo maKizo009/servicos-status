@@ -13,6 +13,15 @@ export default async function handler(req: any, res: any) {
 			res.setHeader("Access-Control-Allow-Origin", "*");
 			res.setHeader("Access-Control-Allow-Methods", "GET, POST, OPTIONS, HEAD");
 			res.setHeader("Access-Control-Allow-Headers", "Content-Type, Authorization");
+			// Set-Cookie precisa ser repassado (login admin/WebAuthn) — o
+			// Response Web API original pode ter mais de um (múltiplos cookies)
+			const setCookie = response.headers.getSetCookie?.() ?? null;
+			if (setCookie && setCookie.length > 0) {
+				res.setHeader("Set-Cookie", setCookie);
+			} else {
+				const sc = response.headers.get("set-cookie");
+				if (sc) res.setHeader("Set-Cookie", sc);
+			}
 			if (cacheControl) {
 				res.setHeader("Cache-Control", cacheControl);
 			}
