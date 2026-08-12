@@ -27,6 +27,9 @@ export interface AppConfig {
 	nvidiaNimModel: string;
 	nvidiaNimEndpoint: string;
 	geminiApiKey: string;
+	// VLM principal via OpenCode Go (OpenAI-compatível) — minimax-m3 (visão, custo baixo)
+	openCodeApiKey: string;
+	openCodeVlmModel: string;
 	weatherModel: string;
 	municipio: string;
 	// Push Web (PWA)
@@ -95,6 +98,8 @@ export function loadConfig(): AppConfig {
 			process.env.NVIDIA_NIM_ENDPOINT ??
 			"https://integrate.api.nvidia.com/v1/chat/completions",
 		geminiApiKey: process.env.GEMINI_API_KEY ?? "",
+		openCodeApiKey: process.env.OPENCODE_API_KEY ?? "",
+		openCodeVlmModel: process.env.OPENCODE_VLM_MODEL ?? "minimax-m3",
 		weatherModel: process.env.WEATHER_MODEL ?? "ecmwf_ifs04",
 		municipio: process.env.MUNICIPIO ?? "Ipiranga",
 		vapidPublicKey: process.env.VAPID_PUBLIC_KEY ?? "",

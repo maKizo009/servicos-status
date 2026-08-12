@@ -137,7 +137,7 @@ export interface WeatherRadarData {
 export interface WeatherBulletin {
 	id?: number;
 	bulletin: string;
-	source: "nvidia_nim" | "gemini" | "heuristic" | "nvidia_nim_vision";
+	source: "nvidia_nim" | "gemini" | "heuristic" | "nvidia_nim_vision" | "opencode_vision";
 	generatedAt: number;
 }
 
@@ -177,7 +177,7 @@ export interface WeatherState {
 	/** Boletim narrativo do nowcast (Camada B — VLM Gemini/NIM ou heurística) */
 	nowcastBulletin?: {
 		text: string;
-		source: "gemini" | "nvidia_nim_vision" | "heuristic";
+		source: "opencode_vision" | "gemini" | "nvidia_nim_vision" | "heuristic";
 		generatedAt: number;
 	} | null;
 	updatedAt: number;
