@@ -12,6 +12,51 @@ import { EventTracker } from "../src/state.js";
 import { sendCopelAlert, sendSaneparAlert } from "../src/telegram.js";
 
 export default async function handler(req: any, res: any) {
+	// ==== DIAGNÓSTICO TEMPORÁRIO (remover após resolver o VLM Gemini) ====
+	if (req?.url?.includes("diag=1")) {
+		const out: Record<string, unknown> = {
+			hasGeminiKey: Boolean(process.env.GEMINI_API_KEY),
+			geminiKeyLen: process.env.GEMINI_API_KEY?.length ?? 0,
+			geminiKeyPrefix: process.env.GEMINI_API_KEY
+				? String(process.env.GEMINI_API_KEY).slice(0, 3)
+				: null,
+			hasNimKey: Boolean(process.env.NVIDIA_NIM_API_KEY),
+		};
+		try {
+			const t0 = Date.now();
+			const r = await fetch(
+				`https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-lite-latest:generateContent?key=${process.env.GEMINI_API_KEY}`,
+				{
+					method: "POST",
+					headers: { "Content-Type": "application/json" },
+					body: JSON.stringify({
+						contents: [
+							{
+								role: "user",
+								parts: [{ text: "Responda apenas: ok" }],
+							},
+						],
+						generationConfig: { maxOutputTokens: 10 },
+					}),
+					signal: AbortSignal.timeout(30_000),
+				},
+			);
+			out.textTest = {
+				status: r.status,
+				ms: Date.now() - t0,
+				body: (await r.text()).slice(0, 200),
+			};
+		} catch (e: unknown) {
+			out.textTest = {
+				error: e instanceof Error ? e.message : String(e),
+			};
+		}
+		if (res && typeof res.status === "function") {
+			return res.status(200).json(out);
+		}
+		return Response.json(out);
+	}
+
 	try {
 		await initDb();
 		const config = loadConfig();
