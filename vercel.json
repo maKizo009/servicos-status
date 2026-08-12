@@ -7,6 +7,10 @@
       "destination": "/src/public/index.html"
     },
     {
+      "source": "/admin",
+      "destination": "/src/public/admin.html"
+    },
+    {
       "source": "/api/cron",
       "destination": "/api/cron"
     },

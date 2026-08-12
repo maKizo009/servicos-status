@@ -1,0 +1,229 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Painel Admin — Monitor Ipiranga</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{margin:0;padding:0;box-sizing:border-box}
+:root{
+  --md-sys-color-surface:#F8FAFC;
+  --md-sys-color-surface-container-low:#F1F5F9;
+  --md-sys-color-surface-container:#FFFFFF;
+  --md-sys-color-on-surface:#0F172A;
+  --md-sys-color-on-surface-variant:#475569;
+  --md-sys-color-outline:#94A3B8;
+  --md-sys-color-outline-variant:#E2E8F0;
+  --md-sys-color-primary:#00923F;
+  --md-sys-color-on-primary:#FFFFFF;
+  --md-sys-color-primary-container:#DCFCE7;
+  --md-sys-color-on-primary-container:#14532D;
+  --md-sys-color-error:#DC2626;
+  --md-elevation-1:0 1px 3px 0 rgba(15,23,42,.06),0 1px 2px -1px rgba(15,23,42,.06);
+  --md-elevation-2:0 4px 6px -1px rgba(15,23,42,.08),0 2px 4px -2px rgba(15,23,42,.05);
+  --md-shape-corner-small:8px;
+  --md-shape-corner-medium:12px;
+  --md-shape-corner-large:16px;
+  --md-shape-corner-full:9999px;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --md-sys-color-surface:#0B1220;
+    --md-sys-color-surface-container-low:#111A2C;
+    --md-sys-color-surface-container:#16202F;
+    --md-sys-color-on-surface:#E2E8F0;
+    --md-sys-color-on-surface-variant:#94A3B8;
+    --md-sys-color-outline:#334155;
+    --md-sys-color-outline-variant:#1E293B;
+    --md-sys-color-primary:#4ADE80;
+    --md-sys-color-primary-container:#14532D;
+    --md-sys-color-on-primary-container:#DCFCE7;
+    --md-sys-color-error:#F87171;
+  }
+}
+body{font-family:Inter,system-ui,sans-serif;background:var(--md-sys-color-surface);color:var(--md-sys-color-on-surface);min-height:100vh}
+.header{display:flex;align-items:center;justify-content:space-between;padding:14px 20px;background:var(--md-sys-color-surface-container);border-bottom:1px solid var(--md-sys-color-outline-variant);position:sticky;top:0;z-index:10}
+.header-title{display:flex;align-items:center;gap:10px;font-size:16px;font-weight:700}
+.header-title .dot{width:10px;height:10px;border-radius:50%;background:var(--md-sys-color-primary);box-shadow:0 0 8px var(--md-sys-color-primary)}
+.header-title small{font-weight:500;opacity:.7;font-size:12px}
+.btn{display:inline-flex;align-items:center;gap:6px;padding:8px 16px;border-radius:var(--md-shape-corner-full);border:1px solid var(--md-sys-color-outline-variant);background:var(--md-sys-color-surface-container);color:var(--md-sys-color-on-surface);font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;transition:all .15s}
+.btn:hover{border-color:var(--md-sys-color-outline)}
+.btn.primary{background:var(--md-sys-color-primary);color:var(--md-sys-color-on-primary);border:none}
+.btn.primary:hover{filter:brightness(1.08)}
+.container{max-width:960px;margin:0 auto;padding:24px 16px 60px}
+.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:14px;margin-bottom:24px}
+.card{background:var(--md-sys-color-surface-container);border:1px solid var(--md-sys-color-outline-variant);border-radius:var(--md-shape-corner-medium);padding:18px;box-shadow:var(--md-elevation-1)}
+.card .label{font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:.4px;color:var(--md-sys-color-on-surface-variant);margin-bottom:8px}
+.card .value{font-size:30px;font-weight:800;line-height:1.1}
+.card .sub{font-size:12px;color:var(--md-sys-color-on-surface-variant);margin-top:6px}
+.card.accent{border-top:3px solid var(--md-sys-color-primary)}
+.panel{background:var(--md-sys-color-surface-container);border:1px solid var(--md-sys-color-outline-variant);border-radius:var(--md-shape-corner-medium);padding:20px;box-shadow:var(--md-elevation-1)}
+.panel h3{font-size:14px;font-weight:700;margin-bottom:14px}
+.bars{display:flex;align-items:flex-end;gap:4px;height:160px;padding-top:8px}
+.bar{flex:1;background:var(--md-sys-color-primary);border-radius:4px 4px 0 0;opacity:.85;min-width:6px;position:relative;transition:opacity .15s}
+.bar:hover{opacity:1}
+.bar .tip{position:absolute;bottom:100%;left:50%;transform:translateX(-50%);background:var(--md-sys-color-on-surface);color:var(--md-sys-color-surface);font-size:11px;font-weight:600;padding:2px 6px;border-radius:6px;white-space:nowrap;opacity:0;pointer-events:none;transition:opacity .15s}
+.bar:hover .tip{opacity:1}
+.axis{display:flex;justify-content:space-between;font-size:10px;color:var(--md-sys-color-on-surface-variant);margin-top:6px}
+/* Login */
+#loginView{max-width:400px;margin:80px auto 0;padding:0 16px}
+.login-card{background:var(--md-sys-color-surface-container);border:1px solid var(--md-sys-color-outline-variant);border-radius:var(--md-shape-corner-large);padding:32px;box-shadow:var(--md-elevation-2)}
+.login-card h1{font-size:20px;font-weight:800;margin-bottom:4px}
+.login-card p{font-size:13px;color:var(--md-sys-color-on-surface-variant);margin-bottom:24px}
+.field{margin-bottom:16px}
+.field label{display:block;font-size:12px;font-weight:600;margin-bottom:6px;color:var(--md-sys-color-on-surface-variant)}
+.field input{width:100%;padding:12px 14px;border-radius:var(--md-shape-corner-small);border:1px solid var(--md-sys-color-outline);background:var(--md-sys-color-surface);color:var(--md-sys-color-on-surface);font-size:14px;font-family:inherit;outline:none;transition:border-color .15s}
+.field input:focus{border-color:var(--md-sys-color-primary)}
+.field input::placeholder{color:var(--md-sys-color-outline)}
+.error{color:var(--md-sys-color-error);font-size:13px;margin-top:10px;min-height:18px}
+.btn-block{width:100%;justify-content:center;padding:12px;font-size:14px}
+#appView{display:none}
+#appView .meta{font-size:12px;color:var(--md-sys-color-on-surface-variant);margin-bottom:20px}
+</style>
+</head>
+<body>
+<header class="header">
+  <div class="header-title">
+    <span class="dot"></span>
+    Painel Admin
+    <small>Monitor Ipiranga</small>
+  </div>
+  <button class="btn" id="btnLogout" style="display:none">Sair</button>
+</header>
+
+<div id="loginView">
+  <div class="login-card">
+    <h1>Acesso restrito</h1>
+    <p>Somente o administrador do Monitor Ipiranga.</p>
+    <div class="field">
+      <label for="inEmail">E-mail</label>
+      <input type="email" id="inEmail" placeholder="seu@email.com" autocomplete="username">
+    </div>
+    <div class="field">
+      <label for="inPass">Senha</label>
+      <input type="password" id="inPass" placeholder="••••••••" autocomplete="current-password">
+    </div>
+    <button class="btn primary btn-block" id="btnLogin">Entrar</button>
+    <div class="error" id="loginError"></div>
+  </div>
+</div>
+
+<div id="appView">
+  <div class="container">
+    <div class="meta" id="metaLine">Carregando estatísticas...</div>
+    <div class="cards" id="cards"></div>
+    <div class="panel">
+      <h3>Acessos por hora (últimas 24h)</h3>
+      <div class="bars" id="bars"></div>
+      <div class="axis"><span>-24h</span><span>-12h</span><span>agora</span></div>
+    </div>
+  </div>
+</div>
+
+<script>
+const $ = (id) => document.getElementById(id);
+let statsTimer = null;
+
+function show(view) {
+  $('loginView').style.display = view === 'login' ? 'block' : 'none';
+  $('appView').style.display = view === 'app' ? 'block' : 'none';
+  $('btnLogout').style.display = view === 'app' ? 'inline-flex' : 'none';
+}
+
+function fmt(n) {
+  return new Intl.NumberFormat('pt-BR').format(n || 0);
+}
+
+function renderCards(s) {
+  const cards = [
+    { label: 'Acessos hoje', value: fmt(s.acessos.hoje), sub: `${fmt(s.acessos.semana)} na semana · ${fmt(s.acessos.total)} total`, accent: true },
+    { label: 'Acessos simultâneos', value: fmt(s.sessoesAtivasAgora), sub: 'sessões ativas agora (3 min)' },
+    { label: 'Sessões ativas (24h)', value: fmt(s.sessoesAtivas24h), sub: `${fmt(s.sessoesHoje)} novas hoje` },
+    { label: 'Instalações do app', value: fmt(s.instalacoesPwa), sub: 'PWA adicionado à tela inicial' },
+    { label: 'Inscritos nos alertas', value: fmt(s.inscritosPush), sub: 'push ativos' },
+  ];
+  $('cards').innerHTML = cards.map((c) => `
+    <div class="card ${c.accent ? 'accent' : ''}">
+      <div class="label">${c.label}</div>
+      <div class="value">${c.value}</div>
+      <div class="sub">${c.sub}</div>
+    </div>`).join('');
+}
+
+function renderBars(acessosPorHora) {
+  const max = Math.max(1, ...acessosPorHora.map((h) => h.n));
+  $('bars').innerHTML = acessosPorHora.map((h) => {
+    const hPct = Math.round((h.n / max) * 100);
+    return `<div class="bar" style="height:${hPct}%" title="${h.hora} — ${h.n}">
+      <span class="tip">${h.hora} · ${h.n}</span></div>`;
+  }).join('');
+}
+
+async function loadStats() {
+  try {
+    const res = await fetch('/api/admin/stats', { credentials: 'same-origin' });
+    if (res.status === 401) { show('login'); return; }
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    const s = await res.json();
+    $('metaLine').textContent = 'Atualizado às ' + new Date(s.geradoEm).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }) + ' · fuso de Brasília';
+    renderCards(s);
+    renderBars(s.acessosPorHora);
+  } catch (e) { $('metaLine').textContent = 'Erro ao carregar: ' + e.message; }
+}
+
+async function init() {
+  // Já autenticado? Mostra o painel direto.
+  try {
+    const res = await fetch('/api/admin/me', { credentials: 'same-origin' });
+    const me = await res.json();
+    if (me.authed) { show('app'); loadStats(); statsTimer = setInterval(loadStats, 60_000); return; }
+  } catch {}
+  show('login');
+}
+
+$('btnLogin').addEventListener('click', async () => {
+  $('loginError').textContent = '';
+  const email = $('inEmail').value.trim();
+  const password = $('inPass').value;
+  if (!email || !password) { $('loginError').textContent = 'Informe e-mail e senha.'; return; }
+  $('btnLogin').disabled = true;
+  $('btnLogin').textContent = 'Entrando...';
+  try {
+    const res = await fetch('/api/admin/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'same-origin',
+      body: JSON.stringify({ email, password }),
+    });
+    if (res.ok) {
+      show('app');
+      loadStats();
+      statsTimer = setInterval(loadStats, 60_000);
+    } else {
+      const d = await res.json().catch(() => ({}));
+      $('loginError').textContent = d.error || 'Falha no login.';
+    }
+  } catch (e) {
+    $('loginError').textContent = 'Erro de conexão: ' + e.message;
+  } finally {
+    $('btnLogin').disabled = false;
+    $('btnLogin').textContent = 'Entrar';
+  }
+});
+
+$('inPass').addEventListener('keydown', (e) => { if (e.key === 'Enter') $('btnLogin').click(); });
+
+$('btnLogout').addEventListener('click', async () => {
+  await fetch('/api/admin/logout', { method: 'POST', credentials: 'same-origin' });
+  if (statsTimer) clearInterval(statsTimer);
+  $('inPass').value = '';
+  show('login');
+});
+
+init();
+</script>
+</body>
+</html>

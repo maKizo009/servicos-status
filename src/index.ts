@@ -34,7 +34,7 @@ import {
 import { logger } from "./logger.js";
 import { getRadarNowcast, REGION_GRID } from "./nowcast-service.js";
 import { generateNowcastBulletin } from "./nowcast-vlm.js";
-import { checkRateLimit } from "./rate-limiter.js";
+import { checkRateLimit, checkRateLimitScope } from "./rate-limiter.js";
 import { EventTracker } from "./state.js";
 import {
 	sendCopelAlert,
@@ -630,27 +630,60 @@ export async function handleRequest(
 			getHeader(req, "x-forwarded-for")?.split(",")[0]?.trim() ||
 			getHeader(req, "x-real-ip") ||
 			"unknown";
-		const { allowed, retryAfter } = checkRateLimit(ip);
-		if (!allowed) {
-			return new Response(
-				JSON.stringify({
-					error: "Too many requests",
-					retryAfter,
-					limit: "10 requests per minute",
-				}),
-				{
-					status: 429,
-					headers: {
-						"Content-Type": "application/json",
-						"Retry-After": String(retryAfter),
-						"X-RateLimit-Limit": "10",
-						"X-RateLimit-Remaining": "0",
-						"X-RateLimit-Reset": String(
-							Math.ceil((Date.now() + retryAfter * 1000) / 1000),
-						),
+		// Telemetria (pageview/heartbeat) e admin têm rate limits próprios
+		// (o heartbeat roda a cada 60s por sessão — o limite comum de 10/min
+		// bloquearia o próprio site).
+		if (path === "/api/track") {
+			const { allowed, retryAfter } = checkRateLimitScope(ip, 120, "track");
+			if (!allowed) {
+				return new Response(
+					JSON.stringify({ error: "Too many requests", retryAfter }),
+					{
+						status: 429,
+						headers: {
+							"Content-Type": "application/json",
+							"Retry-After": String(retryAfter),
+						},
 					},
-				},
-			);
+				);
+			}
+		} else if (path.startsWith("/api/admin/")) {
+			const { allowed, retryAfter } = checkRateLimitScope(ip, 20, "admin");
+			if (!allowed) {
+				return new Response(
+					JSON.stringify({ error: "Too many requests", retryAfter }),
+					{
+						status: 429,
+						headers: {
+							"Content-Type": "application/json",
+							"Retry-After": String(retryAfter),
+						},
+					},
+				);
+			}
+		} else {
+			const { allowed, retryAfter } = checkRateLimit(ip);
+			if (!allowed) {
+				return new Response(
+					JSON.stringify({
+						error: "Too many requests",
+						retryAfter,
+						limit: "10 requests per minute",
+					}),
+					{
+						status: 429,
+						headers: {
+							"Content-Type": "application/json",
+							"Retry-After": String(retryAfter),
+							"X-RateLimit-Limit": "10",
+							"X-RateLimit-Remaining": "0",
+							"X-RateLimit-Reset": String(
+								Math.ceil((Date.now() + retryAfter * 1000) / 1000),
+							),
+						},
+					},
+				);
+			}
 		}
 	}
 
@@ -722,6 +755,113 @@ export async function handleRequest(
 		if (path === "/api/check" && method === "POST") {
 			await runChecks();
 			return Response.json({ status: "ok", timestamp: Date.now() });
+		}
+		// ===== Telemetria de uso (acessos, instalações, sessões) =====
+		if (path === "/api/track" && method === "POST") {
+			try {
+				const { trackEvent } = await import("./admin.js");
+				const body = (await getReqJson(req)) as {
+					event?: string;
+					sessionId?: string;
+				};
+				const tipo = String(body?.event ?? "");
+				if (!["pageview", "install", "heartbeat"].includes(tipo)) {
+					return new Response(JSON.stringify({ error: "evento inválido" }), {
+						status: 400,
+						headers: { "Content-Type": "application/json" },
+					});
+				}
+				await trackEvent(tipo, body?.sessionId ? String(body.sessionId) : null);
+				return Response.json({ status: "ok", timestamp: Date.now() });
+			} catch (err: unknown) {
+				const msg = err instanceof Error ? err.message : String(err);
+				return new Response(JSON.stringify({ error: msg }), {
+					status: 400,
+					headers: { "Content-Type": "application/json" },
+				});
+			}
+		}
+		// ===== Painel Admin (só o dono) =====
+		if (path === "/api/admin/login" && method === "POST") {
+			const {
+				adminConfigured,
+				adminEmail,
+				createSessionToken,
+				sessionCookie,
+				verifyPassword,
+			} = await import("./admin.js");
+			if (!adminConfigured()) {
+				return new Response(
+					JSON.stringify({ error: "Admin não configurado" }),
+					{ status: 503, headers: { "Content-Type": "application/json" } },
+				);
+			}
+			const body = (await getReqJson(req)) as {
+				email?: string;
+				password?: string;
+			};
+			const ok =
+				String(body?.email ?? "").toLowerCase() ===
+					adminEmail().toLowerCase() &&
+				verifyPassword(
+					String(body?.password ?? ""),
+					loadConfig().adminPasswordHash,
+				);
+			// Atraso fixo anti brute-force (serverless não tem memória de
+			// tentativas entre instâncias — o atraso uniformiza a força).
+			await new Promise((r) => setTimeout(r, 1200));
+			if (!ok) {
+				return new Response(
+					JSON.stringify({ error: "Credenciais inválidas" }),
+					{ status: 401, headers: { "Content-Type": "application/json" } },
+				);
+			}
+			const token = createSessionToken();
+			return new Response(JSON.stringify({ status: "ok" }), {
+				status: 200,
+				headers: {
+					"Content-Type": "application/json",
+					"Set-Cookie": sessionCookie(token),
+				},
+			});
+		}
+		if (path === "/api/admin/logout" && method === "POST") {
+			const { clearSessionCookie } = await import("./admin.js");
+			return new Response(JSON.stringify({ status: "ok" }), {
+				status: 200,
+				headers: {
+					"Content-Type": "application/json",
+					"Set-Cookie": clearSessionCookie(),
+				},
+			});
+		}
+		if (path === "/api/admin/me" && method === "GET") {
+			const {
+				adminConfigured,
+				adminEmail,
+				getSessionTokenFromCookie,
+				verifySessionToken,
+			} = await import("./admin.js");
+			const token = getSessionTokenFromCookie(getHeader(req, "cookie"));
+			const authed = verifySessionToken(token);
+			return Response.json({
+				authed,
+				configured: adminConfigured(),
+				email: authed ? adminEmail() : null,
+				timestamp: Date.now(),
+			});
+		}
+		if (path === "/api/admin/stats" && method === "GET") {
+			const { getAdminStats, getSessionTokenFromCookie, verifySessionToken } =
+				await import("./admin.js");
+			const token = getSessionTokenFromCookie(getHeader(req, "cookie"));
+			if (!verifySessionToken(token)) {
+				return new Response(JSON.stringify({ error: "Não autenticado" }), {
+					status: 401,
+					headers: { "Content-Type": "application/json" },
+				});
+			}
+			return Response.json(await getAdminStats());
 		}
 		// ===== Push Web (PWA) — inscrições e teste =====
 		if (path === "/api/push/status") {

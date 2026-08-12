@@ -154,6 +154,17 @@ export async function initDb(): Promise<Client> {
 				evento TEXT PRIMARY KEY,
 				enviado_at INTEGER NOT NULL
 			)`,
+				`CREATE TABLE IF NOT EXISTS app_events (
+				id INTEGER PRIMARY KEY AUTOINCREMENT,
+				tipo TEXT NOT NULL,
+				session_id TEXT,
+				ts INTEGER NOT NULL
+			)`,
+				`CREATE TABLE IF NOT EXISTS app_sessions (
+				session_id TEXT PRIMARY KEY,
+				first_seen INTEGER NOT NULL,
+				last_seen INTEGER NOT NULL
+			)`,
 				"CREATE INDEX IF NOT EXISTS idx_portal_timestamp ON portal_results(timestamp)",
 				"CREATE INDEX IF NOT EXISTS idx_connectivity_timestamp ON connectivity_results(timestamp)",
 				"CREATE INDEX IF NOT EXISTS idx_bgp_timestamp ON bgp_results(timestamp)",
@@ -163,6 +174,9 @@ export async function initDb(): Promise<Client> {
 				"CREATE INDEX IF NOT EXISTS idx_event_history_timestamp ON event_history(timestamp)",
 				"CREATE INDEX IF NOT EXISTS idx_weather_bulletins_generated ON weather_bulletins(generated_at)",
 				"CREATE INDEX IF NOT EXISTS idx_weather_nowcast_bulletins_generated ON weather_nowcast_bulletins(generated_at)",
+				"CREATE INDEX IF NOT EXISTS idx_app_events_ts ON app_events(ts)",
+				"CREATE INDEX IF NOT EXISTS idx_app_events_tipo ON app_events(tipo)",
+				"CREATE INDEX IF NOT EXISTS idx_app_sessions_last_seen ON app_sessions(last_seen)",
 			],
 			"write",
 		);

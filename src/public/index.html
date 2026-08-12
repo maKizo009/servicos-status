@@ -310,6 +310,12 @@ body{font-family:var(--font);background:var(--md-sys-color-surface);color:var(--
 .push-btn:active{transform:scale(.95)}
 .push-btn.on{background:rgba(0,146,63,.85);border-color:rgba(255,255,255,.35)}
 .push-btn.denied{opacity:.55}
+.admin-btn{
+  display:inline-flex;align-items:center;height:40px;padding:0 14px;flex-shrink:0;text-decoration:none;
+  background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.2);border-radius:var(--md-shape-corner-full);
+  cursor:pointer;font-size:13px;font-weight:600;color:#fff;transition:all .2s;backdrop-filter:blur(8px);margin-left:8px
+}
+.admin-btn:hover{background:rgba(255,255,255,.2);border-color:rgba(255,255,255,.35)}
 .header-right-group{display:flex;align-items:center}
 .ov-dot{width:9px;height:9px;border-radius:50%;transition:all .3s;flex-shrink:0}
 .ov-dot.ok{background:var(--g5);box-shadow:0 0 8px var(--g5)}
@@ -709,6 +715,7 @@ body{font-family:var(--font);background:var(--md-sys-color-surface);color:var(--
     <span id="pushBtnIcon">🔔</span>
     <span id="pushBtnText">Alertas</span>
   </button>
+  <a class="admin-btn" id="btnAdmin" href="/admin" style="display:none" title="Painel Admin">📊 Admin</a>
   <button class="header-refresh-btn" id="btnRefresh" type="button" aria-label="Atualizar dados do monitoramento">
     <svg class="ri" id="refreshIcon" viewBox="0 0 24 24"><path d="M17.65 6.35C16.2 4.9 14.21 4 12 4c-4.42 0-7.99 3.58-7.99 8s3.57 8 7.99 8c3.73 0 6.84-2.55 7.73-6h-2.08c-.82 2.33-3.04 4-5.65 4-3.31 0-6-2.69-6-6s2.69-6 6-6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z"/></svg>
     <span class="ht" id="headerTime" aria-live="polite">--:--</span>
@@ -2201,6 +2208,34 @@ function copyPrompt(provider, text) {
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', init);
   } else { init(); }
+})();
+</script>
+<script>
+/* ===== Telemetria de uso (acessos, instalações, sessões) ===== */
+(function () {
+  try {
+    let sid = localStorage.getItem('mi_sid');
+    if (!sid) { sid = (crypto.randomUUID ? crypto.randomUUID() : 's' + Date.now() + Math.random().toString(36).slice(2)); localStorage.setItem('mi_sid', sid); }
+    const track = (event) => {
+      try { fetch('/api/track', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ event, sessionId: sid }) }).catch(() => {}); } catch {}
+    };
+    track('pageview');
+    setInterval(() => track('heartbeat'), 60000);
+    window.addEventListener('appinstalled', () => track('install'));
+    // Fallback: navegadores sem beforeinstallprompt (iOS Safari) marcam install no 2º pageview
+    if (window.matchMedia('(display-mode: standalone)').matches) track('install');
+  } catch (e) { console.warn('telemetria', e); }
+})();
+</script>
+<script>
+/* ===== Botão Admin (visível só pro dono autenticado) ===== */
+(function () {
+  const btn = document.getElementById('btnAdmin');
+  if (!btn) return;
+  fetch('/api/admin/me', { credentials: 'same-origin' })
+    .then((r) => r.json())
+    .then((me) => { if (me.authed) btn.style.display = 'inline-flex'; })
+    .catch(() => {});
 })();
 </script>
 </body>
