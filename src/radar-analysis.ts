@@ -98,6 +98,74 @@ export interface ThreatCell extends RainCell {
 	movement: MovementVector | null;
 	/** Veredicto de ameaça determinístico (null se sem movimento confiável) */
 	threat: ThreatVerdict | null;
+	/**
+	 * Zona de relevância para o alvo (gates de distância/ETA — Camada A).
+	 * alert = iminente (≤80 km, ETA ≤120 min) | watch = vigilância
+	 * (≤200 km, ETA ≤360 min) | monitor = longe/afastando/estacionário.
+	 * Núcleo extreme a <50 km SEMPRE é alert (fallback de falso negativo:
+	 * célula que surge perto e se intensifica rápido, mesmo sem tracking).
+	 */
+	relevanceZone: "alert" | "watch" | "monitor";
+}
+
+/**
+ * Zonas de relevância (raios e ETAs máximos). Configuráveis aqui —
+ * valores baseados no incidente real 2026-08-12 (núcleo a 336 km/ETA 488 min
+ * NÃO deve acender alerta).
+ */
+export const RELEVANCE_ZONES = {
+	/** Iminente: ≤80 km e ETA ≤120 min → "Alerta" (card COPEL ativo) */
+	alert: { maxKm: 80, maxEtaMin: 120 },
+	/** Vigilância: ≤200 km e ETA ≤360 min → "Vigilância" (sem card de alerta) */
+	watch: { maxKm: 200, maxEtaMin: 360 },
+	/** Núcleo extreme dentro deste raio SEMPRE gera alerta (fallback segurança) */
+	extremeFallbackKm: 50,
+} as const;
+
+/**
+ * Classifica a zona de relevância de um núcleo em relação ao alvo.
+ * Regras (proporcionais ao perigo real, não à intensidade bruta):
+ *  - approaching + ETA ≤ 120 min + dist ≤ 80 km → alert
+ *  - approaching + ETA ≤ 360 min + dist ≤ 200 km → watch
+ *  - extreme a <50 km → alert mesmo sem movimento confiável
+ *  - crossing/receding/estacionário/longe → monitor (sem risco iminente)
+ */
+export function classifyRelevanceZone(
+	distKm: number,
+	approach: ThreatVerdict["approach"] | null,
+	etaMin: number | null,
+	intensity: RainCell["intensity"],
+	speedKmh: number | null,
+): "alert" | "watch" | "monitor" {
+	// Movimento confiável MEDIDO entre frames (>2 km/h com veredito) manda:
+	// receding/crossing nunca é alerta, mesmo extreme a 30 km (está indo
+	// embora). approaching usa as zonas de distância/ETA.
+	const hasReliableMovement =
+		speedKmh != null && speedKmh > 2 && approach != null;
+	if (hasReliableMovement) {
+		if (approach === "approaching" && etaMin != null) {
+			if (
+				distKm <= RELEVANCE_ZONES.alert.maxKm &&
+				etaMin <= RELEVANCE_ZONES.alert.maxEtaMin
+			) {
+				return "alert";
+			}
+			if (
+				distKm <= RELEVANCE_ZONES.watch.maxKm &&
+				etaMin <= RELEVANCE_ZONES.watch.maxEtaMin
+			) {
+				return "watch";
+			}
+		}
+		return "monitor";
+	}
+	// Fallback de segurança (SEM movimento confiável): núcleo extreme MUITO
+	// perto pode ter surgido e se intensificado entre frames sem tracking —
+	// alerta preventivo, não espera o ETA.
+	if (distKm <= RELEVANCE_ZONES.extremeFallbackKm && intensity === "extreme") {
+		return "alert";
+	}
+	return "monitor";
 }
 
 export interface FrameAnalysis {
@@ -637,11 +705,21 @@ export function assessAllThreats(
 			const threat = movement
 				? assessThreat(c.lat, c.lon, movement, targetLat, targetLon)
 				: null;
+			const distToTargetKm = haversineKm(c.lat, c.lon, targetLat, targetLon);
 			return {
 				...c,
-				distToTargetKm: haversineKm(c.lat, c.lon, targetLat, targetLon),
+				distToTargetKm,
 				movement,
 				threat,
+				// Gate de relevância (distância + ETA + direção): define se o
+				// núcleo é iminente, vigilância ou apenas monitoramento.
+				relevanceZone: classifyRelevanceZone(
+					distToTargetKm,
+					threat?.approach ?? null,
+					threat?.etaMin ?? null,
+					c.intensity,
+					movement?.speedKmh ?? null,
+				),
 			};
 		})
 		.sort((a, b) => {
