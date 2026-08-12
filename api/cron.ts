@@ -8,8 +8,13 @@ import {
 	savePortalResult,
 } from "../src/db.js";
 import { syncWeatherCycle } from "../src/index.js";
+import { sendEventPush } from "../src/push.js";
 import { EventTracker } from "../src/state.js";
-import { sendCopelAlert, sendSaneparAlert } from "../src/telegram.js";
+import {
+	sendCopelAlert,
+	sendSaneparAlert,
+	sendTelegramAlert,
+} from "../src/telegram.js";
 
 export default async function handler(req: any, res: any) {
 	try {
@@ -33,7 +38,16 @@ export default async function handler(req: any, res: any) {
 		}
 
 		for (const outage of data.newCopelOutages) {
-			await sendCopelAlert(outage, config.telegramBotToken, config.telegramChatId);
+			await sendCopelAlert(
+				outage,
+				config.telegramBotToken,
+				config.telegramChatId,
+			);
+			await sendEventPush(
+				"copel",
+				`⚡ Queda de energia em ${outage.bairro || "Ipiranga"} (COPEL)`,
+				`${outage.qtdConsumidores || 0} consumidores afetados | Previsão: ${outage.previsaoRestabelecimento || "Sem previsão"}`,
+			);
 			await saveEventLog(
 				"copel",
 				`Queda de Energia (${outage.ehProgramada ? "Programada" : "Emergencial"})`,
@@ -44,7 +58,16 @@ export default async function handler(req: any, res: any) {
 		}
 
 		for (const intr of data.newSaneparInterruptions) {
-			await sendSaneparAlert(intr, config.telegramBotToken, config.telegramChatId);
+			await sendSaneparAlert(
+				intr,
+				config.telegramBotToken,
+				config.telegramChatId,
+			);
+			await sendEventPush(
+				"sanepar",
+				`🚱 Falta de água em ${intr.bairro || intr.cidade || "Ipiranga"} (Sanepar)`,
+				intr.motivo || "Manutenção na rede de abastecimento",
+			);
 			await saveEventLog(
 				"sanepar",
 				`Interrupção de Água - ${intr.motivo || "Manutenção"}`,
@@ -52,6 +75,27 @@ export default async function handler(req: any, res: any) {
 				`Início: ${intr.inicio} | Fim: ${intr.fim}`,
 				0,
 			);
+		}
+
+		// Alerta de TEMPORAL iminente (Camada A: zona "alert" ≤80km/ETA≤2h).
+		// Cooldown de 60 min — o ciclo roda a cada 10 min e não pode spammar.
+		if (weatherState.alertLevel === "alert") {
+			const enviado = await sendEventPush(
+				"temporal",
+				"🌩️ Alerta de tempestade em Ipiranga",
+				weatherState.regionalRainAlert ||
+					"Núcleo de chuva se aproximando — proteja equipamentos.",
+				60 * 60_000,
+			);
+			if (enviado) {
+				await sendTelegramAlert({
+					botToken: config.telegramBotToken,
+					chatId: config.telegramChatId,
+					level: "critical",
+					operatorResults: [],
+					summary: weatherState.regionalRainAlert || "Alerta de tempestade",
+				});
+			}
 		}
 
 		const result = {
@@ -84,6 +128,9 @@ export default async function handler(req: any, res: any) {
 		if (res && typeof res.status === "function") {
 			return res.status(500).json({ error: msg, timestamp: Date.now() });
 		}
-		return Response.json({ error: msg, timestamp: Date.now() }, { status: 500 });
+		return Response.json(
+			{ error: msg, timestamp: Date.now() },
+			{ status: 500 },
+		);
 	}
 }

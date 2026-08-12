@@ -723,6 +723,75 @@ export async function handleRequest(
 			await runChecks();
 			return Response.json({ status: "ok", timestamp: Date.now() });
 		}
+		// ===== Push Web (PWA) — inscrições e teste =====
+		if (path === "/api/push/status") {
+			const { countPushSubscriptions, pushConfigured } = await import(
+				"./push.js"
+			);
+			const config = loadConfig();
+			return Response.json({
+				configured: pushConfigured(),
+				vapidPublicKey: config.vapidPublicKey || null,
+				subscribers: await countPushSubscriptions().catch(() => 0),
+				timestamp: Date.now(),
+			});
+		}
+		if (path === "/api/push/subscribe" && method === "POST") {
+			try {
+				const { savePushSubscription } = await import("./push.js");
+				const body = (await getReqJson(req)) as {
+					endpoint?: string;
+					keys?: { p256dh?: string; auth?: string };
+				};
+				if (!body?.endpoint || !body?.keys?.p256dh || !body?.keys?.auth) {
+					return new Response(
+						JSON.stringify({ error: "Inscrição incompleta (endpoint/keys)" }),
+						{ status: 400, headers: { "Content-Type": "application/json" } },
+					);
+				}
+				await savePushSubscription({
+					endpoint: body.endpoint,
+					keys: { p256dh: body.keys.p256dh, auth: body.keys.auth },
+				});
+				return Response.json({ status: "ok", timestamp: Date.now() });
+			} catch (err: unknown) {
+				const msg = err instanceof Error ? err.message : String(err);
+				return new Response(JSON.stringify({ error: msg }), {
+					status: 400,
+					headers: { "Content-Type": "application/json" },
+				});
+			}
+		}
+		if (path === "/api/push/unsubscribe" && method === "POST") {
+			try {
+				const { removePushSubscription } = await import("./push.js");
+				const body = (await getReqJson(req)) as { endpoint?: string };
+				if (!body?.endpoint) {
+					return new Response(JSON.stringify({ error: "endpoint ausente" }), {
+						status: 400,
+						headers: { "Content-Type": "application/json" },
+					});
+				}
+				await removePushSubscription(body.endpoint);
+				return Response.json({ status: "ok", timestamp: Date.now() });
+			} catch (err: unknown) {
+				const msg = err instanceof Error ? err.message : String(err);
+				return new Response(JSON.stringify({ error: msg }), {
+					status: 400,
+					headers: { "Content-Type": "application/json" },
+				});
+			}
+		}
+		if (path === "/api/push/test" && method === "POST") {
+			// Envia um push de teste pra todos os inscritos (validar o fluxo).
+			const { sendPushAlert } = await import("./push.js");
+			const r = await sendPushAlert(
+				"🔔 Monitor Ipiranga",
+				"Teste de alerta — notificações funcionando!",
+				"/",
+			);
+			return Response.json({ ...r, timestamp: Date.now() });
+		}
 		if (path === "/api/signal-report" && method === "POST") {
 			try {
 				const body = (await getReqJson(req)) as {
