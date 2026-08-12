@@ -503,7 +503,8 @@ export async function generateNowcastBulletin(
 			const metodo = fallbackUsado
 				? " (referência regional — fora da malha IBGE)"
 				: "";
-			locationNote = `- Núcleo mais ameaçador em (${cell.lat.toFixed(2)}, ${cell.lon.toFixed(2)}): município ${nome}${metodo}; dista ${Math.round(ipirangaKm)} km de Ipiranga\n`;
+			const ufTxt = municipio ? ` (${municipio.uf})` : "";
+			locationNote = `- Núcleo mais ameaçador em (${cell.lat.toFixed(2)}, ${cell.lon.toFixed(2)}): município ${nome}${ufTxt}${metodo}; dista ${Math.round(ipirangaKm)} km de Ipiranga\n`;
 
 			// Veredicto de ameaça DETERMINÍSTICO (Camada A): o VLM nunca decide
 			// se o núcleo vem ou não para Ipiranga — recebe a conclusão pronta.
@@ -535,12 +536,17 @@ export async function generateNowcastBulletin(
 					.map((t) => {
 						const p = projectCell(cell.lat, cell.lon, cellMovement, t);
 						const pm = getMunicipioComFallback(p.lat, p.lon, haversineKm);
-						return { t, ...p, nome: pm.municipio?.nome ?? null };
+						return {
+							t,
+							...p,
+							nome: pm.municipio?.nome ?? null,
+							uf: pm.municipio?.uf ?? null,
+						};
 					})
 					.filter((p) => p.nome && p.nome !== nome);
 				if (projections.length > 0) {
 					const projList = projections
-						.map((p) => `${p.nome} (${p.t} min)`)
+						.map((p) => `${p.nome}${p.uf ? ` (${p.uf})` : ""} (${p.t} min)`)
 						.join(", ");
 					threatNote += `- Projeção da trajetória (extrapolação, pode dissipar): ${projList}\n`;
 				}
@@ -577,7 +583,7 @@ export async function generateNowcastBulletin(
 							t.lon,
 							haversineKm,
 						);
-						return `- Núcleo ${i + 1} (círculo ${i + 1} na imagem): município ${municipio?.nome ?? "fora da malha"} (${t.lat.toFixed(2)}, ${t.lon.toFixed(2)}), ${intensityLabel[t.intensity] ?? t.intensity}, ~${Math.round(t.distToTargetKm)} km de Ipiranga`;
+						return `- Núcleo ${i + 1} (círculo ${i + 1} na imagem): município ${municipio?.nome ?? "fora da malha"}${municipio ? ` (${municipio.uf})` : ""} (${t.lat.toFixed(2)}, ${t.lon.toFixed(2)}), ${intensityLabel[t.intensity] ?? t.intensity}, ~${Math.round(t.distToTargetKm)} km de Ipiranga`;
 					})
 					.join("\n") + "\n";
 		}
