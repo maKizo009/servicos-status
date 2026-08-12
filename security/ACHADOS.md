@@ -39,21 +39,25 @@ secrets via GLM 5.2 (NVIDIA NIM, function calling) + revisão para correção.
 
 ## Ações manuais pendentes (dependem do Dave)
 
-1. **Disparador do `/api/cron`**: se o cron atual NÃO for o cron nativo do Vercel
-   (header `x-vercel-cron: 1`), o disparador externo (cron-job.org, GitHub
-   Actions, etc.) precisa mandar `Authorization: Bearer <CRON_SECRET>`.
-   O secret está em `/root/.cron_secret_servicos` (fora do repo).
+1. ~~Disparador do `/api/cron`~~ **RESOLVIDO**: o disparador é o GitHub Actions
+   (`.github/workflows/hourly-monitor.yml`, cron `*/10`). O secret
+   `CRON_SECRET` foi criado no GitHub Actions (libsodium) e o workflow agora
+   manda `Authorization: Bearer ${{ secrets.CRON_SECRET }}`. Validado:
+   workflow success + probes gravando (03:17, 2026-08-12).
 2. Envs estranhas no Vercel: `TURSO_DATABASE_URL_TURSO_DATABASE_URL` e
    `TURSO_DATABASE_URL_TURSO_AUTH_TOKEN` parecem lixo de setup antigo — avaliar
    remoção (não mexido para não quebrar nada).
+3. ⚠️ **Repo `maKizo009/servicos-status` é PÚBLICO** (verificado via API) —
+   conferir se é intencional; se não, tornar privado.
 
-## Rescan pós-correção
+## Rescan pós-correção (2026-08-12 ~03:20 UTC) — TUDO VERDE
 
-- [ ] headers (CSP/XFO/nosniff/referrer/permissions) presentes
-- [ ] CORS sem `*`
-- [ ] métodos de escrita → 405 nas rotas de leitura
-- [ ] `/api/check` e `/api/cron` → 401 sem credencial
-- [ ] `/api/push/test` → 401 sem sessão
-- [ ] login → 429 após 5 tentativas/min
-- [ ] `/api/history?limit=-5` → no máx. 100 registros
-- [ ] `/api/admin/me` sem auth → `configured:false`
+- [x] headers (CSP/XFO/nosniff/referrer/permissions) presentes (API via wrapper, estáticos via `vercel.json → headers`; o arquivo `_headers` NÃO é aplicado — usar vercel.json)
+- [x] CORS sem `*` — ACAO fixo `https://servicos-status.vercel.app` (o Vercel injeta `ACAO:*` por padrão em estáticos; sobrescrito no vercel.json)
+- [x] métodos de escrita → 405 nas rotas de leitura
+- [x] `/api/check` e `/api/cron` → 401 sem credencial
+- [x] `/api/push/test` → 401 sem sessão
+- [x] login → 401×5 → 429 na 6ª tentativa (escopo `login` 5/min)
+- [x] `/api/history?limit=-5` → 100 registros (clamp)
+- [x] `/api/admin/me` sem auth → `configured:false`
+- [x] cron restaurado (GitHub Actions + Bearer CRON_SECRET) — probes gravando
