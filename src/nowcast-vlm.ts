@@ -54,7 +54,7 @@ export interface EcmwfContext {
 
 export interface NowcastBulletin {
 	text: string;
-	source: "gemini" | "nvidia_nim_vision" | "heuristic";
+	source: "opencode_vision" | "gemini" | "nvidia_nim_vision" | "heuristic";
 	generatedAt: number;
 }
 
@@ -148,6 +148,56 @@ async function callNimVision(
 		choices?: Array<{ message?: { content?: string } }>;
 	};
 	return json.choices?.[0]?.message?.content?.trim() || null;
+	}
+
+/**
+ * Chama o VLM principal via OpenCode Go (API OpenAI-compatível) — default
+ * minimax-m3 (visão + custo baixo). O MiniMax raciocina antes de responder
+ * (bloco <think>...</think>); o bloco é removido para não vazar no boletim.
+ */
+async function callOpenCodeVision(
+	config: AppConfig,
+	prompt: string,
+	dataUrl: string,
+): Promise<string | null> {
+	const res = await fetch("https://opencode.ai/zen/go/v1/chat/completions", {
+		method: "POST",
+		headers: {
+			Authorization: `Bearer ${config.openCodeApiKey}`,
+			"Content-Type": "application/json",
+		},
+		body: JSON.stringify({
+			model: config.openCodeVlmModel,
+			messages: [
+				{
+					role: "user",
+					content: [
+						{ type: "text", text: prompt },
+						{ type: "image_url", image_url: { url: dataUrl } },
+					],
+				},
+			],
+			max_tokens: 350,
+			temperature: 0.4,
+		}),
+		signal: AbortSignal.timeout(90_000),
+	});
+	if (!res.ok) {
+		logger.warn("Camada B: OpenCode vision HTTP", {
+			model: config.openCodeVlmModel,
+			status: res.status,
+		});
+		return null;
+	}
+	const json = (await res.json()) as {
+		choices?: Array<{ message?: { content?: string } }>;
+	};
+	let text = json.choices?.[0]?.message?.content?.trim() || null;
+	if (text) {
+		// remove bloco de raciocínio (MiniMax M3 pensa antes de responder)
+		text = text.replace(/^[\s\S]*?<\/think>\s*/i, "").trim();
+	}
+	return text || null;
 }
 
 /**
@@ -623,14 +673,23 @@ Instruções:
 
 NÃO invente números além dos fornecidos. Seja direto e útil.`;
 
-		// Cadeia de modelos: Gemini 3.6 Flash Lite (primário) → NIM vision
-		// (legado, se a chave existir) → heurística. O composite anotado vai
-		// para todos; a validação pós-geração roda em cada tentativa.
+		// Cadeia de modelos: OpenCode Go / minimax-m3 (primário, visão + custo
+		// baixo) → Gemini 3.6 Flash Lite → NIM vision (legado) → heurística.
+		// O composite anotado vai para todos; a validação pós-geração roda em
+		// cada tentativa.
 		const attempts: Array<{
 			label: string;
-			source: "gemini" | "nvidia_nim_vision";
+			source: "opencode_vision" | "gemini" | "nvidia_nim_vision";
 			call: () => Promise<string | null>;
 		}> = [];
+		if (config.openCodeApiKey) {
+			attempts.push({
+				label: config.openCodeVlmModel,
+				source: "opencode_vision",
+				call: () =>
+					callOpenCodeVision(config, prompt, composite.dataUrl),
+			});
+		}
 		if (geminiKey) {
 			attempts.push({
 				label: GEMINI_VLM_MODEL,

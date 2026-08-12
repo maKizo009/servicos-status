@@ -693,13 +693,13 @@ export async function getLatestWeatherBulletin(): Promise<WeatherBulletin | null
 export interface NowcastBulletinRecord {
 	id: number;
 	text: string;
-	source: "gemini" | "nvidia_nim_vision" | "heuristic";
+	source: "opencode_vision" | "gemini" | "nvidia_nim_vision" | "heuristic";
 	generatedAt: number;
 }
 
 export async function saveNowcastBulletin(
 	text: string,
-	source: "gemini" | "nvidia_nim_vision" | "heuristic",
+	source: "opencode_vision" | "gemini" | "nvidia_nim_vision" | "heuristic",
 ): Promise<NowcastBulletinRecord> {
 	const now = Date.now();
 	const db = await getDbClient();
@@ -726,7 +726,7 @@ export async function getLatestNowcastBulletin(): Promise<NowcastBulletinRecord 
 	return {
 		id: Number(row.id),
 		text: String(row.text),
-		source: row.source as "nvidia_nim_vision" | "heuristic",
+		source: row.source as "opencode_vision" | "nvidia_nim_vision" | "heuristic",
 		generatedAt: Number(row.generatedAt),
 	};
 }
