@@ -135,11 +135,12 @@ async function callNimVision(
 					],
 				},
 			],
-			// reasoning básico (MiniMax M3): raciocínio separado em
-			// reasoning_content — não polui o boletim e melhora a análise.
-			// ATENÇÃO: NÃO usar o campo "thinking" — o endpoint do NIM
-			// retorna content vazio quando ele está presente (testado).
-			reasoning_effort: "low",
+			// reasoning_effort REMOVIDO (achado 2026-08-12): com o composite
+			// real do radar (1536x512) + prompt completo, o reasoning low do
+			// minimax-m3 estoura o timeout de 90s (testado: 108s na cadeia) e
+			// pode retornar content vazio. Sem reasoning: ~1s de resposta.
+			// Se quiser re-tentar reasoning, reduzir o composite (COMPOSITE_MAX_PX)
+			// e/ou aumentar o timeout ANTES — não apenas religar o campo.
 			max_tokens: 350,
 			temperature: 0.4,
 		}),
