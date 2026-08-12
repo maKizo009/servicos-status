@@ -135,7 +135,12 @@ async function callNimVision(
 					],
 				},
 			],
-			max_tokens: 300,
+			// reasoning básico (MiniMax M3): raciocínio separado em
+			// reasoning_content — não polui o boletim e melhora a análise.
+			// ATENÇÃO: NÃO usar o campo "thinking" — o endpoint do NIM
+			// retorna content vazio quando ele está presente (testado).
+			reasoning_effort: "low",
+			max_tokens: 350,
 			temperature: 0.4,
 		}),
 		signal: AbortSignal.timeout(90_000),
@@ -677,22 +682,29 @@ Instruções:
 
 NÃO invente números além dos fornecidos. Seja direto e útil.`;
 
-		// Cadeia de modelos: OpenCode Go / minimax-m3 (primário, visão + custo
-		// baixo) → Gemini 3.6 Flash Lite → NIM vision (legado) → heurística.
-		// O composite anotado vai para todos; a validação pós-geração roda em
-		// cada tentativa.
+		// Cadeia de modelos: NIM minimax-m3 (primário — reasoning básico, não gasta
+		// cota do OpenCode) → Gemini 3.6 Flash Lite → OpenCode Go (fallback pago,
+		// thinking desabilitado) → heurística. O composite anotado vai para todos;
+		// a validação pós-geração roda em cada tentativa.
 		const attempts: Array<{
 			label: string;
 			source: "opencode_vision" | "gemini" | "nvidia_nim_vision";
 			call: () => Promise<string | null>;
 		}> = [];
-		if (config.openCodeApiKey) {
-			attempts.push({
-				label: config.openCodeVlmModel,
-				source: "opencode_vision",
-				call: () =>
-					callOpenCodeVision(config, prompt, composite.dataUrl),
-			});
+		if (apiKey) {
+			const modelosNim = [
+				config.nvidiaNimModel,
+				"meta/llama-3.2-90b-vision-instruct",
+				"meta/llama-3.2-11b-vision-instruct",
+			].filter((m, i, arr) => m && arr.indexOf(m) === i);
+			for (const model of modelosNim) {
+				attempts.push({
+					label: model,
+					source: "nvidia_nim_vision",
+					call: () =>
+						callNimVision(config, apiKey, model, prompt, composite.dataUrl),
+				});
+			}
 		}
 		if (geminiKey) {
 			attempts.push({
@@ -707,18 +719,13 @@ NÃO invente números além dos fornecidos. Seja direto e útil.`;
 					),
 			});
 		}
-		if (apiKey) {
-			for (const model of [
-				"meta/llama-3.2-90b-vision-instruct",
-				"meta/llama-3.2-11b-vision-instruct",
-			]) {
-				attempts.push({
-					label: model,
-					source: "nvidia_nim_vision",
-					call: () =>
-						callNimVision(config, apiKey, model, prompt, composite.dataUrl),
-				});
-			}
+		if (config.openCodeApiKey) {
+			attempts.push({
+				label: config.openCodeVlmModel,
+				source: "opencode_vision",
+				call: () =>
+					callOpenCodeVision(config, prompt, composite.dataUrl),
+			});
 		}
 
 		for (const attempt of attempts) {
