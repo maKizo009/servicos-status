@@ -508,11 +508,30 @@ export async function syncWeatherCycle(): Promise<WeatherState> {
 						nearestThreatKm: state.nearestThreatKm ?? null,
 					},
 				);
-				state.nowcastBulletin = bulletin;
-				await saveNowcastBulletin(bulletin.text, bulletin.source);
-				logger.info("Boletim nowcast (Camada B) gerado e persistido", {
-					source: bulletin.source,
-				});
+				// Falha pontual do VLM (heurística) não pode "sujar" o boletim:
+				// se já existe um boletim VLM com < 60 min, mantém ele em vez de
+				// persistir a heurística (incidente 2026-08-12: heuristic grudou
+				// por horas via TTL de 10 min).
+				if (
+					bulletin.source === "heuristic" &&
+					cachedBulletin &&
+					cachedBulletin.source !== "heuristic" &&
+					Date.now() - cachedBulletin.generatedAt < 60 * 60_000
+				) {
+					logger.warn("Camada B: VLM falhou — mantendo boletim VLM anterior", {
+						idadeMin: Math.round(
+							(Date.now() - cachedBulletin.generatedAt) / 60_000,
+						),
+						anterior: cachedBulletin.source,
+					});
+					state.nowcastBulletin = cachedBulletin;
+				} else {
+					state.nowcastBulletin = bulletin;
+					await saveNowcastBulletin(bulletin.text, bulletin.source);
+					logger.info("Boletim nowcast (Camada B) gerado e persistido", {
+						source: bulletin.source,
+					});
+				}
 			}
 
 			// O boletim principal do dashboard/llms.txt é o texto do VLM vision.
@@ -846,46 +865,6 @@ export async function handleRequest(
 				});
 			}
 		}
-		// ===== DEBUG TEMPORÁRIO (remover) — diagnóstico do VLM no Vercel =====
-		if (path === "/api/debug-vlm" && method === "GET") {
-			const cfg = loadConfig();
-			const st = getCachedWeatherState();
-			const nowcast = await getRadarNowcast();
-			const radar = st?.radar ?? (await fetchRainViewerRadar().catch(() => null));
-			const out: Record<string, unknown> = {
-				geminiKeyLen: cfg.geminiApiKey.length,
-				nimKeyLen: cfg.nvidiaNimApiKey.length,
-				nowcast: {
-					dominant: nowcast.currentDominant,
-					threats: nowcast.threats.length,
-					frames: nowcast.frames.length,
-				},
-				radar: radar ? { host: radar.host, frames: radar.radar?.past?.length ?? 0 } : null,
-			};
-			if (radar && radar.host && (radar.radar?.past?.length ?? 0) > 0) {
-				const t0 = Date.now();
-				try {
-					const b = await generateNowcastBulletin(
-						nowcast,
-						radar.host,
-						radar.radar.past,
-						REGION_GRID,
-						undefined,
-						{ alertLevel: "monitor", nearestThreatKm: null },
-					);
-					out.bulletin = {
-						source: b.source,
-						ms: Date.now() - t0,
-						text: b.text.slice(0, 120),
-					};
-				} catch (e) {
-					out.bulletin = { erro: String(e) };
-				}
-			}
-			return Response.json(out);
-		}
-		// ===== fim DEBUG TEMPORÁRIO =====
-
 		// ===== Painel Admin (só o dono) =====
 		if (path === "/api/admin/login" && method === "POST") {
 			// Rate limit dedicado de login (5/min por IP), além do escopo
