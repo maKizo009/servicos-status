@@ -34,6 +34,10 @@ export interface AppConfig {
 	vapidPublicKey: string;
 	vapidPrivateKey: string;
 	vapidSubject: string;
+	// Painel Admin
+	adminEmail: string;
+	adminPasswordHash: string;
+	sessionSecret: string;
 	unifiedReportIntervalMs: number;
 	// Turso Cloud Database
 	tursoDatabaseUrl: string;
@@ -97,6 +101,9 @@ export function loadConfig(): AppConfig {
 		vapidPublicKey: process.env.VAPID_PUBLIC_KEY ?? "",
 		vapidPrivateKey: process.env.VAPID_PRIVATE_KEY ?? "",
 		vapidSubject: process.env.VAPID_SUBJECT ?? "mailto:andredobrawl7@gmail.com",
+		adminEmail: process.env.ADMIN_EMAIL ?? "",
+		adminPasswordHash: process.env.ADMIN_PASSWORD_HASH ?? "",
+		sessionSecret: process.env.SESSION_SECRET ?? "",
 		unifiedReportIntervalMs: envInt("UNIFIED_REPORT_INTERVAL_MS", 3_600_000),
 		tursoDatabaseUrl: process.env.TURSO_DATABASE_URL ?? "",
 		tursoAuthToken: process.env.TURSO_AUTH_TOKEN ?? "",
