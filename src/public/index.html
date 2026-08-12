@@ -1164,17 +1164,25 @@ function renderCards(services){
         const lastCheckRel = relativeTime(svc.timestamp || Date.now());
         const nextCheckSec = Math.round(REFRESH_MS / 1000);
         // FONTE DA VERDADE: o alerta de tempestade da COPEL segue apenas o
-        // nowcast determinístico (hasRegionalRain é derivado da análise de
-        // dBZ no backend, não do detector primitivo de tile). A probabilidade
-        // ECMWF não dispara mais "Alerta de Tempestade" — ela aparece no card
-        // de clima e no boletim IA (conciliação de fontes).
-        const hasRainAlert = (name==='Copel' && (window.latestWeatherData?.hasRegionalRain));
-        summaryBoxHtml=`<div class="summary-box ${hasRainAlert ? 'warn' : 'ok'}" style="flex-direction:column;align-items:flex-start;gap:8px;padding:16px;${hasRainAlert ? 'background:var(--a0);border:1px solid var(--a5);border-radius:10px;' : ''}">
-          <div style="display:flex;align-items:center;gap:10px;font-size:15px;font-weight:700;color:${hasRainAlert ? 'var(--a5)' : 'inherit'}">
-            ${hasRainAlert ? '⚡' : ICON.ok}
-            <span>${hasRainAlert ? '⚠️ Alerta de Tempestade: Risco de Oscilação / Queda de Energia (COPEL)' : '✅ Sem interrupções ativas'}</span>
+        // nowcast determinístico com GATES DE RELEVÂNCIA (alertLevel do
+        // backend). "alert" (núcleo ≤80 km / ETA ≤120 min) acende o card;
+        // "watch" mostra vigilância suave; "monitor" mostra info sem alarme.
+        const rainLevel = (name==='Copel' ? (window.latestWeatherData?.alertLevel || 'none') : 'none');
+        const hasRainAlert = (rainLevel === 'alert');
+        const rainTitle = hasRainAlert
+          ? '⚠️ Alerta de Tempestade: Risco de Oscilação / Queda de Energia (COPEL)'
+          : (rainLevel === 'watch')
+            ? '👁️ Vigilância: Núcleos de chuva se aproximando da região (COPEL)'
+            : (rainLevel === 'monitor')
+              ? 'ℹ️ Monitoramento: Atividade de radar distante (COPEL)'
+              : '✅ Sem interrupções ativas';
+        const rainIcon = hasRainAlert ? '⚡' : (rainLevel === 'watch') ? '👁️' : (rainLevel === 'monitor') ? 'ℹ️' : ICON.ok;
+        summaryBoxHtml=`<div class="summary-box ${(hasRainAlert||rainLevel==='watch') ? 'warn' : 'ok'}" style="flex-direction:column;align-items:flex-start;gap:8px;padding:16px;${(hasRainAlert||rainLevel==='watch') ? 'background:var(--a0);border:1px solid var(--a5);border-radius:10px;' : ''}">
+          <div style="display:flex;align-items:center;gap:10px;font-size:15px;font-weight:700;color:${(hasRainAlert||rainLevel==='watch') ? 'var(--a5)' : 'inherit'}">
+            ${rainIcon}
+            <span>${rainTitle}</span>
           </div>
-          ${hasRainAlert ? `<div style="font-size:13px;color:var(--text);font-weight:500;padding-left:30px;line-height:1.4">
+          ${(hasRainAlert || rainLevel === 'watch' || rainLevel === 'monitor') ? `<div style="font-size:13px;color:var(--text);font-weight:500;padding-left:30px;line-height:1.4">
             ${window.latestWeatherData?.regionalRainAlert || 'Núcleos de chuva foram detectados no radar RainViewer na região dos Campos Gerais. Raios e ventos podem afetar a rede elétrica da COPEL em Ipiranga nas próximas horas.'}
           </div>` : ''}
           <div style="font-size:13px;color:var(--text2);font-weight:500;display:flex;flex-direction:column;gap:4px;padding-left:30px">

@@ -743,13 +743,13 @@ export async function getLatestWeatherBulletin(): Promise<WeatherBulletin | null
 export interface NowcastBulletinRecord {
 	id: number;
 	text: string;
-	source: "nvidia_nim_vision" | "heuristic";
+	source: "gemini" | "nvidia_nim_vision" | "heuristic";
 	generatedAt: number;
 }
 
 export async function saveNowcastBulletin(
 	text: string,
-	source: "nvidia_nim_vision" | "heuristic",
+	source: "gemini" | "nvidia_nim_vision" | "heuristic",
 ): Promise<NowcastBulletinRecord> {
 	const now = Date.now();
 	const db = await getDbClient();

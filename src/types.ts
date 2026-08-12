@@ -161,6 +161,14 @@ export interface HourlyForecastPoint {
 	precipitationMm: number;
 }
 
+/**
+ * Nível de alerta de chuva derivado da Camada A (gates de relevância).
+ * alert = iminente (≤80 km, ETA ≤120 min) | watch = vigilância (≤200 km,
+ * ETA ≤360 min) | monitor = núcleos longe/afastando/estacionários |
+ * none = radar limpo. O card COPEL só acende em "alert".
+ */
+export type RainAlertLevel = "alert" | "watch" | "monitor" | "none";
+
 export interface WeatherState {
 	municipio: string;
 	tempC: number;
@@ -170,15 +178,19 @@ export interface WeatherState {
 	humidityPct: number;
 	hasRegionalRain: boolean;
 	regionalRainAlert: string;
+	/** Nível de alerta graduado (substitui o booleano na decisão de UI) */
+	alertLevel?: RainAlertLevel;
+	/** Distância do núcleo mais ameaçador (km) — para a UI informar horizonte */
+	nearestThreatKm?: number | null;
 	hourlyForecast: HourlyForecastPoint[];
 	radar: WeatherRadarData | null;
 	bulletin: WeatherBulletin | null;
 	/** Nowcast determinístico (Camada A) — núcleos + movimento do radar */
 	nowcast?: NowcastResult | null;
-	/** Boletim narrativo do nowcast (Camada B — VLM NIM ou heurística) */
+	/** Boletim narrativo do nowcast (Camada B — VLM Gemini/NIM ou heurística) */
 	nowcastBulletin?: {
 		text: string;
-		source: "nvidia_nim_vision" | "heuristic";
+		source: "gemini" | "nvidia_nim_vision" | "heuristic";
 		generatedAt: number;
 	} | null;
 	updatedAt: number;

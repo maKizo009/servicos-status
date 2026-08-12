@@ -375,3 +375,89 @@ describe("Achado 7 — sanitização de campos livres", () => {
 		expect(sanitizeLlmField(undefined)).toBe("");
 	});
 });
+
+describe("Incidente 2026-08-12 — gates de relevância (zonas)", () => {
+	const { classifyRelevanceZone } = require("../src/radar-analysis.js");
+
+	test("núcleo extreme a 589 km estacionário → monitor (nunca alert)", () => {
+		expect(
+			classifyRelevanceZone(589, "crossing", null, "extreme", 0),
+		).toBe("monitor");
+	});
+
+	test("núcleo heavy a 336 km approaching ETA 488 min → monitor (caso real)", () => {
+		expect(
+			classifyRelevanceZone(336, "approaching", 488, "heavy", 49.5),
+		).toBe("monitor");
+	});
+
+	test("núcleo heavy a 60 km approaching ETA 45 min → alert", () => {
+		expect(
+			classifyRelevanceZone(60, "approaching", 45, "heavy", 40),
+		).toBe("alert");
+	});
+
+	test("núcleo a 120 km approaching ETA 200 min → watch", () => {
+		expect(
+			classifyRelevanceZone(120, "approaching", 200, "heavy", 35),
+		).toBe("watch");
+	});
+
+	test("núcleo extreme a 30 km receding → monitor (afastando-se)", () => {
+		expect(
+			classifyRelevanceZone(30, "receding", null, "extreme", 25),
+		).toBe("monitor");
+	});
+
+	test("núcleo extreme a 40 km sem movimento → alert (fallback de segurança)", () => {
+		expect(
+			classifyRelevanceZone(40, null, null, "extreme", null),
+		).toBe("alert");
+	});
+});
+
+describe("Incidente 2026-08-12 — proporcionalidade e distância na validação", () => {
+	test("nível monitor mas texto diz 'tempestade se aproximando' → rejeitado", () => {
+		expect(
+			validateBulletinAgainstVerdict(
+				"Uma tempestade se aproximando de Ipiranga. Risco iminente de temporal.",
+				null,
+				undefined,
+				{ alertLevel: "monitor", nearestThreatKm: 336 },
+			),
+		).toBe(false);
+	});
+
+	test("nível monitor com texto correto ('sem alerta', cita 336 km) → aceito", () => {
+		expect(
+			validateBulletinAgainstVerdict(
+				"Não há alerta iminente para Ipiranga: o núcleo de chuva está a 336 km de distância e só chegaria em muitas horas, se não dissipar.",
+				null,
+				undefined,
+				{ alertLevel: "monitor", nearestThreatKm: 336 },
+			),
+		).toBe(true);
+	});
+
+	test("núcleo a 336 km e texto sem mencionar distância → rejeitado", () => {
+		expect(
+			validateBulletinAgainstVerdict(
+				"Chuva forte deve atingir a região nas próximas horas.",
+				null,
+				undefined,
+				{ alertLevel: "watch", nearestThreatKm: 336 },
+			),
+		).toBe(false);
+	});
+
+	test("nível alert permite tom de aviso (sem rejeição por alarmismo)", () => {
+		expect(
+			validateBulletinAgainstVerdict(
+				"Alerta: núcleo forte a 45 km de Ipiranga se aproxima, chegando em cerca de 1 hora.",
+				null,
+				undefined,
+				{ alertLevel: "alert", nearestThreatKm: 45 },
+			),
+		).toBe(true);
+	});
+});

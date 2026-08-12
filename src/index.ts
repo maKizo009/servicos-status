@@ -49,6 +49,7 @@ import type {
 	ConnectivityResult,
 	OperatorName,
 	PortalResult,
+	RainAlertLevel,
 	UnifiedReport,
 	WeatherState,
 } from "./types.js";
@@ -379,11 +380,15 @@ export async function syncWeatherCycle(): Promise<WeatherState> {
 		const nowcast = await getRadarNowcast();
 		state.nowcast = nowcast;
 		// FONTE DA VERDADE: o alerta regional (card COPEL, dashboard) passa a
-		// ser dirigido pela análise determinística de dBZ, não pelo scan
-		// primitivo de tile (>1000 bytes = "chuva") do fetchRainViewerRadar.
-		// Se a Camada A diz "sem núcleos", não há alerta de tempestade.
+		// ser dirigido pelos GATES DE RELEVÂNCIA (distância + ETA + direção),
+		// não pela intensidade bruta do frame. Incidente 2026-08-12: núcleo
+		// extreme a 589 km (RS) acendia "Alerta de Tempestade" com o mapa
+		// limpo no PR. Agora só a zona IMINENTE (≤80 km, ETA ≤120 min)
+		// liga o card; vigilância (≤200 km, ETA ≤360 min) informa sem alertar.
 		if (nowcast.currentDominant === "none" || nowcast.frames.length === 0) {
 			state.hasRegionalRain = false;
+			state.alertLevel = "none";
+			state.nearestThreatKm = null;
 			state.regionalRainAlert =
 				"Sem instabilidades ativas no radar regional (análise determinística de núcleos).";
 		} else {
@@ -394,38 +399,64 @@ export async function syncWeatherCycle(): Promise<WeatherState> {
 				extreme: "muito forte (temporal)",
 			};
 			const m = nowcast.movement;
-			// O núcleo mais AMEAÇADOR (aproximando de Ipiranga com menor ETA)
-			// tem prioridade sobre o mais intenso — o alerta fala do perigo real.
+			// Núcleos por zona de relevância (Camada A). threats já vem
+			// ordenado por perigo (aproximando com menor ETA primeiro).
+			const nearestAlert =
+				nowcast.threats.find((t) => t.relevanceZone === "alert") ?? null;
+			const nearestWatch =
+				nowcast.threats.find((t) => t.relevanceZone === "watch") ?? null;
 			const topThreat = nowcast.threats[0] ?? null;
+			const alertLevel: RainAlertLevel = nearestAlert
+				? "alert"
+				: nearestWatch
+					? "watch"
+					: "monitor";
+			state.alertLevel = alertLevel;
+			state.nearestThreatKm = topThreat
+				? Math.round(topThreat.distToTargetKm)
+				: null;
+
 			const threatLabel =
 				topThreat &&
 				topThreat.intensity !== "light" &&
 				topThreat.intensity !== "moderate"
 					? (intensityLabel[topThreat.intensity] ?? topThreat.intensity)
 					: null;
-			const threatTxt = topThreat
-				? ` Núcleo ${threatLabel ?? "de chuva"} a ~${Math.round(topThreat.distToTargetKm)} km de Ipiranga${
-						topThreat.threat?.approach === "approaching" &&
-						topThreat.threat.etaMin != null
-							? `, aproximando-se (ETA ~${Math.round(topThreat.threat.etaMin)} min)`
-							: topThreat.threat?.approach === "approaching"
-								? ", aproximando-se"
-								: ""
-					}.`
-				: "";
-			// Só descreve deslocamento se houver movimento medido de verdade
-			// (speedKmh > 1); célula estacionária não "se desloca".
-			const movementTxt =
-				m && m.speedKmh > 1
-					? ` deslocando-se a ${m.speedKmh} km/h (dir. ${m.directionDeg}°)`
-					: " (sem movimento significativo detectado no momento)";
-			state.hasRegionalRain = true;
-			state.regionalRainAlert = `🌩️ Núcleo de chuva ${intensityLabel[nowcast.currentDominant] ?? nowcast.currentDominant} detectado pelo radar na região${movementTxt}${threatTxt} Atenção a oscilações na rede elétrica (COPEL).`;
+
+			if (alertLevel === "alert") {
+				const t = nearestAlert;
+				const etaTxt =
+					t?.threat?.approach === "approaching" && t.threat.etaMin != null
+						? `, aproximando-se (ETA ~${Math.round(t.threat.etaMin)} min)`
+						: "";
+				state.hasRegionalRain = true;
+				state.regionalRainAlert = `🌩️ Núcleo de chuva ${threatLabel ?? "forte"} detectado a ~${Math.round(t?.distToTargetKm ?? 0)} km de Ipiranga${etaTxt}. Atenção a oscilações na rede elétrica (COPEL).`;
+			} else if (alertLevel === "watch") {
+				const t = nearestWatch;
+				const etaTxt =
+					t?.threat?.approach === "approaching" && t.threat.etaMin != null
+						? ` (ETA ~${Math.round(t.threat.etaMin / 60)} h)`
+						: "";
+				state.hasRegionalRain = false;
+				state.regionalRainAlert = `👁️ Vigilância: núcleo de chuva ${threatLabel ?? "forte"} detectado a ~${Math.round(t?.distToTargetKm ?? 0)} km de Ipiranga${etaTxt}. Sem alerta iminente, acompanhe.`;
+			} else {
+				state.hasRegionalRain = false;
+				state.regionalRainAlert = `ℹ️ Monitoramento: atividade de radar detectada a ${topThreat ? `~${Math.round(topThreat.distToTargetKm)} km` : "grande distância"} de Ipiranga. Sem risco iminente no momento.`;
+			}
 		}
 		setCachedWeatherState(state);
 		logger.info("Nowcast integrado ao estado de clima", {
 			dominant: nowcast.currentDominant,
 			maxDbz: nowcast.currentMaxDbz,
+			alertLevel: state.alertLevel,
+			nearestThreatKm: state.nearestThreatKm,
+			threatsAlert: nowcast.threats.filter((t) => t.relevanceZone === "alert")
+				.length,
+			threatsWatch: nowcast.threats.filter((t) => t.relevanceZone === "watch")
+				.length,
+			threatsMonitor: nowcast.threats.filter(
+				(t) => t.relevanceZone === "monitor",
+			).length,
 			movement: nowcast.movement
 				? `${nowcast.movement.directionDeg}° ${nowcast.movement.speedKmh}km/h`
 				: null,
@@ -458,6 +489,10 @@ export async function syncWeatherCycle(): Promise<WeatherState> {
 					{
 						rainProbabilityPct: weatherInfo.rainProbabilityPct,
 						hourlyForecast: weatherInfo.hourlyForecast || [],
+					},
+					{
+						alertLevel: state.alertLevel ?? "monitor",
+						nearestThreatKm: state.nearestThreatKm ?? null,
 					},
 				);
 				state.nowcastBulletin = bulletin;
@@ -866,7 +901,9 @@ async function main(): Promise<void> {
 	});
 
 	checkInterval = setInterval(runChecks, config.checkIntervalMs);
-	weatherInterval = setInterval(syncWeatherCycle, 900_000);
+	// Ciclo de clima/radar/boletim a cada 10 min (era 15) — pedido do Dave
+	// 2026-08-12: "diminua o tempo de verificação para 10 minutos".
+	weatherInterval = setInterval(syncWeatherCycle, 600_000);
 }
 
 async function gracefulShutdown(): Promise<void> {

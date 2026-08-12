@@ -63,8 +63,8 @@ Copie `.env.example` para `.env` e preencha:
 |---|---|---|
 | `TURSO_DATABASE_URL` | URL do banco Turso Cloud (ex: `libsql://...turso.io`) | fallback em memória |
 | `TURSO_AUTH_TOKEN` | Token de autenticação do Turso | — |
-| `NVIDIA_NIM_API_KEY` | Chave de API da NVIDIA NIM (boletins IA + nowcast VLM) | — |
-| `GEMINI_API_KEY` | Chave da API Gemini (fallback de boletim IA) | — |
+| `GEMINI_API_KEY` | Chave da API Gemini — VLM PRINCIPAL do boletim de nowcast (gemini-flash-lite-latest, visão) | — |
+| `NVIDIA_NIM_API_KEY` | Chave da API da NVIDIA NIM (fallback legado do VLM) | — |
 | `TELEGRAM_BOT_TOKEN` | Token do bot Telegram | — |
 | `TELEGRAM_CHAT_ID` | Chat ID para alertas | — |
 | `CHECK_INTERVAL_MS` | Intervalo entre ciclos (ms) | `60000` |
