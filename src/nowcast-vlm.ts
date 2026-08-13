@@ -33,10 +33,10 @@ const FRAMES_IN_COMPOSITE = 3;
 const TARGET_IPIRANGA = { lat: -25.0244, lon: -50.5847 } as const;
 
 /** Modelo VLM padrão (Google Gemini Flash Lite — visão + baixo custo).
- * Obs.: o nome literal "gemini-3.6-flash-lite" não existe na API
- * generativelanguage (testado 2026-08-12); "gemini-flash-lite-latest" é o
- * Flash Lite da geração atual (3.6). Lista: /v1beta/models. */
-const GEMINI_VLM_MODEL = "gemini-flash-lite-latest";
+ * Obs.: "gemini-3.6-flash" validado em 2026-08-13 (chave nova do Dave AQ.Ab8...);
+ * a antiga "gemini-flash-lite-latest" respondia 200 mas com a chave antiga o
+ * fallback Gemini morria (401/400). Lista: /v1beta/models. */
+const GEMINI_VLM_MODEL = "gemini-3.6-flash";
 
 /**
  * Contexto da previsão numérica ECMWF (Open-Meteo) — fonte de médio prazo,
