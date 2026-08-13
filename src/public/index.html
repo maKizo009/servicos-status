@@ -225,11 +225,14 @@
   display:flex;flex-direction:column;gap:10px;color:var(--md-sys-color-on-surface);box-shadow:var(--md-elevation-1)
 }
 .cemaden-head{display:flex;align-items:center;justify-content:space-between;color:var(--md-sys-color-on-surface)}
-.cemaden-row{border-top:1px solid var(--md-sys-color-outline-variant);padding-top:8px;margin-top:4px}
+.cemaden-row{border-top:1px solid var(--md-sys-color-outline-variant);padding-top:10px;margin-top:6px}
 .cemaden-row:first-child{border-top:none;padding-top:0;margin-top:0}
 .cemaden-tag{font-size:10px;font-weight:600;letter-spacing:.4px;text-transform:uppercase;padding:2px 6px;border-radius:6px;background:var(--g1);color:var(--g6)}
-.cemaden-acc{font-size:13px;font-weight:600;color:var(--md-sys-color-on-surface);margin-top:2px;font-variant-numeric:tabular-nums}
-.cemaden-meta{font-size:10px;opacity:.7}
+.cemaden-line1{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+.cemaden-line2{display:flex;align-items:baseline;gap:6px;margin-top:4px}
+.cemaden-24h{font-size:22px;font-weight:700;color:var(--md-sys-color-on-surface);font-variant-numeric:tabular-nums}
+.cemaden-24h-label{font-size:11px;opacity:.8;color:var(--text-secondary)}
+.cemaden-meta{font-size:11px;opacity:.75;margin-top:2px}
 .nowcast-intensity-badge{
   font-size:11px;font-weight:700;padding:4px 10px;border-radius:var(--md-shape-corner-full);text-transform:uppercase;
   background:var(--g1);color:var(--g6);border:1px solid var(--g5)
@@ -909,8 +912,8 @@ body{font-family:var(--font);background:var(--md-sys-color-surface);color:var(--
             <div id="cemadenContent" style="font-size:12px;color:var(--text-secondary);line-height:1.5">
               Carregando leituras dos pluviômetros de Ipiranga...
             </div>
-            <div style="font-size:10px;opacity:.7">
-              Pluviômetros automáticos CEMADEN — acumulados em janelas móveis (1h/24h/48h/72h/96h). Atualiza a cada hora na fonte.
+            <div style="font-size:10px;opacity:.65">
+              Acumulado das últimas 24h (janela móvel) · Fonte pública CEMADEN
             </div>
           </div>
 
@@ -1928,12 +1931,15 @@ function renderCemadenCard(data) {
   }
   box.style.display = 'flex';
 
-  const fmt = (v) => (v == null || Number.isNaN(v) ? '—' : v.toFixed(1) + ' mm');
+  const fmt = (v) => (v == null || Number.isNaN(v) ? '—' : v.toFixed(1).replace('.', ',') + ' mm');
+  // "13/08/26 20:10" → "13/08 20:10"
+  const hora = (h) => esc(h || '—').replace(/(\d{2})\/(\d{2})\/\d{2} (\d{2}:\d{2})/, '$1/$2 às $3');
+
   const rows = c.estacoes.map((e) => {
     return '<div class="cemaden-row">' +
-      '<div><strong>' + esc(e.nome) + '</strong> <span class="cemaden-tag">' + esc(e.cidade) + '/' + esc(e.uf) + '</span></div>' +
-      '<div class="cemaden-acc">1h ' + fmt(e.acc1hr) + ' · 24h ' + fmt(e.acc24hr) + ' · 48h ' + fmt(e.acc48hr) + ' · 72h ' + fmt(e.acc72hr) + ' · 96h ' + fmt(e.acc96hr) + '</div>' +
-      '<div class="cemaden-meta">Última leitura: ' + esc(e.dataHoraUltimoValor || '—') + ' (UTC)</div>' +
+      '<div class="cemaden-line1"><strong>' + esc(e.nome) + '</strong> <span class="cemaden-tag">' + esc(e.cidade) + '</span></div>' +
+      '<div class="cemaden-line2"><span class="cemaden-24h">' + fmt(e.acc24hr) + '</span> <span class="cemaden-24h-label">em 24h</span></div>' +
+      '<div class="cemaden-meta">Leitura: ' + hora(e.dataHoraUltimoValor) + ' UTC</div>' +
       '</div>';
   }).join('');
   content.innerHTML = rows;
