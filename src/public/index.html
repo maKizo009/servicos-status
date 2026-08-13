@@ -219,6 +219,17 @@
 .nowcast-head{display:flex;align-items:center;justify-content:space-between;color:var(--md-sys-color-on-surface)}
 .nowcast-box .nowcast-head span{color:var(--md-sys-color-on-surface)}
 .nowcast-status-row{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.cemaden-box{
+  background:var(--md-sys-color-surface-container);border:1px solid var(--md-sys-color-outline-variant);
+  border-radius:var(--md-shape-corner-medium);padding:16px;
+  display:flex;flex-direction:column;gap:10px;color:var(--md-sys-color-on-surface);box-shadow:var(--md-elevation-1)
+}
+.cemaden-head{display:flex;align-items:center;justify-content:space-between;color:var(--md-sys-color-on-surface)}
+.cemaden-row{border-top:1px solid var(--md-sys-color-outline-variant);padding-top:8px;margin-top:4px}
+.cemaden-row:first-child{border-top:none;padding-top:0;margin-top:0}
+.cemaden-tag{font-size:10px;font-weight:600;letter-spacing:.4px;text-transform:uppercase;padding:2px 6px;border-radius:6px;background:var(--g1);color:var(--g6)}
+.cemaden-acc{font-size:13px;font-weight:600;color:var(--md-sys-color-on-surface);margin-top:2px;font-variant-numeric:tabular-nums}
+.cemaden-meta{font-size:10px;opacity:.7}
 .nowcast-intensity-badge{
   font-size:11px;font-weight:700;padding:4px 10px;border-radius:var(--md-shape-corner-full);text-transform:uppercase;
   background:var(--g1);color:var(--g6);border:1px solid var(--g5)
@@ -888,6 +899,19 @@ body{font-family:var(--font);background:var(--md-sys-color-surface);color:var(--
               <span class="nowcast-movement" id="nowcastMovement">—</span>
             </div>
             <div class="nowcast-meta" id="nowcastMeta"></div>
+          </div>
+
+          <div class="cemaden-box" id="cemadenBox" style="display:none">
+            <div class="cemaden-head">
+              <span style="font-size:13px;font-weight:600;color:var(--text)">Chuva em Tempo Real — CEMADEN</span>
+              <span class="bulletin-tag">Fonte: Cemaden</span>
+            </div>
+            <div id="cemadenContent" style="font-size:12px;color:var(--text-secondary);line-height:1.5">
+              Carregando leituras dos pluviômetros de Ipiranga...
+            </div>
+            <div style="font-size:10px;opacity:.7">
+              Pluviômetros automáticos CEMADEN — acumulados em janelas móveis (1h/24h/48h/72h/96h). Atualiza a cada hora na fonte.
+            </div>
           </div>
 
           <div class="llm-banner-box">
@@ -1849,6 +1873,7 @@ async function fetchWeatherData() {
     }
 
     renderNowcastCard(data);
+    renderCemadenCard(data);
 
     if (data.radar?.radar?.past && data.radar.radar.past.length > 0) {
       const host = data.radar.host || 'https://tilecache.rainviewer.com';
@@ -1889,6 +1914,29 @@ async function fetchWeatherData() {
   } catch (e) {
     console.error("Weather fetch error", e);
   }
+}
+
+function renderCemadenCard(data) {
+  const box = document.getElementById('cemadenBox');
+  const content = document.getElementById('cemadenContent');
+  if (!box || !content) return;
+
+  const c = data?.cemaden;
+  if (!c || !c.estacoes || !c.estacoes.length) {
+    box.style.display = 'none';
+    return;
+  }
+  box.style.display = 'flex';
+
+  const fmt = (v) => (v == null || Number.isNaN(v) ? '—' : v.toFixed(1) + ' mm');
+  const rows = c.estacoes.map((e) => {
+    return '<div class="cemaden-row">' +
+      '<div><strong>' + esc(e.nome) + '</strong> <span class="cemaden-tag">' + esc(e.cidade) + '/' + esc(e.uf) + '</span></div>' +
+      '<div class="cemaden-acc">1h ' + fmt(e.acc1hr) + ' · 24h ' + fmt(e.acc24hr) + ' · 48h ' + fmt(e.acc48hr) + ' · 72h ' + fmt(e.acc72hr) + ' · 96h ' + fmt(e.acc96hr) + '</div>' +
+      '<div class="cemaden-meta">Última leitura: ' + esc(e.dataHoraUltimoValor || '—') + ' (UTC)</div>' +
+      '</div>';
+  }).join('');
+  content.innerHTML = rows;
 }
 
 function renderNowcastCard(data) {

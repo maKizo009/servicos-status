@@ -180,5 +180,7 @@ export interface WeatherState {
 		source: "opencode_vision" | "gemini" | "nvidia_nim_vision" | "heuristic";
 		generatedAt: number;
 	} | null;
+	/** Chuva em tempo real dos pluviômetros CEMADEN de Ipiranga (fonte pública). */
+	cemaden?: import("./cemaden.js").CemadenState | null;
 	updatedAt: number;
 }
