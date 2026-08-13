@@ -6,6 +6,7 @@ import {
 	runAllChecks,
 } from "./checker.js";
 import { loadConfig } from "./config.js";
+import { fetchCemadenIpiranga } from "./cemaden.js";
 import {
 	closeDb,
 	getDailyStatsSummary,
@@ -327,9 +328,10 @@ const NOWCAST_BULLETIN_TTL_MS = 600_000;
 export async function syncWeatherCycle(): Promise<WeatherState> {
 	await ensureInitialized();
 	logger.info("Starting weather & radar sync cycle...");
-	const [radar, weatherInfo] = await Promise.all([
+	const [radar, weatherInfo, cemaden] = await Promise.all([
 		fetchRainViewerRadar(),
 		fetchCurrentWeather(),
+		fetchCemadenIpiranga(),
 	]);
 
 	// Boletim da tabela legada (weather_bulletins, formato "NIM texto" que não
@@ -355,6 +357,7 @@ export async function syncWeatherCycle(): Promise<WeatherState> {
 		hourlyForecast: weatherInfo.hourlyForecast || [],
 		radar,
 		bulletin: freshLegacyBulletin,
+		cemaden,
 		updatedAt: Date.now(),
 	};
 
