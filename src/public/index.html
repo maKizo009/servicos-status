@@ -1833,7 +1833,9 @@ async function initWeatherMap() {
 
 async function fetchWeatherData() {
   try {
-    const resp = await fetch('/api/weather');
+    // Rede de segurança: nunca ficar pendurado "eternamente" se o backend
+    // precisar regenerar o ciclo (o Turso cache tornou isso raro).
+    const resp = await fetch('/api/weather', { signal: AbortSignal.timeout(20000) });
     if (!resp.ok) return;
     const data = await resp.json();
     window.latestWeatherData = data;
@@ -1932,14 +1934,14 @@ function renderCemadenCard(data) {
   box.style.display = 'flex';
 
   const fmt = (v) => (v == null || Number.isNaN(v) ? '—' : v.toFixed(1).replace('.', ',') + ' mm');
-  // "13/08/26 20:10" → "13/08 20:10"
+  // "15/08/26 21:20" → "15/08 às 21:20" (backend já converte para horário de Brasília)
   const hora = (h) => esc(h || '—').replace(/(\d{2})\/(\d{2})\/\d{2} (\d{2}:\d{2})/, '$1/$2 às $3');
 
   const rows = c.estacoes.map((e) => {
     return '<div class="cemaden-row">' +
       '<div class="cemaden-line1"><strong>' + esc(e.nome) + '</strong> <span class="cemaden-tag">' + esc(e.cidade) + '</span></div>' +
       '<div class="cemaden-line2"><span class="cemaden-24h">' + fmt(e.acc24hr) + '</span> <span class="cemaden-24h-label">em 24h</span></div>' +
-      '<div class="cemaden-meta">Leitura: ' + hora(e.dataHoraUltimoValor) + ' UTC</div>' +
+      '<div class="cemaden-meta">Leitura: ' + hora(e.dataHoraUltimoValor) + ' (Brasília)</div>' +
       '</div>';
   }).join('');
   content.innerHTML = rows;

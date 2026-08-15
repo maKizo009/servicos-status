@@ -15,6 +15,7 @@ import {
 	getLatestNowcastBulletin,
 	getLatestWeatherBulletin,
 	getTelemetryStats,
+	getWeatherStateCache,
 	initDb,
 	saveBgpResult,
 	saveConnectivityResult,
@@ -22,6 +23,7 @@ import {
 	saveNowcastBulletin,
 	saveSignalReport,
 	saveTelemetryLog,
+	saveWeatherStateCache,
 } from "./db.js";
 import { detectIsp } from "./isp-detector.js";
 import {
@@ -527,6 +529,18 @@ export async function syncWeatherCycle(): Promise<WeatherState> {
 		});
 	}
 
+	// Persistência compartilhada (achado 2026-08-15): grava o estado completo
+	// no Turso para QUALQUER instância serverless servir sem regenerar a
+	// cadeia VLM inline (a "eternidade" de 60s+ no /api/weather). Falha de
+	// DB não derruba o ciclo.
+	try {
+		await saveWeatherStateCache(JSON.stringify(state));
+	} catch (err) {
+		logger.warn("Falha ao persistir weather_state_cache", {
+			error: String(err),
+		});
+	}
+
 	logger.info("Weather & radar sync cycle completed", {
 		tempC: state.tempC,
 		condition: state.condition,
@@ -534,6 +548,33 @@ export async function syncWeatherCycle(): Promise<WeatherState> {
 	});
 
 	return state;
+}
+
+/** TTL do estado compartilhado no Turso: folga pro cron de 10 min do GH Actions. */
+const TURSO_STATE_TTL_MS = 15 * 60_000;
+
+/**
+ * Estado do clima para servir requisições: memória (instância quente) →
+ * cache compartilhado no Turso (gravado pelo cron a cada 10 min) → null
+ * (o chamador cai no sync inline como último recurso). Remove o ciclo VLM
+ * completo do request path — visitante nunca espera o VLM.
+ */
+async function loadWeatherState(): Promise<WeatherState | null> {
+	const mem = getCachedWeatherState();
+	if (mem && Date.now() - mem.updatedAt <= 600_000) return mem;
+	try {
+		const cached = await getWeatherStateCache();
+		if (cached && Date.now() - cached.updatedAt <= TURSO_STATE_TTL_MS) {
+			const parsed = JSON.parse(cached.payload) as WeatherState;
+			if (parsed && typeof parsed.updatedAt === "number") {
+				setCachedWeatherState(parsed);
+				return parsed;
+			}
+		}
+	} catch (err) {
+		logger.warn("Falha ao ler weather_state_cache", { error: String(err) });
+	}
+	return null;
 }
 
 /** Request aceito pelo handler: Web Request nativo ou objeto Node-style */
@@ -642,11 +683,13 @@ export async function handleRequest(
 
 	// Serve llms.txt endpoints without rate limits
 	if (path === "/llms.txt" || path === "/llms-full.txt") {
-		let state = getCachedWeatherState();
 		// Staleness check (Achado 1): igual ao /api/weather — não servir estado
 		// velho de instância quente. O sync reutiliza o boletim persistido no
-		// Turso enquanto < 10 min, então não gasta cota NIM à toa.
-		if (!state || Date.now() - state.updatedAt > 600_000) {
+		// Turso enquanto < 10 min, então não gasta cota NIM à toa. O estado
+		// compartilhado no Turso (cron de 10 min) cobre instâncias frias sem
+		// regenerar o ciclo VLM inline (achado 2026-08-15).
+		let state = await loadWeatherState();
+		if (!state) {
 			state = await syncWeatherCycle();
 		}
 		const text = renderLlmsTxt(state, lastUnifiedReport);
@@ -743,11 +786,12 @@ export async function handleRequest(
 			return handleServices();
 		}
 		if (path === "/api/weather" || path === "/api/weather/radar") {
-			let state = getCachedWeatherState();
 			// Instância quente serve state velho (cache em memória é por instância);
-			// refaz o sync se o state tem mais de 10 min. O NIM não é chamado à toa:
-			// o sync reutiliza o boletim persistido no Turso enquanto < 10 min.
-			if (!state || Date.now() - state.updatedAt > 600_000) {
+			// o estado compartilhado no Turso (cron de 10 min) cobre instâncias
+			// frias SEM regenerar o ciclo VLM inline (achado 2026-08-15 — antes,
+			// instância fria rodava o sync completo e o visitante esperava 60s+).
+			let state = await loadWeatherState();
+			if (!state) {
 				state = await syncWeatherCycle();
 			}
 			return Response.json(
