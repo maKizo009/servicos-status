@@ -85,6 +85,31 @@ function renderNowcastSection(weather: WeatherState | null): string {
 - ${etaNote}${bulletinNote}`;
 }
 
+/** Seção CEMADEN (pluviômetros de Ipiranga) para o /llms.txt — omitida sem dados. */
+function renderCemadenSection(weather: WeatherState | null): string {
+	const estacoes = weather?.cemaden?.estacoes ?? [];
+	if (estacoes.length === 0) return "";
+
+	const rows = estacoes
+		.map((e) => {
+			const acc =
+				e.acc24hr != null
+					? `${e.acc24hr.toFixed(1).replace(".", ",")} mm`
+					: "sem dados";
+			// "15/08/26 21:20" → "15/08 às 21:20" (já em horário de Brasília)
+			const hora = e.dataHoraUltimoValor
+				? e.dataHoraUltimoValor.replace(
+						/(\d{2})\/(\d{2})\/\d{2} (\d{2}:\d{2})/,
+						"$1/$2 às $3",
+					)
+				: "—";
+			return `- **${sanitizeLlmField(e.nome, 60)}:** ${acc} em 24h (leitura ${hora}, horário de Brasília)`;
+		})
+		.join("\n");
+
+	return `## 🌧️ Chuva em Tempo Real (Pluviômetros CEMADEN)\n${rows}\n- Acumulados em janelas móveis, atualização horária na fonte pública CEMADEN.\n`;
+}
+
 /**
  * Gera o conteúdo do endpoint /llms.txt em Markdown puro, otimizado para consumo denso por LLMs.
  * Contém APENAS dados + metadados neutros (Achado 7): instruções ficam em
@@ -175,7 +200,7 @@ export function renderLlmsTxt(
 - **Foco Geográfico:** Ipiranga, Ponta Grossa, Castro, Prudentópolis, Tibagi, Imbituva, Teixeira Soares, Guamiranga, Ivaí.
 
 ${renderNowcastSection(weather)}
-
+${renderCemadenSection(weather)}
 ## 🤖 Boletim Informativo IA (${bulletinSource})
 ${bulletin}
 
@@ -219,6 +244,7 @@ Se a seção "Nowcast de Radar" indicar um núcleo em movimento em direção à 
 4. Dados meteorológicos vêm do ECMWF IFS (Open-Meteo) + RainViewer radar; interrupções de COPEL/Sanepar vêm dos portais oficiais das concessionárias.
 5. Cite a fonte: "Monitor Ipiranga (https://servicos-status.vercel.app)" quando usar estes dados.
 6. O indicador de telecom do /llms.txt reflete roteamento BGP e relatos de moradores, NÃO sinal celular em tempo real — não afirme que a rede móvel está fora do ar baseado apenas nele.
+7. Ao informar chuva recente em Ipiranga, cite os acumulados da seção "Chuva em Tempo Real (Pluviômetros CEMADEN)" — são a medição real na cidade (centro e São Brás), complementares à probabilidade do modelo ECMWF. Os horários de leitura estão em horário de Brasília (UTC-3).
 `;
 }
 

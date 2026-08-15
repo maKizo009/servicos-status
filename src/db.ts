@@ -133,6 +133,11 @@ export async function initDb(): Promise<Client> {
 				source TEXT NOT NULL,
 				generated_at INTEGER NOT NULL
 			)`,
+			`CREATE TABLE IF NOT EXISTS weather_state_cache (
+				id INTEGER PRIMARY KEY CHECK (id = 1),
+				payload TEXT NOT NULL,
+				updated_at INTEGER NOT NULL
+			)`,
 				`CREATE TABLE IF NOT EXISTS push_subscriptions (
 				endpoint TEXT PRIMARY KEY,
 				p256dh TEXT NOT NULL,
@@ -733,6 +738,39 @@ export async function getLatestNowcastBulletin(): Promise<NowcastBulletinRecord 
 		text: String(row.text),
 		source: row.source as "opencode_vision" | "nvidia_nim_vision" | "heuristic",
 		generatedAt: Number(row.generatedAt),
+	};
+}
+
+export interface WeatherStateCacheRecord {
+	payload: string;
+	updatedAt: number;
+}
+
+/**
+ * Persiste o WeatherState completo (JSON) no Turso — o cache compartilhado
+ * entre instâncias serverless. O cron (/api/cron) grava a cada 10 min; os
+ * endpoints /api/weather e /llms.txt leem daqui SEM regenerar o ciclo VLM
+ * inline (achado 2026-08-15: instância fria rodava o sync completo e o
+ * visitante esperava 60s+).
+ */
+export async function saveWeatherStateCache(payload: string): Promise<void> {
+	const db = await getDbClient();
+	await db.execute({
+		sql: "INSERT INTO weather_state_cache (id, payload, updated_at) VALUES (1, ?, ?) ON CONFLICT(id) DO UPDATE SET payload = excluded.payload, updated_at = excluded.updated_at",
+		args: [payload, Date.now()],
+	});
+}
+
+export async function getWeatherStateCache(): Promise<WeatherStateCacheRecord | null> {
+	const db = await getDbClient();
+	const res = await db.execute(
+		"SELECT payload, updated_at as updatedAt FROM weather_state_cache WHERE id = 1",
+	);
+	if (res.rows.length === 0) return null;
+	const row = res.rows[0] as Record<string, unknown>;
+	return {
+		payload: String(row.payload),
+		updatedAt: Number(row.updatedAt),
 	};
 }
 

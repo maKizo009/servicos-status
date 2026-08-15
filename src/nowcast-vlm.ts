@@ -91,7 +91,7 @@ async function callGeminiVision(
 				],
 				generationConfig: { maxOutputTokens: 300, temperature: 0.4 },
 			}),
-			signal: AbortSignal.timeout(90_000),
+			signal: AbortSignal.timeout(25_000),
 		},
 	);
 	if (!res.ok) {
@@ -144,7 +144,7 @@ async function callNimVision(
 			max_tokens: 350,
 			temperature: 0.4,
 		}),
-		signal: AbortSignal.timeout(90_000),
+		signal: AbortSignal.timeout(25_000),
 	});
 	if (!res.ok) {
 		logger.warn("Camada B: NIM vision HTTP", { model, status: res.status });
@@ -190,7 +190,7 @@ async function callOpenCodeVision(
 			max_tokens: 350,
 			temperature: 0.4,
 		}),
-		signal: AbortSignal.timeout(90_000),
+		signal: AbortSignal.timeout(25_000),
 	});
 	if (!res.ok) {
 		logger.warn("Camada B: OpenCode vision HTTP", {
@@ -814,6 +814,27 @@ export function validateBulletinAgainstVerdict(
 		/(fonte de verdade|não invente|regra de ouro|medições determinísticas|confie neles|veredito de ameaça|análise computacional|nunca contradiga|instruções:|esquema de cores "universal blue")/i;
 	if (promptLeaks.test(text)) {
 		logger.warn("Camada B: texto rejeitado (regurgitação do prompt)", { text });
+		return false;
+	}
+
+	// 1b. TEXTO TRUNCADO (achado 2026-08-15): boletim salvo com 46 chars
+	// ("Imagens de radar de alguns minutos atrás indic") — resposta do VLM
+	// interrompida no meio (safety/length), que passava pela validação por
+	// não contradizer nada. Boletim real termina com pontuação final;
+	// frase cortada no meio não tem. Limiar mínimo ridículo (25) só pega
+	// respostas vazias tipo "Sim."/"Nada.".
+	const trimmed = text.trim();
+	if (trimmed.length < 25) {
+		logger.warn("Camada B: texto rejeitado (curto demais, provável truncamento)", {
+			len: trimmed.length,
+			text: trimmed.slice(0, 120),
+		});
+		return false;
+	}
+	if (!/[.!?…"”]$/.test(trimmed)) {
+		logger.warn("Camada B: texto rejeitado (sem pontuação final — truncado)", {
+			text: trimmed.slice(-120),
+		});
 		return false;
 	}
 

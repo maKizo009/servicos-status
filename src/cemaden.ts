@@ -14,6 +14,41 @@ const GETJSON2_BASE = "https://resources.cemaden.gov.br/graficos/interativo/getJ
 const CODIBGE_IPIRANGA = 4110508;
 const REQUEST_TIMEOUT_MS = 15_000;
 
+/**
+ * Rótulos amigáveis por idestacao (localidade real em Ipiranga/PR):
+ * - 19035 (G2-411050801A): centro da cidade (-25.025096, -50.581797)
+ * - 19036 (G2-411050802A): localidade de São Brás (-24.924012, -50.59779)
+ * Nome do CEMADEN fica como fallback para estações futuras desconhecidas.
+ */
+const ROTULOS_LOCALIDADE: Record<number, string> = {
+	19035: "Ipiranga (Centro)",
+	19036: "Ipiranga (São Brás)",
+};
+
+/**
+ * O CEMADEN entrega dataHoraUltimovalor em UTC ("DD/MM/YY HH:mm").
+ * Converte para horário de Brasília (UTC-3 fixo — sem DST no BR desde 2019).
+ * Devolve no MESMO formato "DD/MM/YY HH:mm" para não quebrar os consumidores.
+ */
+export function utcParaHorarioBrasilia(dataHoraUtc: string | null): string | null {
+	if (!dataHoraUtc) return null;
+	const m = dataHoraUtc.match(/^(\d{2})\/(\d{2})\/(\d{2}) (\d{2}):(\d{2})$/);
+	if (!m) return dataHoraUtc;
+	const [, dd, mm, yy, hh, min] = m;
+	const utc = Date.UTC(
+		2000 + Number(yy),
+		Number(mm) - 1,
+		Number(dd),
+		Number(hh),
+		Number(min),
+	);
+	const br = new Date(utc - 3 * 3_600_000);
+	const p = (n: number) => String(n).padStart(2, "0");
+	return `${p(br.getUTCDate())}/${p(br.getUTCMonth() + 1)}/${p(
+		br.getUTCFullYear() % 100,
+	)} ${p(br.getUTCHours())}:${p(br.getUTCMinutes())}`;
+}
+
 export interface CemadenLeitura {
 	/** id da estação no sistema CEMADEN (ex: 19035). */
 	idestacao: number;
@@ -64,23 +99,31 @@ export async function fetchCemadenIpiranga(): Promise<CemadenState> {
 		const lista = (await res.json()) as any[];
 		const estacoes: CemadenLeitura[] = lista
 			.filter((x) => Number(x.codibge) === CODIBGE_IPIRANGA)
-			.map((x) => ({
-				idestacao: Number(x.idestacao),
-				nome: String(x.nomeestacao || ""),
-				cidade: String(x.cidade || ""),
-				uf: String(x.uf || ""),
-				codibge: Number(x.codibge),
-				ultimoValor: parseAcc(x.ultimovalor),
-				dataHoraUltimoValor: x.datahoraUltimovalor ? String(x.datahoraUltimovalor) : null,
-				acc1hr: parseAcc(x.acc1hr),
-				acc3hr: parseAcc(x.acc3hr),
-				acc6hr: parseAcc(x.acc6hr),
-				acc12hr: parseAcc(x.acc12hr),
-				acc24hr: parseAcc(x.acc24hr),
-				acc48hr: parseAcc(x.acc48hr),
-				acc72hr: parseAcc(x.acc72hr),
-				acc96hr: parseAcc(x.acc96hr),
-			}))
+			.map((x) => {
+				const id = Number(x.idestacao);
+				return {
+					idestacao: id,
+					// Rótulo por localidade (Centro / São Brás) — nome técnico
+					// do CEMADEN vira fallback para estações novas.
+					nome: ROTULOS_LOCALIDADE[id] ?? String(x.nomeestacao || ""),
+					cidade: String(x.cidade || ""),
+					uf: String(x.uf || ""),
+					codibge: Number(x.codibge),
+					ultimoValor: parseAcc(x.ultimovalor),
+					// CEMADEN entrega em UTC — converte para horário de Brasília.
+					dataHoraUltimoValor: utcParaHorarioBrasilia(
+						x.datahoraUltimovalor ? String(x.datahoraUltimovalor) : null,
+					),
+					acc1hr: parseAcc(x.acc1hr),
+					acc3hr: parseAcc(x.acc3hr),
+					acc6hr: parseAcc(x.acc6hr),
+					acc12hr: parseAcc(x.acc12hr),
+					acc24hr: parseAcc(x.acc24hr),
+					acc48hr: parseAcc(x.acc48hr),
+					acc72hr: parseAcc(x.acc72hr),
+					acc96hr: parseAcc(x.acc96hr),
+				};
+			})
 			.sort((a, b) => a.idestacao - b.idestacao);
 
 		return { estacoes, fonte: "Cemaden", atualizadoEm: Date.now(), erro: null };
