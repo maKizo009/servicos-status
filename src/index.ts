@@ -468,9 +468,11 @@ export async function syncWeatherCycle(): Promise<WeatherState> {
 					source: cachedBulletin.source,
 				});
 			} else {
-				// Concatenação de fontes (ECMWF + radar): o VLM recebe a
-				// previsão numérica junto com o nowcast para decidir de forma
-				// probabilística — e ser honesto quando as fontes divergem.
+				// Boletim 100% determinístico (2026-08-18 — "chega de IA").
+				// Sempre gera e persiste a heurística; não há mais VLM na cadeia,
+				// então a regra antiga "mantém boletim VLM se < 60min" (p/ não sujar
+				// com heurística pós-falha) foi REMOVIDA — ela só serviria para
+				// segurar o último boletim VLM velho do cache por até 60 min.
 				const bulletin = await generateNowcastBulletin(
 					nowcast,
 					state.radar.host,
@@ -485,30 +487,11 @@ export async function syncWeatherCycle(): Promise<WeatherState> {
 						nearestThreatKm: state.nearestThreatKm ?? null,
 					},
 				);
-				// Falha pontual do VLM (heurística) não pode "sujar" o boletim:
-				// se já existe um boletim VLM com < 60 min, mantém ele em vez de
-				// persistir a heurística (incidente 2026-08-12: heuristic grudou
-				// por horas via TTL de 10 min).
-				if (
-					bulletin.source === "heuristic" &&
-					cachedBulletin &&
-					cachedBulletin.source !== "heuristic" &&
-					Date.now() - cachedBulletin.generatedAt < 60 * 60_000
-				) {
-					logger.warn("Camada B: VLM falhou — mantendo boletim VLM anterior", {
-						idadeMin: Math.round(
-							(Date.now() - cachedBulletin.generatedAt) / 60_000,
-						),
-						anterior: cachedBulletin.source,
-					});
-					state.nowcastBulletin = cachedBulletin;
-				} else {
-					state.nowcastBulletin = bulletin;
-					await saveNowcastBulletin(bulletin.text, bulletin.source);
-					logger.info("Boletim nowcast (Camada B) gerado e persistido", {
-						source: bulletin.source,
-					});
-				}
+				state.nowcastBulletin = bulletin;
+				await saveNowcastBulletin(bulletin.text, bulletin.source);
+				logger.info("Boletim nowcast (determinístico) gerado e persistido", {
+					source: bulletin.source,
+				});
 			}
 
 			// O boletim principal do dashboard/llms.txt é o texto do VLM vision.
