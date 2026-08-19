@@ -13,7 +13,17 @@ import type { NowcastResult, ThreatCell, MovementVector } from "../src/radar-ana
 const TARGET = { lat: -25.0244, lon: -50.5847 };
 
 function mov(directionDeg: number, speedKmh: number): MovementVector {
-	return { directionDeg, speedKmh, intervalMin: 10 };
+	return {
+		directionDeg,
+		speedKmh,
+		intervalMin: 10,
+		dxPx: speedKmh,
+		dyPx: 0,
+		fromLat: -25.0,
+		fromLon: -50.6,
+		toLat: -25.0 + speedKmh * 0.01,
+		toLon: -50.6,
+	};
 }
 
 function threatCell(over: Partial<ThreatCell>): ThreatCell {
@@ -112,5 +122,15 @@ describe("Heurística determinística (sem LLM)", () => {
 		);
 		expect(b).toContain("55%");
 		expect(b).toContain("não mostra núcleos em movimento");
+	});
+
+	test("velocidade ~0 → estacionário (nunca 'deslocando a 0 km/h')", () => {
+		const b = buildHeuristicBulletin(
+			nowcastCom(threatCell({ movement: mov(45, 0), threat: null })),
+			undefined,
+			{ alertLevel: "monitor", nearestThreatKm: 60 },
+		);
+		expect(b).not.toMatch(/a 0 km\/h/);
+		expect(b).toContain("estacionário");
 	});
 });

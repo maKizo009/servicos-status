@@ -780,7 +780,13 @@ export function buildHeuristicBulletin(
 	}
 
 	// Frases por nível de alerta (proporcionalidade determinística).
-	const baseLoc = `Núcleo de chuva ${intensity} em ${rotulo.nome}${rotUf}${rotulo.metodo}, a ${ipirangaKm} km de Ipiranga, ${dirLabel ? `deslocando-se para ${dirLabel}` : "em movimento"}${m ? ` a ${m.speedKmh} km/h` : ""}.`;
+	// ⚠️ Só descreve movimento com speedKmh > 1; velocidade ~0 = estacionário
+	// (não dizer "se deslocando a 0 km/h" — frase sem sentido, pitfall skill).
+	const temMovimento = Boolean(m && m.speedKmh > 1);
+	const movimentoTxt = temMovimento
+		? `${dirLabel ? `, deslocando-se para ${dirLabel}` : ", em movimento"} a ${m!.speedKmh} km/h`
+		: ", sem movimento significativo (estacionário)";
+	const baseLoc = `Núcleo de chuva ${intensity} em ${rotulo.nome}${rotUf}${rotulo.metodo}, a ${ipirangaKm} km de Ipiranga${movimentoTxt}.`;
 
 	let corpo: string;
 	if (verdict?.approach === "approaching") {
