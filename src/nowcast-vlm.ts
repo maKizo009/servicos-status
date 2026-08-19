@@ -499,296 +499,16 @@ export async function generateNowcastBulletin(
 		nearestThreatKm: number | null;
 	},
 ): Promise<NowcastBulletin> {
-	const config = loadConfig();
-	const apiKey = config.nvidiaNimApiKey;
-	const geminiKey = config.geminiApiKey;
-
-	// Sem chave Gemini/NIM → fallback heurístico (não faz sentido chamar VLM)
-	if (!geminiKey && !apiKey) {
-		return {
-			text: buildHeuristicBulletin(nowcast, ecmwf),
-			source: "heuristic",
-			generatedAt: Date.now(),
-		};
-	}
-
-	try {
-		const composite = await buildRadarComposite(host, pastFrames, region, {
-			// Números nos top-3 núcleos do último frame (grounding visual):
-			// o VLM vê exatamente quais células o sistema associou aos dados.
-			latestCells: nowcast.threats.slice(0, 3).map((t) => ({
-				lat: t.lat,
-				lon: t.lon,
-				intensity: t.intensity,
-			})),
-			target: TARGET_IPIRANGA,
-		});
-		if (!composite) {
-			return {
-				text: buildHeuristicBulletin(nowcast, ecmwf),
-				source: "heuristic",
-				generatedAt: Date.now(),
-			};
-		}
-
-		const m = nowcast.movement;
-		const dirs = ["N", "NE", "L", "SE", "S", "SO", "O", "NO"];
-		const dirLabel = m ? dirs[Math.round(m.directionDeg / 45) % 8] : null;
-		const intensityLabel: Record<string, string> = {
-			light: "fraca",
-			moderate: "moderada",
-			heavy: "forte",
-			extreme: "muito forte (temporal)",
-		};
-
-		// Localização determinística do núcleo (município real via malha IBGE —
-		// point-in-polygon). O VLM NUNCA calcula isso, apenas repete o dado fornecido.
-		// Prioridade: o núcleo mais AMEAÇADOR (threats[0], já avaliado contra
-		// Ipiranga); fallback para o mais intenso (nearestCell).
-		const cell = nowcast.threats[0] ?? nowcast.nearestCell;
-		let locationNote = "";
-		let threatNote = "";
-		// Veredito determinístico exposto para validação pós-geração (Achado 2).
-		// Para threats[0] o veredicto já vem calculado; senão calcula do movimento global.
-		let verdict: ThreatVerdict | null = nowcast.threats[0]?.threat ?? null;
-		if (cell && typeof cell.lat === "number") {
-			const ipirangaKm = haversineKm(cell.lat, cell.lon, -25.0244, -50.5847);
-			// Rótulo honesto: município real (malha IBGE), referência regional só
-			// se perto (≤80 km) ou "região do {UF}" — nunca um município a
-			// centenas de km (incidente 2026-08-12: núcleo no RS citado como
-			// "São João do Triunfo").
-			const rotulo = rotularLocalizacao(cell.lat, cell.lon, haversineKm);
-			const ufTxt = rotulo.uf ? ` (${rotulo.uf})` : "";
-			locationNote = `- Núcleo mais ameaçador em (${cell.lat.toFixed(2)}, ${cell.lon.toFixed(2)}): ${rotulo.nome}${ufTxt}${rotulo.metodo}; dista ${Math.round(ipirangaKm)} km de Ipiranga\n`;
-
-			// Veredicto de ameaça DETERMINÍSTICO (Camada A): o VLM nunca decide
-			// se o núcleo vem ou não para Ipiranga — recebe a conclusão pronta.
-			// Usa o movimento INDIVIDUAL do núcleo (threats[0].movement) quando
-			// disponível; fallback para o movimento global do nowcast.
-			const cellMovement = cell.movement ?? m;
-			if (cellMovement) {
-				if (!verdict) {
-					verdict = assessThreat(
-						cell.lat,
-						cell.lon,
-						cellMovement,
-						-25.0244,
-						-50.5847,
-					);
-				}
-				const approachLabel: Record<ThreatVerdict["approach"], string> = {
-					approaching: `APROXIMANDO-SE de Ipiranga (ETA ~${Math.round(verdict.etaMin ?? 0)} min, se mantiver curso e intensidade)`,
-					receding:
-						"AFASTANDO-SE de Ipiranga (trajetória leva para longe — risco direto para Ipiranga é praticamente nulo)",
-					crossing:
-						"em trajetória tangencial a Ipiranga (passa de raspão, sem aproximação direta)",
-				};
-				threatNote = `- VEREDITO DE AMEAÇA (cálculo determinístico, NÃO contradiga): o núcleo está ${approachLabel[verdict.approach]}\n`;
-
-				// Projeção da trajetória: em quais municípios o núcleo estará
-				// em 30/60/120 min (extrapolação linear). As "próximas cidades".
-				// Só cita município REAL (malha) ou referência próxima — projeção
-				// caindo fora da malha longe de tudo não vira nome inventado.
-				const projections = [30, 60, 120]
-					.map((t) => {
-						const p = projectCell(cell.lat, cell.lon, cellMovement, t);
-						const pr = rotularLocalizacao(p.lat, p.lon, haversineKm);
-						return {
-							t,
-							...p,
-							nome: pr.municipio?.nome ?? null,
-							uf: pr.municipio?.uf ?? null,
-						};
-					})
-					.filter((p) => p.nome && p.nome !== rotulo.nome);
-				if (projections.length > 0) {
-					const projList = projections
-						.map((p) => `${p.nome}${p.uf ? ` (${p.uf})` : ""} (${p.t} min)`)
-						.join(", ");
-					threatNote += `- Projeção da trajetória (extrapolação, pode dissipar): ${projList}\n`;
-				}
-			}
-		}
-
-		// Seção de previsão numérica ECMWF (concatenação de fontes): o VLM
-		// pesa o nowcast (curto prazo) contra o modelo numérico (horas).
-		let ecmwfSection = "";
-		if (
-			ecmwf &&
-			(ecmwf.hourlyForecast.length > 0 || ecmwf.rainProbabilityPct > 0)
-		) {
-			const nowPct = Math.round(ecmwf.rainProbabilityPct);
-			const hourly = ecmwf.hourlyForecast
-				.slice(0, 6)
-				.map(
-					(h) =>
-						`- ${h.time}: ${h.rainProbabilityPct}% de chuva (${h.precipitationMm} mm)`,
-				)
-				.join("\n");
-			ecmwfSection = `\nPREVISÃO NUMÉRICA (ECMWF IFS — Open-Meteo, fonte de médio prazo, confie nela para o horizonte de HORAS):\n- Agora: ${nowPct}% de probabilidade de chuva\n${hourly}\n`;
-		}
-
-		// Legenda dos núcleos numerados no composite (top-3 threats do último frame)
-		const numberedThreats = nowcast.threats.slice(0, 3);
-		let numberedLegend = "";
-		if (numberedThreats.length > 0) {
-			numberedLegend =
-				numberedThreats
-					.map((t, i) => {
-						const rot = rotularLocalizacao(t.lat, t.lon, haversineKm);
-						const rotUf = rot.uf ? ` (${rot.uf})` : "";
-						return `- Núcleo ${i + 1} (círculo ${i + 1} na imagem): ${rot.nome}${rotUf}${rot.metodo} (${t.lat.toFixed(2)}, ${t.lon.toFixed(2)}), ${intensityLabel[t.intensity] ?? t.intensity}, ~${Math.round(t.distToTargetKm)} km de Ipiranga`;
-					})
-					.join("\n") + "\n";
-		}
-
-		// Nível de alerta da Camada A + tom exigido (proporcionalidade)
-		const alertLevel = relevance?.alertLevel ?? "monitor";
-		const toneByLevel: Record<string, string> = {
-			alert:
-				"URGÊNCIA MODERADA: risco real nas próximas ~2 horas — alerte com seriedade, sem pânico.",
-			watch:
-				"TOM INFORMATIVO: atividade relevante a algumas horas de distância — informe de forma calma, sem alarmismo.",
-			monitor:
-				"TOM TRANQUILIZADOR: núcleos distantes, afastando-se ou estacionários — deixe claro que NÃO há alerta iminente para Ipiranga.",
-			none: "TOM TRANQUILIZADOR: radar limpo na região — diga que não há alerta.",
-		};
-
-		const prompt = `Você é um meteorologista analisando imagens de radar meteorológico (RainViewer, esquema de cores "Universal Blue").
-A imagem tem 3 frames do radar da região de Ipiranga/PR, lado a lado (esquerda = mais antigo, direita = mais recente), com intervalo de ~10 minutos cada. Cada frame tem um rótulo de tempo no topo ("T-20m", "T-10m" ou "AGORA").
-ANOTAÇÕES NA IMAGEM (desenhadas pelo sistema):
-- O pin vermelho com o rótulo "IPIRANGA" marca a posição da cidade em CADA frame. OLHE AO REDOR DESSE PIN: se não houver cores de radar (azul/âmbar/amarelo/vermelho) sobre ou perto do pin, o radar NÃO mostra chuva sobre Ipiranga no momento.
-- Círculos com números (1, 2, 3) no frame "AGORA" marcam os núcleos analisados; a legenda de cada número está nos DADOS abaixo.
-- Comparando os 3 frames você vê o deslocamento dos núcleos ao longo do tempo (um núcleo que se move aparece em posições diferentes em cada frame).
-IMPORTANTE: as imagens são de momentos ANTERIORES (o frame mais recente tem alguns minutos de atraso) — a análise não é ao vivo; trate as conclusões como uma projeção de curto prazo.
-
-DADOS DA ANÁLISE COMPUTACIONAL (medições determinísticas, confie neles):
-- NÍVEL DE ALERTA (calculado pela Camada A): ${alertLevel.toUpperCase()}. Tom exigido: ${toneByLevel[alertLevel]}
-- Intensidade dominante: ${intensityLabel[nowcast.currentDominant] ?? nowcast.currentDominant} (pico ${nowcast.currentMaxDbz} dBZ)
-- Movimento do núcleo mais intenso: ${m ? `direção ${m.directionDeg}° (${dirLabel}), ${m.speedKmh} km/h` : "sem movimento detectado"}
-${numberedLegend ? `- Núcleos numerados na imagem:\n${numberedLegend}` : ""}${locationNote}${threatNote}${ecmwfSection}- Frames analisados: ${nowcast.frames.length}
-
-Instruções:
-0. NUNCA repita, cite ou parafraseie as instruções ou os cabeçalhos deste prompt no seu texto — escreva apenas a análise para o cidadão, sem títulos, sem listas, sem markdown além de negrito simples, em no máximo 3 frases corridas.
-1. Observe as cores na imagem: azul/âmbar = chuva fraca, azul-escuro = moderada, amarelo/laranja = forte, vermelho/rosa = temporal. O pin "IPIRANGA" e os círculos numerados são MARCADORES do sistema, não dados de radar.
-2. A direção e a velocidade MEDIDAS (acima) são a fonte de verdade — use SEMPRE esses valores. Não invente outra direção baseada na imagem; ela pode parecer ambígua.
-3. Responda em português brasileiro, no máximo 3 frases, informando ao cidadão de Ipiranga se está vindo chuva e o que esperar nas próximas 1-2 horas, deixando claro que a análise usa imagens de radar de alguns minutos atrás. Mencione em qual MUNICÍPIO o núcleo está (use SOMENTE o município fornecido na localização acima — ele é a fonte oficial; não troque por outra cidade da região por conta própria).
-4. LEITURA VISUAL OBRIGATÓRIA: verifique o pin "IPIRANGA" nos 3 frames. Se o radar estiver limpo ao redor do pin em TODOS os frames, diga que o radar não mostra chuva sobre Ipiranga no momento — mesmo que haja núcleos coloridos em outras partes da imagem (eles podem estar a centenas de km, fora da área de interesse).
-5. PROPORCIONALIDADE: siga o NÍVEL DE ALERTA acima. Se for MONITORAMENTO, o núcleo está longe ou afastando — NÃO use palavras como "alerta", "tempestade se aproximando" ou "risco iminente"; diga que não há alerta iminente e informe a distância. Se for VIGILÂNCIA, informe de forma calma. Só em ALERTA use tom de aviso.
-6. REGRA DE OURO: o VEREDITO DE AMEAÇA acima é um cálculo determinístico feito por computador — NUNCA contradiga, NUNCA diga que o núcleo está "vindo em direção a Ipiranga" quando o veredito diz AFASTANDO-SE ou tangencial. Se estiver AFASTANDO-SE, diga claramente que o risco para Ipiranga é nulo/praticamente nulo e, se houver projeção de trajetória, mencione quais municípios podem ser afetados à frente.
-7. Se o veredito disser APROXIMANDO-SE com ETA grande (mais de 360 minutos) ou o núcleo estiver a mais de 200 km, diga que não há alerta iminente — o núcleo só chegaria em muitas horas, se não dissipar. Nesse caso mencione o ETA em HORAS (ex.: "em cerca de 8 horas"), não em minutos.
-8. Se o núcleo estiver distante (mais de 80 km) ou o movimento estiver ausente/não confiável (sem valor medido), diga que não há alerta iminente ou que a trajetória é incerta — não invente direção, velocidade ou ETA.
-9. Seja honesto sobre a incerteza: nowcast de curto prazo pode cometer erros (dissipação ou mudança súbita de rumo) — mencione isso de forma natural quando houver risco.
-10. CONCILIAÇÃO DE FONTES: a PREVISÃO NUMÉRICA (ECMWF) cobre o horizonte de horas e o nowcast o curto prazo. Se o ECMWF indicar probabilidade alta de chuva (>=50%) mas o radar NÃO mostrar núcleos significativos, NÃO diga que "vai chover" nem que "não vai chover" como certeza — diga que o modelo numérico indica X% de chance de chuva nas próximas horas, mas o radar não mostra núcleos no momento (condição de observação estável). Se o ECMWF indicar baixa probabilidade mas o radar mostrar núcleo se aproximando, prevalece o nowcast (radar) para o curto prazo, mas mencione que o modelo numérico vê baixa chance — é sinal de célula isolada que pode dissipar.
-
-NÃO invente números além dos fornecidos. Seja direto e útil.`;
-
-		// Cadeia de modelos: NIM minimax-m3 (primário — reasoning básico, não gasta
-		// cota do OpenCode) → Gemini 3.6 Flash Lite → OpenCode Go (fallback pago,
-		// thinking desabilitado) → heurística. O composite anotado vai para todos;
-		// a validação pós-geração roda em cada tentativa.
-		const attempts: Array<{
-			label: string;
-			source: "opencode_vision" | "gemini" | "nvidia_nim_vision";
-			call: () => Promise<string | null>;
-		}> = [];
-		if (apiKey) {
-			const modelosNim = [
-				config.nvidiaNimModel,
-				"meta/llama-3.2-90b-vision-instruct",
-				"meta/llama-3.2-11b-vision-instruct",
-			].filter((m, i, arr) => m && arr.indexOf(m) === i);
-			for (const model of modelosNim) {
-				attempts.push({
-					label: model,
-					source: "nvidia_nim_vision",
-					call: () =>
-						callNimVision(config, apiKey, model, prompt, composite.dataUrl),
-				});
-			}
-		}
-		if (geminiKey) {
-			attempts.push({
-				label: GEMINI_VLM_MODEL,
-				source: "gemini",
-				call: () =>
-					callGeminiVision(
-						geminiKey,
-						GEMINI_VLM_MODEL,
-						prompt,
-						composite.dataUrl,
-					),
-			});
-		}
-		if (config.openCodeApiKey) {
-			attempts.push({
-				label: config.openCodeVlmModel,
-				source: "opencode_vision",
-				call: () =>
-					callOpenCodeVision(config, prompt, composite.dataUrl),
-			});
-		}
-
-		for (const attempt of attempts) {
-			try {
-				const text = await attempt.call();
-				if (!text) {
-					logger.warn("Camada B: VLM retornou vazio", {
-						model: attempt.label,
-					});
-					continue;
-				}
-
-				// Validação pós-geração: o texto NUNCA pode contradizer a
-				// Camada A, ignorar o ECMWF (>=50%), regurgitar o prompt ou
-				// usar tom desproporcional ao nível de alerta. Se reprovar,
-				// tenta o próximo modelo; no fim cai na heurística.
-				if (
-					!validateBulletinAgainstVerdict(text, verdict, ecmwf, {
-						alertLevel: relevance?.alertLevel,
-						nearestThreatKm: relevance?.nearestThreatKm,
-					})
-				) {
-					logger.warn("Camada B: texto rejeitado pela validação", {
-						model: attempt.label,
-					});
-					continue;
-				}
-
-				logger.info("Camada B: boletim nowcast gerado", {
-					model: attempt.label,
-				});
-				return {
-					text,
-					source: attempt.source,
-					generatedAt: Date.now(),
-				};
-			} catch (err) {
-				logger.warn("Camada B: VLM falhou, tentando próximo modelo", {
-					model: attempt.label,
-					error: String(err),
-				});
-			}
-		}
-
-		// Todos os modelos falharam → fallback determinístico
-		logger.warn("Camada B: todos os modelos falharam, usando heurística");
-		return {
-			text: buildHeuristicBulletin(nowcast, ecmwf),
-			source: "heuristic",
-			generatedAt: Date.now(),
-		};
-	} catch (err) {
-		logger.warn("Camada B: VLM falhou no composite/prompt, usando heurística", {
-			error: String(err),
-		});
-		return {
-			text: buildHeuristicBulletin(nowcast),
-			source: "heuristic",
-			generatedAt: Date.now(),
-		};
-	}
+	// 2026-08-18 — modo DETERMINÍSTICO (Dave: "chega de IA").
+	// Gera o boletim 100% pela heurística (Camada A rica portada), SEM chamar
+	// VLM/LLM nenhum. Não consome cota, não faz rede, não depende de provider.
+	return {
+		text: buildHeuristicBulletin(nowcast, ecmwf, relevance),
+		source: "heuristic",
+		generatedAt: Date.now(),
+	};
 }
+
 
 /**
  * Valida o texto gerado pelo VLM contra o veredito determinístico (Achado 2)
@@ -967,10 +687,24 @@ export function validateBulletinAgainstVerdict(
 	return true;
 }
 
-/** Fallback determinístico quando o VLM não está disponível */
-function buildHeuristicBulletin(
+/**
+ * Boletim determinístico (Camada B 100%% heurística — SEM LLM).
+ *
+ * Porta toda a Camada A rica que antes era injetada no prompt do VLM:
+ * nível de alerta + tom, núcleo mais ameaçador com município real (malha
+ * IBGE) e distância até Ipiranga, veredito determinístico (aproximando /
+ * afastando / tangencial + ETA), projeção da trajetória (próximas cidades)
+ * e conciliação com a previsão numérica ECMWF.
+ *
+ * Tudo entra por PARÂMETRO de função — nada de config/env, nada de rede.
+ */
+export function buildHeuristicBulletin(
 	nowcast: NowcastResult,
 	ecmwf?: EcmwfContext,
+	relevance?: {
+		alertLevel?: "alert" | "watch" | "monitor" | "none";
+		nearestThreatKm?: number | null;
+	},
 ): string {
 	const m = nowcast.movement;
 	const dirs = ["N", "NE", "L", "SE", "S", "SO", "O", "NO"];
@@ -981,25 +715,91 @@ function buildHeuristicBulletin(
 		heavy: "forte",
 		extreme: "muito forte (temporal)",
 	};
+	const alertLevel = relevance?.alertLevel ?? "monitor";
 
 	// Conciliação de fontes: nowcast (curto prazo) + ECMWF (horas).
 	const ecmwfPct = ecmwf ? Math.round(ecmwf.rainProbabilityPct) : null;
 	const ecmwfNote =
 		ecmwfPct != null && ecmwfPct > 0
-			? ` O modelo ECMWF indica ${ecmwfPct}% de chance de chuva nas próximas horas${
+			? ` O modelo numérico ECMWF indica ${ecmwfPct}%% de chance de chuva nas próximas horas${
 					ecmwfPct >= 50 && (!m || m.speedKmh <= 1)
 						? ", mas o radar não mostra núcleos em movimento no momento (condição estável)."
 						: "."
 				}`
 			: "";
+	const ecmwfAlto = ecmwfPct != null && ecmwfPct >= 50;
 
-	// Sem movimento confiável (ausente OU velocidade ~0 = célula estacionária).
-	if (!m || m.speedKmh <= 1) {
-		if (!m) {
-			return `Sem núcleos de chuva significativos em movimento na região de Ipiranga no momento.${ecmwfNote}`;
-		}
-		return `Núcleo de chuva ${intensityLabel[nowcast.currentDominant] ?? nowcast.currentDominant} (pico ${nowcast.currentMaxDbz} dBZ) presente na região, mas sem movimento significativo detectado (estacionário).${ecmwfNote}`;
+	// Núcleo mais ameaçador (já avaliado pela Camada A contra Ipiranga),
+	// fallback para o mais intenso. -> município real (malha IBGE) + distância.
+	const cell = nowcast.threats[0] ?? nowcast.nearestCell;
+	const cellMovement = cell?.movement ?? m;
+	let verdict: ThreatVerdict | null = nowcast.threats[0]?.threat ?? null;
+	if (cell && cellMovement && !verdict) {
+		verdict = assessThreat(cell.lat, cell.lon, cellMovement, -25.0244, -50.5847);
 	}
 
-	return `Núcleo de chuva ${intensityLabel[nowcast.currentDominant] ?? nowcast.currentDominant} (pico ${nowcast.currentMaxDbz} dBZ) deslocando-se para ${dirLabel} a ${m.speedKmh} km/h. Observação baseada em ${m.intervalMin} min de frames de radar.${ecmwfNote}`;
+	// Sem célula analisável (radar limpo / sem núcleos).
+	if (!cell) {
+		if (alertLevel === "none" || alertLevel === "monitor") {
+			return `Sem núcleos de chuva em movimento na região de Ipiranga no momento; sem alerta iminente.${ecmwfNote}`;
+		}
+		return `Núcleo de chuva ${intensityLabel[nowcast.currentDominant] ?? nowcast.currentDominant} (pico ${nowcast.currentMaxDbz} dBZ) na região de Ipiranga, mas sem movimento confiável detectado.${ecmwfNote}`;
+	}
+
+	const intensity = intensityLabel[cell.intensity] ?? intensityLabel[nowcast.currentDominant] ?? "presente";
+	const rotulo = rotularLocalizacao(cell.lat, cell.lon, haversineKm);
+	const rotUf = rotulo.uf ? ` (${rotulo.uf})` : "";
+	const ipirangaKm = Math.round(haversineKm(cell.lat, cell.lon, -25.0244, -50.5847));
+
+	// Veredito de ameaça determinístico.
+	const approachLabel: Record<ThreatVerdict["approach"], string> = {
+		approaching: `se aproximando de Ipiranga (chegada estimada em cerca de ${Math.round(verdict?.etaMin ?? 0)} min, se mantiver curso e intensidade)`,
+		receding: "se afastando de Ipiranga — trajetória leva para longe, risco direto praticamente nulo",
+		crossing: "em trajetória tangencial a Ipiranga (passa de raspão, sem aproximação direta)",
+	};
+
+	// Projeção da trajetória (próximas cidades em 30/60/120 min).
+	let projNote = "";
+	if (cellMovement) {
+		const projections = [30, 60, 120]
+			.map((t) => {
+				const p = projectCell(cell.lat, cell.lon, cellMovement, t);
+				const pr = rotularLocalizacao(p.lat, p.lon, haversineKm);
+				return {
+					t,
+					nome: pr.municipio?.nome ?? null,
+					uf: pr.municipio?.uf ?? null,
+				};
+			})
+			.filter((p) => p.nome && p.nome !== rotulo.nome);
+		if (projections.length > 0) {
+			projNote = ` Podem ser afetadas à frente: ${projections
+				.map((p) => `${p.nome}${p.uf ? ` (${p.uf})` : ""}`)
+				.join(", ")}.`;
+		}
+	}
+
+	// Frases por nível de alerta (proporcionalidade determinística).
+	const baseLoc = `Núcleo de chuva ${intensity} em ${rotulo.nome}${rotUf}${rotulo.metodo}, a ${ipirangaKm} km de Ipiranga, ${dirLabel ? `deslocando-se para ${dirLabel}` : "em movimento"}${m ? ` a ${m.speedKmh} km/h` : ""}.`;
+
+	let corpo: string;
+	if (verdict?.approach === "approaching") {
+		const longe = ipirangaKm > 200 || (verdict.etaMin ?? 0) > 360;
+		if (longe) {
+			corpo = `${baseLoc} O núcleo ${approachLabel.approaching}, mas só chegaria em muitas horas (se não dissipar) — não há alerta iminente para Ipiranga.${projNote}`;
+		} else if (alertLevel === "alert") {
+			corpo = `${baseLoc} O núcleo ${approachLabel.approaching} — ALERTA: há risco real de chuva em Ipiranga nas próximas ~2 horas.${projNote}`;
+		} else {
+			corpo = `${baseLoc} O núcleo ${approachLabel.approaching} — acompanhe, mas ainda não é alerta para Ipiranga.${projNote}`;
+		}
+	} else if (verdict?.approach === "receding") {
+		corpo = `${baseLoc} O núcleo está ${approachLabel.receding} — sem alerta iminente para Ipiranga.${projNote}`;
+	} else if (verdict?.approach === "crossing") {
+		corpo = `${baseLoc} O núcleo ${approachLabel.crossing} — risco direto baixo para Ipiranga.${projNote}`;
+	} else {
+		// Sem veredito confiável (sem movimento associável).
+		corpo = `${baseLoc} Movimento não confiável no momento — trajetória incerta; sem alerta iminente.${ecmwfAlto ? ` Modelo ECMWF: ${ecmwfPct}%% de chuva (pode chegar às cidades à frente).` : ""}`;
+	}
+
+	return `${corpo}${ecmwfNote}`;
 }

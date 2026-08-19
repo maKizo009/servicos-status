@@ -305,6 +305,7 @@ describe("Conciliação de fontes (nowcast + ECMWF)", () => {
 		currentMaxDbz: -100,
 		currentDominant: "none",
 		nearestCell: null,
+		threats: [],
 	};
 
 	const region = { z: 7, x: 46, y: 73 } as const;
@@ -355,7 +356,7 @@ describe("Conciliação de fontes (nowcast + ECMWF)", () => {
 			region,
 		);
 		expect(b.text).toBe(
-			"Sem núcleos de chuva significativos em movimento na região de Ipiranga no momento.",
+			"Sem núcleos de chuva em movimento na região de Ipiranga no momento; sem alerta iminente.",
 		);
 	});
 });
