@@ -324,7 +324,7 @@ function handleServices(): Response {
 let weatherInterval: ReturnType<typeof setInterval> | null = null;
 
 /** TTL do boletim narrativo do nowcast (Camada B): vale até a próxima leitura de radar (10 min). */
-const NOWCAST_BULLETIN_TTL_MS = 600_000;
+const NOWCAST_BULLETIN_TTL_MS = 5 * 60_000; // 5 min — alinhado com TTL do nowcast
 
 /** Exportado para o /api/cron (api/cron.ts) rodar o ciclo completo de clima+radar+NIM. */
 export async function syncWeatherCycle(): Promise<WeatherState> {
@@ -461,13 +461,31 @@ export async function syncWeatherCycle(): Promise<WeatherState> {
 				? Date.now() - cachedBulletin.generatedAt
 				: Infinity;
 
-			if (cachedBulletin && bulletinAgeMs < NOWCAST_BULLETIN_TTL_MS) {
-				state.nowcastBulletin = cachedBulletin;
-				logger.info("Boletim nowcast reutilizado do cache persistido", {
-					ageMin: Math.round(bulletinAgeMs / 60000),
-					source: cachedBulletin.source,
-				});
-			} else {
+			if (
+				cachedBulletin &&
+				bulletinAgeMs < NOWCAST_BULLETIN_TTL_MS &&
+				// Invalida se os threats mudaram (núcleo dissipou ou novo apareceu)
+				// — evita boletim stale citando distância de núcleo que já sumiu.
+				// Compara a lista de distâncias do boletim cached com os threats atuais.
+				cachedBulletin.text.length > 0 &&
+				!/sem núcleos/i.test(cachedBulletin.text)
+			) {
+				// Se o boletim cita distâncias mas os threats atuais estão vazios, regenera.
+				const hasDistances = /\d{2,4}\s*km/.test(cachedBulletin.text);
+				const threatsEmpty = nowcast.threats.length === 0;
+				if (hasDistances && threatsEmpty) {
+					logger.info("Boletim nowcast stale (núcleo dissipou), regenerando", {
+						ageMin: Math.round(bulletinAgeMs / 60000),
+					});
+				} else {
+					state.nowcastBulletin = cachedBulletin;
+					logger.info("Boletim nowcast reutilizado do cache persistido", {
+						ageMin: Math.round(bulletinAgeMs / 60000),
+						source: cachedBulletin.source,
+					});
+				}
+			}
+			if (!state.nowcastBulletin) {
 				// Boletim 100% determinístico (2026-08-18 — "chega de IA").
 				// Sempre gera e persiste a heurística; não há mais VLM na cadeia,
 				// então a regra antiga "mantém boletim VLM se < 60min" (p/ não sujar
