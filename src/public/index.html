@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Monitor Ipiranga — Status dos Serviços</title>
 <link rel="manifest" href="/manifest.webmanifest">
-<meta name="theme-color" content="#00923F">
+<meta name="theme-color" content="#064E3B">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Monitor Ipiranga">
@@ -30,8 +30,8 @@
   --md-sys-color-on-surface-variant:#475569;     /* Texto secundário */
   --md-sys-color-outline:#94A3B8;
   --md-sys-color-outline-variant:#E2E8F0;
-  --md-sys-color-primary:#0284C7;
-  --md-sys-color-on-primary:#FFFFFF;
+  --md-sys-color-primary:#047857;
+  --md-sys-color-on-primary:#ffffff;
   --md-sys-color-primary-container:#E0F2FE;
   --md-sys-color-on-primary-container:#0369A1;
   --md-sys-color-secondary-container:#DCFCE7;
@@ -51,7 +51,7 @@
   --r6:#DC2626;--r5:#EF4444;--r1:#FEE2E2;--r0:#FEF2F2;
   --claro:#ED1C24;--vivo:#660099;--tim:#003DA5;--copel:#00923F;--sanepar:#003F87;
   --surface:var(--md-sys-color-surface-container);--text:var(--md-sys-color-on-surface);--text2:var(--md-sys-color-on-surface-variant);--text3:var(--md-sys-color-outline);--border:var(--md-sys-color-outline-variant);
-  --radius:16px;--radius-sm:10px;--shadow:var(--md-elevation-1);--shadow-lg:var(--md-elevation-2);--shadow-crit:0 0 16px rgba(220,38,38,.15),0 2px 4px -1px rgba(220,38,38,.08);
+  --radius:16px;--radius-sm:10px;--shadow:var(--md-elevation-1);--shadow-lg:var(--md-elevation-2);--shadow-crit:0 4px 14px -2px rgba(220,38,38,.20),0 2px 4px -1px rgba(220,38,38,.08);
   --font:'Inter',system-ui,-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif
 }
 
@@ -87,7 +87,7 @@
     --md-elevation-3:0 10px 15px -3px rgba(0,0,0,.4),0 4px 6px -4px rgba(0,0,0,.3);
     --copel:#4ADE80;--sanepar:#38BDF8;--claro:#F87171;--vivo:#C084FC;--tim:#60A5FA;
     --s900:#F8FAFC;--s800:#F1F5F9;--s700:#E2E8F0;--s600:#CBD5E1;--s500:#94A3B8;--s400:#64748B;--s300:#475569;--s200:#334155;--s100:#1E293B;--s50:#0F172A;
-    --g6:#4ADE80;--g5:#22C55E;--g1:rgba(34,197,94,.18);--g0:rgba(6,78,59,.3);
+    --g6:#4ADE80;--g5:#16A34A;--g1:rgba(34,197,94,.18);--g0:rgba(6,78,59,.3);
     --a5:#FBBF24;--a4:#F59E0B;--a1:rgba(245,158,11,.18);--a0:rgba(120,53,15,.3);
     --r6:#F87171;--r5:#EF4444;--r1:rgba(239,68,68,.18);--r0:rgba(127,29,29,.3);
   }
@@ -118,7 +118,7 @@
   --md-elevation-3:0 10px 15px -3px rgba(0,0,0,.4),0 4px 6px -4px rgba(0,0,0,.3);
   --copel:#4ADE80;--sanepar:#38BDF8;--claro:#F87171;--vivo:#C084FC;--tim:#60A5FA;
   --s900:#F8FAFC;--s800:#F1F5F9;--s700:#E2E8F0;--s600:#CBD5E1;--s500:#94A3B8;--s400:#64748B;--s300:#475569;--s200:#334155;--s100:#1E293B;--s50:#0F172A;
-  --g6:#4ADE80;--g5:#22C55E;--g1:rgba(34,197,94,.18);--g0:rgba(6,78,59,.3);
+  --g6:#4ADE80;--g5:#16A34A;--g1:rgba(34,197,94,.18);--g0:rgba(6,78,59,.3);
   --a5:#FBBF24;--a4:#F59E0B;--a1:rgba(245,158,11,.18);--a0:rgba(120,53,15,.3);
   --r6:#F87171;--r5:#EF4444;--r1:rgba(239,68,68,.18);--r0:rgba(127,29,29,.3);
 }
@@ -166,7 +166,7 @@
   box-shadow:0 8px 24px rgba(0,0,0,.25)
 }
 .radar-play-btn{
-  background:var(--g6);border:none;color:#fff;width:36px;height:36px;border-radius:var(--md-shape-corner-medium);
+  background:var(--g6);border:none;color:#052E16;width:44px;height:44px;border-radius:var(--md-shape-corner-medium);
   cursor:pointer;display:flex;align-items:center;justify-content:center;font-weight:600;
   transition:all .2s ease;flex-shrink:0
 }
@@ -182,11 +182,11 @@
   border:1px solid rgba(255,255,255,.12);box-shadow:0 4px 12px rgba(0,0,0,.2)
 }
 .layer-btn{
-  background:transparent;border:none;color:#94a3b8;font-size:11.5px;font-weight:500;
-  padding:5px 12px;border-radius:var(--md-shape-corner-small);cursor:pointer;transition:all .2s ease;display:flex;align-items:center;gap:4px
+  background:transparent;border:none;color:#94a3b8;font-size:12px;font-weight:500;
+  padding:10px 12px;border-radius:var(--md-shape-corner-small);cursor:pointer;transition:all .2s ease;display:flex;align-items:center;gap:4px
 }
 .layer-btn:hover{color:#fff;background:rgba(255,255,255,.1)}
-.layer-btn.active{background:var(--g6);color:#fff;font-weight:600}
+.layer-btn.active{background:var(--g6);color:#052E16;font-weight:600}
 
 .radar-map-wrapper.is-fullscreen{
   position:fixed!important;top:0!important;left:0!important;width:100vw!important;
@@ -208,7 +208,7 @@
 }
 .bulletin-head{display:flex;align-items:center;justify-content:space-between}
 .bulletin-tag{
-  font-size:10px;font-weight:600;letter-spacing:.4px;text-transform:uppercase;padding:3px 8px;border-radius:6px;
+  font-size:12px;font-weight:600;letter-spacing:.4px;text-transform:uppercase;padding:3px 8px;border-radius:6px;
   background:var(--g1);color:var(--g6)
 }
 .nowcast-box{
@@ -227,14 +227,14 @@
 .cemaden-head{display:flex;align-items:center;justify-content:space-between;color:var(--md-sys-color-on-surface)}
 .cemaden-row{border-top:1px solid var(--md-sys-color-outline-variant);padding-top:10px;margin-top:6px}
 .cemaden-row:first-child{border-top:none;padding-top:0;margin-top:0}
-.cemaden-tag{font-size:10px;font-weight:600;letter-spacing:.4px;text-transform:uppercase;padding:2px 6px;border-radius:6px;background:var(--g1);color:var(--g6)}
+.cemaden-tag{font-size:12px;font-weight:600;letter-spacing:.4px;text-transform:uppercase;padding:2px 6px;border-radius:6px;background:var(--g1);color:var(--g6)}
 .cemaden-line1{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
 .cemaden-line2{display:flex;align-items:baseline;gap:6px;margin-top:4px}
 .cemaden-24h{font-size:22px;font-weight:700;color:var(--md-sys-color-on-surface);font-variant-numeric:tabular-nums}
-.cemaden-24h-label{font-size:11px;opacity:.8;color:var(--text-secondary)}
-.cemaden-meta{font-size:11px;opacity:.75;margin-top:2px}
+.cemaden-24h-label{font-size:12px;color:var(--text2)}
+.cemaden-meta{font-size:12px;margin-top:2px}
 .nowcast-intensity-badge{
-  font-size:11px;font-weight:700;padding:4px 10px;border-radius:var(--md-shape-corner-full);text-transform:uppercase;
+  font-size:12px;font-weight:700;padding:4px 10px;border-radius:var(--md-shape-corner-full);text-transform:uppercase;
   background:var(--g1);color:var(--g6);border:1px solid var(--g5)
 }
 .nowcast-intensity-badge.int-light{background:var(--a1);color:var(--a5);border-color:var(--a4)}
@@ -246,11 +246,11 @@
 .cell-arrow-icon{background:transparent;border:none}
 .cell-arrow-icon svg{filter:drop-shadow(0 0 2px rgba(0,0,0,.55));transform-origin:center;transform-box:fill-box}
 .cell-arrow-trail{pointer-events:none;opacity:.55}
-.nowcast-meta{font-size:11.5px;color:var(--md-sys-color-on-surface-variant);line-height:1.5;font-weight:400}
+.nowcast-meta{font-size:12px;color:var(--md-sys-color-on-surface-variant);line-height:1.5;font-weight:400}
 .nowcast-text{font-size:13px;color:var(--md-sys-color-on-surface-variant);line-height:1.6;margin:0;border-top:1px solid var(--md-sys-color-outline-variant);padding-top:10px;font-weight:400}
 .bulletin-text{font-size:13.5px;color:var(--text);line-height:1.6;font-weight:400}
 .bulletin-disclaimer{
-  font-size:11px;color:var(--md-sys-color-on-surface-variant);line-height:1.5;font-weight:400;
+  font-size:12px;color:var(--md-sys-color-on-surface-variant);line-height:1.5;font-weight:400;
   border-top:1px solid var(--md-sys-color-outline-variant);padding-top:8px;margin-top:2px;
   display:flex;gap:6px;align-items:flex-start
 }
@@ -283,9 +283,9 @@ body{font-family:var(--font);background:var(--md-sys-color-surface);color:var(--
 
 /* Header */
 .header{
-  background:linear-gradient(135deg,#064E3B 0%,#047857 50%,#059669 100%);
+  background:linear-gradient(135deg,#064E3B 0%,#065F46 55%,#047857 100%);
   padding:14px 24px;color:#fff;display:flex;align-items:center;justify-content:space-between;
-  box-shadow:0 2px 10px rgba(4,120,87,.2);position:relative;z-index:10;
+  box-shadow:0 2px 10px rgba(15,23,42,.15);position:relative;z-index:10;
   flex-wrap:wrap;row-gap:8px
 }
 .header-left{display:flex;align-items:center;gap:14px;flex:1 1 auto;min-width:0}
@@ -295,11 +295,11 @@ body{font-family:var(--font);background:var(--md-sys-color-surface);color:var(--
   border:1px solid rgba(255,255,255,.2)
 }
 .header-shield svg{width:22px;height:22px;fill:#fff}
-.header-title{font-size:18px;font-weight:600;letter-spacing:-.2px}
+.header-title{margin:0;font-size:18px;font-weight:600;letter-spacing:-.2px;line-height:1.25}
 .header-title span{font-weight:400;opacity:.85;font-size:15px}
 .header-refresh-btn{
   display:flex;align-items:center;gap:8px;background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.2);
-  padding:7px 14px;border-radius:var(--md-shape-corner-medium);cursor:pointer;color:#fff;
+  padding:10px 14px;border-radius:var(--md-shape-corner-medium);cursor:pointer;color:#fff;
   font-family:var(--font);font-size:13.5px;font-weight:500;transition:all .2s;user-select:none;
   backdrop-filter:blur(8px)
 }
@@ -310,14 +310,14 @@ body{font-family:var(--font);background:var(--md-sys-color-surface);color:var(--
 @keyframes spin{to{transform:rotate(360deg)}}
 .header-refresh-btn .ht{font-variant-numeric:tabular-nums;opacity:.9}
 .theme-toggle-btn{
-  display:flex;align-items:center;justify-content:center;width:40px;height:40px;flex-shrink:0;
+  display:flex;align-items:center;justify-content:center;width:44px;height:44px;flex-shrink:0;
   background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.2);border-radius:var(--md-shape-corner-medium);
   cursor:pointer;font-size:16px;transition:all .2s;backdrop-filter:blur(8px);margin-left:8px
 }
 .theme-toggle-btn:hover{background:rgba(255,255,255,.2);border-color:rgba(255,255,255,.35)}
 .theme-toggle-btn:active{transform:scale(.95)}
 .push-btn{
-  display:flex;align-items:center;gap:6px;height:40px;padding:0 14px;flex-shrink:0;
+  display:flex;align-items:center;gap:6px;min-height:44px;padding:0 14px;flex-shrink:0;
   background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.2);border-radius:var(--md-shape-corner-full);
   cursor:pointer;font-size:13px;font-weight:600;color:#fff;transition:all .2s;backdrop-filter:blur(8px);margin-left:8px;font-family:inherit
 }
@@ -341,10 +341,15 @@ body{font-family:var(--font);background:var(--md-sys-color-surface);color:var(--
 #mi-toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
 .header-right-group{display:flex;align-items:center}
 .ov-dot{width:9px;height:9px;border-radius:50%;transition:all .3s;flex-shrink:0}
-.ov-dot.ok{background:var(--g5);box-shadow:0 0 8px var(--g5)}
-.ov-dot.warn{background:var(--a4);box-shadow:0 0 8px var(--a4);animation:pulse 1.5s infinite}
-.ov-dot.critical{background:var(--r5);box-shadow:0 0 10px var(--r5);animation:pulse 1s infinite}
+.ov-dot.ok{background:var(--g5)}
+.ov-dot.warn{background:var(--a4)}
+.ov-dot.critical{background:var(--r5)}
 @keyframes pulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.4;transform:scale(.85)}}
+@media (prefers-reduced-motion: reduce){
+  *,*::before,*::after{animation-duration:.01ms !important;animation-iteration-count:1 !important;scroll-behavior:auto !important}
+}
+:focus-visible{outline:3px solid var(--md-sys-color-primary);outline-offset:2px}
+.header :focus-visible,.radar-play-btn:focus-visible,.layer-btn:focus-visible,.theme-toggle-btn:focus-visible,.push-btn:focus-visible{outline-color:#A7F3D0}
 
 /* User Connection Telemetry Pill */
 .user-telemetry-pill{
@@ -354,7 +359,7 @@ body{font-family:var(--font);background:var(--md-sys-color-surface);color:var(--
 }
 .user-telemetry-pill strong{color:var(--text);font-weight:600}
 .user-connection-badge{
-  font-size:11px;font-weight:500;padding:3px 10px;border-radius:var(--md-shape-corner-full);background:var(--md-sys-color-surface-container-high);color:var(--md-sys-color-on-surface);
+  font-size:12px;font-weight:500;padding:3px 10px;border-radius:var(--md-shape-corner-full);background:var(--md-sys-color-surface-container-high);color:var(--md-sys-color-on-surface);
   display:inline-flex;align-items:center;gap:4px
 }
 
@@ -366,8 +371,7 @@ body{font-family:var(--font);background:var(--md-sys-color-surface);color:var(--
 }
 .banner.ok{background:var(--g0);border-color:var(--g6)}
 .banner.warn{background:var(--a0);border-color:var(--a5)}
-.banner.critical{background:var(--r0);border-color:var(--r6);animation:bannerGlow 3s infinite alternate}
-@keyframes bannerGlow{from{box-shadow:0 2px 10px rgba(220,38,38,.1)}to{box-shadow:0 6px 20px rgba(220,38,38,.2)}}
+.banner.critical{background:var(--r0);border-color:var(--r6)}
 
 /* Lembrete de desligamento programado (COPEL) — topo da página.
    Visual distinto do banner de emergência: âmbar/dourado (programado), sem
@@ -392,7 +396,7 @@ body{font-family:var(--font);background:var(--md-sys-color-surface);color:var(--
 }
 [data-theme="light"] .scheduled-reminder-title{color:#7a5c00}
 .scheduled-reminder-badge{
-  margin-left:auto;background:#d9a800;color:#1a1500;font-size:10.5px;font-weight:700;
+  margin-left:auto;background:#d9a800;color:#1a1500;font-size:12px;font-weight:700;
   letter-spacing:.8px;padding:3px 10px;border-radius:var(--md-shape-corner-full)
 }
 .scheduled-reminder-list{
@@ -409,11 +413,11 @@ body{font-family:var(--font);background:var(--md-sys-color-surface);color:var(--
 [data-theme="light"] .scheduled-reminder-item strong{color:#7a5c00}
 .scheduled-reminder-item .sr-chip{
   background:rgba(217,168,0,.18);border-radius:var(--md-shape-corner-full);
-  padding:2px 8px;font-size:11.5px;font-weight:600;color:#ffd54a;white-space:nowrap
+  padding:2px 8px;font-size:12px;font-weight:600;color:#ffd54a;white-space:nowrap
 }
 [data-theme="light"] .scheduled-reminder-item .sr-chip{background:rgba(122,92,0,.12);color:#7a5c00}
 .scheduled-reminder-foot{
-  font-size:11.5px;color:var(--text3);line-height:1.4
+  font-size:12px;color:var(--text3);line-height:1.4
 }
 
 .banner-top-row{
@@ -438,12 +442,12 @@ body{font-family:var(--font);background:var(--md-sys-color-surface);color:var(--
 .banner-sub{font-size:12.5px;color:var(--text2);line-height:1.45;font-weight:400}
 
 .banner-badge{
-  padding:4px 12px;border-radius:var(--md-shape-corner-full);font-size:11.5px;font-weight:600;white-space:nowrap;
+  padding:4px 12px;border-radius:var(--md-shape-corner-full);font-size:12px;font-weight:600;white-space:nowrap;
   text-transform:uppercase;letter-spacing:.3px;flex-shrink:0;margin-left:auto
 }
 .banner.ok .banner-badge{background:var(--g1);color:var(--g6)}
 .banner.warn .banner-badge{background:var(--a1);color:var(--a5)}
-.banner.critical .banner-badge{background:var(--r6);color:#fff;box-shadow:0 2px 6px rgba(220,38,38,.3)}
+.banner.critical .banner-badge{background:var(--r6);color:#fff}
 
 .banner-details-list{
   display:flex;flex-direction:column;gap:8px;padding-top:10px;border-top:1px solid var(--border)
@@ -452,7 +456,7 @@ body{font-family:var(--font);background:var(--md-sys-color-surface);color:var(--
 /* Clickable Banner Detail Item (UX enhancement for scrolling directly to card) */
 .banner-detail-item{
   font-size:12.5px;font-weight:500;display:inline-flex;align-items:center;gap:8px;
-  padding:6px 12px;border-radius:var(--md-shape-corner-medium);width:fit-content;line-height:1.4;
+  padding:8px 12px;border-radius:var(--md-shape-corner-medium);width:fit-content;line-height:1.4;
   cursor:pointer;user-select:none;transition:all .2s ease
 }
 .banner-detail-item:hover{
@@ -460,7 +464,16 @@ body{font-family:var(--font);background:var(--md-sys-color-surface);color:var(--
 }
 .banner-detail-item:active{transform:scale(.98)}
 .banner-detail-item .banner-jump-tag{
-  font-size:10.5px;font-weight:600;padding:2px 7px;border-radius:6px;background:rgba(0,0,0,.06);margin-left:6px;text-transform:uppercase
+  font-size:12px;font-weight:600;padding:2px 7px;border-radius:6px;background:rgba(0,0,0,.06);margin-left:6px;text-transform:uppercase
+}
+.stale-bar{
+  grid-column:1/-1;display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;
+  background:var(--a0);border:1px solid var(--a5);border-radius:var(--md-shape-corner-medium);
+  padding:10px 16px;font-size:13.5px;font-weight:500;color:var(--text)
+}
+.stale-bar button{
+  border:none;border-radius:var(--md-shape-corner-full);background:var(--g6);color:#052E16;
+  font-weight:600;font-family:inherit;padding:8px 16px;min-height:36px;font-size:13px;cursor:pointer
 }
 
 .banner.critical .banner-detail-item{background:var(--r1);color:var(--r6);border:1px solid var(--r6)}
@@ -492,8 +505,8 @@ body{font-family:var(--font);background:var(--md-sys-color-surface);color:var(--
 }
 @keyframes cardPulse{
   0%{transform:scale(1);box-shadow:0 0 0 rgba(220,38,38,0)}
-  30%{transform:scale(1.01);box-shadow:0 0 20px rgba(220,38,38,.4);border-color:var(--r6)}
-  70%{transform:scale(1.01);box-shadow:0 0 20px rgba(220,38,38,.4);border-color:var(--r6)}
+  30%{transform:scale(1.005);box-shadow:0 10px 26px -8px rgba(220,38,38,.55);border-color:var(--r6)}
+  70%{transform:scale(1.005);box-shadow:0 10px 26px -8px rgba(220,38,38,.55);border-color:var(--r6)}
   100%{transform:scale(1)}
 }
 
@@ -562,13 +575,13 @@ body{font-family:var(--font);background:var(--md-sys-color-surface);color:var(--
 .card-cb.utility{background:rgba(0,146,63,.08);color:var(--copel)}
 
 .card-status-badge{
-  font-size:11.5px;font-weight:600;text-transform:uppercase;letter-spacing:.3px;
+  font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:.3px;
   padding:4px 12px;border-radius:var(--md-shape-corner-full);white-space:nowrap;display:inline-flex;align-items:center;gap:6px;
   flex-shrink:0;margin-left:auto
 }
 .card-status-badge.ok{background:var(--g1);color:var(--g6)}
 .card-status-badge.warn{background:var(--a1);color:var(--a5)}
-.card-status-badge.critical{background:var(--r6);color:#fff;box-shadow:0 2px 6px rgba(220,38,38,.3);animation:pulse 1.5s infinite}
+.card-status-badge.critical{background:var(--r6);color:#fff}
 /* No dark o --r6 é claro (#F87171) — texto precisa ser vinho escuro p/ WCAG AA */
 :root[data-theme="dark"] .card-status-badge.critical,
 :root[data-theme="dark"] .banner.critical .banner-badge,
@@ -585,7 +598,7 @@ body{font-family:var(--font);background:var(--md-sys-color-surface);color:var(--
   display:flex;flex-direction:column;gap:4px
 }
 .kpi-card.crit{background:var(--r0);border-color:var(--r6)}
-.kpi-label{font-size:11px;font-weight:500;color:var(--text3);text-transform:uppercase;letter-spacing:.4px}
+.kpi-label{font-size:12px;font-weight:500;color:var(--text3);text-transform:uppercase;letter-spacing:.4px}
 .kpi-value{font-size:20px;font-weight:700;color:var(--text);line-height:1.2}
 .kpi-card.crit .kpi-value{color:var(--r6)}
 .kpi-sub{font-size:12px;font-weight:400;color:var(--text2)}
@@ -596,7 +609,7 @@ body{font-family:var(--font);background:var(--md-sys-color-surface);color:var(--
 }
 .progress-header{display:flex;justify-content:space-between;font-size:12.5px;font-weight:500;color:var(--text)}
 .progress-bar-bg{height:8px;width:100%;background:var(--md-sys-color-surface-container-high);border-radius:8px;overflow:hidden}
-.progress-bar-fill{height:100%;background:linear-gradient(90deg,var(--r5),var(--r6));border-radius:8px;transition:width .6s ease}
+.progress-bar-fill{height:100%;width:100%;background:linear-gradient(90deg,var(--r5),var(--r6));border-radius:8px;transform-origin:left center;transition:transform .6s ease}
 
 /* Summary Box */
 .summary-box{
@@ -610,7 +623,7 @@ body{font-family:var(--font);background:var(--md-sys-color-surface);color:var(--
 /* Copel Outages Accordion Toggle */
 .btn-toggle-outages{
   width:100%;border:1px solid var(--md-sys-color-outline-variant);background:var(--md-sys-color-surface-container-low);
-  border-radius:var(--md-shape-corner-medium);padding:10px 14px;font-size:12.5px;font-weight:600;
+  border-radius:var(--md-shape-corner-medium);padding:12px 14px;font-size:12.5px;font-weight:600;
   color:var(--text);display:flex;align-items:center;justify-content:space-between;
   cursor:pointer;transition:all .2s ease;margin-top:8px;user-select:none
 }
@@ -623,7 +636,7 @@ body{font-family:var(--font);background:var(--md-sys-color-surface);color:var(--
 }
 
 .outage-card{
-  background:var(--surface);border:1px solid var(--r1);border-left:4px solid var(--r6);
+  background:var(--surface);border:1px solid rgba(220,38,38,.30);
   border-radius:var(--md-shape-corner-medium);padding:12px 16px;display:flex;flex-direction:column;gap:8px;
   box-shadow:var(--md-elevation-1);font-size:13px
 }
@@ -631,7 +644,7 @@ body{font-family:var(--font);background:var(--md-sys-color-surface);color:var(--
 .outage-location{font-size:14px;font-weight:600;color:var(--text);display:flex;align-items:center;gap:6px}
 .outage-location svg{width:16px;height:16px;fill:var(--r6)}
 .outage-badge-tag{
-  font-size:10.5px;font-weight:500;padding:3px 8px;border-radius:4px;background:var(--r1);color:var(--r6);text-transform:uppercase
+  font-size:11px;font-weight:500;padding:3px 8px;border-radius:4px;background:var(--r1);color:var(--r6);text-transform:uppercase
 }
 .outage-badge-tag.prog{background:var(--a1);color:var(--a5)}
 .outage-badge-tag.sem-equipe{background:var(--a1);color:var(--a5)}
@@ -724,7 +737,7 @@ body{font-family:var(--font);background:var(--md-sys-color-surface);color:var(--
   background:var(--surface);border:1px solid var(--md-sys-color-outline-variant);border-radius:var(--radius);
   padding:18px;display:flex;flex-direction:column;gap:8px;box-shadow:var(--shadow)
 }
-.stats-kpi-card h3{font-size:12px;font-weight:500;color:var(--text2);text-transform:uppercase;letter-spacing:.4px;display:flex;align-items:center;gap:8px}
+.stats-kpi-card h2{font-size:12px;font-weight:500;color:var(--text2);text-transform:uppercase;letter-spacing:.4px;display:flex;align-items:center;gap:8px;margin:0}
 .stats-kpi-val{font-size:28px;font-weight:700;color:var(--text);line-height:1}
 .stats-kpi-sub{font-size:12.5px;color:var(--text2);font-weight:400}
 
@@ -739,7 +752,7 @@ body{font-family:var(--font);background:var(--md-sys-color-surface);color:var(--
 .stats-table tr:last-child td{border-bottom:none}
 .stats-table tr:hover td{background:var(--md-sys-color-surface-container-low)}
 
-.badge-source{font-size:10.5px;font-weight:600;padding:3px 8px;border-radius:6px;text-transform:uppercase;display:inline-block}
+.badge-source{font-size:11px;font-weight:600;padding:3px 8px;border-radius:6px;text-transform:uppercase;display:inline-block}
 .badge-source.copel{background:rgba(0,146,63,.1);color:var(--copel)}
 .badge-source.sanepar{background:rgba(0,63,135,.1);color:var(--sanepar)}
 .badge-source.telecom{background:rgba(237,28,36,.1);color:var(--claro)}
@@ -749,7 +762,7 @@ body{font-family:var(--font);background:var(--md-sys-color-surface);color:var(--
   text-align:center;padding:24px;font-size:13.5px;color:var(--text3);border-top:1px solid var(--border);margin-top:auto;background:var(--surface)
 }
 .footer .li{display:inline-flex;align-items:center;gap:8px;margin-bottom:6px;font-weight:500;color:var(--text2)}
-.footer .ld{width:8px;height:8px;border-radius:50%;background:var(--g5);animation:pulse 2s infinite}
+.footer .ld{width:8px;height:8px;border-radius:50%;background:var(--g5)}
 .footer .credit{font-size:13px;margin-top:4px}
 .footer .credit strong{color:var(--text);font-weight:600}
 
@@ -774,7 +787,7 @@ body{font-family:var(--font);background:var(--md-sys-color-surface);color:var(--
       <svg viewBox="0 0 24 24"><path d="M12 1L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4zm0 10.99h7c-.53 4.12-3.28 7.79-7 8.94V12H5V6.3l7-3.11v8.8z"/></svg>
     </div>
     <div>
-      <div class="header-title">Monitor <span>Ipiranga/PR</span></div>
+      <h1 class="header-title">Monitor <span>Ipiranga/PR</span></h1>
       <div style="font-size:12px;opacity:.85;font-weight:500">Status em tempo real das utilidades e telecomunicações</div>
     </div>
   </div>
@@ -797,14 +810,14 @@ body{font-family:var(--font);background:var(--md-sys-color-surface);color:var(--
 <div class="container">
   <div class="user-telemetry-pill" id="telemetryPill">
     <div>
-      🌐 Sua Conexão: <strong id="telemetryIsp">Identificando operadora...</strong>
+      🌐 Internet deste aparelho: <strong id="telemetryIsp">Identificando operadora...</strong>
     </div>
     <div class="user-connection-badge" id="telemetryPing">
       ⚡ Medindo sinal...
     </div>
   </div>
 
-  <div id="banner" class="banner ok" role="alert" aria-live="polite">
+  <div id="banner" class="banner ok" role="status" aria-live="polite">
     <div class="banner-top-row">
       <div class="banner-icon-title">
         <div class="banner-icon" aria-hidden="true" id="bannerIcon">
@@ -815,7 +828,7 @@ body{font-family:var(--font);background:var(--md-sys-color-surface);color:var(--
           <div class="banner-sub" id="bannerSub">Todos os serviços monitorados estão operando normalmente em Ipiranga.</div>
         </div>
       </div>
-      <div class="banner-badge" id="bannerBadge">3 OK</div>
+      <div class="banner-badge" id="bannerBadge">Verificando…</div>
     </div>
     <div class="banner-details-list" id="bannerDetails"></div>
   </div>
@@ -831,7 +844,7 @@ body{font-family:var(--font);background:var(--md-sys-color-surface);color:var(--
       <span class="scheduled-reminder-badge">PROGRAMADO</span>
     </div>
     <div class="scheduled-reminder-list" id="scheduledReminderList"></div>
-    <div class="scheduled-reminder-foot">Fonte: COPEL ANEEL Informações — desligamento agendado pela concessionária; não é falta de energia emergencial.</div>
+    <div class="scheduled-reminder-foot">Fonte: COPEL/ANEEL. Desligamento agendado pela concessionária; não é falta de energia emergencial.</div>
   </div>
 
   <nav class="tabs-nav" aria-label="Navegação do Monitor">
@@ -853,7 +866,7 @@ body{font-family:var(--font);background:var(--md-sys-color-surface);color:var(--
         <div class="weather-title-group">
           <div class="weather-icon-box">🌩️</div>
           <div>
-            <div class="weather-title">Radar de Chuva & Clima — Ipiranga e Região</div>
+            <div class="weather-title">Radar de Chuva & Clima · Ipiranga e Região</div>
             <div class="weather-sub">Previsão e monitoramento com radar RainViewer e limites municipais do IBGE</div>
           </div>
         </div>
@@ -889,7 +902,7 @@ body{font-family:var(--font);background:var(--md-sys-color-surface);color:var(--
             <p class="bulletin-text" id="bulletinText">Carregando análise descritiva da situação climatológica de Ipiranga...</p>
             <div class="bulletin-disclaimer">
               <span>⚠️</span>
-              <span>Este boletim é gerado por IA e pode conter erros. Em caso de dúvidas, consulte as imagens de radar e a previsão numérica (ECMWF) acima.</span>
+              <span>Este boletim é gerado por IA e pode conter erros. Em caso de dúvidas, consulte as imagens de radar e os dados oficiais acima.</span>
             </div>
           </div>
 
@@ -906,33 +919,17 @@ body{font-family:var(--font);background:var(--md-sys-color-surface);color:var(--
 
           <div class="cemaden-box" id="cemadenBox" style="display:none">
             <div class="cemaden-head">
-              <span style="font-size:13px;font-weight:600;color:var(--text)">Chuva em Tempo Real — CEMADEN</span>
+              <span style="font-size:13px;font-weight:600;color:var(--text)">Chuva em Tempo Real · CEMADEN</span>
               <span class="bulletin-tag">Fonte: Cemaden</span>
             </div>
-            <div id="cemadenContent" style="font-size:12px;color:var(--text-secondary);line-height:1.5">
+            <div id="cemadenContent" style="font-size:12px;color:var(--text2);line-height:1.5">
               Carregando leituras dos pluviômetros de Ipiranga...
             </div>
-            <div style="font-size:10px;opacity:.65">
+            <div style="font-size:12px;opacity:.8">
               Acumulado das últimas 24h (janela móvel) · Fonte pública CEMADEN
             </div>
           </div>
 
-          <div class="llm-banner-box">
-            <div style="font-size:13px;font-weight:600">AI-First & LLM Friendly</div>
-            <div style="font-size:12px;opacity:.9;line-height:1.4">Exposição dos dados em Markdown puro para assistentes de IA (ChatGPT, Claude, Gemini).</div>
-            <div style="display:flex;gap:8px;margin-top:4px;flex-wrap:wrap">
-              <a href="/llms.txt" target="_blank" class="llm-btn">📄 /llms.txt</a>
-              <a href="/llms-full.txt" target="_blank" class="llm-btn">📚 /llms-full.txt</a>
-              <a href="/api/weather/json-ld" target="_blank" class="llm-btn">🔗 JSON-LD</a>
-            </div>
-            <div style="font-size:12px;font-weight:500;margin-top:10px">Pergunte direto ao seu assistente de IA:</div>
-            <div style="display:flex;gap:8px;margin-top:6px;flex-wrap:wrap">
-              <button type="button" class="llm-btn llm-ask" onclick="askAI('chatgpt')">💬 ChatGPT</button>
-              <button type="button" class="llm-btn llm-ask" onclick="askAI('claude')">💬 Claude</button>
-              <button type="button" class="llm-btn llm-ask" onclick="askAI('gemini')">💬 Gemini</button>
-            </div>
-            <div style="font-size:11px;opacity:.75;margin-top:8px;line-height:1.4">Claude e Gemini abrem o chat com o prompt copiado na área de transferência — é só colar (Ctrl+V) e enviar. ChatGPT já preenche automaticamente.</div>
-          </div>
         </div>
       </div>
     </div>
@@ -959,17 +956,17 @@ body{font-family:var(--font);background:var(--md-sys-color-surface);color:var(--
 
       <div class="stats-kpi-grid">
         <div class="stats-kpi-card">
-          <h3>⚡ COPEL (Energia) Hoje</h3>
+          <h2>⚡ COPEL (Energia) Hoje</h2>
           <div class="stats-kpi-val" id="statCopelToday">0</div>
           <div class="stats-kpi-sub" id="statCopelSub">0 solicitações de interrupção registradas hoje</div>
         </div>
         <div class="stats-kpi-card">
-          <h3>💧 Sanepar (Água) Hoje</h3>
+          <h2>💧 Sanepar (Água) Hoje</h2>
           <div class="stats-kpi-val" id="statSaneparToday">0</div>
           <div class="stats-kpi-sub" id="statSaneparSub">0 alertas de manutenção programada hoje</div>
         </div>
         <div class="stats-kpi-card">
-          <h3>📱 Testes de Moradores Hoje</h3>
+          <h2>📱 Testes de Moradores Hoje</h2>
           <div class="stats-kpi-val" id="statTelemetryToday">0</div>
           <div class="stats-kpi-sub">Medições automáticas via crowdsourcing em Ipiranga</div>
         </div>
@@ -1010,6 +1007,18 @@ body{font-family:var(--font);background:var(--md-sys-color-surface);color:var(--
     <span style="margin:0 6px">·</span>
     <span id="footerTime">Atualizado há --s</span>
   </div>
+  <details class="footer-llm" style="margin:6px 0 2px;font-size:12.5px;color:var(--text3);text-align:left;max-width:560px;margin-left:auto;margin-right:auto">
+    <summary style="cursor:pointer;font-weight:500">🤖 Dados para assistentes de IA</summary>
+    <div style="display:flex;gap:8px;margin-top:8px;flex-wrap:wrap;justify-content:center">
+      <a href="/llms.txt" target="_blank" class="llm-btn">📄 /llms.txt</a>
+      <a href="/llms-full.txt" target="_blank" class="llm-btn">📚 /llms-full.txt</a>
+      <a href="/api/weather/json-ld" target="_blank" class="llm-btn">🔗 JSON-LD</a>
+      <button type="button" class="llm-btn llm-ask" onclick="askAI('chatgpt')">💬 ChatGPT</button>
+      <button type="button" class="llm-btn llm-ask" onclick="askAI('claude')">💬 Claude</button>
+      <button type="button" class="llm-btn llm-ask" onclick="askAI('gemini')">💬 Gemini</button>
+    </div>
+    <div style="font-size:12px;opacity:.75;margin-top:8px;line-height:1.4;text-align:center">Claude e Gemini abrem o chat com o prompt copiado na área de transferência: é só colar e enviar. ChatGPT já preenche automaticamente.</div>
+  </details>
   <div class="credit">Desenvolvido por <strong>Lucas Modesto</strong></div>
 </footer>
 
@@ -1128,11 +1137,14 @@ function scrollToCard(name){
   }
 }
 
+window._outagesClosed = window._outagesClosed || new Set();
 function toggleCopelOutages(btn){
-  const container = document.getElementById('copelOutagesList');
+  const container = btn.nextElementSibling;
   if(!container) return;
+  const key = btn.dataset.svc || 'util';
   const isHidden = container.style.display === 'none';
   container.style.display = isHidden ? 'flex' : 'none';
+  if(isHidden){ window._outagesClosed.delete(key); } else { window._outagesClosed.add(key); }
   const icon = btn.querySelector('.btn-toggle-icon');
   if(icon) icon.textContent = isHidden ? '▼' : '▶';
   btn.setAttribute('aria-expanded', isHidden ? 'true' : 'false');
@@ -1294,8 +1306,8 @@ function renderCards(services){
     if(br.cat==='utility'){
       const activeEvents=svc.data?.activeEvents || [];
       const totalConsumers=svc.data?.totalConsumers || 0;
-      const cityTotalConsumers=svc.data?.cityTotalConsumers || 5200;
-      const pctAffected=svc.data?.pctAffected || (cityTotalConsumers > 0 ? Number(((totalConsumers/cityTotalConsumers)*100).toFixed(2)) : 0);
+      const cityTotalConsumers=svc.data?.cityTotalConsumers ?? null;
+      const pctAffected=svc.data?.pctAffected ?? (cityTotalConsumers ? Number(((totalConsumers/cityTotalConsumers)*100).toFixed(2)) : null);
 
       let summaryBoxHtml='';
       let kpiGridHtml='';
@@ -1316,12 +1328,12 @@ function renderCards(services){
             </div>
             <div class="kpi-card">
               <div class="kpi-label">Total UCs do Município</div>
-              <div class="kpi-value">${cityTotalConsumers.toLocaleString('pt-BR')}</div>
+              <div class="kpi-value">${cityTotalConsumers!=null?cityTotalConsumers.toLocaleString('pt-BR'):'—'}</div>
               <div class="kpi-sub">Ipiranga / PR</div>
             </div>
             <div class="kpi-card crit">
               <div class="kpi-label">Porcentagem Afetada</div>
-              <div class="kpi-value">${pctAffected}%</div>
+              <div class="kpi-value">${pctAffected!=null?pctAffected+'%':'—'}</div>
               <div class="kpi-sub">Da rede municipal</div>
             </div>
           </div>`;
@@ -1329,10 +1341,10 @@ function renderCards(services){
           progressBarHtml=`<div class="progress-container">
             <div class="progress-header">
               <span>Nível de Impacto no Município</span>
-              <span style="color:var(--r6)">${pctAffected}% sem energia (${totalConsumers} de ${cityTotalConsumers.toLocaleString('pt-BR')} UCs)</span>
+              <span style="color:var(--r6)">${pctAffected!=null?`${pctAffected}% sem energia (${totalConsumers} de ${cityTotalConsumers.toLocaleString('pt-BR')} UCs)`:`${totalConsumers} UCs sem energia`}</span>
             </div>
             <div class="progress-bar-bg">
-              <div class="progress-bar-fill" style="width: ${Math.min(Math.max(pctAffected, 2), 100)}%"></div>
+              <div class="progress-bar-fill" style="transform: scaleX(${Math.min(Math.max((pctAffected||0)/100, 0.02), 1)})"></div>
             </div>
           </div>`;
         }
@@ -1392,7 +1404,7 @@ function renderCards(services){
             let semEquipeWarningHtml='';
             if(isSemEquipe && !isProg){
               semEquipeWarningHtml=`<div class="outage-sem-equipe-alert">
-                ⚠️ Sem equipes despachadas — a Copel ainda não designou atendimento para esta ocorrência
+                ⚠️ Sem equipes despachadas: a Copel ainda não designou atendimento para esta ocorrência
               </div>`;
             }
 
@@ -1445,12 +1457,14 @@ function renderCards(services){
           }
         }
 
+        const utilKey='util-'+name;
+        const utilClosed=window._outagesClosed && window._outagesClosed.has(utilKey);
         outagesListHtml=`
-          <button class="btn-toggle-outages" onclick="toggleCopelOutages(this)" aria-expanded="true" type="button">
+          <button class="btn-toggle-outages" onclick="toggleCopelOutages(this)" aria-expanded="${utilClosed?'false':'true'}" type="button" data-svc="${utilKey}">
             <span>⚡ <strong>Ocorrências Detalhadas (${activeEvents.length})</strong></span>
-            <span><span class="btn-toggle-icon">▼</span> Ocultar/Expandir</span>
+            <span><span class="btn-toggle-icon">${utilClosed?'▶':'▼'}</span> Ocultar/Expandir</span>
           </button>
-          <div class="outages-container" id="copelOutagesList" style="display:flex">
+          <div class="outages-container" style="display:${utilClosed?'none':'flex'}">
             ${itemsHtml}
           </div>
         `;
@@ -1565,7 +1579,7 @@ function renderCards(services){
         <div class="card-foot">
           <div style="display:flex;flex-direction:column;gap:2px">
             <span>Horário do teste: ${fmtTime(svc.timestamp)}</span>
-            <span style="font-size:11px;opacity:.75">${relativeTime(svc.timestamp)}</span>
+            <span style="font-size:12px;opacity:.85">${relativeTime(svc.timestamp)}</span>
           </div>
           ${sourceBtnHtml}
         </div>
@@ -1577,14 +1591,39 @@ function renderCards(services){
 }
 
 function showError(msg){
-  const grid=$('#grid');
-  grid.innerHTML=`<div class="error-state" style="grid-column:1/-1">
-    ${ICON.error}<h2>Falha de Conexão com o Monitor</h2>
-    <p>${msg||'Não foi possível obter dados atualizados da API. Verifique a conexão com o servidor.'}</p>
-    <button onclick="fetchData()">Tentar Novamente</button>
-  </div>`;
+  const snap=loadSnapshot();
+  if(snap){
+    updateBanner(snap.services);
+    renderCards(snap.services);
+    showStaleNotice(snap.generatedAt);
+  }else{
+    const grid=$('#grid');
+    grid.innerHTML=`<div class="error-state" style="grid-column:1/-1">
+      ${ICON.error}<h2>Não consegui carregar o monitor</h2>
+      <p>Sua internet deve estar instável agora — deve ser temporário. Aguarde um pouco e tente de novo.</p>
+      <button onclick="fetchData()">Tentar Novamente</button>
+    </div>`;
+  }
   $('#liveLabel').textContent='Offline';
   $('.ld').style.background='var(--r6)';
+}
+
+function saveSnapshot(services,generatedAt){
+  try{localStorage.setItem('mi_snapshot',JSON.stringify({services,generatedAt:generatedAt||Date.now()}))}catch(e){}
+}
+function loadSnapshot(){
+  try{
+    const s=JSON.parse(localStorage.getItem('mi_snapshot')||'null');
+    return (s&&Array.isArray(s.services)&&s.services.length)?s:null;
+  }catch(e){return null}
+}
+function showStaleNotice(ts){
+  const grid=$('#grid');if(!grid)return;
+  document.getElementById('staleBar')?.remove();
+  const bar=document.createElement('div');
+  bar.id='staleBar';bar.className='stale-bar';bar.setAttribute('role','status');
+  bar.innerHTML=`<span>📡 Sem conexão agora — os dados abaixo são da última leitura (${fmtTime(ts)}).</span><button type="button" onclick="fetchData()">Tentar novamente</button>`;
+  grid.prepend(bar);
 }
 
 async function fetchData(){
@@ -1627,6 +1666,7 @@ async function fetchData(){
     renderCards(services);
     renderScheduledReminder(services);
     updateFooter(data.generatedAt);
+    saveSnapshot(services, data.generatedAt);
     $('.ld').style.background='var(--g5)';
     $('#liveLabel').textContent='Ao vivo';
   }catch(e){showError(e.message)}
@@ -1785,6 +1825,15 @@ async function initWeatherMap() {
     setTimeout(() => {
       if (map) map.invalidateSize();
     }, 100);
+  });
+
+  document.addEventListener('keydown', (ev) => {
+    if (ev.key === 'Escape' && mapWrapper?.classList.contains('is-fullscreen')) {
+      mapWrapper.classList.remove('is-fullscreen');
+      btnFs.textContent = '🖥️ Tela Cheia';
+      btnFs.classList.remove('active');
+      setTimeout(() => { if (map) map.invalidateSize(); }, 100);
+    }
   });
 
   // Dedicated Panes for Z-Index layering

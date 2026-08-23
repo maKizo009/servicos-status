@@ -7,7 +7,7 @@
   "display": "standalone",
   "orientation": "portrait",
   "background_color": "#F8FAFC",
-  "theme_color": "#00923F",
+  "theme_color": "#064E3B",
   "lang": "pt-BR",
   "categories": ["weather", "utilities", "news"],
   "icons": [
