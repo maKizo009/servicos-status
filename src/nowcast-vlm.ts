@@ -154,7 +154,7 @@ async function callNimVision(
 		choices?: Array<{ message?: { content?: string } }>;
 	};
 	return json.choices?.[0]?.message?.content?.trim() || null;
-	}
+}
 
 /**
  * Chama o VLM principal via OpenCode Go (API OpenAI-compatível) — default
@@ -509,7 +509,6 @@ export async function generateNowcastBulletin(
 	};
 }
 
-
 /**
  * Valida o texto gerado pelo VLM contra o veredito determinístico (Achado 2)
  * e contra a previsão numérica ECMWF (conciliação de fontes).
@@ -545,10 +544,13 @@ export function validateBulletinAgainstVerdict(
 	// respostas vazias tipo "Sim."/"Nada.".
 	const trimmed = text.trim();
 	if (trimmed.length < 25) {
-		logger.warn("Camada B: texto rejeitado (curto demais, provável truncamento)", {
-			len: trimmed.length,
-			text: trimmed.slice(0, 120),
-		});
+		logger.warn(
+			"Camada B: texto rejeitado (curto demais, provável truncamento)",
+			{
+				len: trimmed.length,
+				text: trimmed.slice(0, 120),
+			},
+		);
 		return false;
 	}
 	if (!/[.!?…"”]$/.test(trimmed)) {
@@ -698,6 +700,40 @@ export function validateBulletinAgainstVerdict(
  *
  * Tudo entra por PARÂMETRO de função — nada de config/env, nada de rede.
  */
+/**
+ * Resumo numérico ECMWF (próximas 12 h) — substitui a narrativa de núcleo
+ * quando NÃO há chuva relevante perto de Ipiranga (regra do Dave 23/08/2026:
+ * "se não tem chuva na região, não precisa de boletim de chuva").
+ */
+function resumoNumerico(ecmwf?: EcmwfContext): string {
+	if (!ecmwf?.hourlyForecast?.length) {
+		// sem janela horária: usa ao menos a probabilidade agregada
+		const pct = Math.round(ecmwf?.rainProbabilityPct ?? 0);
+		if (pct > 0)
+			return `Previsão ECMWF para as próximas 12 h: chance de chuva de até ${pct}%.`;
+		if (ecmwf && ecmwf.rainProbabilityPct != null)
+			return "Previsão ECMWF para as próximas 12 h: sem chuva prevista.";
+		return "Previsão numérica indisponível no momento.";
+	}
+	const janela = ecmwf.hourlyForecast.slice(0, 12);
+	const temps = janela.map((h) => h.tempC).filter((t) => typeof t === "number");
+	const mm = janela.reduce((s, h) => s + (h.precipitationMm ?? 0), 0);
+	const pctMax = Math.max(0, ...janela.map((h) => h.rainProbabilityPct ?? 0));
+	const partes: string[] = [];
+	if (temps.length >= 2) {
+		partes.push(
+			`temperatura entre ${Math.round(Math.min(...temps))}°C e ${Math.round(Math.max(...temps))}°C`,
+		);
+	}
+	if (pctMax > 0) {
+		partes.push(`chance de chuva de até ${Math.round(pctMax)}%`);
+		if (mm >= 0.1) partes.push(`acumulado estimado de ${mm.toFixed(1)} mm`);
+	} else {
+		partes.push("sem chuva prevista");
+	}
+	return `Previsão ECMWF para as próximas 12 h: ${partes.join(", ")}.`;
+}
+
 export function buildHeuristicBulletin(
 	nowcast: NowcastResult,
 	ecmwf?: EcmwfContext,
@@ -729,33 +765,63 @@ export function buildHeuristicBulletin(
 			: "";
 	const ecmwfAlto = ecmwfPct != null && ecmwfPct >= 50;
 
-	// Núcleo mais ameaçador (já avaliado pela Camada A contra Ipiranga),
-	// fallback para o mais intenso. -> município real (malha IBGE) + distância.
-	const cell = nowcast.threats[0] ?? nowcast.nearestCell;
-	const cellMovement = cell?.movement ?? m;
-	let verdict: ThreatVerdict | null = nowcast.threats[0]?.threat ?? null;
-	if (cell && cellMovement && !verdict) {
-		verdict = assessThreat(cell.lat, cell.lon, cellMovement, -25.0244, -50.5847);
+	// ⛔ GATE DE RELEVÂNCIA (regra do Dave 23/08/2026): sem THREATS relevantes,
+	// o boletim NÃO narra núcleo distante — o fallback antigo para nearestCell
+	// fazia um núcleo a centenas de km virar narrativa inteira (caso real:
+	// Regente Feijó/SP a 322 km com Ipiranga sem chuva). Vira resumo ECMWF.
+	// Também entra no gate o threat MAIS PRÓXIMO > 250 km que NÃO está
+	// aproximando (afastando/tangencial a centenas de km = ruído p/ Ipiranga).
+	const t0 = nowcast.threats[0];
+	const t0Km =
+		typeof t0?.distToTargetKm === "number" ? t0.distToTargetKm : null;
+	const t0Aproximando = t0?.threat?.approach === "approaching";
+	if (
+		nowcast.threats.length === 0 ||
+		(t0Km != null && t0Km > 250 && !t0Aproximando)
+	) {
+		const nc = nowcast.nearestCell ?? t0 ?? null;
+		const kmDistante =
+			t0Km ??
+			(nc ? Math.round(haversineKm(nc.lat, nc.lon, -25.0244, -50.5847)) : null);
+		const mencao =
+			kmDistante != null && kmDistante > 100
+				? ` Radar registra atividade distante (~${kmDistante} km de Ipiranga), sem influência direta.`
+				: "";
+		return `Sem chuva relevante na região de Ipiranga no momento.${mencao} ${resumoNumerico(ecmwf)}`;
 	}
 
-	// Sem célula analisável (radar limpo / sem núcleos).
-	if (!cell) {
-		if (alertLevel === "none" || alertLevel === "monitor") {
-			return `Sem núcleos de chuva em movimento na região de Ipiranga no momento; sem alerta iminente.${ecmwfNote}`;
-		}
-		return `Núcleo de chuva ${intensityLabel[nowcast.currentDominant] ?? nowcast.currentDominant} (pico ${nowcast.currentMaxDbz} dBZ) na região de Ipiranga, mas sem movimento confiável detectado.${ecmwfNote}`;
+	// Núcleo mais ameaçador (já avaliado pela Camada A contra Ipiranga).
+	// -> município real (malha IBGE) + distância.
+	const cell = nowcast.threats[0];
+	const cellMovement = cell.movement ?? m;
+	let verdict: ThreatVerdict | null = cell.threat ?? null;
+	if (cellMovement && !verdict) {
+		verdict = assessThreat(
+			cell.lat,
+			cell.lon,
+			cellMovement,
+			-25.0244,
+			-50.5847,
+		);
 	}
 
-	const intensity = intensityLabel[cell.intensity] ?? intensityLabel[nowcast.currentDominant] ?? "presente";
+	const intensity =
+		intensityLabel[cell.intensity] ??
+		intensityLabel[nowcast.currentDominant] ??
+		"presente";
 	const rotulo = rotularLocalizacao(cell.lat, cell.lon, haversineKm);
 	const rotUf = rotulo.uf ? ` (${rotulo.uf})` : "";
-	const ipirangaKm = Math.round(haversineKm(cell.lat, cell.lon, -25.0244, -50.5847));
+	const ipirangaKm = Math.round(
+		haversineKm(cell.lat, cell.lon, -25.0244, -50.5847),
+	);
 
 	// Veredito de ameaça determinístico.
 	const approachLabel: Record<ThreatVerdict["approach"], string> = {
 		approaching: `se aproximando de Ipiranga (chegada estimada em cerca de ${Math.round(verdict?.etaMin ?? 0)} min, se mantiver curso e intensidade)`,
-		receding: "se afastando de Ipiranga — trajetória leva para longe, risco direto praticamente nulo",
-		crossing: "em trajetória tangencial a Ipiranga (passa de raspão, sem aproximação direta)",
+		receding:
+			"se afastando de Ipiranga — trajetória leva para longe, risco direto praticamente nulo",
+		crossing:
+			"em trajetória tangencial a Ipiranga (passa de raspão, sem aproximação direta)",
 	};
 
 	// Projeção da trajetória (próximas cidades em 30/60/120 min).
