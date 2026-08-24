@@ -113,9 +113,10 @@ describe("Achado 3 — latência de conectividade", () => {
 });
 
 describe("Formatação de previsão Copel (inconsistência corrigida 2026-08-12)", () => {
-	const { formatCopelDuration, formatCopelPrevisao } = require(
-		"../src/copel-format.js",
-	);
+	const {
+		formatCopelDuration,
+		formatCopelPrevisao,
+	} = require("../src/copel-format.js");
 
 	test("faixa ate_1h vira 'até 1 hora' (nunca o código cru)", () => {
 		expect(formatCopelDuration("ate_1h")).toBe("até 1 hora");
@@ -125,7 +126,10 @@ describe("Formatação de previsão Copel (inconsistência corrigida 2026-08-12)
 
 	test("sem previsão concreta mas com faixa → 'Estimativa: ...' (sem contradição)", () => {
 		expect(
-			formatCopelPrevisao({ previsaoRestabelecimento: null, faixaDuracao: "ate_1h" }),
+			formatCopelPrevisao({
+				previsaoRestabelecimento: null,
+				faixaDuracao: "ate_1h",
+			}),
 		).toBe("Estimativa: até 1 hora");
 	});
 
@@ -330,7 +334,7 @@ describe("Conciliação de fontes (nowcast + ECMWF)", () => {
 		);
 		expect(b.source).toBe("heuristic");
 		expect(b.text).toContain("70%");
-		expect(b.text).toContain("não mostra núcleos em movimento");
+		expect(b.text).toContain("Sem chuva relevante");
 	});
 
 	test("sem núcleo + ECMWF baixo → frase simples sem alarme", async () => {
@@ -344,7 +348,7 @@ describe("Conciliação de fontes (nowcast + ECMWF)", () => {
 				hourlyForecast: [],
 			},
 		);
-		expect(b.text).toContain("Sem núcleos");
+		expect(b.text).toContain("Sem chuva relevante");
 		expect(b.text).toContain("10%");
 	});
 
@@ -356,7 +360,7 @@ describe("Conciliação de fontes (nowcast + ECMWF)", () => {
 			region,
 		);
 		expect(b.text).toBe(
-			"Sem núcleos de chuva em movimento na região de Ipiranga no momento; sem alerta iminente.",
+			"Sem chuva relevante na região de Ipiranga no momento. Previsão numérica indisponível no momento.",
 		);
 	});
 });
