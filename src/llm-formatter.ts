@@ -110,6 +110,49 @@ function renderCemadenSection(weather: WeatherState | null): string {
 	return `## 🌧️ Chuva em Tempo Real (Pluviômetros CEMADEN)\n${rows}\n- Acumulados em janelas móveis, atualização horária na fonte pública CEMADEN.\n`;
 }
 
+/** Seção Hidro — triangulação fluviométrica (mesmo cron). Omitida se sem dados. */
+function renderHidroSection(weather: WeatherState | null): string {
+	const hidro = weather?.hidro;
+	if (!hidro || hidro.estacoes.length === 0) return "";
+
+	const riscoLabel =
+		hidro.riscoCheia === "critical"
+			? "🔴 Crítico"
+			: hidro.riscoCheia === "watch"
+				? "🟡 Vigilância"
+				: "🟢 Estável";
+	const enxurradaLabel =
+		hidro.riscoEnxurrada === "critical"
+			? "🔴 Crítico"
+			: hidro.riscoEnxurrada === "warn"
+				? "🟡 Atenção"
+				: "🟢 Normal";
+
+	const linhas = hidro.estacoes
+		.map((e) => {
+			const nivel =
+				e.nivelCm != null ? `${(e.nivelCm / 100).toFixed(2).replace(".", ",")} m` : "sem dados";
+			const vazao =
+				e.vazaoM3s != null
+					? `${e.vazaoM3s.toFixed(0).replace(".", ",")} m³/s`
+					: "—";
+			const delta =
+				e.delta6hCm != null
+					? ` (Δ6h ${e.delta6hCm > 0 ? "+" : ""}${(e.delta6hCm / 100).toFixed(2).replace(".", ",")} m)`
+					: "";
+			const hora = e.dataHora ? ` — ${sanitizeLlmField(e.dataHora, 40)}` : "";
+			const nome = sanitizeLlmField(e.nome, 60);
+			return `- **${nome} (${e.codigo} — ${sanitizeLlmField(e.papel, 80)}):** nível ${nivel}${delta}, vazão ${vazao}${hora}`;
+		})
+		.join("\n");
+
+	const atualizado = hidro.atualizadoEm
+		? new Date(hidro.atualizadoEm).toISOString()
+		: "—";
+
+	return `## 🌊 Monitor de Cheias — Rio Tibagi / Bitumirim (Triangulação ANA)\n- **Risco de cheia (resposta lenta):** ${riscoLabel} | **Risco de enxurrada local (resposta rápida):** ${enxurradaLabel}\n- **Resumo:** ${sanitizeLlmField(hidro.resumoRisco, 500)}\n${linhas}\n- **Fonte:** ANA Hidro (telemetria horária) — 3 sentinelas na calha do Tibagi que cercam Ipiranga; Ipiranga não possui estação fluviométrica própria. Atualizado em: ${atualizado}\n- **Nota:** Rio Bitumirim é afluente do Tibagi dentro de Ipiranga; variação no Tibagi causa remanso e eleva o nível dos afluentes locais.\n`;
+}
+
 /**
  * Gera o conteúdo do endpoint /llms.txt em Markdown puro, otimizado para consumo denso por LLMs.
  * Contém APENAS dados + metadados neutros (Achado 7): instruções ficam em
@@ -201,6 +244,7 @@ export function renderLlmsTxt(
 
 ${renderNowcastSection(weather)}
 ${renderCemadenSection(weather)}
+${renderHidroSection(weather)}
 ## 🤖 Boletim Informativo IA (${bulletinSource})
 ${bulletin}
 
@@ -217,6 +261,7 @@ ${bulletin}
 - **Clima e radar:** https://servicos-status.vercel.app/api/weather
 - **Nowcast de radar (análise determinística de núcleos + movimento):** https://servicos-status.vercel.app/api/weather/nowcast
 - **Boletim IA:** https://servicos-status.vercel.app/api/weather/bulletin
+- **Hidro (triangulação ANA — 3 sentinelas Tibagi):** https://servicos-status.vercel.app/api/hidro
 - **JSON-LD (Schema.org SpecialAnnouncement):** https://servicos-status.vercel.app/api/weather/json-ld
 - **Resumo diário de interrupções:** https://servicos-status.vercel.app/api/stats/daily
 - **Rotas BGP das operadoras:** https://servicos-status.vercel.app/api/bgp
@@ -236,6 +281,7 @@ export function renderLlmsInstructions(): string {
 Caso um usuário solicite informações sobre o tempo, risco de chuva, ou problemas de energia/água em Ipiranga e municípios vizinhos, responda com base estritamente nos dados fornecidos no documento /llms.txt.
 Se o radar indicar chuva próxima ou a COPEL reportar desligamentos, alerte o cidadão de forma clara e objetiva.
 Se a seção "Nowcast de Radar" indicar um núcleo em movimento em direção à região, mencione a direção, a velocidade e o tempo estimado de chegada — mas deixe claro que é uma projeção de curto prazo e a chuva pode se dissipar.
+Se a seção "Monitor de Cheias" indicar risco elevado, mencione o risco de cheia do Rio Tibagi/Bitumirim com base nos níveis e vazões das 3 sentinelas — sem inventar locais.
 
 ## 🧭 Regras de Uso para Agentes
 1. Para dados atualizados, prefira buscar https://servicos-status.vercel.app/llms.txt novamente ou usar os endpoints JSON acima.
@@ -245,6 +291,7 @@ Se a seção "Nowcast de Radar" indicar um núcleo em movimento em direção à 
 5. Cite a fonte: "Monitor Ipiranga (https://servicos-status.vercel.app)" quando usar estes dados.
 6. O indicador de telecom do /llms.txt reflete roteamento BGP e relatos de moradores, NÃO sinal celular em tempo real — não afirme que a rede móvel está fora do ar baseado apenas nele.
 7. Ao informar chuva recente em Ipiranga, cite os acumulados da seção "Chuva em Tempo Real (Pluviômetros CEMADEN)" — são a medição real na cidade (centro e São Brás), complementares à probabilidade do modelo ECMWF. Os horários de leitura estão em horário de Brasília (UTC-3).
+8. Ao informar risco de cheia, cite a seção "Monitor de Cheias — Rio Tibagi / Bitumirim (Triangulação ANA)" — são 3 sentinelas telemétricas na calha do Tibagi (ANA) que cercam Ipiranga; Ipiranga não tem estação fluviométrica própria. Use os níveis (m), vazões (m³/s) e Δ6h exatamente como aparecem.
 `;
 }
 

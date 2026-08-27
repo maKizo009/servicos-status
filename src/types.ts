@@ -182,5 +182,7 @@ export interface WeatherState {
 	} | null;
 	/** Chuva em tempo real dos pluviômetros CEMADEN de Ipiranga (fonte pública). */
 	cemaden?: import("./cemaden.js").CemadenState | null;
+	/** Triangulação fluviométrica ANA — 3 sentinelas no Tibagi (sem estação dentro de Ipiranga). */
+	hidro?: import("./ana-hidro.js").HidroState | null;
 	updatedAt: number;
 }
