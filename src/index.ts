@@ -7,6 +7,7 @@ import {
 } from "./checker.js";
 import { loadConfig } from "./config.js";
 import { fetchCemadenIpiranga } from "./cemaden.js";
+import { fetchHidroTriangulacao } from "./ana-hidro.js";
 import {
 	closeDb,
 	getDailyStatsSummary,
@@ -336,6 +337,12 @@ export async function syncWeatherCycle(): Promise<WeatherState> {
 		fetchCemadenIpiranga(),
 	]);
 
+	// Triangulação hidro — mesmo ciclo (depende do acc6h do CEMADEN para o indicador de enxurrada)
+	const cemadenAcc6hMax = cemaden.estacoes.length
+		? Math.max(...cemaden.estacoes.map((e) => e.acc6hr ?? 0))
+		: null;
+	const hidro = await fetchHidroTriangulacao(cemadenAcc6hMax);
+
 	// Boletim da tabela legada (weather_bulletins, formato "NIM texto" que não
 	// é mais gravado): só é usado se FRESCO (<60 min), senão a Camada B
 	// (nowcastBulletin VLM/heurística) é a única fonte do boletim atual.
@@ -360,6 +367,7 @@ export async function syncWeatherCycle(): Promise<WeatherState> {
 		radar,
 		bulletin: freshLegacyBulletin,
 		cemaden,
+		hidro,
 		updatedAt: Date.now(),
 	};
 
@@ -835,6 +843,21 @@ export async function handleRequest(
 				source: persisted?.source ?? null,
 				generatedAt: persisted?.generatedAt ?? null,
 				timestamp: Date.now(),
+			});
+		}
+
+		if (path === "/api/hidro") {
+			let state = getCachedWeatherState();
+			if (!state) state = await loadWeatherState();
+			const hidro = state?.hidro ?? null;
+			if (!hidro) {
+				return Response.json(
+					{ error: "Dados hidro ainda não disponíveis — aguarde o próximo ciclo" },
+					{ status: 503, headers: { "Cache-Control": "public, max-age=30" } },
+				);
+			}
+			return Response.json(hidro, {
+				headers: { "Cache-Control": "public, max-age=120, stale-while-revalidate=60" },
 			});
 		}
 
