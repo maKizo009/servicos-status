@@ -230,42 +230,56 @@ function avaliarRisco(
 	estacoes: HidroEstacao[],
 	cemadenAcc6hMax: number | null,
 ): Pick<HidroState, "riscoEnxurrada" | "riscoCheia" | "resumoRisco"> {
-	// Enxurrada local — baseada só no CEMADEN (acc em Ipiranga)
+	// Enxurrada local — só CEMADEN (chuva real em Ipiranga)
 	let riscoEnxurrada: HidroState["riscoEnxurrada"] = "ok";
 	if (cemadenAcc6hMax != null) {
 		if (cemadenAcc6hMax >= 80) riscoEnxurrada = "critical";
 		else if (cemadenAcc6hMax >= 40) riscoEnxurrada = "warn";
 	}
 
-	// Cheia — triangulação externa
-	// Critérios conservadores (evitar falso-positivo):
-	// - watch: qualquer sentinela subindo >30 cm/6h OU vazão >600 m³/s
-	// - critical: subida >80 cm/6h OU 2+ sentinelas em watch
-	let watchCount = 0;
-	let criticalCount = 0;
-	for (const e of estacoes) {
-		const subida = e.delta6hCm ?? 0;
-		const vazao = e.vazaoM3s ?? 0;
-		if (subida >= 80 || vazao >= 900) criticalCount++;
-		else if (subida >= 30 || vazao >= 600) watchCount++;
-	}
+	// Cheia — TRIANGULAÇÃO (estimativa, não medição em Ipiranga)
+	// Falso-positivo anterior: 1 sentinela subindo 80 cm sozinha virava 🔴 crítico
+	// mesmo sem chuva local. Agora só sobe se houver convergência.
+	// - watch: 1 sentinela com variação moderada
+	// - crítico: convergência de 2+ sinais OU variação muito forte + chuva local
+	const watchSignals = estacoes.filter((e) => {
+		const d = Math.abs(e.delta6hCm ?? 0);
+		const v = e.vazaoM3s ?? 0;
+		return d >= 35 || v >= 650;
+	}).length;
+	const strongSignals = estacoes.filter((e) => {
+		const d = e.delta6hCm ?? 0;
+		const v = e.vazaoM3s ?? 0;
+		return d >= 70 || v >= 850;
+	}).length;
 
 	let riscoCheia: HidroState["riscoCheia"] = "ok";
-	if (criticalCount >= 1 || watchCount >= 2) riscoCheia = "critical";
-	else if (watchCount >= 1) riscoCheia = "watch";
+	if (strongSignals >= 2) {
+		riscoCheia = "critical";
+	} else if (strongSignals >= 1 && cemadenAcc6hMax != null && cemadenAcc6hMax >= 20) {
+		// variação forte + chuva local relevante = convergência
+		riscoCheia = "critical";
+	} else if (watchSignals >= 2 && cemadenAcc6hMax != null && cemadenAcc6hMax >= 15) {
+		riscoCheia = "critical";
+	} else if (strongSignals >= 1 || watchSignals >= 2) {
+		riscoCheia = "watch";
+	} else if (watchSignals === 1) {
+		riscoCheia = "watch";
+	}
 
-	let resumoRisco = "Sem variação relevante nas 3 sentinelas nas últimas 6 h.";
+	let resumoRisco =
+		"Estimativa por triangulação — Ipiranga não possui estação fluviométrica própria. Sem variação relevante nas 3 sentinelas do Tibagi nas últimas 6 h.";
 	if (riscoCheia === "critical") {
 		resumoRisco =
-			"Atenção: nível do Rio Tibagi em elevação na região — potencial de reflexo nos afluentes de Ipiranga (cheia de resposta lenta).";
+			"Estimativa por triangulação: convergência de sinais no Rio Tibagi na região (elevação em múltiplas sentinelas e chuva local). Há risco de cheia nos rios de Ipiranga (cheia de resposta lenta — reflexo nos afluentes como o Bitumirim). Acompanhe a Defesa Civil.";
 	} else if (riscoCheia === "watch") {
 		resumoRisco =
-			"Vigilância: variação moderada no Tibagi — acompanhe a evolução nas próximas horas.";
+			"Estimativa por triangulação: variação moderada no Tibagi — em vigilância. Sem risco confirmado nos rios de Ipiranga no momento, mas vale acompanhar a evolução nas próximas horas.";
 	}
 	if (riscoEnxurrada === "warn") {
-		resumoRisco += " Enxurrada local em vigilância (chuva acumulada elevada em Ipiranga).";
+		resumoRisco += " Chuva local elevada — atenção para enxurrada/alagamento pontual.";
 	} else if (riscoEnxurrada === "critical") {
-		resumoRisco += " Risco de enxurrada/alagamento urbano pontual — chuva local muito elevada.";
+		resumoRisco += " Chuva local muito elevada — risco de enxurrada pontual.";
 	}
 
 	return { riscoEnxurrada, riscoCheia, resumoRisco };
