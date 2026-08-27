@@ -2019,16 +2019,14 @@ function renderHidroCard(data) {
     return;
   }
   box.style.display = 'flex';
-  const label = h.riscoCheia === 'critical' ? 'Atenção' : h.riscoCheia === 'watch' ? 'Vigilância' : 'Estável';
-  const color = h.riscoCheia === 'critical' ? 'var(--r6)' : h.riscoCheia === 'watch' ? 'var(--a5)' : 'var(--g6)';
   if (tag) {
-    tag.textContent = label;
-    tag.style.background = h.riscoCheia === 'ok' ? 'var(--g1)' : h.riscoCheia === 'watch' ? 'var(--a1)' : 'var(--r1)';
-    tag.style.color = color;
+    tag.textContent = 'Referência';
+    tag.style.background = 'var(--md-sys-color-surface-container-high)';
+    tag.style.color = 'var(--text2)';
   }
   const fmtM = (cm) => cm == null ? '—' : (cm/100).toFixed(2).replace('.', ',') + ' m';
   const fmtV = (v) => v == null ? '—' : Math.round(v) + ' m³/s';
-  const fmtDelta = (d) => d == null ? '' : ` <span style="color:${d>30?'var(--a5)':d<-30?'#38BDF8':'var(--text3)'}">(${d>0?'+':''}${(d/100).toFixed(2).replace('.', ',')} m /6h)</span>`;
+  const fmtDelta = (d) => d == null ? '' : ` <span style="opacity:.7">(${d>0?'+':''}${(d/100).toFixed(2).replace('.', ',')} m /6h)</span>`;
   const rows = h.estacoes.map((e) => {
     const nome = esc(e.nome.split(' (')[0]);
     return `<div style="border-top:1px solid var(--md-sys-color-outline-variant);padding-top:8px;margin-top:8px">
@@ -2037,8 +2035,8 @@ function renderHidroCard(data) {
       <div style="font-size:11.5px;opacity:.75">${esc(e.papel)}</div>
     </div>`;
   }).join('');
-  const resumo = esc(h.resumoRisco || '');
-  content.innerHTML = `<div style="font-size:12.5px;color:var(--text);line-height:1.5;margin-bottom:6px"><strong>${label}:</strong> ${resumo}</div>` + rows +
+  const resumo = esc(h.resumoRisco || 'Estimativa por triangulação — referência regional.');
+  content.innerHTML = `<div style="font-size:12.5px;color:var(--text);line-height:1.5;margin-bottom:6px">${resumo}</div>` + rows +
     `<div style="font-size:11.5px;opacity:.6;margin-top:8px">Atualizado: ${h.atualizadoEm ? new Date(h.atualizadoEm).toLocaleString('pt-BR') : '—'}</div>`;
 }
 
