@@ -347,11 +347,16 @@ export async function syncWeatherCycle(): Promise<WeatherState> {
 		fetchCemadenIpiranga(),
 	]);
 
-	// Triangulação hidro — mesmo ciclo (depende do acc6h do CEMADEN para o indicador de enxurrada)
-	const cemadenAcc6hMax = cemaden.estacoes.length
-		? Math.max(...cemaden.estacoes.map((e) => e.acc6hr ?? 0))
-		: null;
-	const hidro = await fetchHidroTriangulacao(cemadenAcc6hMax);
+	// Triangulação hidro — mesmo ciclo (chuva CEMADEN alimenta IBR/IFL)
+	const maxAcc = (f: (e: (typeof cemaden.estacoes)[number]) => number | null) =>
+		cemaden.estacoes.length
+			? Math.max(...cemaden.estacoes.map((e) => f(e) ?? 0))
+			: null;
+	const hidro = await fetchHidroTriangulacao({
+		p1h: maxAcc((e) => e.acc1hr),
+		p6h: maxAcc((e) => e.acc6hr),
+		p24h: maxAcc((e) => e.acc24hr),
+	});
 
 	// Mosaico Simepar (display): só um HEAD barato para carimbar frescor.
 	// Nunca quebra o ciclo — se falhar, o card usa a imagem direta.
