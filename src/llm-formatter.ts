@@ -1,4 +1,3 @@
-import { TETOS_HISTORICOS } from "./ana-hidro.js";
 import { fmtEta } from "./radar-analysis.js";
 import type { UnifiedReport, WeatherState } from "./types.js";
 
@@ -141,16 +140,16 @@ function renderHidroSection(weather: WeatherState | null): string {
 		? new Date(hidro.atualizadoEm).toISOString()
 		: "—";
 
-	const t = TETOS_HISTORICOS;
-	const ibrTxt = hidro.ibr
-		? ` IBR atual: ${hidro.ibr.score.toFixed(1).replace(".", ",")} (${hidro.ibr.nivel}) — ${sanitizeLlmField(hidro.ibr.motivos.join("; "), 400)}`
-		: "";
+	const permTxt =
+		hidro.permanencia != null
+			? ` Permanência atual: ~${hidro.permanencia.diasEstimados.toString().replace(".", ",")} dias fora da caixa SE transbordar (${hidro.permanencia.nivel}, preliminar n=2) — ${sanitizeLlmField(hidro.permanencia.motivos.join("; "), 300)}`
+			: "";
 	const iflTxt =
 		hidro.ifl != null && hidro.ifl.nivel !== "verde"
 			? ` IFL atual: ${hidro.ifl.score.toFixed(2).replace(".", ",")} (${hidro.ifl.nivel}) — ${sanitizeLlmField(hidro.ifl.motivos.join("; "), 300)}`
 			: "";
 
-	return `## 🌊 Rios — Triangulação ANA (referência regional)\n- ${sanitizeLlmField(hidro.resumoRisco, 900)}\n${linhas}\n- **Fonte:** ANA Hidro (telemetria horária) — 3 sentinelas na calha do Tibagi que cercam Ipiranga; Ipiranga não possui estação fluviométrica própria. Atualizado em: ${atualizado}${ibrTxt}${iflTxt}\n- **Cotas históricas de referência (a montante da foz do Bitumirim):** OUT23 (Uvaia ${t.out23.uvaiaCm} cm / Cebolão ${t.out23.cebolaoCm} cm / Jataizinho ${t.out23.jataizinhoCm} cm, 323 mm em São Braz, Bitumirim 8 m em Ipiranga) · DEZ24 (${t.dez24.uvaiaCm}/${t.dez24.cebolaoCm}/${t.dez24.jataizinhoCm} cm, 298 mm) · JAN25 flash local (Cebolão ${t.jan25.cebolaoCm} cm com Tibagi calmo, 143 mm/dia só em São Braz). Remanso ocorre com Cebolão em atenção+ e chuva local; transbordo isolado com >100 mm/24h em São Braz. Foz a montante de Mauá: descarga da usina NÃO causa remanso em Ipiranga.\n`;
+	return `## 🌊 Rios — Triangulação ANA (referência regional)\n- ${sanitizeLlmField(hidro.resumoRisco, 900)}\n${linhas}\n- **Fonte:** ANA Hidro (telemetria horária) — 3 sentinelas na calha do Tibagi que cercam Ipiranga; Ipiranga não possui estação fluviométrica própria. Atualizado em: ${atualizado}${permTxt}${iflTxt}\n- **Rótulos de transbordo do Bitumirim (fotos + Uvaia horária ANA):** OUT23 transbordou 29/10 18h com Uvaia ~739 (7 dias fora, pico 1189) · DEZ24 transbordou 09/12 13h com Uvaia ~339 (3 dias fora, pico 815) · JAN25 NÃO transbordou com Uvaia ~180 (régua 4m no máximo, 143 mm/dia em São Braz). Doutrina: chuva local causa o transbordo (horas); Uvaia manda nos dias fora. Uvaia NÃO prevê transbordo sozinha. Foz a montante de Mauá: descarga da usina NÃO causa remanso em Ipiranga.\n`;
 }
 
 /** Seção Simepar — mosaico oficial de radares (display, com timestamp na imagem). */
@@ -323,7 +322,7 @@ A seção "Rios — Triangulação ANA" é apenas referência regional (Ipiranga
 5. Cite a fonte: "Monitor Ipiranga (https://servicos-status.vercel.app)" quando usar estes dados.
 6. O indicador de telecom do /llms.txt reflete roteamento BGP e relatos de moradores, NÃO sinal celular em tempo real — não afirme que a rede móvel está fora do ar baseado apenas nele.
 7. Ao informar chuva recente em Ipiranga, cite os acumulados da seção "Chuva em Tempo Real (Pluviômetros CEMADEN)" — são a medição real na cidade (centro e São Brás), complementares à probabilidade do modelo ECMWF. Os horários de leitura estão em horário de Brasília (UTC-3).
-8. Ao informar risco de cheia, cite a seção "Monitor de Cheias — Rio Tibagi / Bitumirim (Triangulação ANA)" — são 3 sentinelas telemétricas na calha do Tibagi (ANA) que cercam Ipiranga; Ipiranga não tem estação fluviométrica própria. Use os níveis (m), vazões (m³/s) e Δ6h exatamente como aparecem. O IBR e as faixas são ESTIMATIVA de algoritmo calibrada em cheias passadas (out/23, dez/24, jan/25) — NUNCA apresente como medição oficial, verdade absoluta ou previsão garantida; em dúvida, oriente Defesa Civil (199) e IAT.
+8. Ao informar risco de cheia, cite a seção "Monitor de Cheias — Rio Tibagi / Bitumirim (Triangulação ANA)" — são 3 sentinelas telemétricas na calha do Tibagi (ANA) que cercam Ipiranga; Ipiranga não tem estação fluviométrica própria. Use os níveis (m), vazões (m³/s) e Δ6h exatamente como aparecem. Flash (IFL) e permanência são ESTIMATIVAS de algoritmo calibradas em rótulos reais (fotos de transbordo: out/23, dez/24, jan/25) — NUNCA apresente como medição oficial, verdade absoluta ou previsão garantida; em dúvida, oriente Defesa Civil (199) e IAT.
 9. A seção "Alerta Oficial do Monitor (fusão própria)" é o NOSSO alerta (verde/amarelo/laranja/vermelho), calculado dos dados locais (CEMADEN+ECMWF+radar+hidro) com avisos INMET/Defesa Civil como agravante — cite o nível e os motivos exatamente como aparecem. JSON cru: https://servicos-status.vercel.app/api/alertas.
 `;
 }

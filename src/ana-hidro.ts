@@ -129,84 +129,63 @@ export function faixaEstendida(
 
 export type NivelIBR = "verde" | "amarelo" | "laranja" | "vermelho";
 
-export interface ResultadoIBR {
-	score: number;
+export interface ResultadoPermanencia {
+	/** Dias estimados fora da caixa SE transbordar no nível atual. */
+	diasEstimados: number;
 	nivel: NivelIBR;
+	uvaiaCm: number | null;
+	/** n=2 (OUT23+DEZ24) — preliminar até mais rótulos. Sempre true por ora. */
+	preliminar: boolean;
 	motivos: string[];
 }
 
 /**
- * Índice de Bloqueio por Remanso (IBR) v2 — física corrigida 11/09/2026.
- * A v1 usava Antas (1,1 km a JUSANTE da foz, mede água indo embora) como
- * "descarga Mauá causando remanso" — impossível hidraulicamente (auditoria
- * Antigravity + mapa OSM: foz a ~110 km ao sul da barragem, fora do
- * reservatório). A v2 usa só o que está a MONTANTE da foz: Uvaia (onda
- * vindo) + Cebolão (calha na foz) + chuva local.
- * Pesos: onda de montante 0.4 + corpo receptor 0.4/0.6 + chuva local 0.2.
- * Estágios: <0.3 verde · 0.3–0.5 amarelo · 0.5–0.8 laranja · ≥0.8 vermelho.
+ * Permanência (v3, 11/09/2026) — substitui o IBR (aposentado: v1 usava Antas
+ * a jusante; v2 usava Cebolão em Londrina como "calha na foz").
+ * Rótulos reais (fotos Dave + Uvaia horária ANA):
+ * - OUT23: Uvaia pico 1189 → 7 dias fora (29/10 18h → 05/11)
+ * - DEZ24: Uvaia pico 815 → 3 dias fora (09/12 13h → 12/12)
+ * - JAN25: Uvaia 180 → 0 dias (régua 4m sem sair da caixa)
+ * Ajuste 2 pontos: dias = 0,0107 × U − 5,7 (≥0, passo 0,5). PRELIMINAR.
+ * Lógica: chuva local causa o transbordo (perna flash/IFL); Uvaia manda em
+ * quanto tempo a água leva pra descer (onda que vem atrás segura a foz).
+ * Uso ao vivo: aplica o ajuste no Uvaia atual; se subindo ≥50 cm/24h, +1 dia
+ * (pico à frente). É estimativa condicional, não medição — diz "SE
+ * transbordar, fica ~X dias", nunca "vai transbordar".
  */
-export function calcularIBR(input: {
-	nUvaia: number | null;
-	deltaUvaia6h: number | null;
-	nCebolao: number | null;
-	chuvaIpiranga6h: number | null;
-}): ResultadoIBR {
+export function calcularPermanencia(input: {
+	uvaiaCm: number | null;
+	deltaUvaia24h: number | null;
+}): ResultadoPermanencia {
 	const motivos: string[] = [];
-	let score = 0;
-	const fU = FAIXAS["64444000"];
-	const fC = FAIXAS["64504210"];
-
-	// 1. Onda de montante via Uvaia (alto Tibagi descendo para a foz)
+	const u = input.uvaiaCm;
+	let dias = 0;
+	if (u != null) {
+		dias = Math.max(0, Math.round((0.0107 * u - 5.7) * 2) / 2);
+		motivos.push(
+			`Uvaia ${(u / 100).toFixed(2).replace(".", ",")} m (ajuste preliminar n=2: OUT23 7d, DEZ24 3d)`,
+		);
+	}
 	if (
-		(input.nUvaia != null && input.nUvaia >= fU.alertaCm) ||
-		(input.deltaUvaia6h != null && input.deltaUvaia6h >= 30)
+		u != null &&
+		input.deltaUvaia24h != null &&
+		input.deltaUvaia24h >= 50
 	) {
-		score += 0.4;
+		dias = Math.round((dias + 1) * 2) / 2;
 		motivos.push(
-			"Uvaia em alerta ou subindo ≥30 cm/6h (onda do alto Tibagi vindo para a foz)",
-		);
-	} else if (input.nUvaia != null && input.nUvaia >= fU.atencaoCm) {
-		score += 0.2;
-		motivos.push("Uvaia em atenção (alto Tibagi carregando)");
-	}
-
-	// 2. Corpo receptor (Cebolão) — quanto cabe ainda na calha da foz
-	if (input.nCebolao != null && input.nCebolao >= fC.alertaCm) {
-		score += 0.6;
-		motivos.push(
-			`Cebolão em alerta (${(input.nCebolao / 100).toFixed(2).replace(".", ",")} m ≥ P98) — calha quase sem folga`,
-		);
-	} else if (input.nCebolao != null && input.nCebolao >= fC.atencaoCm) {
-		score += 0.4;
-		motivos.push("Cebolão em atenção — capacidade de calha reduzida");
-	}
-
-	// 3. Enchimento próprio do Bitumirim (chuva local 6h)
-	const ch = input.chuvaIpiranga6h ?? 0;
-	if (ch >= 25) {
-		score += 0.2;
-		motivos.push(
-			`${ch.toFixed(1).replace(".", ",")} mm/6h em Ipiranga — Bitumirim enchendo sozinho`,
-		);
-	} else if (ch >= 10) {
-		score += 0.1;
-		motivos.push(
-			`${ch.toFixed(1).replace(".", ",")} mm/6h em Ipiranga — contribuição local relevante`,
+			`subindo ${Math.round(input.deltaUvaia24h)} cm/24h — pico à frente, pode estender`,
 		);
 	}
-
-	score = Math.round(score * 10) / 10;
 	const nivel: NivelIBR =
-		score >= 0.8
+		dias > 5
 			? "vermelho"
-			: score >= 0.5
+			: dias > 2
 				? "laranja"
-				: score >= 0.3
+				: dias > 0
 					? "amarelo"
 					: "verde";
-	return { score, nivel, motivos };
+	return { diasEstimados: dias, nivel, uvaiaCm: u ?? null, preliminar: true, motivos };
 }
-
 export interface ResultadoIFL {
 	score: number;
 	nivel: NivelIBR;
@@ -308,8 +287,8 @@ export interface HidroState {
 	/** Avaliação rápida — usada no llms.txt e alertas */
 	riscoEnxurrada: "ok" | "warn" | "critical";
 	riscoCheia: "ok" | "watch" | "critical";
-	/** IBR (Índice de Bloqueio por Remanso) — 4 estágios calibrados */
-	ibr: ResultadoIBR | null;
+	/** Permanência (v3) — dias fora da caixa SE transbordar (ajuste n=2) */
+	permanencia: ResultadoPermanencia | null;
 	/** IFL (Índice de Flash Local) — 100% chuva local, sem Tibagi */
 	ifl: ResultadoIFL | null;
 	/** Texto curto para o llms.txt */
@@ -490,11 +469,14 @@ export interface ChuvaLocal {
 	p24h: number | null;
 }
 
-/** Exportada para testes (lógica de faixas/remanso/flash). */
+/** Exportada para testes (lógica de faixas/flash/permanência). */
 export function avaliarRisco(
 	estacoes: HidroEstacao[],
 	chuva: ChuvaLocal | null,
-): Pick<HidroState, "riscoEnxurrada" | "riscoCheia" | "resumoRisco" | "ibr" | "ifl"> {
+): Pick<
+	HidroState,
+	"riscoEnxurrada" | "riscoCheia" | "resumoRisco" | "permanencia" | "ifl"
+> {
 	// Triangulação é referência regional (Ipiranga NÃO tem estação
 	// fluviométrica própria — o Bitumirim não é medido direto). Por isso a
 	// classificação automática é CONSERVADORA: só sobe para "watch" com
@@ -505,7 +487,7 @@ export function avaliarRisco(
 		return {
 			riscoEnxurrada: "ok",
 			riscoCheia: "ok",
-			ibr: null,
+			permanencia: null,
 			ifl: null,
 			resumoRisco:
 				"Triangulação indisponível no momento (sentinelas sem dados). Ipiranga não possui estação fluviométrica própria — para alertas oficiais, siga Defesa Civil e IAT.",
@@ -535,41 +517,49 @@ export function avaliarRisco(
 	const chuvaLocal = chuva?.p6h ?? 0;
 	const porCodigo = (cod: string) => comDados.find((e) => e.codigo === cod);
 	const uvaia = porCodigo("64444000");
-	const cebolao = porCodigo("64504210");
-	const faixaCebolao = faixaNivel("64504210", cebolao?.nivelCm ?? null);
+	const faixaUvaia = faixaNivel("64444000", uvaia?.nivelCm ?? null);
 	const algumaEmAlerta = comDados.some(
 		(e) => faixaNivel(e.codigo, e.nivelCm) === "alerta",
 	);
-	// REMANSO: Tibagi cheio a montante/foz + chuva em Ipiranga = o Bitumirim
-	// pode não conseguir desaguar. Estimativa (sem medição na foz).
-	const remanso =
-		(faixaCebolao === "atencao" || faixaCebolao === "alerta") &&
+	// DRENAGEM BLOQUEADA (v3): Uvaia alto + chuva em Ipiranga = o que
+	// transbordar não desce (OUT23 7d fora, DEZ24 3d). Condicional: só importa
+	// se o flash atuar; sozinha não prevê transbordo (DEZ24 transbordou com
+	// Uvaia em 339).
+	const drenagemBloqueada =
+		(faixaUvaia === "atencao" || faixaUvaia === "alerta") &&
 		chuvaLocal >= 10;
-	// Watch individual: faixa de alerta, subida forte, remanso ou convergência.
+	// Watch: faixa de alerta, subida forte, drenagem bloqueada ou convergência.
 	const watch =
 		algumaEmAlerta ||
 		subindoForte ||
-		remanso ||
+		drenagemBloqueada ||
 		(chuvaLocal >= 15 && chuvaSentinela >= 10);
 	const motivos: string[] = [];
 	if (algumaEmAlerta)
 		motivos.push("nível na faixa de alerta (P98 do ano hidrológico)");
 	if (subindoForte)
 		motivos.push("nível subindo ≥30 cm em 6h em ao menos uma sentinela");
-	if (remanso)
+	if (drenagemBloqueada)
 		motivos.push(
-			`Tibagi cheio (Cebolão ${cebolao?.nivelCm != null ? (cebolao.nivelCm / 100).toFixed(2).replace(".", ",") : "?"} m) + ${chuvaLocal.toFixed(1).replace(".", ",")} mm/6h em Ipiranga: o Bitumirim pode não conseguir desaguar (remanso) — atenção a alagamentos em áreas baixas`,
+			`Uvaia cheia (${uvaia?.nivelCm != null ? (uvaia.nivelCm / 100).toFixed(2).replace(".", ",") : "?"} m) + ${chuvaLocal.toFixed(1).replace(".", ",")} mm/6h em Ipiranga: se transbordar, a água demora pra descer — atenção a áreas baixas`,
 		);
 	if (chuvaLocal >= 15 && chuvaSentinela >= 10)
 		motivos.push(
 			`chuva convergente (${chuvaLocal.toFixed(1).replace(".", ",")} mm/6h em Ipiranga + ${chuvaSentinela.toFixed(1).replace(".", ",")} mm/h na sentinela)`,
 		);
-	// IBR (remanso, montante) + IFL (flash, 100% local) — doutrina 2 pernas.
-	const ibr = calcularIBR({
-		nUvaia: uvaia?.nivelCm ?? null,
-		deltaUvaia6h: uvaia?.delta6hCm ?? null,
-		nCebolao: cebolao?.nivelCm ?? null,
-		chuvaIpiranga6h: chuva?.p6h ?? null,
+	// PERMANÊNCIA (v3) + IFL (flash, 100% local) — doutrina 2 pernas:
+	// chuva local causa o transbordo (horas); Uvaia manda nos dias fora.
+	// delta24h da série horária da própria sentinela (último − primeiro).
+	const serieU = (uvaia?.serie ?? []).filter(
+		(p): p is { nivelCm: number } & typeof p => p.nivelCm != null,
+	);
+	const deltaUvaia24h =
+		serieU.length >= 2
+			? serieU[serieU.length - 1].nivelCm - serieU[0].nivelCm
+			: (uvaia?.delta6hCm ?? null);
+	const permanencia = calcularPermanencia({
+		uvaiaCm: uvaia?.nivelCm ?? null,
+		deltaUvaia24h,
 	});
 	const ifl = calcularIFL({
 		p1h: chuva?.p1h ?? null,
@@ -580,16 +570,20 @@ export function avaliarRisco(
 		motivos.push(`flash local IFL ${ifl.score.toFixed(2).replace(".", ",")} (${ifl.nivel}): ${ifl.motivos.join("; ")}`);
 	}
 	const watchFinal =
-		watch || ibr.nivel === "laranja" || ibr.nivel === "vermelho" || ifl.nivel === "laranja" || ifl.nivel === "vermelho";
+		watch ||
+		permanencia.nivel === "laranja" ||
+		permanencia.nivel === "vermelho" ||
+		ifl.nivel === "laranja" ||
+		ifl.nivel === "vermelho";
 	return {
 		riscoEnxurrada: watchFinal ? "warn" : "ok",
 		riscoCheia: watchFinal ? "watch" : "ok",
-		ibr,
+		permanencia,
 		ifl,
 		resumoRisco:
 			`Triangulação no Rio Tibagi (referência regional — o Bitumirim em Ipiranga não é medido direto; faixas P90/P98 do ano hidrológico). ` +
 			`${trechos.join(" · ")}.` +
-			` IBR ${ibr.score.toFixed(1).replace(".", ",")} (${ibr.nivel}) · IFL ${ifl.score.toFixed(2).replace(".", ",")} (${ifl.nivel}).` +
+			` Flash IFL ${ifl.score.toFixed(2).replace(".", ",")} (${ifl.nivel}) · permanência ${permanencia.diasEstimados.toString().replace(".", ",")}d (${permanencia.nivel}).` +
 			(motivos.length > 0
 				? ` Atenção: ${motivos.join("; ")} — acompanhe Defesa Civil/IAT.`
 				: " Níveis sem tendência de cheia no momento.") +
@@ -633,7 +627,7 @@ export async function fetchHidroTriangulacao(
 			erro: msg,
 			riscoEnxurrada: "ok",
 			riscoCheia: "ok",
-			ibr: null,
+			permanencia: null,
 			ifl: null,
 			resumoRisco: "Dados hidro temporariamente indisponíveis.",
 		};
