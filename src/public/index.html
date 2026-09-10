@@ -1996,7 +1996,10 @@ async function fetchWeatherData() {
       radarTileLayers = [];
 
       radarFrames.forEach((frame) => {
-        const tileUrl = `${host}${frame.path}/256/{z}/{x}/{y}/2/1_1.png`;
+        // Display: esquema de cor 6 (o mais próximo do Simepar). A análise
+        // determinística do backend (radar-analysis.ts) continua no esquema 2,
+        // que é o que o decodificador de paleta espera — não mexer.
+        const tileUrl = `${host}${frame.path}/256/{z}/{x}/{y}/6/1_1.png`;
         const layer = L.tileLayer(tileUrl, {
           pane: 'radarPane',
           tileSize: 256,
