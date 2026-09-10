@@ -15,6 +15,10 @@ from datetime import date
 
 ESTACOES_CHUVA = ["1101", "1105", "2056", "2241", "IAT_2450054", "83811", "83813"]
 
+# Arquivos extras de chuva (mesmo formato lógico): (caminho, prefixo_id, colunas)
+# chuva-sih.csv: estacao_id,estacao_nome,data,mm (IAT: Itaicoca/Apiaba/Bocaina)
+# chuva-sma.csv: estacao_id,estacao_nome,data,mm (ABC: Bela Vista/PG/Tibagi/...)
+
 
 def ler_chuva(caminho):
     """{estacao: {date: mm}}"""
@@ -30,9 +34,37 @@ def ler_chuva(caminho):
     return dados
 
 
+def ler_chuva_extra(caminho, id_col=0, data_col=2, mm_col=3):
+    """{estacao: {date: mm}} para chuva-sih.csv / chuva-sma.csv (sem filtro)."""
+    dados = {}
+    try:
+        f = open(caminho, encoding="utf-8")
+    except FileNotFoundError:
+        return dados
+    with f:
+        r = csv.reader(f)
+        next(r, None)  # cabeçalho
+        for row in r:
+            if len(row) <= max(id_col, data_col, mm_col):
+                continue
+            try:
+                dados.setdefault(row[id_col], {})[date.fromisoformat(row[data_col])] = float(
+                    row[mm_col]
+                )
+            except ValueError:
+                continue
+    return dados
+
+
 def main():
     d = sys.argv[1] if len(sys.argv) > 1 else "."
     chuva = ler_chuva(os.path.join(d, "chuva-climanalytics.csv"))
+    # prefixa extras para não colidir (sih: / sma:)
+    for cod, serie in ler_chuva_extra(os.path.join(d, "chuva-sih.csv")).items():
+        chuva[f"sih:{cod}"] = serie
+    for cod, serie in ler_chuva_extra(os.path.join(d, "chuva-sma.csv")).items():
+        chuva[f"sma:{cod}"] = serie
+    todas = ESTACOES_CHUVA + sorted(k for k in chuva if ":" in k)
     with open(os.path.join(d, "medias-eventos.csv"), encoding="utf-8") as f:
         eventos = list(csv.DictReader(f))
     w = csv.writer(sys.stdout)
@@ -45,7 +77,7 @@ def main():
     for ev in eventos:
         ini = date.fromisoformat(ev["janela_ini"])
         fim = date.fromisoformat(ev["janela_fim"])
-        for est in ESTACOES_CHUVA:
+        for est in todas:
             serie = chuva.get(est, {})
             pts = [(dd, v) for dd, v in serie.items() if ini <= dd <= fim]
             if not pts:
