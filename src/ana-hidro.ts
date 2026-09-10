@@ -237,6 +237,8 @@ export interface HidroEstacao {
 	vazaoM3s: number | null;
 	chuvaMm: number | null;
 	dataHora: string | null;
+	/** Faixa calibrada do nível atual (P90/P98 de 180 dias) */
+	faixa: "normal" | "atencao" | "alerta" | "critico" | null;
 	/** Série das últimas ~24 h (horária) quando disponível */
 	serie: HidroSeriePonto[];
 	/** Δ nível nas últimas 6 h (cm), null se sem histórico suficiente */
@@ -321,6 +323,7 @@ async function fetchEstacao(
 				vazaoM3s: null,
 				chuvaMm: null,
 				dataHora: null,
+				faixa: null,
 				serie: [],
 				delta6hCm: null,
 				erro: `HTTP ${res.status}`,
@@ -338,6 +341,7 @@ async function fetchEstacao(
 				vazaoM3s: null,
 				chuvaMm: null,
 				dataHora: null,
+				faixa: null,
 				serie: [],
 				delta6hCm: null,
 				erro: "Sem dados no período",
@@ -370,6 +374,7 @@ async function fetchEstacao(
 				vazaoM3s: null,
 				chuvaMm: null,
 				dataHora: null,
+				faixa: null,
 				serie: [],
 				delta6hCm: null,
 				erro: "Série vazia",
@@ -397,6 +402,7 @@ async function fetchEstacao(
 			vazaoM3s: latest.vazaoM3s,
 			chuvaMm: latest.chuvaMm,
 			dataHora: latest.dataHora,
+			faixa: faixaEstendida(codigo, latest.nivelCm),
 			serie: serieLimpa.slice(0, 24),
 			delta6hCm,
 			erro: null,
@@ -413,6 +419,7 @@ async function fetchEstacao(
 			vazaoM3s: null,
 			chuvaMm: null,
 			dataHora: null,
+			faixa: null,
 			serie: [],
 			delta6hCm: null,
 			erro: msg,

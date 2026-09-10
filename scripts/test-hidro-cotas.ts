@@ -25,6 +25,7 @@ function est(codigo: string, over: Partial<HidroEstacao> = {}): HidroEstacao {
 		vazaoM3s: 500,
 		chuvaMm: 0,
 		dataHora: "2026-09-10 10:00:00",
+		faixa: null,
 		serie: [],
 		delta6hCm: 0,
 		erro: null,
