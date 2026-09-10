@@ -145,8 +145,12 @@ function renderHidroSection(weather: WeatherState | null): string {
 	const ibrTxt = hidro.ibr
 		? ` IBR atual: ${hidro.ibr.score.toFixed(1).replace(".", ",")} (${hidro.ibr.nivel}) — ${sanitizeLlmField(hidro.ibr.motivos.join("; "), 400)}`
 		: "";
+	const iflTxt =
+		hidro.ifl != null && hidro.ifl.nivel !== "verde"
+			? ` IFL atual: ${hidro.ifl.score.toFixed(2).replace(".", ",")} (${hidro.ifl.nivel}) — ${sanitizeLlmField(hidro.ifl.motivos.join("; "), 300)}`
+			: "";
 
-	return `## 🌊 Rios — Triangulação ANA (referência regional)\n- ${sanitizeLlmField(hidro.resumoRisco, 900)}\n${linhas}\n- **Fonte:** ANA Hidro (telemetria horária) — 3 sentinelas na calha do Tibagi que cercam Ipiranga; Ipiranga não possui estação fluviométrica própria. Atualizado em: ${atualizado}${ibrTxt}\n- **Cotas históricas de referência (foz do Bitumirim):** OUT23 (Antas ${t.out23.antasCm} cm / Cebolão ${t.out23.cebolaoCm} cm / Jataizinho ${t.out23.jataizinhoCm} cm, 323 mm em São Braz) · DEZ24 (${t.dez24.antasCm}/${t.dez24.cebolaoCm}/${t.dez24.jataizinhoCm} cm, 298 mm) · JAN25 flash local (${t.jan25.antasCm}/${t.jan25.cebolaoCm}/${t.jan25.jataizinhoCm} cm com Tibagi calmo, 143 mm/dia só em São Braz). Remanso ocorre com Cebolão em atenção+ e chuva local; transbordo isolado com >100 mm/24h em São Braz.\n`;
+	return `## 🌊 Rios — Triangulação ANA (referência regional)\n- ${sanitizeLlmField(hidro.resumoRisco, 900)}\n${linhas}\n- **Fonte:** ANA Hidro (telemetria horária) — 3 sentinelas na calha do Tibagi que cercam Ipiranga; Ipiranga não possui estação fluviométrica própria. Atualizado em: ${atualizado}${ibrTxt}${iflTxt}\n- **Cotas históricas de referência (a montante da foz do Bitumirim):** OUT23 (Uvaia ${t.out23.uvaiaCm} cm / Cebolão ${t.out23.cebolaoCm} cm / Jataizinho ${t.out23.jataizinhoCm} cm, 323 mm em São Braz, Bitumirim 8 m em Ipiranga) · DEZ24 (${t.dez24.uvaiaCm}/${t.dez24.cebolaoCm}/${t.dez24.jataizinhoCm} cm, 298 mm) · JAN25 flash local (Cebolão ${t.jan25.cebolaoCm} cm com Tibagi calmo, 143 mm/dia só em São Braz). Remanso ocorre com Cebolão em atenção+ e chuva local; transbordo isolado com >100 mm/24h em São Braz. Foz a montante de Mauá: descarga da usina NÃO causa remanso em Ipiranga.\n`;
 }
 
 /** Seção Simepar — mosaico oficial de radares (display, com timestamp na imagem). */
