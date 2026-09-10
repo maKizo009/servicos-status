@@ -1242,6 +1242,11 @@ function renderScheduledReminder(services){
   if (document.getElementById('banner')?.classList.contains('alert-takeover')) {
     el.style.display = 'none';
     list.innerHTML = html;
+    // A lista mudou no meio do takeover: refunde no banner na hora (o ciclo
+    // do tempo pode demorar a voltar).
+    if (window.latestWeatherData && typeof renderTopAlert === 'function') {
+      renderTopAlert(window.latestWeatherData);
+    }
     return;
   }
   let html='';
@@ -1263,6 +1268,12 @@ function renderScheduledReminder(services){
 function updateBanner(services){
   const bn=$('#banner'),t=$('#bannerTitle'),s=$('#bannerSub'),badge=$('#bannerBadge'),dot=$('#headerDot'),detailsEl=$('#bannerDetails'),iconEl=$('#bannerIcon');
   window.lastServicesSnapshot = services;
+  // Takeover do temporal manda: o ciclo dos serviços NÃO pode apagar o alerta
+  // (era a corrida — Copel tomava o topo e a tempestade sumia). Reaplica.
+  if (window.lastStormAlert && window.lastStormAlert.hot && typeof applyStormTakeover === 'function') {
+    applyStormTakeover(window.lastStormAlert);
+    return;
+  }
   
   const criticalSvcs=services.filter(x=>x.status==='critical');
   const warnSvcs=services.filter(x=>x.status==='warn');
@@ -2047,7 +2058,8 @@ function renderTopAlert(data) {
   const bn = document.getElementById('banner');
   if (!bn) return;
   const a = data?.alertaUnificado;
-  const hot = a && (a.nivel === 'laranja' || a.nivel === 'vermelho');
+  const hot = !!(a && (a.nivel === 'laranja' || a.nivel === 'vermelho'));
+  window.lastStormAlert = hot ? { hot: true, nivel: a.nivel, titulo: a.titulo, descricao: a.descricao, motivos: a.motivos || [], avisosOficiais: a.avisosOficiais || [] } : { hot: false };
   if (!hot) {
     bn.classList.remove('alert-takeover');
     // Devolve a cena: card de alerta (se verde/amarelo) + lembrete Copel.
@@ -2061,6 +2073,12 @@ function renderTopAlert(data) {
     if (window.lastServicesSnapshot) updateBanner(window.lastServicesSnapshot);
     return;
   }
+  applyStormTakeover(window.lastStormAlert);
+}
+
+function applyStormTakeover(a) {
+  const bn = document.getElementById('banner');
+  if (!bn || !a) return;
   const t = document.getElementById('bannerTitle');
   const s = document.getElementById('bannerSub');
   const badge = document.getElementById('bannerBadge');
