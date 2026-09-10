@@ -356,6 +356,7 @@ export async function syncWeatherCycle(): Promise<WeatherState> {
 		p1h: maxAcc((e) => e.acc1hr),
 		p6h: maxAcc((e) => e.acc6hr),
 		p24h: maxAcc((e) => e.acc24hr),
+		p72h: maxAcc((e) => e.acc72hr),
 	});
 
 	// Mosaico Simepar (display): só um HEAD barato para carimbar frescor.

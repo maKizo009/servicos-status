@@ -8,12 +8,13 @@
 import { describe, expect, test } from "bun:test";
 import {
 	avaliarRisco,
-	type ChuvaLocal,
 	calcularIFL,
 	calcularPermanencia,
 	FAIXAS,
 	faixaEstendida,
 	faixaNivel,
+	regimeDoMes,
+	type ChuvaLocal,
 	type HidroEstacao,
 } from "../src/ana-hidro.js";
 
@@ -86,6 +87,37 @@ describe("calcularIFL (inalterado v3)", () => {
 	});
 });
 
+describe("IFL v3.1 — antecedente + regime", () => {
+	test("regimeDoMes: mai–ago frontal, resto convectivo", () => {
+		expect(regimeDoMes(1)).toBe("convectivo");
+		expect(regimeDoMes(5)).toBe("frontal");
+		expect(regimeDoMes(8)).toBe("frontal");
+		expect(regimeDoMes(9)).toBe("convectivo");
+		expect(regimeDoMes(12)).toBe("convectivo");
+	});
+	test("JAN25-manhã replay (p24 ~15, p72 ~158, convectivo) → amarelo, não verde", () => {
+		const r = calcularIFL({ p1h: 0, p6h: 5, p24h: 15, p72h: 158 });
+		expect(r.nivel).toBe("amarelo");
+		expect(r.score).toBe(0.35);
+	});
+	test("antecedente abaixo da barra não eleva (p72=100 convectivo → verde)", () => {
+		const r = calcularIFL({ p1h: 0, p6h: 2, p24h: 5, p72h: 100 });
+		expect(r.nivel).toBe("verde");
+	});
+	test("frontal arma palco com menos água (p72=100 frontal → amarelo)", () => {
+		const r = calcularIFL({ p1h: 0, p6h: 2, p24h: 5, p72h: 100, regime: "frontal" });
+		expect(r.nivel).toBe("amarelo");
+	});
+	test("antecedente sozinho nunca passa de amarelo (p72=400 seco atual)", () => {
+		const r = calcularIFL({ p1h: 0, p6h: 0, p24h: 0, p72h: 400 });
+		expect(r.nivel).toBe("amarelo");
+	});
+	test("gatilho continua mandando (p24=128 → laranja mesmo sem antecedente)", () => {
+		const r = calcularIFL({ p1h: 2, p6h: 20, p24h: 128, p72h: 0 });
+		expect(r.nivel).toBe("laranja");
+	});
+});
+
 describe("avaliarRisco v3", () => {
 	test("tudo normal + seco → ok", () => {
 		const r = avaliarRisco(
@@ -119,5 +151,10 @@ describe("avaliarRisco v3", () => {
 		expect(r.riscoCheia).toBe("ok");
 		expect(r.permanencia).toBeNull();
 		expect(r.ifl).toBeNull();
+	});
+	test("regime via mesOverride (jun=frontal, jan=convectivo)", () => {
+		const ests = [est("64444000", { nivelCm: 200 }), est("64504210", { nivelCm: 280 }), est("64507000", { nivelCm: 190 })];
+		expect(avaliarRisco(ests, SECA, 6).regime).toBe("frontal");
+		expect(avaliarRisco(ests, SECA, 1).regime).toBe("convectivo");
 	});
 });

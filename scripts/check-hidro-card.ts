@@ -70,6 +70,7 @@ const data = {
 			motivos: ["motivo teste"],
 		},
 		ifl: { score: 0.1, nivel: "verde", motivos: [] },
+		regime: "convectivo",
 	},
 };
 fn(data);
