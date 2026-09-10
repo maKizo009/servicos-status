@@ -34,14 +34,14 @@ export const SENTINELAS = [
 		codigo: "64504210",
 		nome: "Cebolão",
 		rio: "Tibagi",
-		papel: "Central — calha na altura da foz do Bitumirim",
-		municipio: "Castro",
+		papel: "Jusante distante (Londrina, ~180 km da foz) — NÃO prevê Ipiranga; só confirma escoamento dias depois",
+		municipio: "Londrina",
 	},
 	{
 		codigo: "64507000",
 		nome: "Jataizinho (UHE Capivara)",
 		rio: "Tibagi",
-		papel: "Jusante — confirma escoamento (não prevê Ipiranga)",
+		papel: "Jusante distante — NÃO prevê Ipiranga; só confirma escoamento dias depois",
 		municipio: "Jataizinho",
 	},
 ] as const;
