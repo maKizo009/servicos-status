@@ -2119,6 +2119,12 @@ function renderHidroCard(data) {
     if (f === 'atencao') return ' <span class="bulletin-tag" style="background:var(--a1);color:var(--a5)">atenção</span>';
     return '';
   };
+  const fraseIBR = (nivel) => {
+    if (nivel === 'vermelho') return 'Risco alto: Tibagi cheio + chuva — evite áreas baixas de rio.';
+    if (nivel === 'laranja') return 'Risco de remanso: o Tibagi pode segurar o Bitumirim.';
+    if (nivel === 'amarelo') return 'Atenção: rio subindo, acompanhe.';
+    return 'Rios em nível normal, escoando livremente.';
+  };
   const ibrPanel = ibr
     ? `<div style="border:1px solid var(--md-sys-color-outline-variant);border-radius:10px;padding:10px;margin-bottom:6px;background:var(--md-sys-color-surface-container-low)">
       <div style="display:flex;justify-content:space-between;align-items:baseline">
@@ -2128,7 +2134,7 @@ function renderHidroCard(data) {
       <div style="height:6px;border-radius:3px;background:var(--md-sys-color-surface-container-high);margin-top:6px;overflow:hidden">
         <div style="height:100%;width:${Math.min(100, Math.round(ibr.score / 1.2 * 100))}%;background:${ibr.nivel === 'verde' ? 'var(--g5)' : ibr.nivel === 'amarelo' ? 'var(--a4)' : 'var(--r5)'}"></div>
       </div>
-      <div style="font-size:11.5px;opacity:.8;margin-top:6px">Índice de Bloqueio por Remanso — quanto o Tibagi segura o Bitumirim (0 = livre, 1,2 = travado). Calibrado nas cheias de out/23, dez/24 e jan/25.</div>
+      <div style="font-size:12.5px;color:var(--text);margin-top:8px;font-weight:600">${esc(fraseIBR(ibr.nivel))}</div>
     </div>`
     : '';
   const motivos = (ibr && ibr.motivos && ibr.motivos.length)
@@ -2139,13 +2145,18 @@ function renderHidroCard(data) {
     return `<div style="border-top:1px solid var(--md-sys-color-outline-variant);padding-top:8px;margin-top:8px">
       <div style="font-weight:600;color:var(--text)">${nome} <span style="font-weight:400;opacity:.7">· ${esc(e.codigo)}</span>${faixaBadge(e.faixa)}</div>
       <div>Nível ${fmtM(e.nivelCm)}${fmtDelta(e.delta6hCm)} · Vazão ${fmtV(e.vazaoM3s)}</div>
-      <div style="font-size:11.5px;opacity:.75">${esc(e.papel)}</div>
     </div>`;
   }).join('');
-  const resumo = esc(h.resumoRisco || 'Estimativa por triangulação — referência regional.');
-  content.innerHTML = ibrPanel + motivos +
-    `<div style="font-size:12.5px;color:var(--text);line-height:1.5;margin-bottom:6px">${resumo}</div>` + rows +
-    `<div style="border:1px solid var(--r5);border-radius:10px;padding:10px;margin-top:10px;font-size:11.5px;line-height:1.5;color:var(--text)">⚠️ <strong>Isto é ESTIMATIVA de algoritmo, não medição oficial.</strong> O Bitumirim não tem régua — tudo aqui é triangulação de 3 pontos no Tibagi calibrada em cheias passadas. Não prevê o futuro e não substitui a Defesa Civil (199) nem o IAT. Em dúvida ou emergência, saia de área de risco e siga os canais oficiais.</div>` +
+  const formula = `<details style="margin-top:8px;font-size:12px;color:var(--text2)">
+    <summary style="cursor:pointer;font-weight:600;color:var(--text)">∑ Como é calculado (fórmula aberta)</summary>
+    <div style="margin-top:6px;line-height:1.6">
+      <div><strong>IBR = descarga (0,4) + calha do Tibagi (0,4/0,6) + chuva local (0,1/0,2)</strong>, de 0 (livre) a 1,2 (travado). Estágios: &lt;0,3 verde · 0,3–0,5 amarelo · 0,5–0,8 laranja · ≥0,8 vermelho.</div>
+      <div style="margin-top:4px">Faixas por sentinela calibradas com 180 dias reais (atenção = P90, alerta = P98). Eventos de referência: out/23 (histórica), dez/24 (regional) e jan/25 (flash local, que sentinela não vê).</div>
+      <div style="margin-top:6px"><a href="/api/hidro" style="color:var(--g5)">Dados crus (JSON)</a> · <a href="https://github.com/maKizo009/servicos-status/issues" style="color:var(--g5)">Sugerir melhoria</a></div>
+    </div>
+  </details>`;
+  content.innerHTML = ibrPanel + motivos + rows + formula +
+    `<div style="border:1px solid var(--r5);border-radius:10px;padding:10px;margin-top:10px;font-size:11.5px;line-height:1.5;color:var(--text)">⚠️ <strong>Estimativa de algoritmo, não medição oficial.</strong> O Bitumirim não tem régua. Não prevê o futuro e não substitui a Defesa Civil (199) nem o IAT.</div>` +
     `<div style="font-size:11.5px;opacity:.6;margin-top:8px">Atualizado: ${h.atualizadoEm ? new Date(h.atualizadoEm).toLocaleString('pt-BR') : '—'}</div>`;
 }
 
