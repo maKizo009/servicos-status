@@ -883,6 +883,7 @@ body{font-family:var(--font);background:var(--md-sys-color-surface);color:var(--
           <div class="map-layer-selector">
             <button type="button" class="layer-btn" id="layerStreetBtn">🗺️ Mapa</button>
             <button type="button" class="layer-btn active" id="layerSatBtn">🛰️ Satélite HD</button>
+            <button type="button" class="layer-btn active" id="colorModeBtn" title="Alternar paleta do radar: estilo Simepar (verde/amarelo/vermelho) ou azul original">🎨 Cores: Simepar</button>
             <button type="button" class="layer-btn" id="btnFullscreen">🖥️ Tela Cheia</button>
           </div>
           <div id="weatherMap"></div>
@@ -915,6 +916,11 @@ body{font-family:var(--font);background:var(--md-sys-color-surface);color:var(--
               <span class="nowcast-movement" id="nowcastMovement">—</span>
             </div>
             <div class="nowcast-meta" id="nowcastMeta"></div>
+            <div id="nowcastLegend" style="display:flex;gap:10px;flex-wrap:wrap;font-size:11.5px;color:var(--text2);margin-top:6px">
+              <span><span style="display:inline-block;width:10px;height:10px;border-radius:3px;background:#2FA32F;margin-right:4px"></span>Fraco</span>
+              <span><span style="display:inline-block;width:10px;height:10px;border-radius:3px;background:#F5D100;margin-right:4px"></span>Moderado</span>
+              <span><span style="display:inline-block;width:10px;height:10px;border-radius:3px;background:#D92600;margin-right:4px"></span>Forte</span>
+            </div>
           </div>
 
           <div class="cemaden-box" id="cemadenBox" style="display:none">
@@ -1967,22 +1973,7 @@ async function fetchWeatherData() {
       radarFrames = [...pastFrames, ...nowcastFrames];
       radarPastCount = pastFrames.length;
 
-      radarTileLayers.forEach(l => map.removeLayer(l));
-      radarTileLayers = [];
-
-      radarFrames.forEach((frame) => {
-        const tileUrl = `${host}${frame.path}/256/{z}/{x}/{y}/2/1_1.png`;
-        const layer = L.tileLayer(tileUrl, {
-          pane: 'radarPane',
-          tileSize: 256,
-          opacity: 0,
-          maxNativeZoom: 7,
-          maxZoom: 14,
-          className: 'rain-tile'
-        });
-        layer.addTo(map);
-        radarTileLayers.push(layer);
-      });
+      buildRadarLayers(host);
 
       const slider = document.getElementById('radarSlider');
       if(slider) {
@@ -2183,6 +2174,123 @@ function renderNowcastCard(data) {
   const txt = document.getElementById('nowcastText');
   if (txt) txt.remove();
 }
+
+// ============ Paleta do radar: Azul original × estilo Simepar ============
+// O RainViewer só serve UM esquema (Universal Blue, color=2) — a diferença
+// que o Dave viu pro mosaico Simepar (verde/amarelo/vermelho) é real e é
+// só visual. A DETECÇÃO (backend) continua no azul cru; aqui recolorimos
+// tile por tile num GridLayer próprio (CORS * liberado pelo tilecache).
+// LUT: Universal Blue → dBZ (mesma tabela do backend) → cor estilo Simepar
+// amostrada da legenda oficial (verde Fraco, amarelo Moderado, vermelho Forte).
+const UB_STOPS = [
+  [-7,108,104,93],[-2,124,117,101],[3,139,130,109],[8,182,169,126],
+  [13,218,204,147],[18,54,186,229],[23,0,136,191],[28,0,98,149],
+  [33,0,74,112],[38,255,197,0],[43,255,139,0],[48,217,27,0],
+  [53,118,0,0],[58,255,139,255],[63,255,88,255],[68,255,255,255],
+];
+const SIM_STOPS = [
+  [5,[111,196,111]],[20,[47,163,47]],[30,[150,200,0]],[38,[245,209,0]],
+  [43,[240,138,0]],[48,[217,38,0]],[58,[232,56,224]],[68,[255,255,255]],
+];
+function ubDbz(r, g, b) {
+  let best = -100, bd = Infinity;
+  for (let i = 0; i < UB_STOPS.length; i++) {
+    const e = UB_STOPS[i];
+    const d = (r - e[1]) * (r - e[1]) + (g - e[2]) * (g - e[2]) + (b - e[3]) * (b - e[3]);
+    if (d < bd) { bd = d; best = e[0]; }
+  }
+  return best;
+}
+function simColor(dbz) {
+  if (dbz <= SIM_STOPS[0][0]) return SIM_STOPS[0][1];
+  for (let i = 1; i < SIM_STOPS.length; i++) {
+    if (dbz <= SIM_STOPS[i][0]) {
+      const d0 = SIM_STOPS[i - 1][0], c0 = SIM_STOPS[i - 1][1];
+      const d1 = SIM_STOPS[i][0], c1 = SIM_STOPS[i][1];
+      const t = (dbz - d0) / (d1 - d0);
+      return [0, 1, 2].map((k) => Math.round(c0[k] + (c1[k] - c0[k]) * t));
+    }
+  }
+  return SIM_STOPS[SIM_STOPS.length - 1][1];
+}
+let radarColorMode = 'simepar';
+try { radarColorMode = localStorage.getItem('mi_radar_colors') || 'simepar'; } catch (e) {}
+if (radarColorMode !== 'simepar' && radarColorMode !== 'blue') radarColorMode = 'simepar';
+let radarHost = 'https://tilecache.rainviewer.com';
+
+const SimeparRadarLayer = L.GridLayer.extend({
+  createTile: function (coords, done) {
+    const tile = document.createElement('canvas');
+    tile.width = tile.height = 256;
+    const url = this._url.replace('{z}', coords.z).replace('{x}', coords.x).replace('{y}', coords.y);
+    const img = new Image();
+    img.crossOrigin = 'anonymous';
+    img.onload = function () {
+      try {
+        const ctx = tile.getContext('2d', { willReadFrequently: true });
+        ctx.drawImage(img, 0, 0);
+        const id = ctx.getImageData(0, 0, 256, 256);
+        const p = id.data;
+        for (let i = 0; i < p.length; i += 4) {
+          if (p[i + 3] < 40) { p[i + 3] = 0; continue; }
+          const dbz = ubDbz(p[i], p[i + 1], p[i + 2]);
+          if (dbz < 5) { p[i + 3] = 0; continue; }
+          const c = simColor(dbz);
+          p[i] = c[0]; p[i + 1] = c[1]; p[i + 2] = c[2];
+        }
+        ctx.putImageData(id, 0, 0);
+        done(null, tile);
+      } catch (err) { done(err, tile); }
+    };
+    img.onerror = function (e) { done(e, tile); };
+    img.src = url;
+    return tile;
+  },
+});
+
+function makeRadarLayer(tileUrl) {
+  const opts = {
+    pane: 'radarPane',
+    tileSize: 256,
+    opacity: 0,
+    maxNativeZoom: 7,
+    maxZoom: 14,
+    className: 'rain-tile',
+  };
+  if (radarColorMode === 'simepar') return new SimeparRadarLayer(tileUrl, opts);
+  return L.tileLayer(tileUrl, opts);
+}
+
+function buildRadarLayers(host) {
+  if (host) radarHost = host;
+  radarTileLayers.forEach(l => map.removeLayer(l));
+  radarTileLayers = [];
+  radarFrames.forEach((frame) => {
+    const tileUrl = `${radarHost}${frame.path}/256/{z}/{x}/{y}/2/1_1.png`;
+    const layer = makeRadarLayer(tileUrl);
+    layer.addTo(map);
+    radarTileLayers.push(layer);
+  });
+  showRadarFrame(currentFrameIndex);
+  syncColorModeBtn();
+}
+
+function syncColorModeBtn() {
+  const b = document.getElementById('colorModeBtn');
+  if (!b) return;
+  const isSim = radarColorMode === 'simepar';
+  b.textContent = isSim ? '🎨 Cores: Simepar' : '🎨 Cores: Azuis';
+  b.classList.toggle('active', isSim);
+  const meta = document.getElementById('nowcastLegend');
+  if (meta) meta.style.display = isSim ? 'flex' : 'none';
+}
+
+document.addEventListener('click', (ev) => {
+  if (!ev.target || ev.target.id !== 'colorModeBtn') return;
+  radarColorMode = radarColorMode === 'simepar' ? 'blue' : 'simepar';
+  try { localStorage.setItem('mi_radar_colors', radarColorMode); } catch (e) {}
+  buildRadarLayers();
+});
 
 function haversineKm(lat1, lon1, lat2, lon2) {
   const R = 6371;
