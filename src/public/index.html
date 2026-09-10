@@ -2086,8 +2086,21 @@ function renderHidroCard(data) {
     return;
   }
   box.style.display = 'flex';
+  // IBR manda na tag: 4 estágios calibrados; sem IBR, cai no legado.
+  const ibr = h.ibr || null;
+  const nivelCores = {
+    verde: ['var(--g1)', 'var(--g6)'],
+    amarelo: ['var(--a1)', 'var(--a5)'],
+    laranja: ['var(--r1)', 'var(--r6)'],
+    vermelho: ['var(--r1)', 'var(--r6)'],
+  };
   if (tag) {
-    if (h.riscoCheia === 'watch' || h.riscoEnxurrada === 'warn') {
+    if (ibr && nivelCores[ibr.nivel]) {
+      tag.textContent = 'IBR ' + ibr.nivel.toUpperCase();
+      tag.style.background = nivelCores[ibr.nivel][0];
+      tag.style.color = nivelCores[ibr.nivel][1];
+      if (ibr.nivel === 'vermelho') tag.style.fontWeight = '800';
+    } else if (h.riscoCheia === 'watch' || h.riscoEnxurrada === 'warn') {
       tag.textContent = 'Atenção';
       tag.style.background = 'var(--a1)';
       tag.style.color = 'var(--a5)';
@@ -2100,16 +2113,39 @@ function renderHidroCard(data) {
   const fmtM = (cm) => cm == null ? '—' : (cm/100).toFixed(2).replace('.', ',') + ' m';
   const fmtV = (v) => v == null ? '—' : Math.round(v) + ' m³/s';
   const fmtDelta = (d) => d == null ? '' : ` <span style="opacity:.7">(${d>0?'+':''}${(d/100).toFixed(2).replace('.', ',')} m /6h)</span>`;
+  const faixaBadge = (f) => {
+    if (f === 'critico') return ' <span class="bulletin-tag" style="background:var(--r1);color:var(--r6);font-weight:800">CRÍTICO</span>';
+    if (f === 'alerta') return ' <span class="bulletin-tag" style="background:var(--r1);color:var(--r6)">alerta</span>';
+    if (f === 'atencao') return ' <span class="bulletin-tag" style="background:var(--a1);color:var(--a5)">atenção</span>';
+    return '';
+  };
+  const ibrPanel = ibr
+    ? `<div style="border:1px solid var(--md-sys-color-outline-variant);border-radius:10px;padding:10px;margin-bottom:6px;background:var(--md-sys-color-surface-container-low)">
+      <div style="display:flex;justify-content:space-between;align-items:baseline">
+        <strong style="color:var(--text)">IBR ${esc(String(ibr.score).replace('.', ','))}</strong>
+        <span style="font-weight:700">${esc(ibr.nivel.toUpperCase())}</span>
+      </div>
+      <div style="height:6px;border-radius:3px;background:var(--md-sys-color-surface-container-high);margin-top:6px;overflow:hidden">
+        <div style="height:100%;width:${Math.min(100, Math.round(ibr.score / 1.2 * 100))}%;background:${ibr.nivel === 'verde' ? 'var(--g5)' : ibr.nivel === 'amarelo' ? 'var(--a4)' : 'var(--r5)'}"></div>
+      </div>
+      <div style="font-size:11.5px;opacity:.8;margin-top:6px">Índice de Bloqueio por Remanso — quanto o Tibagi segura o Bitumirim (0 = livre, 1,2 = travado). Calibrado nas cheias de out/23, dez/24 e jan/25.</div>
+    </div>`
+    : '';
+  const motivos = (ibr && ibr.motivos && ibr.motivos.length)
+    ? `<div style="margin:6px 0">${ibr.motivos.map((m) => `<div>• ${esc(m)}</div>`).join('')}</div>`
+    : '';
   const rows = h.estacoes.map((e) => {
     const nome = esc(e.nome.split(' (')[0]);
     return `<div style="border-top:1px solid var(--md-sys-color-outline-variant);padding-top:8px;margin-top:8px">
-      <div style="font-weight:600;color:var(--text)">${nome} <span style="font-weight:400;opacity:.7">· ${esc(e.codigo)}</span></div>
+      <div style="font-weight:600;color:var(--text)">${nome} <span style="font-weight:400;opacity:.7">· ${esc(e.codigo)}</span>${faixaBadge(e.faixa)}</div>
       <div>Nível ${fmtM(e.nivelCm)}${fmtDelta(e.delta6hCm)} · Vazão ${fmtV(e.vazaoM3s)}</div>
       <div style="font-size:11.5px;opacity:.75">${esc(e.papel)}</div>
     </div>`;
   }).join('');
   const resumo = esc(h.resumoRisco || 'Estimativa por triangulação — referência regional.');
-  content.innerHTML = `<div style="font-size:12.5px;color:var(--text);line-height:1.5;margin-bottom:6px">${resumo}</div>` + rows +
+  content.innerHTML = ibrPanel + motivos +
+    `<div style="font-size:12.5px;color:var(--text);line-height:1.5;margin-bottom:6px">${resumo}</div>` + rows +
+    `<div style="border:1px solid var(--r5);border-radius:10px;padding:10px;margin-top:10px;font-size:11.5px;line-height:1.5;color:var(--text)">⚠️ <strong>Isto é ESTIMATIVA de algoritmo, não medição oficial.</strong> O Bitumirim não tem régua — tudo aqui é triangulação de 3 pontos no Tibagi calibrada em cheias passadas. Não prevê o futuro e não substitui a Defesa Civil (199) nem o IAT. Em dúvida ou emergência, saia de área de risco e siga os canais oficiais.</div>` +
     `<div style="font-size:11.5px;opacity:.6;margin-top:8px">Atualizado: ${h.atualizadoEm ? new Date(h.atualizadoEm).toLocaleString('pt-BR') : '—'}</div>`;
 }
 
