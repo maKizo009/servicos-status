@@ -38,7 +38,10 @@ import { fmtEta, haversineKm, type ThreatVerdict } from "./radar-analysis.js";
 
 export const LLM_TTL_MS = 30 * 60_000;
 const LLM_TIMEOUT_MS = 25_000;
-const LLM_MAX_TOKENS = 400;
+// Modelos de raciocínio (minimax-m3 etc.) gastam o budget PENSANDO: com 400
+// tokens o finish vinha "length" com content vazio. 2000 dá folga pro
+// raciocínio + ~150 tokens de boletim (custo segue irrelevante: ~US$0,0006).
+const LLM_MAX_TOKENS = 2000;
 
 export const LLM_CHAIN = [
 	"meta/muse-spark-1.3-contributor",
