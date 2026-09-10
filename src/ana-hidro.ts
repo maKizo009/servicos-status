@@ -65,6 +65,147 @@ export const FAIXAS: Record<
 	"64507000": { atencaoCm: 271, alertaCm: 304, vazaoP98: 971 },
 };
 
+/**
+ * Tetos históricos — picos medidos nos 3 eventos de referência:
+ * - OUT23 (enchente histórica, fim out/início nov 2023): chuva 323 mm/4d em
+ *   São Braz + 257 mm em Suruvi + 90 mm em Castro; Antas 903 cm/2683 m³/s,
+ *   Cebolão 517 cm, Jataizinho 534 cm/3061 m³/s.
+ * - DEZ24 (cheia regional, 07-09/12/2024): 149+128 mm em São Braz,
+ *   106+99 mm em Suruvi; Antas 622 cm/1366 m³/s, Cebolão 391 cm,
+ *   Jataizinho 366 cm/1430 m³/s (pico com ~3 dias de atraso da chuva).
+ * - JAN25 (flash local, 19/01/2025): 143 mm/dia em São Braz (19 mm em Suruvi
+ *   a 11 km — tromba hiper-localizada); Tibagi CALMO (Antas 378, Cebolão 325,
+ *   Jataizinho 256, todos abaixo do P90). Prova: sentinela não vê flash local.
+ */
+export const TETOS_HISTORICOS = {
+	out23: {
+		antasCm: 903,
+		cebolaoCm: 517,
+		jataizinhoCm: 534,
+		chuvaSpBrazMm: 323,
+	},
+	dez24: {
+		antasCm: 622,
+		cebolaoCm: 391,
+		jataizinhoCm: 366,
+		chuvaSpBrazMm: 298,
+	},
+	jan25: {
+		antasCm: 378,
+		cebolaoCm: 325,
+		jataizinhoCm: 256,
+		chuvaSpBrazMm: 143,
+	},
+} as const;
+
+/** Nível crítico = teto DEZ24 (cheia regional recente, abaixo da histórica). */
+export const NIVEL_CRITICO: Record<string, number> = {
+	"64491000": TETOS_HISTORICOS.dez24.antasCm,
+	"64504210": TETOS_HISTORICOS.dez24.cebolaoCm,
+	"64507000": TETOS_HISTORICOS.dez24.jataizinhoCm,
+};
+
+/** Faixa estendida com o estágio crítico (≥ teto DEZ24). */
+export function faixaEstendida(
+	codigo: string,
+	nivelCm: number | null,
+): "normal" | "atencao" | "alerta" | "critico" | null {
+	if (nivelCm == null) return null;
+	const crit = NIVEL_CRITICO[codigo];
+	if (crit != null && nivelCm >= crit) return "critico";
+	return faixaNivel(codigo, nivelCm);
+}
+
+export type NivelIBR = "verde" | "amarelo" | "laranja" | "vermelho";
+
+export interface ResultadoIBR {
+	score: number;
+	nivel: NivelIBR;
+	motivos: string[];
+}
+
+/**
+ * Índice de Bloqueio por Remanso (IBR) — estrutura proposta pelo Gemini,
+ * números NOSSOS (faixas P90/P98 calibradas + tetos OUT23/DEZ24/JAN25).
+ * Pesos: descarga/antenas 0.4 + corpo receptor 0.4/0.6 + chuva local 0.2.
+ * Estágios: <0.3 verde · 0.3–0.5 amarelo · 0.5–0.8 laranja · ≥0.8 vermelho.
+ */
+export function calcularIBR(input: {
+	nAntas: number | null;
+	deltaAntas6h: number | null;
+	vazaoAntas: number | null;
+	chuvaAntas: number | null;
+	nCebolao: number | null;
+	chuvaIpiranga6h: number | null;
+}): ResultadoIBR {
+	const motivos: string[] = [];
+	let score = 0;
+	const fA = FAIXAS["64491000"];
+	const fC = FAIXAS["64504210"];
+
+	// 1. Cabeça da onda / descarga Mauá via Antas
+	if (
+		(input.nAntas != null && input.nAntas >= fA.alertaCm) ||
+		(input.deltaAntas6h != null && input.deltaAntas6h >= 30)
+	) {
+		score += 0.4;
+		motivos.push(
+			"Antas em alerta ou subindo ≥30 cm/6h (cabeça da onda/descarga Mauá)",
+		);
+	} else if (input.nAntas != null && input.nAntas >= fA.atencaoCm) {
+		score += 0.2;
+		motivos.push("Antas em atenção (montante carregando)");
+	}
+	// Descarga confirmada por vazão: Antas ≥P98 de vazão SEM chuva local =
+	// água do reservatório, não da chuva (assinatura da UHE liberando).
+	if (
+		input.vazaoAntas != null &&
+		input.vazaoAntas >= fA.vazaoP98 &&
+		(input.chuvaAntas ?? 0) < 10
+	) {
+		score += 0.2;
+		motivos.push(
+			`descarga Mauá por vazão (${Math.round(input.vazaoAntas)} m³/s ≥ P98 sem chuva local)`,
+		);
+	}
+
+	// 2. Corpo receptor (Cebolão) — quanto cabe ainda no Tibagi médio
+	if (input.nCebolao != null && input.nCebolao >= fC.alertaCm) {
+		score += 0.6;
+		motivos.push(
+			`Cebolão em alerta (${(input.nCebolao / 100).toFixed(2).replace(".", ",")} m ≥ P98) — calha quase sem folga`,
+		);
+	} else if (input.nCebolao != null && input.nCebolao >= fC.atencaoCm) {
+		score += 0.4;
+		motivos.push("Cebolão em atenção — capacidade de calha reduzida");
+	}
+
+	// 3. Enchimento próprio do Bitumirim (chuva local 6h)
+	const ch = input.chuvaIpiranga6h ?? 0;
+	if (ch >= 25) {
+		score += 0.2;
+		motivos.push(
+			`${ch.toFixed(1).replace(".", ",")} mm/6h em Ipiranga — Bitumirim enchendo sozinho`,
+		);
+	} else if (ch >= 10) {
+		score += 0.1;
+		motivos.push(
+			`${ch.toFixed(1).replace(".", ",")} mm/6h em Ipiranga — contribuição local relevante`,
+		);
+	}
+
+	score = Math.round(score * 10) / 10;
+	const nivel: NivelIBR =
+		score >= 0.8
+			? "vermelho"
+			: score >= 0.5
+				? "laranja"
+				: score >= 0.3
+					? "amarelo"
+					: "verde";
+	return { score, nivel, motivos };
+}
+
 /** Posição do nível atual contra as faixas. */
 export function faixaNivel(
 	codigo: string,
@@ -111,6 +252,8 @@ export interface HidroState {
 	/** Avaliação rápida — usada no llms.txt e alertas */
 	riscoEnxurrada: "ok" | "warn" | "critical";
 	riscoCheia: "ok" | "watch" | "critical";
+	/** IBR (Índice de Bloqueio por Remanso) — 4 estágios calibrados */
+	ibr: ResultadoIBR | null;
 	/** Texto curto para o llms.txt */
 	resumoRisco: string;
 }
@@ -281,7 +424,7 @@ async function fetchEstacao(
 export function avaliarRisco(
 	estacoes: HidroEstacao[],
 	cemadenAcc6hMax: number | null,
-): Pick<HidroState, "riscoEnxurrada" | "riscoCheia" | "resumoRisco"> {
+): Pick<HidroState, "riscoEnxurrada" | "riscoCheia" | "resumoRisco" | "ibr"> {
 	// Triangulação é referência regional (Ipiranga NÃO tem estação
 	// fluviométrica própria — o Bitumirim não é medido direto). Por isso a
 	// classificação automática é CONSERVADORA: só sobe para "watch" com
@@ -292,6 +435,7 @@ export function avaliarRisco(
 		return {
 			riscoEnxurrada: "ok",
 			riscoCheia: "ok",
+			ibr: null,
 			resumoRisco:
 				"Triangulação indisponível no momento (sentinelas sem dados). Ipiranga não possui estação fluviométrica própria — para alertas oficiais, siga Defesa Civil e IAT.",
 		};
@@ -362,12 +506,28 @@ export function avaliarRisco(
 		motivos.push(
 			`chuva convergente (${chuvaLocal.toFixed(1).replace(".", ",")} mm/6h em Ipiranga + ${chuvaSentinela.toFixed(1).replace(".", ",")} mm/h na sentinela)`,
 		);
+	// IBR (Índice de Bloqueio por Remanso): score ponderado 0–1.2 com os
+	// mesmos ingredientes acima, em 4 estágios calibrados nos eventos
+	// OUT23/DEZ24/JAN25. O watch continua valendo pelas regras individuais;
+	// o IBR dá o estágio único pro card e pro llms.txt.
+	const ibr = calcularIBR({
+		nAntas: antas?.nivelCm ?? null,
+		deltaAntas6h: antas?.delta6hCm ?? null,
+		vazaoAntas: antas?.vazaoM3s ?? null,
+		chuvaAntas: antas?.chuvaMm ?? null,
+		nCebolao: cebolao?.nivelCm ?? null,
+		chuvaIpiranga6h: cemadenAcc6hMax,
+	});
+	const watchFinal =
+		watch || ibr.nivel === "laranja" || ibr.nivel === "vermelho";
 	return {
-		riscoEnxurrada: watch ? "warn" : "ok",
-		riscoCheia: watch ? "watch" : "ok",
+		riscoEnxurrada: watchFinal ? "warn" : "ok",
+		riscoCheia: watchFinal ? "watch" : "ok",
+		ibr,
 		resumoRisco:
 			`Triangulação no Rio Tibagi (referência regional — o Bitumirim em Ipiranga não é medido direto; faixas calibradas com 180 dias reais: atenção=P90, alerta=P98). ` +
 			`${trechos.join(" · ")}.` +
+			` IBR ${ibr.score.toFixed(1).replace(".", ",")} (${ibr.nivel}).` +
 			(motivos.length > 0
 				? ` Atenção: ${motivos.join("; ")} — acompanhe Defesa Civil/IAT.`
 				: " Níveis sem tendência de cheia no momento.") +
@@ -411,6 +571,7 @@ export async function fetchHidroTriangulacao(
 			erro: msg,
 			riscoEnxurrada: "ok",
 			riscoCheia: "ok",
+			ibr: null,
 			resumoRisco: "Dados hidro temporariamente indisponíveis.",
 		};
 	}
