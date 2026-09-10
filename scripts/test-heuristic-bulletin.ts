@@ -107,7 +107,7 @@ describe("Heurística determinística (sem LLM)", () => {
 		expect(b).not.toMatch(/ALERTA/);
 	});
 
-	test("aproximando mas LONGE (>200km/ETA>360) → não há alerta iminente", () => {
+	test("aproximando mas LONGE (>200km/ETA>360) → ETA único e honesto, sem 'muitas horas'", () => {
 		const b = buildHeuristicBulletin(
 			nowcastCom(
 				threatCell({
@@ -126,7 +126,11 @@ describe("Heurística determinística (sem LLM)", () => {
 			{ alertLevel: "monitor", nearestThreatKm: 250 },
 		);
 		expect(b.toLowerCase?.() ?? b).not.toContain("ALERTA");
-		expect(b.toLowerCase?.() ?? b).toContain("não há alerta iminente");
+		expect(b.toLowerCase?.() ?? b).toContain(
+			"longe demais para alerta iminente",
+		);
+		expect(b).not.toContain("muitas horas");
+		expect(b).toMatch(/cerca de 7 horas/);
 	});
 
 	test("sem núcleo + ECMWF alto → resumo numérico honesto sem narrativa de núcleo", () => {

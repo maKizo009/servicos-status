@@ -142,7 +142,8 @@ export interface WeatherBulletin {
 		| "gemini"
 		| "heuristic"
 		| "nvidia_nim_vision"
-		| "opencode_vision";
+		| "opencode_vision"
+		| "openrouter";
 	generatedAt: number;
 }
 
@@ -182,7 +183,12 @@ export interface WeatherState {
 	/** Boletim narrativo do nowcast (Camada B — VLM Gemini/NIM ou heurística) */
 	nowcastBulletin?: {
 		text: string;
-		source: "opencode_vision" | "gemini" | "nvidia_nim_vision" | "heuristic";
+		source:
+			| "opencode_vision"
+			| "gemini"
+			| "nvidia_nim_vision"
+			| "heuristic"
+			| "openrouter";
 		generatedAt: number;
 	} | null;
 	/** Chuva em tempo real dos pluviômetros CEMADEN de Ipiranga (fonte pública). */

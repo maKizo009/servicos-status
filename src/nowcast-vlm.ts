@@ -69,7 +69,9 @@ export interface LocalRainContext {
 	condition?: string | null;
 }
 
-function fraseChuvaLocal(local?: LocalRainContext | null): string | null {
+export function fraseChuvaLocal(
+	local?: LocalRainContext | null,
+): string | null {
 	if (!local) return null;
 	const c1 = local.acc1hrMax ?? 0;
 	const c6 = local.acc6hrMax ?? 0;
@@ -107,7 +109,12 @@ function fraseChuvaLocal(local?: LocalRainContext | null): string | null {
 
 export interface NowcastBulletin {
 	text: string;
-	source: "opencode_vision" | "gemini" | "nvidia_nim_vision" | "heuristic";
+	source:
+		| "opencode_vision"
+		| "gemini"
+		| "nvidia_nim_vision"
+		| "heuristic"
+		| "openrouter";
 	generatedAt: number;
 }
 
@@ -931,7 +938,7 @@ export function buildHeuristicBulletin(
 	// (não dizer "se deslocando a 0 km/h" — frase sem sentido, pitfall skill).
 	const temMovimento = Boolean(m && m.speedKmh > 1);
 	const movimentoTxt = temMovimento
-		? `${dirLabel ? `, deslocando-se para ${dirLabel}` : ", em movimento"} a ${m!.speedKmh} km/h`
+		? `${dirLabel ? `, deslocando-se para ${dirLabel}` : ", em movimento"} a ${Math.round(m!.speedKmh)} km/h`
 		: ", sem movimento significativo (estacionário)";
 	const baseLoc = `Núcleo de chuva ${intensity} em ${rotulo.nome}${rotUf}${rotulo.metodo}, a ${ipirangaKm} km de Ipiranga${movimentoTxt}.`;
 
@@ -939,7 +946,15 @@ export function buildHeuristicBulletin(
 	if (verdict?.approach === "approaching") {
 		const longe = ipirangaKm > 200 || (verdict.etaMin ?? 0) > 360;
 		if (longe) {
-			corpo = `${baseLoc} O núcleo ${approachLabel.approaching}, mas só chegaria em muitas horas (se não dissipar) — não há alerta iminente para Ipiranga.${projNote}`;
+			// Bug A (10/09/2026): o texto antigo colava o ETA ("~2h") e na
+			// mesma frase dizia "só chegaria em muitas horas" — contradição
+			// entre duas metades do template. Agora há UM ETA só, honesto.
+			// Bug B: com chuva ATIVA em Ipiranga, núcleo vindo pra cá pode
+			// REFORÇAR — nunca "sem alerta iminente" seco.
+			const reforco = fraseLocal
+				? " Como já chove em Ipiranga, este núcleo pode reforçar a chuva nas próximas horas — acompanhe."
+				: " Está longe demais para alerta iminente (pode dissipar no caminho).";
+			corpo = `${baseLoc} O núcleo ${approachLabel.approaching}.${reforco}${projNote}`;
 		} else if (alertLevel === "alert") {
 			corpo = `${baseLoc} O núcleo ${approachLabel.approaching} — ALERTA: há risco real de chuva em Ipiranga nas próximas ~2 horas.${projNote}`;
 		} else {
