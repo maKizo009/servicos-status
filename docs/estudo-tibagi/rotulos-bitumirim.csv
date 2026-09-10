@@ -1,0 +1,8 @@
+evento,data_hora,bitumirim_obs,uvaia_cm,uvaia_tendencia,chuva_local_d0,fonte
+OUT23,2023-10-29 18:00,transbordou (rodovia interditada),739,subindo ~5cm/h,"São Braz 96.9mm 29/10; bacia 260-466 na janela",foto Dave + ANA 64444000 horária
+OUT23-fim,2023-11-05,voltou pra calha (rua livre),1189->pico 03/11,",,",foto Dave
+DEZ24,2024-12-09 13:00,transbordou (atravessou rodovia),339,subindo,"São Braz 149mm 07/12 + 128mm 09/12",foto Dave + ANA 64444000 15min
+DEZ24-fim,2024-12-12,fora da calha (água baixa),815->pico 13/12,",,",foto Dave
+JAN25-max,2025-01-21 07:29,NÃO transbordou (régua 4m no máximo),180,calmo,"São Braz 143mm 19/01; Suruvi 21.8",foto Dave + régua + ANA 64444000 horária
+2011,2011-08-07,transbordou (domingo — 1º domingo de ago),934 (SIH 7h),",,",memória Dave + SIH uvaia_2011
+"2019,2017,2015,2014,2013,2012",diversas,transbordou (lembrança),"picos SIH 921/659/986/995/1033/645",",,",memória Dave (sem foto)
