@@ -42,9 +42,7 @@ import {
 	ANALYSIS_SMOOTH,
 	ANALYSIS_TILE_PX,
 	getRadarNowcast,
-	REGION_GRID,
 } from "./nowcast-service.js";
-import { generateNowcastBulletin } from "./nowcast-vlm.js";
 import { fmtEta } from "./radar-analysis.js";
 import { checkRateLimit, checkRateLimitScope } from "./rate-limiter.js";
 import { fetchSimeparRadar } from "./simepar-radar.js";
@@ -511,39 +509,58 @@ export async function syncWeatherCycle(): Promise<WeatherState> {
 				}
 			}
 			if (!state.nowcastBulletin) {
-				// Boletim 100% determinístico (2026-08-18 — "chega de IA").
-				// Sempre gera e persiste a heurística; não há mais VLM na cadeia,
-				// então a regra antiga "mantém boletim VLM se < 60min" (p/ não sujar
-				// com heurística pós-falha) foi REMOVIDA — ela só serviria para
-				// segurar o último boletim VLM velho do cache por até 60 min.
-				// Local-first (10/09/2026): chuva medida em Ipiranga (CEMADEN)
-				// abre o boletim; núcleo distante vira segundo plano.
+				// Boletim inteligente (10/09/2026): LLM analista (30 min) → heurística.
+				// O LLM reconcilia fontes contraditórias (template não sabe fazer
+				// isso); a heurística preenche intervalos e assume sem rede.
+				const { buildAnalystContext, generateSmartBulletin } = await import(
+					"./llm-bulletin.js"
+				);
 				const ests = state.cemaden?.estacoes ?? [];
 				const maxAcc = (f: (e: (typeof ests)[number]) => number | null) =>
 					ests.length ? Math.max(...ests.map((e) => f(e) ?? 0)) : null;
-				const bulletin = await generateNowcastBulletin(
+				const localCtx = {
+					acc1hrMax: maxAcc((e) => e.acc1hr),
+					acc6hrMax: maxAcc((e) => e.acc6hr),
+					acc24hrMax: maxAcc((e) => e.acc24hr),
+					condition: weatherInfo.condition,
+				};
+				const ecmwfCtx = {
+					rainProbabilityPct: weatherInfo.rainProbabilityPct,
+					hourlyForecast: weatherInfo.hourlyForecast || [],
+				};
+				const relevance = {
+					alertLevel: state.alertLevel ?? "monitor",
+					nearestThreatKm: state.nearestThreatKm ?? null,
+				} as const;
+				const prox6h = (weatherInfo.hourlyForecast || [])
+					.slice(0, 6)
+					.reduce((s, h) => s + (h.precipitationMm ?? 0), 0);
+				const built = buildAnalystContext(nowcast, {
+					local: localCtx,
+					condition: weatherInfo.condition,
+					ecmwfPct: weatherInfo.rainProbabilityPct,
+					ecmwfProx6hMm: prox6h,
+					alertLevel: state.alertLevel ?? "monitor",
+					hidroWatch: state.hidro?.riscoCheia === "watch",
+					avisosOficiais: (state.alertasOficiais?.avisos ?? []).map(
+						(a) => `${a.fonte}: ${a.titulo}`,
+					),
+				});
+				const bulletin = await generateSmartBulletin({
 					nowcast,
-					state.radar.host,
-					state.radar.radar.past,
-					REGION_GRID,
-					{
-						rainProbabilityPct: weatherInfo.rainProbabilityPct,
-						hourlyForecast: weatherInfo.hourlyForecast || [],
+					ecmwf: ecmwfCtx,
+					relevance: {
+						alertLevel: relevance.alertLevel,
+						nearestThreatKm: relevance.nearestThreatKm,
 					},
-					{
-						alertLevel: state.alertLevel ?? "monitor",
-						nearestThreatKm: state.nearestThreatKm ?? null,
-					},
-					{
-						acc1hrMax: maxAcc((e) => e.acc1hr),
-						acc6hrMax: maxAcc((e) => e.acc6hr),
-						acc24hrMax: maxAcc((e) => e.acc24hr),
-						condition: weatherInfo.condition,
-					},
-				);
+					local: localCtx,
+					fraseLocal: built.fraseLocal,
+					analyst: built.analyst,
+					verdict: built.verdict,
+				});
 				state.nowcastBulletin = bulletin;
 				await saveNowcastBulletin(bulletin.text, bulletin.source);
-				logger.info("Boletim nowcast (determinístico) gerado e persistido", {
+				logger.info("Boletim nowcast gerado e persistido", {
 					source: bulletin.source,
 				});
 			}

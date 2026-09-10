@@ -1950,7 +1950,7 @@ async function fetchWeatherData() {
       const bEl = document.getElementById('bulletinText');
       const sEl = document.getElementById('bulletinSourceTag');
       if(bEl) bEl.textContent = bulletinText.replace(/\*\*/g, '');
-      const src = (data.bulletin?.source || data.nowcastBulletin?.source) === 'nvidia_nim_vision' ? 'VLM Vision' : (data.bulletin?.source || data.nowcastBulletin?.source) === 'nvidia_nim' ? 'NVIDIA NIM' : (data.bulletin?.source || data.nowcastBulletin?.source) === 'gemini' ? 'Gemini' : 'Engine Local';
+      const src = (data.bulletin?.source || data.nowcastBulletin?.source) === 'nvidia_nim_vision' ? 'VLM Vision' : (data.bulletin?.source || data.nowcastBulletin?.source) === 'nvidia_nim' ? 'NVIDIA NIM' : (data.bulletin?.source || data.nowcastBulletin?.source) === 'gemini' ? 'Gemini' : (data.bulletin?.source || data.nowcastBulletin?.source) === 'openrouter' ? 'IA (OpenRouter)' : 'Engine Local';
       if(sEl) sEl.textContent = `IA (${src})`;
     }
 

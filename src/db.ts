@@ -133,7 +133,7 @@ export async function initDb(): Promise<Client> {
 				source TEXT NOT NULL,
 				generated_at INTEGER NOT NULL
 			)`,
-			`CREATE TABLE IF NOT EXISTS weather_state_cache (
+				`CREATE TABLE IF NOT EXISTS weather_state_cache (
 				id INTEGER PRIMARY KEY CHECK (id = 1),
 				payload TEXT NOT NULL,
 				updated_at INTEGER NOT NULL
@@ -155,10 +155,10 @@ export async function initDb(): Promise<Client> {
 				session_id TEXT,
 				ts INTEGER NOT NULL
 			)`,
-			// Dedup de instalação: 1 evento 'install' por dispositivo (session_id).
-			// Sem isso, cada abertura do app em modo standalone contava +1 install
-			// (achado 2026-08-12 — número de instalações inflado no painel).
-			`CREATE UNIQUE INDEX IF NOT EXISTS idx_app_events_install_once
+				// Dedup de instalação: 1 evento 'install' por dispositivo (session_id).
+				// Sem isso, cada abertura do app em modo standalone contava +1 install
+				// (achado 2026-08-12 — número de instalações inflado no painel).
+				`CREATE UNIQUE INDEX IF NOT EXISTS idx_app_events_install_once
 				ON app_events(session_id) WHERE tipo='install'`,
 				`CREATE TABLE IF NOT EXISTS app_sessions (
 				session_id TEXT PRIMARY KEY,
@@ -703,13 +703,23 @@ export async function getLatestWeatherBulletin(): Promise<WeatherBulletin | null
 export interface NowcastBulletinRecord {
 	id: number;
 	text: string;
-	source: "opencode_vision" | "gemini" | "nvidia_nim_vision" | "heuristic";
+	source:
+		| "opencode_vision"
+		| "gemini"
+		| "nvidia_nim_vision"
+		| "heuristic"
+		| "openrouter";
 	generatedAt: number;
 }
 
 export async function saveNowcastBulletin(
 	text: string,
-	source: "opencode_vision" | "gemini" | "nvidia_nim_vision" | "heuristic",
+	source:
+		| "opencode_vision"
+		| "gemini"
+		| "nvidia_nim_vision"
+		| "heuristic"
+		| "openrouter",
 ): Promise<NowcastBulletinRecord> {
 	const now = Date.now();
 	const db = await getDbClient();
@@ -736,7 +746,11 @@ export async function getLatestNowcastBulletin(): Promise<NowcastBulletinRecord 
 	return {
 		id: Number(row.id),
 		text: String(row.text),
-		source: row.source as "opencode_vision" | "nvidia_nim_vision" | "heuristic",
+		source: row.source as
+			| "opencode_vision"
+			| "nvidia_nim_vision"
+			| "heuristic"
+			| "openrouter",
 		generatedAt: Number(row.generatedAt),
 	};
 }

@@ -214,7 +214,9 @@ export function renderLlmsTxt(
 				? "IA (NVIDIA NIM Engine)"
 				: weather.bulletin.source === "gemini"
 					? "IA (Gemini API)"
-					: "Regras Heurísticas Locais"
+					: weather.bulletin.source === "openrouter"
+						? "IA (OpenRouter — analista)"
+						: "Regras Heurísticas Locais"
 		: "Sistema";
 
 	const copelServices = report?.services.find((s) => s.name === "Copel");
