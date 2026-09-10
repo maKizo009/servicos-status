@@ -35,6 +35,15 @@ export const REGION_GRID = {
 } as const;
 
 /**
+ * Resolução da análise (10/09/2026): tiles de 512px SEM suavização.
+ * 4x pixels = centroide/ETA mais estáveis; tile cru = cor pura da paleta
+ * (dBZ exato, sem borda borrada inflando núcleo). O mapa do site continua
+ * 256 suavizado (visual) — só a DETECÇÃO usa 512.
+ */
+export const ANALYSIS_TILE_PX = 512;
+export const ANALYSIS_SMOOTH = false;
+
+/**
  * Alvo do nowcast: Ipiranga/PR. Valor histórico do projeto (hardcoded em
  * llm-formatter, nowcast-vlm e frontend) centralizado aqui. Nota: pode
  * estar ~50km ao norte do centro oficial do município (-25.478, -50.583)
@@ -58,13 +67,16 @@ export async function getRadarNowcast(): Promise<NowcastResult> {
 		}
 
 		// 2. analisa os 3 frames mais recentes do grid 4x4 da região,
-		//    avaliando TODOS os núcleos fortes contra Ipiranga
+		//    avaliando TODOS os núcleos fortes contra Ipiranga.
+		//    Tiles 512px sem suavização (ANALYSIS_*): 4x pixels + cor pura.
 		const result = await analyzeRadarNowcast(
 			radar.host,
 			radar.radar.past,
 			REGION_GRID,
 			3,
 			TARGET_IPIRANGA,
+			ANALYSIS_TILE_PX,
+			ANALYSIS_SMOOTH,
 		);
 
 		cached = { result, at: Date.now() };

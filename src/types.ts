@@ -193,5 +193,7 @@ export interface WeatherState {
 	alertaUnificado?: import("./alertas-oficiais.js").AlertaUnificado | null;
 	/** Avisos oficiais crus (INMET/Defesa Civil) usados como agravante. */
 	alertasOficiais?: import("./alertas-oficiais.js").AlertasOficiaisState | null;
+	/** Mosaico de radares do SIMEPAR (display — JPEG oficial com timestamp). */
+	simeparRadar?: import("./simepar-radar.js").SimeparRadarState | null;
 	updatedAt: number;
 }

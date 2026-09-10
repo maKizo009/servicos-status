@@ -6,6 +6,7 @@ import type { NowcastResult } from "./radar-analysis.js";
 import {
 	assessThreat,
 	fetchTileGrid,
+	fmtEta,
 	haversineKm,
 	type NormalizedRegion,
 	normalizeRegion,
@@ -874,12 +875,35 @@ export function buildHeuristicBulletin(
 
 	// Veredito de ameaça determinístico.
 	const approachLabel: Record<ThreatVerdict["approach"], string> = {
-		approaching: `se aproximando de Ipiranga (chegada estimada em cerca de ${Math.round(verdict?.etaMin ?? 0)} min, se mantiver curso e intensidade)`,
+		approaching: `se aproximando de Ipiranga (chegada estimada em ${fmtEta(verdict?.etaMin)}, se mantiver curso e intensidade)`,
 		receding:
 			"se afastando de Ipiranga — trajetória leva para longe, risco direto praticamente nulo",
 		crossing:
 			"em trajetória tangencial a Ipiranga (passa de raspão, sem aproximação direta)",
 	};
+
+	// Honestidade de alcance (anti-alucinação): no limite do alcance do radar
+	// composto a sensibilidade cai — número cravado a 400 km é chute com
+	// decimals. Confessa a incerteza em vez de fingir precisão.
+	const alcanceBaixo = ipirangaKm > 300;
+	const notaAlcance = alcanceBaixo
+		? " (núcleo no limite do alcance do radar — confiança baixa, pode dissipar ou nem existir nesse ponto)"
+		: "";
+
+	// Cruzamento com o chão (anti-alucinação): radar dizendo chuva forte EM
+	// CIMA de Ipiranga mas pluviômetro zerado = eco alto, virga ou erro —
+	// sinaliza em vez de alertar.
+	const c1 = local?.acc1hrMax ?? null;
+	const c6 = local?.acc6hrMax ?? null;
+	const ecoSuspeito =
+		ipirangaKm <= 40 &&
+		(cell.intensity === "heavy" || cell.intensity === "extreme") &&
+		c1 != null &&
+		c6 != null &&
+		c1 < 0.2 &&
+		c6 < 1
+			? " Os pluviômetros da cidade ainda não registram chuva — pode ser eco alto, chuva evaporando antes do solo ou deslocamento do núcleo; acompanhe."
+			: "";
 
 	// Projeção da trajetória (próximas cidades em 30/60/120 min).
 	let projNote = "";
@@ -930,6 +954,7 @@ export function buildHeuristicBulletin(
 		corpo = `${baseLoc} Movimento não confiável no momento — trajetória incerta; sem alerta iminente.${ecmwfAlto ? ` Modelo ECMWF: ${ecmwfPct}% de chuva (pode chegar às cidades à frente).` : ""}`;
 	}
 
-	if (fraseLocal) return `${fraseLocal} ${corpo}${ecmwfNote}`;
-	return `${corpo}${ecmwfNote}`;
+	if (fraseLocal)
+		return `${fraseLocal} ${corpo}${notaAlcance}${ecoSuspeito}${ecmwfNote}`;
+	return `${corpo}${notaAlcance}${ecoSuspeito}${ecmwfNote}`;
 }

@@ -91,6 +91,29 @@ export interface RainCell {
  * Núcleo avaliado contra um alvo (ex.: Ipiranga). Cada núcleo forte/extremo
  * recebe seu próprio veredicto — o sistema NÃO se limita ao mais intenso.
  */
+
+/** Piso de tamanho p/ threat @256px (escala com a resolução no assess). */
+export const THREAT_MIN_PIXELS_AT_256 = 12;
+
+/**
+ * Formata ETA para gente, não para robô (10/09/2026): ninguém pensa em
+ * "337 minutos". <120 min → minutos; acima → horas ("~4h", "cerca de 6 horas").
+ */
+export function fmtEta(etaMin: number | null | undefined): string {
+	if (etaMin == null || !Number.isFinite(etaMin) || etaMin <= 0)
+		return "tempo indeterminado";
+	const m = Math.round(etaMin);
+	if (m < 120) return `~${m} min`;
+	const h = m / 60;
+	if (h < 3) {
+		const hh = Math.floor(h);
+		const mm = Math.round((h - hh) * 60);
+		return mm >= 10
+			? `~${hh}h${mm}`
+			: `cerca de ${hh} ${hh === 1 ? "hora" : "horas"}`;
+	}
+	return `cerca de ${Math.round(h)} horas`;
+}
 export interface ThreatCell extends RainCell {
 	/** Distância haversine do núcleo até o alvo (km) */
 	distToTargetKm: number;
@@ -268,7 +291,10 @@ export interface NormalizedRegion {
 }
 
 /** Normaliza RegionSpec (tile único ou grid) para um mosaico analisável. */
-export function normalizeRegion(spec: RegionSpec): NormalizedRegion {
+export function normalizeRegion(
+	spec: RegionSpec,
+	tileSize = 256,
+): NormalizedRegion {
 	if ("xMax" in spec) {
 		const grid = spec as TileGrid;
 		const gw = grid.xMax - grid.xMin + 1;
@@ -283,8 +309,8 @@ export function normalizeRegion(spec: RegionSpec): NormalizedRegion {
 				y: Math.floor(grid.yMin / gridSize),
 			},
 			gridSize,
-			width: gw * 256,
-			height: gh * 256,
+			width: gw * tileSize,
+			height: gh * tileSize,
 		};
 	}
 	const b = spec as TileBounds;
@@ -292,18 +318,26 @@ export function normalizeRegion(spec: RegionSpec): NormalizedRegion {
 		grid: { z: b.z, xMin: b.x, yMin: b.y, xMax: b.x, yMax: b.y },
 		parent: b,
 		gridSize: 1,
-		width: 256,
-		height: 256,
+		width: tileSize,
+		height: tileSize,
 	};
 }
 
-/** Baixa e decodifica um tile PNG 256x256, devolvendo pixels RGBA. */
+/** Baixa e decodifica um tile PNG, devolvendo pixels RGBA.
+ *
+ * tileSize 512 = 4x pixels (centroide/ETA mais estáveis). smooth=false pede
+ * o tile CRU (sem interpolação): cor pura da paleta = dBZ exato na
+ * classificação; o tile smoothed borra as bordas e infla os núcleos.
+ * Formato RainViewer: /{size}/{z}/{x}/{y}/{color}/{smooth}_{snow}.png
+ */
 export async function fetchTile(
 	host: string,
 	framePath: string,
 	bounds: TileBounds,
+	tileSize = 256,
+	smooth = true,
 ): Promise<{ data: Buffer; width: number; height: number }> {
-	const url = `${host}${framePath}/256/${bounds.z}/${bounds.x}/${bounds.y}/2/1_1.png`;
+	const url = `${host}${framePath}/${tileSize}/${bounds.z}/${bounds.x}/${bounds.y}/2/${smooth ? 1 : 0}_1.png`;
 	const res = await fetch(url, {
 		headers: {
 			"User-Agent": "ServicosIpirangaStatus/1.0 (+https://ipiranga.pr.gov.br)",
@@ -325,6 +359,8 @@ export async function fetchTileGrid(
 	host: string,
 	framePath: string,
 	norm: NormalizedRegion,
+	tileSize = 256,
+	smooth = true,
 ): Promise<{ data: Buffer; width: number; height: number }> {
 	const { grid, width, height } = norm;
 	const composite = new PNG({ width, height });
@@ -335,16 +371,22 @@ export async function fetchTileGrid(
 			tasks.push(
 				(async () => {
 					try {
-						const tile = await fetchTile(host, framePath, {
-							z: grid.z,
-							x: tx,
-							y: ty,
-						});
-						const dstX = (tx - grid.xMin) * 256;
-						const dstY = (ty - grid.yMin) * 256;
-						for (let y = 0; y < 256; y++) {
-							for (let x = 0; x < 256; x++) {
-								const si = (y * 256 + x) * 4;
+						const tile = await fetchTile(
+							host,
+							framePath,
+							{
+								z: grid.z,
+								x: tx,
+								y: ty,
+							},
+							tileSize,
+							smooth,
+						);
+						const dstX = (tx - grid.xMin) * tileSize;
+						const dstY = (ty - grid.yMin) * tileSize;
+						for (let y = 0; y < tileSize; y++) {
+							for (let x = 0; x < tileSize; x++) {
+								const si = (y * tileSize + x) * 4;
 								const di = ((dstY + y) * width + (dstX + x)) * 4;
 								composite.data[di] = tile.data[si];
 								composite.data[di + 1] = tile.data[si + 1];
@@ -397,9 +439,16 @@ export function analyzeTile(
 	pixels: { data: Buffer; width: number; height: number },
 	bounds: TileBounds,
 	gridSize = 1,
+	tileSize = 256,
 ): FrameAnalysis {
 	const { data, width, height } = pixels;
 	const n = width * height;
+	// Limiar de ruído escala com a resolução: 8 px @256 → 32 px @512.
+	// (Sem isso, o tile 512 virava "temporal" por microborrão.)
+	const minCellPixels = Math.max(
+		MIN_CELL_PIXELS,
+		Math.round(MIN_CELL_PIXELS * (tileSize / 256) ** 2),
+	);
 
 	// Classifica todos os pixels uma única vez (dBZ por pixel; -999 = sem dado)
 	const dbzGrid = new Int16Array(n).fill(-999);
@@ -460,13 +509,15 @@ export function analyzeTile(
 				queue.push(np);
 			}
 		}
-		if (count < MIN_CELL_PIXELS) continue;
+		if (count < minCellPixels) continue;
 		const centroidX = sumX / count;
 		const centroidY = sumY / count;
+		// Mosaico tem width = tiles*tileSize px; o tile "pai" tem 256 px por
+		// definição slippy — a conversão é exata para qualquer tileSize.
 		const { lat, lon } = pixelToLatLon(
 			bounds,
-			centroidX / gridSize,
-			centroidY / gridSize,
+			(centroidX * 256) / width,
+			(centroidY * 256) / height,
 		);
 		// Componente só contém pixels >= moderate (20 dBZ) → nunca "none"
 		const intensity = intensityFromDbz(cellMaxDbz) as Exclude<
@@ -506,11 +557,12 @@ export function pixelToLatLon(
 	bounds: TileBounds,
 	px: number,
 	py: number,
+	tilePx = 256,
 ): { lat: number; lon: number } {
 	const n = 2 ** bounds.z;
-	const lonDeg = ((bounds.x + px / 256) / n) * 360 - 180;
+	const lonDeg = ((bounds.x + px / tilePx) / n) * 360 - 180;
 	const latRad = Math.atan(
-		Math.sinh(Math.PI * (1 - (2 * (bounds.y + py / 256)) / n)),
+		Math.sinh(Math.PI * (1 - (2 * (bounds.y + py / tilePx)) / n)),
 	);
 	const latDeg = (latRad * 180) / Math.PI;
 	return { lat: latDeg, lon: lonDeg };
@@ -697,9 +749,20 @@ export function assessAllThreats(
 	cells: RainCell[],
 	targetLat: number,
 	targetLon: number,
+	tileSize = 256,
 ): ThreatCell[] {
+	// Anti-alucinação: microborrão (poucos px) NÃO vira threat mesmo com dBZ
+	// alto — eco pequeno isolado é ruído/clutter, não tempestade.
+	const minPx = Math.max(
+		THREAT_MIN_PIXELS_AT_256,
+		Math.round(THREAT_MIN_PIXELS_AT_256 * (tileSize / 256) ** 2),
+	);
 	return cells
-		.filter((c) => c.intensity === "heavy" || c.intensity === "extreme")
+		.filter(
+			(c) =>
+				(c.intensity === "heavy" || c.intensity === "extreme") &&
+				c.pixelCount >= minPx,
+		)
 		.map((c) => {
 			const movement = c.trackedMovement ?? null;
 			const threat = movement
@@ -768,16 +831,29 @@ export async function analyzeRadarNowcast(
 	region: RegionSpec,
 	frameCount = 3,
 	target?: { lat: number; lon: number },
+	tileSize = 256,
+	smooth = true,
 ): Promise<NowcastResult> {
 	// usa os últimos N frames (mais recentes)
 	const frames = pastFrames.slice(-frameCount);
-	const norm = normalizeRegion(region);
+	const norm = normalizeRegion(region, tileSize);
 	const analyses: FrameAnalysis[] = [];
 
 	for (const frame of frames) {
 		try {
-			const mosaic = await fetchTileGrid(host, frame.path, norm);
-			const analysis = analyzeTile(mosaic, norm.parent, norm.gridSize);
+			const mosaic = await fetchTileGrid(
+				host,
+				frame.path,
+				norm,
+				tileSize,
+				smooth,
+			);
+			const analysis = analyzeTile(
+				mosaic,
+				norm.parent,
+				norm.gridSize,
+				tileSize,
+			);
 			analysis.time = frame.time * 1000;
 			analyses.push(analysis);
 		} catch (err) {
@@ -818,7 +894,7 @@ export async function analyzeRadarNowcast(
 	// Avalia TODOS os núcleos fortes/extremos contra o alvo
 	const threats =
 		target && latest.cells.length > 0
-			? assessAllThreats(latest.cells, target.lat, target.lon)
+			? assessAllThreats(latest.cells, target.lat, target.lon, tileSize)
 			: [];
 
 	return {

@@ -949,6 +949,15 @@ body{font-family:var(--font);background:var(--md-sys-color-surface);color:var(--
             <div id="alertaContent" style="font-size:12.5px;color:var(--text2);line-height:1.6"></div>
           </div>
 
+          <div class="cemaden-box" id="simeparBox" style="display:none">
+            <div class="cemaden-head">
+              <span style="font-size:13px;font-weight:600;color:var(--text)">🛰️ Mosaico de Radares · Simepar</span>
+              <span class="bulletin-tag">Fonte: Simepar</span>
+            </div>
+            <img id="simeparImg" alt="Mosaico de radares do Simepar" loading="lazy" style="width:100%;border-radius:8px;display:block" />
+            <div id="simeparCap" style="font-size:11.5px;opacity:.75;line-height:1.5;margin-top:6px"></div>
+          </div>
+
         </div>
       </div>
     </div>
@@ -1949,6 +1958,7 @@ async function fetchWeatherData() {
     renderCemadenCard(data);
     renderHidroCard(data);
     renderAlertaCard(data);
+    renderSimeparCard(data);
 
     if (data.radar?.radar?.past && data.radar.radar.past.length > 0) {
       const host = data.radar.host || 'https://tilecache.rainviewer.com';
@@ -2046,6 +2056,23 @@ function renderAlertaCard(data) {
     `<div style="margin-top:4px">${esc(a.descricao)}</div>` +
     (motivos ? `<div style="margin-top:6px">${motivos}</div>` : '') +
     (oficiais ? `<div style="margin-top:6px;border-top:1px solid var(--md-sys-color-outline-variant);padding-top:6px">${oficiais}</div>` : '');
+}
+
+function renderSimeparCard(data) {
+  const box = document.getElementById('simeparBox');
+  const img = document.getElementById('simeparImg');
+  const cap = document.getElementById('simeparCap');
+  if (!box || !img) return;
+  const s = data?.simeparRadar;
+  const url = (s && s.imageUrl) || 'https://lb01.simepar.br/riak/pgw-radar/product1.jpeg';
+  box.style.display = 'flex';
+  if (img.getAttribute('src') !== url) img.setAttribute('src', url);
+  img.onerror = () => { box.style.display = 'none'; };
+  if (cap) {
+    const quando = s?.atualizadoEm ? new Date(s.atualizadoEm).toLocaleString('pt-BR') : 'horário impresso na imagem';
+    const aviso = s?.teixeiraSoaresOffline ? ' Radar de Teixeira Soares fora do ar — mosaico é só Cascavel (~400 km).' : '';
+    cap.textContent = `Imagem oficial (timestamp de Brasília na foto). Verificado: ${quando}.${aviso}`;
+  }
 }
 
 function renderHidroCard(data) {

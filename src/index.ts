@@ -38,9 +38,16 @@ import {
 	renderLlmsTxt,
 } from "./llm-formatter.js";
 import { logger } from "./logger.js";
-import { getRadarNowcast, REGION_GRID } from "./nowcast-service.js";
+import {
+	ANALYSIS_SMOOTH,
+	ANALYSIS_TILE_PX,
+	getRadarNowcast,
+	REGION_GRID,
+} from "./nowcast-service.js";
 import { generateNowcastBulletin } from "./nowcast-vlm.js";
+import { fmtEta } from "./radar-analysis.js";
 import { checkRateLimit, checkRateLimitScope } from "./rate-limiter.js";
+import { fetchSimeparRadar } from "./simepar-radar.js";
 import { EventTracker } from "./state.js";
 import {
 	sendCopelAlert,
@@ -348,6 +355,10 @@ export async function syncWeatherCycle(): Promise<WeatherState> {
 		: null;
 	const hidro = await fetchHidroTriangulacao(cemadenAcc6hMax);
 
+	// Mosaico Simepar (display): só um HEAD barato para carimbar frescor.
+	// Nunca quebra o ciclo — se falhar, o card usa a imagem direta.
+	const simeparRadar = await fetchSimeparRadar();
+
 	// Boletim da tabela legada (weather_bulletins, formato "NIM texto" que não
 	// é mais gravado): só é usado se FRESCO (<60 min), senão a Camada B
 	// (nowcastBulletin VLM/heurística) é a única fonte do boletim atual.
@@ -373,6 +384,7 @@ export async function syncWeatherCycle(): Promise<WeatherState> {
 		bulletin: freshLegacyBulletin,
 		cemaden,
 		hidro,
+		simeparRadar,
 		updatedAt: Date.now(),
 	};
 
@@ -430,7 +442,7 @@ export async function syncWeatherCycle(): Promise<WeatherState> {
 				const t = nearestAlert;
 				const etaTxt =
 					t?.threat?.approach === "approaching" && t.threat.etaMin != null
-						? `, aproximando-se (ETA ~${Math.round(t.threat.etaMin)} min)`
+						? `, aproximando-se (chegada em ${fmtEta(t.threat.etaMin)})`
 						: "";
 				state.hasRegionalRain = true;
 				state.regionalRainAlert = `🌩️ Núcleo de chuva ${threatLabel ?? "forte"} detectado a ~${Math.round(t?.distToTargetKm ?? 0)} km de Ipiranga${etaTxt}. Atenção a oscilações na rede elétrica (COPEL).`;
@@ -438,7 +450,7 @@ export async function syncWeatherCycle(): Promise<WeatherState> {
 				const t = nearestWatch;
 				const etaTxt =
 					t?.threat?.approach === "approaching" && t.threat.etaMin != null
-						? ` (ETA ~${Math.round(t.threat.etaMin / 60)} h)`
+						? ` (chegada em ${fmtEta(t.threat.etaMin)})`
 						: "";
 				state.hasRegionalRain = false;
 				state.regionalRainAlert = `👁️ Vigilância: núcleo de chuva ${threatLabel ?? "forte"} detectado a ~${Math.round(t?.distToTargetKm ?? 0)} km de Ipiranga${etaTxt}. Sem alerta iminente, acompanhe.`;

@@ -1,3 +1,4 @@
+import { fmtEta } from "./radar-analysis.js";
 import type { UnifiedReport, WeatherState } from "./types.js";
 
 /** Converte graus (0=N, sentido horário) para ponto cardeal pt-BR */
@@ -69,7 +70,7 @@ function renderNowcastSection(weather: WeatherState | null): string {
 		const distKm = 2 * R * Math.asin(Math.sqrt(a));
 		const etaMin = (distKm / m.speedKmh) * 60;
 		if (etaMin < 240) {
-			etaNote = `Distância aproximada até Ipiranga: ${distKm.toFixed(0)} km (ETA ~${etaMin.toFixed(0)} min na velocidade atual, desconsiderando dissipação).`;
+			etaNote = `Distância aproximada até Ipiranga: ${distKm.toFixed(0)} km (chegada em ${fmtEta(etaMin)} na velocidade atual, desconsiderando dissipação).`;
 		} else {
 			etaNote = `Distância aproximada até Ipiranga: ${distKm.toFixed(0)} km (fora do horizonte de nowcast).`;
 		}
@@ -140,6 +141,16 @@ function renderHidroSection(weather: WeatherState | null): string {
 		: "—";
 
 	return `## 🌊 Rios — Triangulação ANA (referência regional)\n- ${sanitizeLlmField(hidro.resumoRisco, 900)}\n${linhas}\n- **Fonte:** ANA Hidro (telemetria horária) — 3 sentinelas na calha do Tibagi que cercam Ipiranga; Ipiranga não possui estação fluviométrica própria. Atualizado em: ${atualizado}\n`;
+}
+
+/** Seção Simepar — mosaico oficial de radares (display, com timestamp na imagem). */
+function renderSimeparSection(weather: WeatherState | null): string {
+	const s = weather?.simeparRadar;
+	if (!s) return "";
+	const frescor = s.atualizadoEm
+		? new Date(s.atualizadoEm).toISOString()
+		: "desconhecido";
+	return `## 🛰️ Mosaico de Radares SIMEPAR (imagem oficial)\n- Imagem: ${s.imageUrl} (JPEG 980x672, timestamp de Brasília impresso na imagem, legenda Fraco/Moderado/Forte)\n- Frescor verificado: ${frescor} | ${sanitizeLlmField(s.aviso, 300)}\n- Fonte/página: ${s.paginaFonte}\n`;
 }
 
 /** Seção Alerta Unificado — nosso alerta próprio (fusão local + oficiais). */
@@ -258,6 +269,7 @@ export function renderLlmsTxt(
 ${renderNowcastSection(weather)}
 ${renderCemadenSection(weather)}
 ${renderHidroSection(weather)}
+${renderSimeparSection(weather)}
 ${renderAlertaSection(weather)}
 ## 🤖 Boletim Informativo IA (${bulletinSource})
 ${bulletin}
