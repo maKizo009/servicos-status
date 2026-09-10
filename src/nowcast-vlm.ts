@@ -52,6 +52,58 @@ export interface EcmwfContext {
 	}[];
 }
 
+/**
+ * Chuva LOCAL medida em Ipiranga (CEMADEN + condição atual ECMWF).
+ * Regra do Dave 10/09/2026 (local-first): chuva medida aqui > núcleo
+ * distante projetado. Com chuva local, ela ABRE o boletim e o núcleo
+ * distante vira segundo plano — nunca o contrário (caso real: 41,6 mm/24h
+ * no Centro + Garoa Moderada, e o boletim falava de núcleo a 142 km).
+ */
+export interface LocalRainContext {
+	/** Máximo entre as estações CEMADEN (mm), null sem dados */
+	acc1hrMax: number | null;
+	acc6hrMax: number | null;
+	acc24hrMax: number | null;
+	/** Condição atual (ex.: "Garoa Moderada") */
+	condition?: string | null;
+}
+
+function fraseChuvaLocal(local?: LocalRainContext | null): string | null {
+	if (!local) return null;
+	const c1 = local.acc1hrMax ?? 0;
+	const c6 = local.acc6hrMax ?? 0;
+	const c24 = local.acc24hrMax ?? 0;
+	const temCemaden =
+		local.acc1hrMax != null ||
+		local.acc6hrMax != null ||
+		local.acc24hrMax != null;
+	const condChove = /chuva|garoa|temporal|pancada|granizo/i.test(
+		local.condition ?? "",
+	);
+	if (!temCemaden && !condChove) return null;
+	const choveAgora = c1 >= 0.5 || c6 >= 5 || condChove;
+	const volumeAlto = c24 >= 20 || c6 >= 15;
+	if (!choveAgora && !volumeAlto) return null;
+	const partes: string[] = [];
+	if (local.acc1hrMax != null && local.acc1hrMax >= 0.5)
+		partes.push(
+			`${local.acc1hrMax.toFixed(1).replace(".", ",")} mm na última hora`,
+		);
+	if (local.acc6hrMax != null && local.acc6hrMax >= 5)
+		partes.push(`${local.acc6hrMax.toFixed(1).replace(".", ",")} mm em 6h`);
+	if (local.acc24hrMax != null && local.acc24hrMax >= 10)
+		partes.push(`${local.acc24hrMax.toFixed(1).replace(".", ",")} mm em 24h`);
+	const detalhe =
+		partes.length > 0
+			? ` (${partes.join(" · ")} nos pluviômetros da cidade)`
+			: "";
+	const cond =
+		condChove && local.condition ? ` Condição atual: ${local.condition}.` : "";
+	if (volumeAlto && !choveAgora)
+		return `Chuva forte já acumulada em Ipiranga hoje${detalhe}.${cond} Atenção a alagamentos e ao nível de córregos.`;
+	return `Chove em Ipiranga agora${detalhe}.${cond}`;
+}
+
 export interface NowcastBulletin {
 	text: string;
 	source: "opencode_vision" | "gemini" | "nvidia_nim_vision" | "heuristic";
@@ -498,12 +550,13 @@ export async function generateNowcastBulletin(
 		/** Distância do núcleo mais ameaçador (km) */
 		nearestThreatKm: number | null;
 	},
+	local?: LocalRainContext | null,
 ): Promise<NowcastBulletin> {
 	// 2026-08-18 — modo DETERMINÍSTICO (Dave: "chega de IA").
 	// Gera o boletim 100% pela heurística (Camada A rica portada), SEM chamar
 	// VLM/LLM nenhum. Não consome cota, não faz rede, não depende de provider.
 	return {
-		text: buildHeuristicBulletin(nowcast, ecmwf, relevance),
+		text: buildHeuristicBulletin(nowcast, ecmwf, relevance, local),
 		source: "heuristic",
 		generatedAt: Date.now(),
 	};
@@ -741,6 +794,7 @@ export function buildHeuristicBulletin(
 		alertLevel?: "alert" | "watch" | "monitor" | "none";
 		nearestThreatKm?: number | null;
 	},
+	local?: LocalRainContext | null,
 ): string {
 	const m = nowcast.movement;
 	const dirs = ["N", "NE", "L", "SE", "S", "SO", "O", "NO"];
@@ -755,9 +809,11 @@ export function buildHeuristicBulletin(
 
 	// Conciliação de fontes: nowcast (curto prazo) + ECMWF (horas).
 	const ecmwfPct = ecmwf ? Math.round(ecmwf.rainProbabilityPct) : null;
+	// Local-first (10/09/2026): chuva medida em Ipiranga abre o boletim.
+	const fraseLocal = fraseChuvaLocal(local);
 	const ecmwfNote =
 		ecmwfPct != null && ecmwfPct > 0
-			? ` O modelo numérico ECMWF indica ${ecmwfPct}%% de chance de chuva nas próximas horas${
+			? ` O modelo numérico ECMWF indica ${ecmwfPct}% de chance de chuva nas próximas horas${
 					ecmwfPct >= 50 && (!m || m.speedKmh <= 1)
 						? ", mas o radar não mostra núcleos em movimento no momento (condição estável)."
 						: "."
@@ -787,6 +843,7 @@ export function buildHeuristicBulletin(
 			kmDistante != null && kmDistante > 100
 				? ` Radar registra atividade distante (~${kmDistante} km de Ipiranga), sem influência direta.`
 				: "";
+		if (fraseLocal) return `${fraseLocal} ${resumoNumerico(ecmwf)}${mencao}`;
 		return `Sem chuva relevante na região de Ipiranga no momento.${mencao} ${resumoNumerico(ecmwf)}`;
 	}
 
@@ -870,8 +927,9 @@ export function buildHeuristicBulletin(
 		corpo = `${baseLoc} O núcleo ${approachLabel.crossing} — risco direto baixo para Ipiranga.${projNote}`;
 	} else {
 		// Sem veredito confiável (sem movimento associável).
-		corpo = `${baseLoc} Movimento não confiável no momento — trajetória incerta; sem alerta iminente.${ecmwfAlto ? ` Modelo ECMWF: ${ecmwfPct}%% de chuva (pode chegar às cidades à frente).` : ""}`;
+		corpo = `${baseLoc} Movimento não confiável no momento — trajetória incerta; sem alerta iminente.${ecmwfAlto ? ` Modelo ECMWF: ${ecmwfPct}% de chuva (pode chegar às cidades à frente).` : ""}`;
 	}
 
+	if (fraseLocal) return `${fraseLocal} ${corpo}${ecmwfNote}`;
 	return `${corpo}${ecmwfNote}`;
 }

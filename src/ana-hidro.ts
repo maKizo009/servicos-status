@@ -228,17 +228,54 @@ async function fetchEstacao(
 
 function avaliarRisco(
 	estacoes: HidroEstacao[],
-	_cemadenAcc6hMax: number | null,
+	cemadenAcc6hMax: number | null,
 ): Pick<HidroState, "riscoEnxurrada" | "riscoCheia" | "resumoRisco"> {
-	// Sem alertas — triangulação é só referência regional, não substitui
-	// Defesa Civil/IAT. Qualquer classificação automática aqui gera falso-positivo
-	// e pode colocar vidas em risco. Então risco fica sempre neutro e o
-	// resumo é informativo.
+	// Triangulação é referência regional (Ipiranga NÃO tem estação
+	// fluviométrica própria — o Bitumirim não é medido direto). Por isso a
+	// classificação automática é CONSERVADORA: só sobe para "watch" com
+	// evidência convergente (rio subindo + chuva medida aqui e na sentinela).
+	// "critical" nunca é gerado aqui — cheia se confirma pela Defesa Civil/IAT.
+	const comDados = estacoes.filter((e) => !e.erro && e.nivelCm != null);
+	if (comDados.length === 0) {
+		return {
+			riscoEnxurrada: "ok",
+			riscoCheia: "ok",
+			resumoRisco:
+				"Triangulação indisponível no momento (sentinelas sem dados). Ipiranga não possui estação fluviométrica própria — para alertas oficiais, siga Defesa Civil e IAT.",
+		};
+	}
+	const fmtDelta = (d: number | null) =>
+		d == null
+			? "sem histórico 6h"
+			: `${d > 0 ? "subindo" : d < 0 ? "descendo" : "estável"} (${d > 0 ? "+" : ""}${(d / 100).toFixed(2).replace(".", ",")} m/6h)`;
+	const trechos = comDados.map((e) => {
+		const nomeCurto = e.nome.split(" (")[0];
+		const chuva =
+			e.chuvaMm != null
+				? `, chuva ${e.chuvaMm.toFixed(1).replace(".", ",")} mm/h no local`
+				: "";
+		return `${nomeCurto}: ${((e.nivelCm as number) / 100).toFixed(2).replace(".", ",")} m (${fmtDelta(e.delta6hCm)}${chuva})`;
+	});
+	const subindoForte = comDados.some((e) => (e.delta6hCm ?? 0) >= 30);
+	const chuvaSentinela = Math.max(0, ...comDados.map((e) => e.chuvaMm ?? 0));
+	const chuvaLocal = cemadenAcc6hMax ?? 0;
+	// Watch: rio subindo ≥30 cm/6h, ou chuva forte convergente (aqui + lá).
+	const watch = subindoForte || (chuvaLocal >= 15 && chuvaSentinela >= 10);
+	const motivo = subindoForte
+		? "nível subindo ≥30 cm em 6h em ao menos uma sentinela"
+		: chuvaLocal >= 15 && chuvaSentinela >= 10
+			? `chuva convergente (${chuvaLocal.toFixed(1).replace(".", ",")} mm/6h em Ipiranga + ${chuvaSentinela.toFixed(1).replace(".", ",")} mm/h na sentinela)`
+			: null;
 	return {
-		riscoEnxurrada: "ok",
-		riscoCheia: "ok",
+		riscoEnxurrada: watch ? "warn" : "ok",
+		riscoCheia: watch ? "watch" : "ok",
 		resumoRisco:
-			"Estimativa por triangulação — Ipiranga não possui estação fluviométrica própria. Valores abaixo são das 3 sentinelas no Rio Tibagi (referência regional, não medição direta no Bitumirim). Para alertas oficiais, siga Defesa Civil e IAT.",
+			`Triangulação no Rio Tibagi (referência regional — o Bitumirim em Ipiranga não é medido direto). ` +
+			`${trechos.join(" · ")}.` +
+			(motivo
+				? ` Atenção: ${motivo} — acompanhe Defesa Civil/IAT.`
+				: " Níveis sem tendência de cheia no momento.") +
+			` Para alertas oficiais, siga Defesa Civil e IAT.`,
 	};
 }
 
