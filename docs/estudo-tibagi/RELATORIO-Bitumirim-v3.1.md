@@ -98,6 +98,28 @@ Leituras-chave: (i) DEZ24 transbordou com Uvaia em 339 (<P90) → **chuva local 
 | Convectivo | set–abr | célula hiper-local (até 2× de chuva dentro de Ipiranga no mesmo dia: 67,6 vs 35,4) | SÓ o local (IFL puro); Uvaia chega dias depois e só diz os dias fora | JAN25 |
 | Frontal | mai–ago | frente fria ampla, manto regional ~300 mm/mês em 3 estações | Uvaia integra a bacia e carrega a SEVERIDADE; chuva local não discrimina médio/menor | invernos 13–19 |
 
+## 6b. ENSO como condição de contorno (NÃO gatilho) — 11/09/2026
+
+ONI (NOAA CPC, `cpc.ncep.noaa.gov/data/indices/oni.ascii.txt`, formato SEAS/YR/TOTAL/ANOM) × rótulos:
+
+| Evento | ONI na janela | Fase | Severidade Bitumirim |
+|---|---|---|---|
+| INV2013 | JJA −0,45 | neutra-fria | o mais dramático dos invernos |
+| INV2014 | JJA +0,07 | neutro | médio |
+| INV2015 | JJA +1,44 | El Niño forte | médio |
+| INV2017 | JJA +0,14 | neutro | menor |
+| INV2019 | JJA +0,38 | neutro-quente | menor |
+| OUT23 | OND +1,9 | El Niño forte | extremo (7 dias fora) |
+| DEZ24/JAN25 | OND −0,29, NDJ −0,43 | La Niña fraca | transbordou / régua em 4 m sem sair |
+| 2011 | JJA −0,37 | neutra-fria | transbordou |
+
+Transbordo acontece em El Niño, La Niña e neutro — ENSO **modula amplitude, não liga/desliga**.
+O maior verão (OUT23) veio em El Niño forte; o maior inverno (2013) em neutra-fria.
+Decisão: ENSO entra no artigo e no painel de contexto; NO algoritmo só como peso experimental
+futuro (ex.: El Niño ativo abaixaria o piso convectivo), e só com mais rótulos — n=11 não banca.
+OMJ (Madden-Julian): mesmo veredito, mais restrito — fonte diária (BOM) bloqueada (403);
+escala 30–60 dias exigiria saída probabilística, fora da doutrina determinística. Artigo sim, algoritmo não.
+
 ## 7. Algoritmo v3.1 (em produção)
 
 - **Regime**: `regimeDoMes(m) = frontal se 5≤m≤8`. Confirmação offline: radiação média 30d
