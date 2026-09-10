@@ -69,9 +69,36 @@ def janela_stats(serie, ini, fim):
     }
 
 
+def baseline(dados):
+    """P10/P50/P90/P98 da série completa por estação (nível 'normal')."""
+    import statistics
+    linhas = []
+    for est, serie in sorted(dados.items()):
+        vs = sorted(serie.values())
+        if not vs:
+            continue
+        q = statistics.quantiles(vs, n=100, method="inclusive")
+        linhas.append({
+            "estacao": est,
+            "n_dias": len(vs),
+            "p10": q[9],
+            "p50": q[49],
+            "p90": q[89],
+            "p98": q[97],
+            "max": vs[-1],
+        })
+    return linhas
+
+
 def main():
     diretorio = sys.argv[1] if len(sys.argv) > 1 else "."
     dados = carregar(diretorio)
+    if len(sys.argv) > 2 and sys.argv[2] == "baseline":
+        w = csv.writer(sys.stdout)
+        w.writerow(["estacao", "n_dias", "p10_cm", "p50_cm", "p90_cm", "p98_cm", "max_cm"])
+        for b in baseline(dados):
+            w.writerow([b["estacao"], b["n_dias"], b["p10"], b["p50"], b["p90"], b["p98"], b["max"]])
+        return
     w = csv.writer(sys.stdout)
     w.writerow([
         "evento", "janela_ini", "janela_fim",
