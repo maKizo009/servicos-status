@@ -700,29 +700,54 @@ export function validateBulletinAgainstVerdict(
 		}
 	}
 
-	// 3. Veredito APROXIMANDO-SE: qualquer ETA citado deve bater com o
-	// calculado (tolerância de 35% — o caso real "196 min vs 1-2 horas" cai
-	// fora disso e é rejeitado). Compostos "X horas e Y min" contam como um
-	// único valor (ex: "3 horas e 15 minutos" = 195 min, não 3h E 15min).
+	// 3. Veredito APROXIMANDO-SE: ETA citado deve bater com o calculado
+	// (tolerância de 35%). Mas SÓ vale duração que afirma CHEGADA — janela de
+	// acumulado ("45,8 mm em 24 horas") e horizonte de modelo ("chuva nas
+	// próximas 6 horas") NÃO são ETA e nunca rejeitam (falso positivo real
+	// 10/09/2026: "24 horas" do CEMADEN lido como ETA 1440 min).
 	if (verdict.approach === "approaching" && verdict.etaMin != null) {
+		// Mascara janelas de acumulado: "X mm ... em/por Y h/min".
+		const masked = text
+			.replace(
+				/\d+(?:[.,]\d+)?\s*mm[^.?!;]{0,60}?\d+\s*(?:h\b|horas?|min(?:utos?)?)/gi,
+				(s) => " ".repeat(s.length),
+			)
+			.replace(
+				/última hora|últimas?\s+\d*\s*h\b|acumulado[^.?!;]{0,40}/gi,
+				(s) => " ".repeat(s.length),
+			);
+		const ehChegada = (idx: number, len: number): boolean => {
+			const janela =
+				masked.slice(Math.max(0, idx - 60), idx) +
+				masked.slice(idx + len, idx + len + 40);
+			return /cheg|ating|alcanc|\beta\b|desloc|levar|faltam|dentro de|em torno de/i.test(
+				janela,
+			);
+		};
 		const minutes: number[] = [];
 		const consumed: Array<[number, number]> = [];
-		for (const cm of text.matchAll(
+		for (const cm of masked.matchAll(
 			/(\d{1,2})\s*(?:horas?|h)\s*e\s+(\d{1,3})\s*(?:min|minutos?)\b/gi,
 		)) {
+			const idx = cm.index ?? 0;
+			consumed.push([idx, idx + cm[0].length]);
+			if (!ehChegada(idx, cm[0].length)) continue;
 			const total = Number(cm[1]) * 60 + Number(cm[2]);
 			if (Number.isFinite(total) && total > 0) minutes.push(total);
-			consumed.push([cm.index ?? 0, (cm.index ?? 0) + cm[0].length]);
 		}
 		const isConsumed = (idx: number): boolean =>
 			consumed.some(([s, e]) => idx >= s && idx < e);
-		for (const hh of text.matchAll(/(\d{1,2})\s*(?:horas?|h)\b/gi)) {
-			if (isConsumed(hh.index ?? 0)) continue;
+		for (const hh of masked.matchAll(/(\d{1,2})\s*(?:horas?|h)\b/gi)) {
+			const idx = hh.index ?? 0;
+			if (isConsumed(idx)) continue;
+			if (!ehChegada(idx, hh[0].length)) continue;
 			const v = Number(hh[1]) * 60;
 			if (Number.isFinite(v) && v > 0) minutes.push(v);
 		}
-		for (const mm of text.matchAll(/(\d{1,3})\s*(?:min|minutos?)\b/gi)) {
-			if (isConsumed(mm.index ?? 0)) continue;
+		for (const mm of masked.matchAll(/(\d{1,3})\s*(?:min|minutos?)\b/gi)) {
+			const idx = mm.index ?? 0;
+			if (isConsumed(idx)) continue;
+			if (!ehChegada(idx, mm[0].length)) continue;
 			const v = Number(mm[1]);
 			if (Number.isFinite(v) && v > 0) minutes.push(v);
 		}
