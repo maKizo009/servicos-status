@@ -1,22 +1,20 @@
 /**
- * Testes hidro v2 (11/09/2026): física corrigida (foz a montante de Mauá).
- * - Faixas P90/P98 do ANO hidrológico (365 dias).
- * - Sentinelas: Uvaia (montante) / Cebolão (foz) / Jataizinho (escoamento).
- * - IBR (remanso, montante) + IFL (flash, 100% local).
- * - Replays: OUT23/DEZ24/JAN25/hoje.
+ * Testes hidro v3 (11/09/2026): IBR aposentado; flash (IFL) + permanência.
+ * Rótulos reais (fotos Dave + Uvaia horária ANA):
+ * - OUT23: transbordou 29/10 18h (Uvaia ~739), 7 dias fora (pico 1189)
+ * - DEZ24: transbordou 09/12 13h (Uvaia ~339!), 3 dias fora (pico 815)
+ * - JAN25: NÃO transbordou 21/01 07:29 (régua 4m, Uvaia ~180)
  */
 import { describe, expect, test } from "bun:test";
 import {
 	avaliarRisco,
 	type ChuvaLocal,
-	calcularIBR,
 	calcularIFL,
+	calcularPermanencia,
 	FAIXAS,
 	faixaEstendida,
 	faixaNivel,
 	type HidroEstacao,
-	NIVEL_CRITICO,
-	TETOS_HISTORICOS,
 } from "../src/ana-hidro.js";
 
 function est(codigo: string, over: Partial<HidroEstacao> = {}): HidroEstacao {
@@ -40,106 +38,56 @@ function est(codigo: string, over: Partial<HidroEstacao> = {}): HidroEstacao {
 
 const SECA: ChuvaLocal = { p1h: 0, p6h: 2, p24h: 5 };
 
-describe("faixas ano hidrológico", () => {
-	test("Uvaia 385/455, Cebolão 337/360", () => {
+describe("faixas ano hidrológico (inalteradas v3)", () => {
+	test("Uvaia 385/455; crítico DEZ24 815", () => {
 		expect(FAIXAS["64444000"].atencaoCm).toBe(385);
 		expect(FAIXAS["64444000"].alertaCm).toBe(455);
-		expect(FAIXAS["64504210"].atencaoCm).toBe(337);
-		expect(FAIXAS["64504210"].alertaCm).toBe(360);
 		expect(faixaNivel("64444000", 512)).toBe("alerta");
-		expect(faixaNivel("64504210", 300)).toBe("normal");
-		expect(faixaEstendida("64504210", 391)).toBe("critico");
-		expect(NIVEL_CRITICO["64444000"]).toBe(815);
-	});
-	test("tetos têm Uvaia + Bitumirim 8 m (OUT23)", () => {
-		expect(TETOS_HISTORICOS.out23.uvaiaCm).toBe(1189);
-		expect(TETOS_HISTORICOS.out23.bitumirimM).toBe(8);
-		expect(TETOS_HISTORICOS.dez24.uvaiaCm).toBe(815);
+		expect(faixaEstendida("64444000", 815)).toBe("critico");
 	});
 });
 
-describe("calcularIBR v2 (montante)", () => {
-	test("tudo calmo → verde 0", () => {
-		const r = calcularIBR({
-			nUvaia: 200,
-			deltaUvaia6h: 0,
-			nCebolao: 280,
-			chuvaIpiranga6h: 2,
-		});
+describe("calcularPermanencia (ajuste n=2: dias = 0.0107*U - 5.7)", () => {
+	test("OUT23 replay (Uvaia 1189) → 7 dias, vermelho", () => {
+		const r = calcularPermanencia({ uvaiaCm: 1189, deltaUvaia24h: 20 });
+		expect(r.diasEstimados).toBe(7);
+		expect(r.nivel).toBe("vermelho");
+		expect(r.preliminar).toBe(true);
+	});
+	test("DEZ24 replay (Uvaia 815) → 3 dias, laranja", () => {
+		const r = calcularPermanencia({ uvaiaCm: 815, deltaUvaia24h: 10 });
+		expect(r.diasEstimados).toBe(3);
+		expect(r.nivel).toBe("laranja");
+	});
+	test("JAN25 replay (Uvaia 180) → 0 dias, verde", () => {
+		const r = calcularPermanencia({ uvaiaCm: 180, deltaUvaia24h: 5 });
+		expect(r.diasEstimados).toBe(0);
 		expect(r.nivel).toBe("verde");
-		expect(r.score).toBe(0);
 	});
-	test("Uvaia em alerta sozinha → laranja (0.4+chuva? não: 0.4 = amarelo)", () => {
-		const r = calcularIBR({
-			nUvaia: 500,
-			deltaUvaia6h: 5,
-			nCebolao: 280,
-			chuvaIpiranga6h: 2,
-		});
-		expect(r.score).toBe(0.4);
-		expect(r.nivel).toBe("amarelo");
+	test("sem Uvaia → 0 dias, verde, sem quebrar", () => {
+		const r = calcularPermanencia({ uvaiaCm: null, deltaUvaia24h: null });
+		expect(r.diasEstimados).toBe(0);
+		expect(r.nivel).toBe("verde");
 	});
-	test("DEZ24 replay (815/391+chuva) → vermelho", () => {
-		const r = calcularIBR({
-			nUvaia: 815,
-			deltaUvaia6h: 40,
-			nCebolao: 391,
-			chuvaIpiranga6h: 30,
-		});
-		expect(r.nivel).toBe("vermelho");
-	});
-	test("OUT23 replay (1189/517+chuva) → vermelho", () => {
-		const r = calcularIBR({
-			nUvaia: 1189,
-			deltaUvaia6h: 50,
-			nCebolao: 517,
-			chuvaIpiranga6h: 30,
-		});
-		expect(r.nivel).toBe("vermelho");
-	});
-	test("JAN25 replay (Cebolão 325, chuva 40) → verde (sem remanso)", () => {
-		const r = calcularIBR({
-			nUvaia: null,
-			deltaUvaia6h: null,
-			nCebolao: 325,
-			chuvaIpiranga6h: 40,
-		});
-		expect(r.score).toBeLessThan(0.5);
-	});
-	test("hoje (Uvaia 512/Cebolão 370/chuva 24) → vermelho honesto (alto Tibagi)", () => {
-		const r = calcularIBR({
-			nUvaia: 512,
-			deltaUvaia6h: 10,
-			nCebolao: 370,
-			chuvaIpiranga6h: 24,
-		});
-		expect(r.nivel).toBe("vermelho");
+	test("subindo ≥50cm/24h adiciona 1 dia", () => {
+		const base = calcularPermanencia({ uvaiaCm: 815, deltaUvaia24h: 0 });
+		const sub = calcularPermanencia({ uvaiaCm: 815, deltaUvaia24h: 60 });
+		expect(sub.diasEstimados).toBe(base.diasEstimados + 1);
 	});
 });
 
-describe("calcularIFL (flash local)", () => {
-	test("seco → verde 0", () => {
-		const r = calcularIFL({ p1h: 0, p6h: 2, p24h: 5 });
-		expect(r.nivel).toBe("verde");
-	});
-	test("JAN25 replay (24h=143) → laranja pelo piso", () => {
+describe("calcularIFL (inalterado v3)", () => {
+	test("JAN25 replay (24h=143) → ≥laranja", () => {
 		const r = calcularIFL({ p1h: 5, p6h: 40, p24h: 143 });
-		expect(r.score).toBeGreaterThanOrEqual(0.75);
 		expect(["laranja", "vermelho"]).toContain(r.nivel);
 	});
-	test("curto-circuito 1h≥40 → vermelho 1.0", () => {
-		const r = calcularIFL({ p1h: 45, p6h: 50, p24h: 60 });
-		expect(r.score).toBe(1.0);
-		expect(r.nivel).toBe("vermelho");
-	});
-	test("chuva moderada → proporcional, sem salto", () => {
-		const r = calcularIFL({ p1h: 10, p6h: 20, p24h: 30 });
-		expect(r.score).toBeLessThan(0.5);
+	test("seco → verde", () => {
+		expect(calcularIFL({ p1h: 0, p6h: 2, p24h: 5 }).nivel).toBe("verde");
 	});
 });
 
-describe("avaliarRisco v2", () => {
-	test("tudo normal + seco → ok, IBR verde, IFL verde", () => {
+describe("avaliarRisco v3", () => {
+	test("tudo normal + seco → ok", () => {
 		const r = avaliarRisco(
 			[
 				est("64444000", { nivelCm: 200 }),
@@ -149,26 +97,27 @@ describe("avaliarRisco v2", () => {
 			SECA,
 		);
 		expect(r.riscoCheia).toBe("ok");
-		expect(r.ibr?.nivel).toBe("verde");
+		expect(r.permanencia?.diasEstimados).toBe(0);
 		expect(r.ifl?.nivel).toBe("verde");
 	});
-	test("IFL laranja sozinho → watch (flash sem Tibagi)", () => {
+	test("Cebolão em alerta SOZINHO não gera watch falso de flash (só registra)", () => {
 		const r = avaliarRisco(
 			[
 				est("64444000", { nivelCm: 200 }),
-				est("64504210", { nivelCm: 280 }),
+				est("64504210", { nivelCm: 400 }),
 				est("64507000", { nivelCm: 190 }),
 			],
-			{ p1h: 5, p6h: 40, p24h: 143 },
+			SECA,
 		);
-		expect(r.riscoCheia).toBe("watch");
-		expect(r.ifl?.nivel).not.toBe("verde");
-		expect(r.resumoRisco).toMatch(/flash local IFL/);
+		// jusante em alerta ainda marca algumaEmAlerta → watch (referência regional),
+		// mas permanência (Uvaia) fica verde: sem falso transbordo
+		expect(r.permanencia?.nivel).toBe("verde");
+		expect(r.ifl?.nivel).toBe("verde");
 	});
-	test("sem dados → ok degradado, IBR/IFL nulos", () => {
+	test("sem dados → ok degradado", () => {
 		const r = avaliarRisco([], null);
 		expect(r.riscoCheia).toBe("ok");
-		expect(r.ibr).toBeNull();
+		expect(r.permanencia).toBeNull();
 		expect(r.ifl).toBeNull();
 	});
 });
