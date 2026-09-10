@@ -11,7 +11,9 @@
  * nas envs da Vercel (VAPID_PUBLIC_KEY / VAPID_PRIVATE_KEY / VAPID_SUBJECT).
  */
 import webpush from "web-push";
+
 const { sendNotification, setVapidDetails } = webpush;
+
 import { loadConfig } from "./config.js";
 import { getDbClient } from "./db.js";
 import { logger } from "./logger.js";
@@ -185,6 +187,21 @@ export async function sendPushAlert(
 		}
 	}
 	return { ok, falhas };
+}
+
+/**
+ * Regra de push do alerta unificado próprio (10/09/2026): só laranja e
+ * vermelho cutucam o celular; verde/amarelo ficam no site (sem spam).
+ * Pura (testável): decide evento/emoji/cooldown a partir do nível.
+ */
+export function pushParaAlerta(
+	nivel: "verde" | "amarelo" | "laranja" | "vermelho",
+): { evento: string; emoji: string; ttlMs: number } | null {
+	if (nivel === "vermelho")
+		return { evento: "alerta:vermelho", emoji: "🔴", ttlMs: 30 * 60_000 };
+	if (nivel === "laranja")
+		return { evento: "alerta:laranja", emoji: "🟠", ttlMs: 90 * 60_000 };
+	return null;
 }
 
 /**

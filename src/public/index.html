@@ -2570,6 +2570,26 @@ function copyPrompt(provider, text) {
         const sub = await swReg.pushManager.getSubscription();
         setState(sub ? 'on' : 'off');
       }
+      // Popup de ativação (novo visitante): avalia DEPOIS do estado real.
+      try {
+        const s0 = await swReg.pushManager.getSubscription();
+        if (window.__miPushPopup) window.__miPushPopup.maybeShow(!!s0);
+      } catch (e) { console.warn('push: popup', e); }
+      // Botão "Ativar alertas" do popup → mesmo fluxo do sino.
+      document.addEventListener('click', async (ev) => {
+        if (!ev.target || ev.target.id !== 'pushPromptYes') return;
+        if (Notification.permission === 'denied') {
+          setState('denied');
+          showToast('🔕 Notificações bloqueadas neste site. Para liberar: toque no 🔒 (ou ícone do site) ao lado da barra de endereço → Permissões → Notificações → Permitir. Depois recarregue a página.');
+          return;
+        }
+        const perm = await Notification.requestPermission();
+        if (perm === 'granted' && await subscribe()) {
+          try { localStorage.setItem('mi_push_prompt', JSON.stringify({ ts: Date.now(), done: true })); } catch (e) {}
+          if (window.__miPushPopup) window.__miPushPopup.hide();
+          showToast('🔔 Alertas ativados! Você será avisado em chuva forte.');
+        } else if (perm === 'denied') { setState('denied'); }
+      });
       btn.addEventListener('click', async () => {
         if (Notification.permission === 'denied') {
           // Navegador bloqueou: não dá pra re-pedir — instrução clara.
@@ -2654,6 +2674,59 @@ function copyPrompt(provider, text) {
     .then((r) => r.json())
     .then((me) => { if (me.authed) btn.style.display = 'inline-flex'; })
     .catch(() => {});
+})();
+</script>
+<div id="pushPrompt" style="display:none;position:fixed;left:50%;transform:translateX(-50%) translateY(24px);bottom:18px;z-index:9998;width:min(92vw,440px);background:var(--md-sys-color-surface-container-high);border:1px solid var(--md-sys-color-outline-variant);border-radius:16px;box-shadow:0 12px 32px rgba(0,0,0,.3);padding:16px;opacity:0;transition:opacity .25s ease,transform .25s ease" role="dialog" aria-label="Ativar alertas de chuva">
+  <div style="display:flex;gap:12px;align-items:flex-start">
+    <div style="font-size:26px;line-height:1">🔔</div>
+    <div style="flex:1">
+      <div style="font-weight:700;font-size:14.5px;color:var(--text)">Receber alertas de chuva no celular?</div>
+      <div style="font-size:12.5px;color:var(--text2);line-height:1.5;margin-top:4px">O Monitor avisa quando chuva forte vem pra Ipiranga — antes de você ver na janela. Só toca em alerta laranja ou vermelho, sem spam.</div>
+      <div style="display:flex;gap:8px;margin-top:12px">
+        <button id="pushPromptYes" type="button" style="flex:1;padding:10px;border:none;border-radius:10px;background:var(--g5);color:#fff;font-weight:700;font-size:13.5px">Ativar alertas</button>
+        <button id="pushPromptNo" type="button" style="padding:10px 14px;border:1px solid var(--md-sys-color-outline-variant);border-radius:10px;background:transparent;color:var(--text2);font-size:13px">Agora não</button>
+      </div>
+    </div>
+  </div>
+</div>
+<script>
+/* ===== Popup de ativação de push (novo visitante, 1x/30 dias) ===== */
+(function () {
+  const KEY = 'mi_push_prompt';
+  function dismissed() {
+    try {
+      const v = JSON.parse(localStorage.getItem(KEY) || 'null');
+      return v && (v.done || Date.now() - v.ts < 30 * 864e5);
+    } catch (e) { return false; }
+  }
+  function mark(done) {
+    try { localStorage.setItem(KEY, JSON.stringify({ ts: Date.now(), done: !!done })); } catch (e) {}
+  }
+  window.__miPushPopup = {
+    maybeShow: function (isSubscribed) {
+      if (isSubscribed) { mark(true); return; }
+      if (dismissed()) return;
+      if (!('serviceWorker' in navigator) || !('PushManager' in window)) return;
+      if (typeof Notification === 'undefined' || Notification.permission !== 'default') return;
+      const box = document.getElementById('pushPrompt');
+      if (!box) return;
+      setTimeout(function () {
+        if (dismissed()) return;
+        box.style.display = 'block';
+        requestAnimationFrame(function () { box.style.opacity = '1'; box.style.transform = 'translateX(-50%) translateY(0)'; });
+      }, 2500);
+    },
+    hide: function () {
+      const box = document.getElementById('pushPrompt');
+      if (box) box.style.display = 'none';
+    },
+  };
+  document.addEventListener('click', function (ev) {
+    if (ev.target && ev.target.id === 'pushPromptNo') {
+      mark(false);
+      window.__miPushPopup.hide();
+    }
+  });
 })();
 </script>
 </body>
