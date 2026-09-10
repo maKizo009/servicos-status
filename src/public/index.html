@@ -2153,7 +2153,7 @@ function renderHidroCard(data) {
   const formula = `<details style="margin-top:8px;font-size:12px;color:var(--text2)">
     <summary style="cursor:pointer;font-weight:600;color:var(--text)">∑ Como é calculado (fórmula aberta)</summary>
     <div style="margin-top:6px;line-height:1.6">
-      <div><strong>IBR = onda de montante (0,4) + calha na foz (0,4/0,6) + chuva local (0,1/0,2)</strong>, de 0 (livre) a 1,2 (travado). Só usa o que está a montante da foz (Uvaia + Cebolão): descarga de Mauá NÃO entra, porque a foz fica ~110 km acima da barragem. IFL (flash local) = chuva 1h/6h/24h em Ipiranga, sem Tibagi. Estágios: &lt;0,3 verde · 0,3–0,5 amarelo · 0,5–0,8 laranja · ≥0,8 vermelho.</div>
+      <div><strong>IBR = onda de montante (0,4) + calha na foz (0,4/0,6) + chuva local (0,1/0,2)</strong>, de 0 (livre) a 1,2 (travado). EM REVISÃO 11/09: o inventário da ANA mostrou que o Cebolão fica em Londrina (~180 km a jusante da foz), não na foz — o peso dele está sendo retirado do cálculo. IFL (flash local) = chuva 1h/6h/24h em Ipiranga, sem Tibagi. Estágios: &lt;0,3 verde · 0,3–0,5 amarelo · 0,5–0,8 laranja · ≥0,8 vermelho.</div>
       <div style="margin-top:4px">Faixas por sentinela calibradas com 365 dias reais (atenção = P90, alerta = P98 do ano hidrológico). Eventos de referência: out/23 (histórica, Bitumirim 8 m), dez/24 (regional) e jan/25 (flash local, que sentinela não vê).</div>
       <div style="margin-top:6px"><a href="/api/hidro" style="color:var(--g5)">Dados crus (JSON)</a> · <a href="https://github.com/maKizo009/servicos-status/issues" style="color:var(--g5)">Sugerir melhoria</a></div>
     </div>
