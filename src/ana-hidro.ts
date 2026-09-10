@@ -42,6 +42,42 @@ export const SENTINELAS = [
 	},
 ] as const;
 
+/**
+ * Faixas de referência por sentinela (10/09/2026) — CALIBRADAS com 180 dias
+ * reais de telemetria ANA (14/03–10/09/2026), não chutadas:
+ * atenção = P90, alerta = P98 da série horária (filtrado lixo de sensor:
+ * nível 777777.7 = código de falha, descartado).
+ *
+ * - 64491000 Antas: nível P90 398 / P98 472 (máx 619); vazão P98 824
+ * - 64504210 Cebolão: nível P90 346 / P98 369 (máx 419); vazão P98 1172
+ * - 64507000 Jataizinho: nível P90 271 / P98 304 (máx 381); vazão P98 971
+ *
+ * São faixas RELATIVAS (percentil), não cotas oficiais de inundação — a ANA
+ * não publica cota de cheia para estas estações. Recalibrar trimestralmente
+ * (script /tmp/cotas.py + série longa do DadosHidrometeorologicos).
+ */
+export const FAIXAS: Record<
+	string,
+	{ atencaoCm: number; alertaCm: number; vazaoP98: number }
+> = {
+	"64491000": { atencaoCm: 398, alertaCm: 472, vazaoP98: 824 },
+	"64504210": { atencaoCm: 346, alertaCm: 369, vazaoP98: 1172 },
+	"64507000": { atencaoCm: 271, alertaCm: 304, vazaoP98: 971 },
+};
+
+/** Posição do nível atual contra as faixas. */
+export function faixaNivel(
+	codigo: string,
+	nivelCm: number | null,
+): "normal" | "atencao" | "alerta" | null {
+	if (nivelCm == null) return null;
+	const f = FAIXAS[codigo];
+	if (!f) return null;
+	if (nivelCm >= f.alertaCm) return "alerta";
+	if (nivelCm >= f.atencaoCm) return "atencao";
+	return "normal";
+}
+
 export interface HidroSeriePonto {
 	dataHora: string; // "2026-08-26 20:00:00" (horário da ANA, BRT)
 	nivelCm: number | null; // cm
@@ -165,7 +201,22 @@ async function fetchEstacao(
 			};
 		}
 		const serie = parseXmlDados(xml);
-		if (serie.length === 0) {
+		// Saneia lixo de sensor: 777777.7 = código de falha da telemetria
+		// (visto em 250 pontos de 180 dias em Antas). Ponto absurdo não pode
+		// virar "leitura atual" nem contaminar o Δ6h.
+		const sanea = (p: HidroSeriePonto): HidroSeriePonto => ({
+			...p,
+			nivelCm:
+				p.nivelCm != null && p.nivelCm > 0 && p.nivelCm < 2000
+					? p.nivelCm
+					: null,
+			vazaoM3s:
+				p.vazaoM3s != null && p.vazaoM3s >= 0 && p.vazaoM3s < 20000
+					? p.vazaoM3s
+					: null,
+		});
+		const serieLimpa = serie.map(sanea);
+		if (serieLimpa.length === 0) {
 			return {
 				codigo,
 				nome,
@@ -181,16 +232,16 @@ async function fetchEstacao(
 				erro: "Série vazia",
 			};
 		}
-		const latest = serie[0];
-		// Δ 6 h: compara mais recente com a de ~6 h atrás (índice 6 se horário)
+		let latestIdx = serieLimpa.findIndex((p) => p.nivelCm != null);
+		if (latestIdx < 0) latestIdx = 0;
+		const latest = serieLimpa[latestIdx];
+		// Δ 6 h: compara com o ponto ~6 posições atrás do mais recente válido
 		let delta6hCm: number | null = null;
-		if (serie.length >= 7 && latest.nivelCm != null) {
-			const ponto6h = serie.find((p) => p.nivelCm != null && p !== latest);
-			// pega o ponto ~6 posições atrás que tenha nível
-			let idx = 6;
-			while (idx < serie.length && serie[idx].nivelCm == null) idx++;
-			if (idx < serie.length && serie[idx].nivelCm != null) {
-				delta6hCm = latest.nivelCm - (serie[idx].nivelCm as number);
+		if (latest.nivelCm != null) {
+			let idx = latestIdx + 6;
+			while (idx < serieLimpa.length && serieLimpa[idx].nivelCm == null) idx++;
+			if (idx < serieLimpa.length && serieLimpa[idx].nivelCm != null) {
+				delta6hCm = latest.nivelCm - (serieLimpa[idx].nivelCm as number);
 			}
 		}
 		return {
@@ -203,7 +254,7 @@ async function fetchEstacao(
 			vazaoM3s: latest.vazaoM3s,
 			chuvaMm: latest.chuvaMm,
 			dataHora: latest.dataHora,
-			serie: serie.slice(0, 24),
+			serie: serieLimpa.slice(0, 24),
 			delta6hCm,
 			erro: null,
 		};
@@ -226,7 +277,8 @@ async function fetchEstacao(
 	}
 }
 
-function avaliarRisco(
+/** Exportada para testes (lógica de faixas/remanso/descarga). */
+export function avaliarRisco(
 	estacoes: HidroEstacao[],
 	cemadenAcc6hMax: number | null,
 ): Pick<HidroState, "riscoEnxurrada" | "riscoCheia" | "resumoRisco"> {
@@ -250,30 +302,74 @@ function avaliarRisco(
 			: `${d > 0 ? "subindo" : d < 0 ? "descendo" : "estável"} (${d > 0 ? "+" : ""}${(d / 100).toFixed(2).replace(".", ",")} m/6h)`;
 	const trechos = comDados.map((e) => {
 		const nomeCurto = e.nome.split(" (")[0];
+		const fx = faixaNivel(e.codigo, e.nivelCm);
+		const fxTxt =
+			fx === "alerta"
+				? " (faixa ALERTA)"
+				: fx === "atencao"
+					? " (faixa atenção)"
+					: "";
 		const chuva =
 			e.chuvaMm != null
 				? `, chuva ${e.chuvaMm.toFixed(1).replace(".", ",")} mm/h no local`
 				: "";
-		return `${nomeCurto}: ${((e.nivelCm as number) / 100).toFixed(2).replace(".", ",")} m (${fmtDelta(e.delta6hCm)}${chuva})`;
+		return `${nomeCurto}: ${((e.nivelCm as number) / 100).toFixed(2).replace(".", ",")} m${fxTxt} (${fmtDelta(e.delta6hCm)}${chuva})`;
 	});
 	const subindoForte = comDados.some((e) => (e.delta6hCm ?? 0) >= 30);
 	const chuvaSentinela = Math.max(0, ...comDados.map((e) => e.chuvaMm ?? 0));
 	const chuvaLocal = cemadenAcc6hMax ?? 0;
-	// Watch: rio subindo ≥30 cm/6h, ou chuva forte convergente (aqui + lá).
-	const watch = subindoForte || (chuvaLocal >= 15 && chuvaSentinela >= 10);
-	const motivo = subindoForte
-		? "nível subindo ≥30 cm em 6h em ao menos uma sentinela"
-		: chuvaLocal >= 15 && chuvaSentinela >= 10
-			? `chuva convergente (${chuvaLocal.toFixed(1).replace(".", ",")} mm/6h em Ipiranga + ${chuvaSentinela.toFixed(1).replace(".", ",")} mm/h na sentinela)`
-			: null;
+	const porCodigo = (cod: string) => comDados.find((e) => e.codigo === cod);
+	const cebolao = porCodigo("64504210");
+	const antas = porCodigo("64491000");
+	const faixaCebolao = faixaNivel("64504210", cebolao?.nivelCm ?? null);
+	const algumaEmAlerta = comDados.some(
+		(e) => faixaNivel(e.codigo, e.nivelCm) === "alerta",
+	);
+	// DESCARGA (efeito Mauá a montante): Antas é jusante da UHE — vazão ≥P98
+	// com chuva fraca na sentinela = água LIBERADA pelo reservatório, não chuva.
+	const descargaMaua =
+		antas?.vazaoM3s != null &&
+		antas.vazaoM3s >= (FAIXAS["64491000"]?.vazaoP98 ?? 824) &&
+		(antas.chuvaMm ?? 0) < 10;
+	// REMANSO (efeito Mauá a jusante): Tibagi cheio no trecho central +
+	// chuva em Ipiranga = o Bitumirim não consegue desaguar (o Tibagi "segura").
+	// É estimativa (sem medição na foz), dita como tal.
+	const remanso =
+		(faixaCebolao === "atencao" || faixaCebolao === "alerta") &&
+		chuvaLocal >= 10;
+	// Watch: faixa de alerta em qualquer sentinela, subida forte, descarga,
+	// remanso, ou chuva forte convergente (aqui + lá).
+	const watch =
+		algumaEmAlerta ||
+		subindoForte ||
+		descargaMaua ||
+		remanso ||
+		(chuvaLocal >= 15 && chuvaSentinela >= 10);
+	const motivos: string[] = [];
+	if (algumaEmAlerta)
+		motivos.push("nível na faixa de alerta (P98 de 180 dias)");
+	if (subindoForte)
+		motivos.push("nível subindo ≥30 cm em 6h em ao menos uma sentinela");
+	if (descargaMaua)
+		motivos.push(
+			`UHE Mauá liberando acima do normal (Antas com ${Math.round(antas?.vazaoM3s ?? 0)} m³/s ≥ P98, sem chuva local forte) — onda a caminho do trecho médio`,
+		);
+	if (remanso)
+		motivos.push(
+			`Tibagi cheio no trecho central (Cebolão ${cebolao?.nivelCm != null ? (cebolao.nivelCm / 100).toFixed(2).replace(".", ",") : "?"} m) + ${chuvaLocal.toFixed(1).replace(".", ",")} mm/6h em Ipiranga: o Bitumirim pode não conseguir desaguar (remanso) — atenção a alagamentos em áreas baixas`,
+		);
+	if (chuvaLocal >= 15 && chuvaSentinela >= 10)
+		motivos.push(
+			`chuva convergente (${chuvaLocal.toFixed(1).replace(".", ",")} mm/6h em Ipiranga + ${chuvaSentinela.toFixed(1).replace(".", ",")} mm/h na sentinela)`,
+		);
 	return {
 		riscoEnxurrada: watch ? "warn" : "ok",
 		riscoCheia: watch ? "watch" : "ok",
 		resumoRisco:
-			`Triangulação no Rio Tibagi (referência regional — o Bitumirim em Ipiranga não é medido direto). ` +
+			`Triangulação no Rio Tibagi (referência regional — o Bitumirim em Ipiranga não é medido direto; faixas calibradas com 180 dias reais: atenção=P90, alerta=P98). ` +
 			`${trechos.join(" · ")}.` +
-			(motivo
-				? ` Atenção: ${motivo} — acompanhe Defesa Civil/IAT.`
+			(motivos.length > 0
+				? ` Atenção: ${motivos.join("; ")} — acompanhe Defesa Civil/IAT.`
 				: " Níveis sem tendência de cheia no momento.") +
 			` Para alertas oficiais, siga Defesa Civil e IAT.`,
 	};
