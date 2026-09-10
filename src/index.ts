@@ -593,6 +593,29 @@ export async function syncWeatherCycle(): Promise<WeatherState> {
 		state.alertaUnificado = unificado;
 		logAlertaUnificado(unificado);
 		setCachedWeatherState(state);
+		// Push no celular (PWA): só laranja/vermelho, com cooldown.
+		// Nunca quebra o ciclo — falha de push é só log.
+		try {
+			const { pushParaAlerta, sendEventPush } = await import("./push.js");
+			const regra = pushParaAlerta(unificado.nivel);
+			if (regra) {
+				const enviado = await sendEventPush(
+					regra.evento,
+					`${regra.emoji} ${unificado.titulo}`,
+					unificado.descricao,
+					regra.ttlMs,
+				);
+				logger.info("Push de alerta avaliado", {
+					nivel: unificado.nivel,
+					evento: regra.evento,
+					enviado,
+				});
+			}
+		} catch (err) {
+			logger.warn("Push de alerta falhou (sem quebrar o ciclo)", {
+				error: String(err),
+			});
+		}
 	} catch (err) {
 		logger.warn("Alerta unificado falhou (sem quebrar o ciclo)", {
 			error: String(err),
