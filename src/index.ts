@@ -1,4 +1,11 @@
 import {
+	buildAlertaUnificado,
+	fetchAlertasOficiais,
+	logAlertaUnificado,
+} from "./alertas-oficiais.js";
+import { fetchHidroTriangulacao } from "./ana-hidro.js";
+import { fetchCemadenIpiranga } from "./cemaden.js";
+import {
 	assessLevel,
 	buildUnifiedReport,
 	DEBOUNCE_THRESHOLD,
@@ -6,8 +13,6 @@ import {
 	runAllChecks,
 } from "./checker.js";
 import { loadConfig } from "./config.js";
-import { fetchCemadenIpiranga } from "./cemaden.js";
-import { fetchHidroTriangulacao } from "./ana-hidro.js";
 import {
 	closeDb,
 	getDailyStatsSummary,
@@ -499,6 +504,11 @@ export async function syncWeatherCycle(): Promise<WeatherState> {
 				// então a regra antiga "mantém boletim VLM se < 60min" (p/ não sujar
 				// com heurística pós-falha) foi REMOVIDA — ela só serviria para
 				// segurar o último boletim VLM velho do cache por até 60 min.
+				// Local-first (10/09/2026): chuva medida em Ipiranga (CEMADEN)
+				// abre o boletim; núcleo distante vira segundo plano.
+				const ests = state.cemaden?.estacoes ?? [];
+				const maxAcc = (f: (e: (typeof ests)[number]) => number | null) =>
+					ests.length ? Math.max(...ests.map((e) => f(e) ?? 0)) : null;
 				const bulletin = await generateNowcastBulletin(
 					nowcast,
 					state.radar.host,
@@ -511,6 +521,12 @@ export async function syncWeatherCycle(): Promise<WeatherState> {
 					{
 						alertLevel: state.alertLevel ?? "monitor",
 						nearestThreatKm: state.nearestThreatKm ?? null,
+					},
+					{
+						acc1hrMax: maxAcc((e) => e.acc1hr),
+						acc6hrMax: maxAcc((e) => e.acc6hr),
+						acc24hrMax: maxAcc((e) => e.acc24hr),
+						condition: weatherInfo.condition,
 					},
 				);
 				state.nowcastBulletin = bulletin;
@@ -534,6 +550,39 @@ export async function syncWeatherCycle(): Promise<WeatherState> {
 		}
 	} catch (err) {
 		logger.warn("Nowcast falhou ao integrar ao estado", {
+			error: String(err),
+		});
+	}
+
+	// Alerta unificado próprio (10/09/2026): fusão determinística dos nossos
+	// dados (CEMADEN+ECMWF+radar+hidro) com os avisos oficiais como agravante.
+	// Roda no mesmo ciclo, nunca quebra o sync (try/catch interno).
+	try {
+		const oficiais = await fetchAlertasOficiais();
+		state.alertasOficiais = oficiais;
+		const estsA = state.cemaden?.estacoes ?? [];
+		const maxA = (f: (e: (typeof estsA)[number]) => number | null) =>
+			estsA.length ? Math.max(...estsA.map((e) => f(e) ?? 0)) : null;
+		const prox6h = (weatherInfo.hourlyForecast || [])
+			.slice(0, 6)
+			.reduce((s, h) => s + (h.precipitationMm ?? 0), 0);
+		const unificado = buildAlertaUnificado(
+			{
+				acc1hrMax: maxA((e) => e.acc1hr),
+				acc6hrMax: maxA((e) => e.acc6hr),
+				acc24hrMax: maxA((e) => e.acc24hr),
+				ecmwfPct: weatherInfo.rainProbabilityPct,
+				ecmwfProx6hMm: prox6h,
+				radarAlertLevel: state.alertLevel ?? "monitor",
+				hidroWatch: state.hidro?.riscoCheia === "watch",
+			},
+			oficiais,
+		);
+		state.alertaUnificado = unificado;
+		logAlertaUnificado(unificado);
+		setCachedWeatherState(state);
+	} catch (err) {
+		logger.warn("Alerta unificado falhou (sem quebrar o ciclo)", {
 			error: String(err),
 		});
 	}
@@ -675,6 +724,8 @@ export async function handleRequest(
 		"/api/weather/nowcast",
 		"/api/weather/json-ld",
 		"/api/weather/bulletin",
+		"/api/hidro",
+		"/api/alertas",
 		"/api/history",
 		"/api/operators",
 		"/api/bgp",
@@ -852,12 +903,37 @@ export async function handleRequest(
 			const hidro = state?.hidro ?? null;
 			if (!hidro) {
 				return Response.json(
-					{ error: "Dados hidro ainda não disponíveis — aguarde o próximo ciclo" },
+					{
+						error:
+							"Dados hidro ainda não disponíveis — aguarde o próximo ciclo",
+					},
 					{ status: 503, headers: { "Cache-Control": "public, max-age=30" } },
 				);
 			}
 			return Response.json(hidro, {
-				headers: { "Cache-Control": "public, max-age=120, stale-while-revalidate=60" },
+				headers: {
+					"Cache-Control": "public, max-age=120, stale-while-revalidate=60",
+				},
+			});
+		}
+
+		if (path === "/api/alertas") {
+			let state = getCachedWeatherState();
+			if (!state) state = await loadWeatherState();
+			const payload = {
+				unificado: state?.alertaUnificado ?? null,
+				oficiais: state?.alertasOficiais ?? null,
+			};
+			if (!payload.unificado) {
+				return Response.json(
+					{ error: "Alerta ainda não calculado — aguarde o próximo ciclo" },
+					{ status: 503, headers: { "Cache-Control": "public, max-age=30" } },
+				);
+			}
+			return Response.json(payload, {
+				headers: {
+					"Cache-Control": "public, max-age=120, stale-while-revalidate=60",
+				},
 			});
 		}
 
@@ -875,13 +951,10 @@ export async function handleRequest(
 			const cronSecret = loadConfig().cronSecret;
 			const auth = getHeader(req, "authorization") ?? "";
 			if (!cronSecret || auth !== `Bearer ${cronSecret}`) {
-				return new Response(
-					JSON.stringify({ error: "Não autorizado" }),
-					{
-						status: 401,
-						headers: { "Content-Type": "application/json" },
-					},
-				);
+				return new Response(JSON.stringify({ error: "Não autorizado" }), {
+					status: 401,
+					headers: { "Content-Type": "application/json" },
+				});
 			}
 			await runChecks();
 			return Response.json({ status: "ok", timestamp: Date.now() });
@@ -1176,17 +1249,12 @@ export async function handleRequest(
 				"./admin.js"
 			);
 			if (
-				!verifySessionToken(
-					getSessionTokenFromCookie(getHeader(req, "cookie")),
-				)
+				!verifySessionToken(getSessionTokenFromCookie(getHeader(req, "cookie")))
 			) {
-				return new Response(
-					JSON.stringify({ error: "Não autenticado" }),
-					{
-						status: 401,
-						headers: { "Content-Type": "application/json" },
-					},
-				);
+				return new Response(JSON.stringify({ error: "Não autenticado" }), {
+					status: 401,
+					headers: { "Content-Type": "application/json" },
+				});
 			}
 			// Envia um push de teste pra todos os inscritos (validar o fluxo).
 			const { sendPushAlert } = await import("./push.js");
@@ -1250,7 +1318,8 @@ export async function handleRequest(
 		}
 		if (path === "/api/telemetry" && method === "POST") {
 			try {
-				const ip = getClientIp(req) === "unknown" ? "127.0.0.1" : getClientIp(req);
+				const ip =
+					getClientIp(req) === "unknown" ? "127.0.0.1" : getClientIp(req);
 				const body = (await getReqJson(req)) as {
 					rttMs?: number;
 					effectiveType?: string;

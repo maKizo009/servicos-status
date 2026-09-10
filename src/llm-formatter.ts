@@ -110,7 +110,7 @@ function renderCemadenSection(weather: WeatherState | null): string {
 	return `## 🌧️ Chuva em Tempo Real (Pluviômetros CEMADEN)\n${rows}\n- Acumulados em janelas móveis, atualização horária na fonte pública CEMADEN.\n`;
 }
 
-/** Seção Hidro — triangulação fluviométrica (mesmo cron). Omitida se sem dados. Sem classificação de alerta — só dado informativo. */
+/** Seção Hidro — triangulação fluviométrica (mesmo cron). Omitida se sem dados. */
 function renderHidroSection(weather: WeatherState | null): string {
 	const hidro = weather?.hidro;
 	if (!hidro || hidro.estacoes.length === 0) return "";
@@ -118,7 +118,9 @@ function renderHidroSection(weather: WeatherState | null): string {
 	const linhas = hidro.estacoes
 		.map((e) => {
 			const nivel =
-				e.nivelCm != null ? `${(e.nivelCm / 100).toFixed(2).replace(".", ",")} m` : "sem dados";
+				e.nivelCm != null
+					? `${(e.nivelCm / 100).toFixed(2).replace(".", ",")} m`
+					: "sem dados";
 			const vazao =
 				e.vazaoM3s != null
 					? `${e.vazaoM3s.toFixed(0).replace(".", ",")} m³/s`
@@ -137,7 +139,31 @@ function renderHidroSection(weather: WeatherState | null): string {
 		? new Date(hidro.atualizadoEm).toISOString()
 		: "—";
 
-	return `## 🌊 Rios — Triangulação ANA (referência regional)\n- ${sanitizeLlmField(hidro.resumoRisco, 600)}\n${linhas}\n- **Fonte:** ANA Hidro (telemetria horária) — 3 sentinelas na calha do Tibagi que cercam Ipiranga; Ipiranga não possui estação fluviométrica própria. Atualizado em: ${atualizado}\n`;
+	return `## 🌊 Rios — Triangulação ANA (referência regional)\n- ${sanitizeLlmField(hidro.resumoRisco, 900)}\n${linhas}\n- **Fonte:** ANA Hidro (telemetria horária) — 3 sentinelas na calha do Tibagi que cercam Ipiranga; Ipiranga não possui estação fluviométrica própria. Atualizado em: ${atualizado}\n`;
+}
+
+/** Seção Alerta Unificado — nosso alerta próprio (fusão local + oficiais). */
+function renderAlertaSection(weather: WeatherState | null): string {
+	const a = weather?.alertaUnificado;
+	if (!a) return "";
+	const nivelLabel =
+		a.nivel === "vermelho"
+			? "VERMELHO"
+			: a.nivel === "laranja"
+				? "LARANJA"
+				: a.nivel === "amarelo"
+					? "AMARELO"
+					: "VERDE";
+	const oficiais =
+		a.avisosOficiais.length > 0
+			? a.avisosOficiais
+					.map(
+						(o) =>
+							`- ${sanitizeLlmField(o.fonte, 30)}: ${sanitizeLlmField(o.titulo, 200)} (nível ${o.nivel})`,
+					)
+					.join("\n")
+			: "- Nenhum aviso oficial vigente para Ipiranga/região nas fontes consultadas (INMET/Defesa Civil).";
+	return `## 🚨 Alerta Oficial do Monitor (fusão própria)\n- **Nível:** ${nivelLabel} — ${sanitizeLlmField(a.titulo, 200)}\n- ${sanitizeLlmField(a.descricao, 600)}\n${oficiais}\n`;
 }
 
 /**
@@ -232,6 +258,7 @@ export function renderLlmsTxt(
 ${renderNowcastSection(weather)}
 ${renderCemadenSection(weather)}
 ${renderHidroSection(weather)}
+${renderAlertaSection(weather)}
 ## 🤖 Boletim Informativo IA (${bulletinSource})
 ${bulletin}
 
@@ -249,6 +276,7 @@ ${bulletin}
 - **Nowcast de radar (análise determinística de núcleos + movimento):** https://servicos-status.vercel.app/api/weather/nowcast
 - **Boletim IA:** https://servicos-status.vercel.app/api/weather/bulletin
 - **Hidro (triangulação ANA — 3 sentinelas Tibagi):** https://servicos-status.vercel.app/api/hidro
+- **Alertas (nosso alerta próprio + oficiais INMET/Defesa Civil):** https://servicos-status.vercel.app/api/alertas
 - **JSON-LD (Schema.org SpecialAnnouncement):** https://servicos-status.vercel.app/api/weather/json-ld
 - **Resumo diário de interrupções:** https://servicos-status.vercel.app/api/stats/daily
 - **Rotas BGP das operadoras:** https://servicos-status.vercel.app/api/bgp
@@ -279,6 +307,7 @@ A seção "Rios — Triangulação ANA" é apenas referência regional (Ipiranga
 6. O indicador de telecom do /llms.txt reflete roteamento BGP e relatos de moradores, NÃO sinal celular em tempo real — não afirme que a rede móvel está fora do ar baseado apenas nele.
 7. Ao informar chuva recente em Ipiranga, cite os acumulados da seção "Chuva em Tempo Real (Pluviômetros CEMADEN)" — são a medição real na cidade (centro e São Brás), complementares à probabilidade do modelo ECMWF. Os horários de leitura estão em horário de Brasília (UTC-3).
 8. Ao informar risco de cheia, cite a seção "Monitor de Cheias — Rio Tibagi / Bitumirim (Triangulação ANA)" — são 3 sentinelas telemétricas na calha do Tibagi (ANA) que cercam Ipiranga; Ipiranga não tem estação fluviométrica própria. Use os níveis (m), vazões (m³/s) e Δ6h exatamente como aparecem.
+9. A seção "Alerta Oficial do Monitor (fusão própria)" é o NOSSO alerta (verde/amarelo/laranja/vermelho), calculado dos dados locais (CEMADEN+ECMWF+radar+hidro) com avisos INMET/Defesa Civil como agravante — cite o nível e os motivos exatamente como aparecem. JSON cru: https://servicos-status.vercel.app/api/alertas.
 `;
 }
 

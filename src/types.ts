@@ -137,7 +137,12 @@ export interface WeatherRadarData {
 export interface WeatherBulletin {
 	id?: number;
 	bulletin: string;
-	source: "nvidia_nim" | "gemini" | "heuristic" | "nvidia_nim_vision" | "opencode_vision";
+	source:
+		| "nvidia_nim"
+		| "gemini"
+		| "heuristic"
+		| "nvidia_nim_vision"
+		| "opencode_vision";
 	generatedAt: number;
 }
 
@@ -184,5 +189,9 @@ export interface WeatherState {
 	cemaden?: import("./cemaden.js").CemadenState | null;
 	/** Triangulação fluviométrica ANA — 3 sentinelas no Tibagi (sem estação dentro de Ipiranga). */
 	hidro?: import("./ana-hidro.js").HidroState | null;
+	/** Nosso alerta próprio: fusão determinística (CEMADEN+ECMWF+radar+hidro, oficiais como agravante). */
+	alertaUnificado?: import("./alertas-oficiais.js").AlertaUnificado | null;
+	/** Avisos oficiais crus (INMET/Defesa Civil) usados como agravante. */
+	alertasOficiais?: import("./alertas-oficiais.js").AlertasOficiaisState | null;
 	updatedAt: number;
 }

@@ -941,6 +941,14 @@ body{font-family:var(--font);background:var(--md-sys-color-surface);color:var(--
             </div>
           </div>
 
+          <div class="cemaden-box" id="alertaBox" style="display:none;border-width:2px">
+            <div class="cemaden-head">
+              <span style="font-size:13px;font-weight:600;color:var(--text)">🚨 Alerta do Monitor</span>
+              <span class="bulletin-tag" id="alertaNivelTag">—</span>
+            </div>
+            <div id="alertaContent" style="font-size:12.5px;color:var(--text2);line-height:1.6"></div>
+          </div>
+
         </div>
       </div>
     </div>
@@ -1940,6 +1948,7 @@ async function fetchWeatherData() {
     renderNowcastCard(data);
     renderCemadenCard(data);
     renderHidroCard(data);
+    renderAlertaCard(data);
 
     if (data.radar?.radar?.past && data.radar.radar.past.length > 0) {
       const host = data.radar.host || 'https://tilecache.rainviewer.com';
@@ -2008,6 +2017,37 @@ function renderCemadenCard(data) {
   content.innerHTML = rows;
 }
 
+function renderAlertaCard(data) {
+  const box = document.getElementById('alertaBox');
+  const content = document.getElementById('alertaContent');
+  const tag = document.getElementById('alertaNivelTag');
+  if (!box || !content) return;
+  const a = data?.alertaUnificado;
+  if (!a) { box.style.display = 'none'; return; }
+  box.style.display = 'flex';
+  const cores = {
+    verde: ['var(--g1)', 'var(--g6)'],
+    amarelo: ['var(--a1)', 'var(--a5)'],
+    laranja: ['var(--r1)', 'var(--r6)'],
+    vermelho: ['var(--r1)', 'var(--r6)'],
+  };
+  const [bg, fg] = cores[a.nivel] || cores.verde;
+  if (tag) {
+    tag.textContent = a.nivel.toUpperCase();
+    tag.style.background = bg;
+    tag.style.color = fg;
+    if (a.nivel === 'vermelho') tag.style.fontWeight = '800';
+  }
+  const motivos = (a.motivos || []).map((m) => `<div>• ${esc(m)}</div>`).join('');
+  const oficiais = (a.avisosOficiais || []).slice(0, 3).map((o) =>
+    `<div style="font-size:11.5px;opacity:.8">• ${esc(o.fonte)}: ${esc(o.titulo)} (${esc(o.nivel)})</div>`
+  ).join('');
+  content.innerHTML = `<div style="font-weight:600;color:var(--text)">${esc(a.titulo)}</div>` +
+    `<div style="margin-top:4px">${esc(a.descricao)}</div>` +
+    (motivos ? `<div style="margin-top:6px">${motivos}</div>` : '') +
+    (oficiais ? `<div style="margin-top:6px;border-top:1px solid var(--md-sys-color-outline-variant);padding-top:6px">${oficiais}</div>` : '');
+}
+
 function renderHidroCard(data) {
   const box = document.getElementById('hidroBox');
   const content = document.getElementById('hidroContent');
@@ -2020,9 +2060,15 @@ function renderHidroCard(data) {
   }
   box.style.display = 'flex';
   if (tag) {
-    tag.textContent = 'Referência';
-    tag.style.background = 'var(--md-sys-color-surface-container-high)';
-    tag.style.color = 'var(--text2)';
+    if (h.riscoCheia === 'watch' || h.riscoEnxurrada === 'warn') {
+      tag.textContent = 'Atenção';
+      tag.style.background = 'var(--a1)';
+      tag.style.color = 'var(--a5)';
+    } else {
+      tag.textContent = 'Referência';
+      tag.style.background = 'var(--md-sys-color-surface-container-high)';
+      tag.style.color = 'var(--text2)';
+    }
   }
   const fmtM = (cm) => cm == null ? '—' : (cm/100).toFixed(2).replace('.', ',') + ' m';
   const fmtV = (v) => v == null ? '—' : Math.round(v) + ' m³/s';
