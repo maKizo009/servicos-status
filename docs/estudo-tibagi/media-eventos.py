@@ -36,23 +36,43 @@ ESTACOES = ["uvaia", "lajeado"]
 
 
 def carregar(diretorio):
-    """{estacao: {date: nivel_cm}} — ignora linhas sem leitura numérica."""
+    """{estacao: {date: nivel_cm}} — fonte primária XLS (ler_xls_sih),
+    TXT como espelho. Ignora linhas sem leitura numérica."""
+    import glob as _glob
+    import os as _os
+    import sys as _sys
+    _sys.path.insert(0, _os.path.dirname(_os.path.abspath(__file__)))
+    from ler_xls_sih import ler_xls_sih
+
     dados = {e: {} for e in ESTACOES}
-    for caminho in glob.glob(os.path.join(diretorio, "*.txt")):
-        base = os.path.basename(caminho)
+    for caminho in sorted(_glob.glob(_os.path.join(diretorio, "*.*"))):
+        base = _os.path.basename(caminho)
         est = next((e for e in ESTACOES if base.startswith(e + "_")), None)
         if est is None:
             continue
-        with open(caminho, encoding="utf-8", errors="replace") as f:
-            for linha in f:
-                p = linha.split()
-                if len(p) < 7 or not p[6].lstrip("-").isdigit():
-                    continue
-                try:
-                    d = date(int(p[1]), int(p[2]), int(p[3]))
-                except ValueError:
-                    continue
-                dados[est][d] = int(p[6])
+        if base.endswith(".xls"):
+            for d, v in ler_xls_sih(caminho).items():
+                dados[est][d] = v
+        elif base.endswith(".txt") and not _os.path.exists(caminho[:-4] + ".xls"):
+            for d, v in _ler_txt(caminho).items():
+                dados[est][d] = v
+    return dados
+
+
+def _ler_txt(caminho):
+    from datetime import date as _date
+
+    dados = {}
+    with open(caminho, encoding="utf-8", errors="replace") as f:
+        for linha in f:
+            p = linha.split()
+            if len(p) < 7 or not p[6].lstrip("-").isdigit():
+                continue
+            try:
+                d = _date(int(p[1]), int(p[2]), int(p[3]))
+            except ValueError:
+                continue
+            dados[d] = int(p[6])
     return dados
 
 
