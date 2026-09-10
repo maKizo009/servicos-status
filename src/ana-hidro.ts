@@ -193,22 +193,31 @@ export interface ResultadoIFL {
 }
 
 /**
- * Índice de Flash Local (IFL) — a outra perna da doutrina (auditoria
+ * Índice de Flash Local (IFL v3.1) — a perna do gatilho (auditoria
  * Antigravity). JAN25 provou que tromba local transborda o Bitumirim com o
- * Tibagi calmo: nenhum índice de remanso pega isso. IFL é 100% local
- * (CEMADEN 1h/6h/24h), desacoplado de qualquer régua do Tibagi.
- * Piso de 0,75 com 24h ≥ 90 mm = assinatura JAN25 (143 mm/dia).
- * Curto-circuito 1,0 com 1h ≥ 40 mm = chuva que não espera janela fechar.
+ * Tibagi calmo: nenhum índice de remanso pega isso. IFL é chuva local
+ * (CEMADEN 1h/6h/24h) + ANTECEDENTE 72h (palco) + REGIME sazonal.
+ * - Piso de 0,75 com 24h ≥ 90 mm = assinatura JAN25 (143 mm/dia).
+ * - Curto-circuito 1,0 com 1h ≥ 40 mm = chuva que não espera janela fechar.
+ * - Antecedente (v3.1): 72h ≥ 150 mm (convectivo) ou ≥ 100 mm (frontal —
+ *   inverno arma o palco com pouca água: JUL24 102 mm/mês → 21/31d saturado)
+ *   eleva ao piso 0,35 (amarelo): palco armado, mas sem gatilho não há flash.
+ *   JAN25-replay (p24 ~15, p72 ~158) → amarelo com rio em 4 m descendo: ok.
+ * - Frontal não cria laranja/vermelho sozinho — esses exigem chuva atual.
  */
 export function calcularIFL(input: {
 	p1h: number | null;
 	p6h: number | null;
 	p24h: number | null;
+	p72h?: number | null;
+	regime?: RegimeHidro;
 }): ResultadoIFL {
 	const motivos: string[] = [];
+	const regime: RegimeHidro = input.regime ?? "convectivo";
 	const p1 = input.p1h ?? 0;
 	const p6 = input.p6h ?? 0;
 	const p24 = input.p24h ?? 0;
+	const p72 = input.p72h ?? 0;
 	let score = 0.5 * Math.min(p1 / 35, 1) + 0.5 * Math.min(p6 / 70, 1);
 	if (p1 >= 1 || p6 >= 1 || p24 >= 1) {
 		motivos.push(
@@ -227,6 +236,13 @@ export function calcularIFL(input: {
 			`chuva extrema agora (${p1.toFixed(1).replace(".", ",")} mm/1h) — enxurrada imediata`,
 		);
 	}
+	const barraAntecedente = regime === "frontal" ? 100 : 150;
+	if (p72 >= barraAntecedente) {
+		score = Math.max(score, 0.35);
+		motivos.push(
+			`antecedente ${p72.toFixed(0).replace(".", ",")} mm/72h em Ipiranga (regime ${regime}, barra ${barraAntecedente}) — solo encharcado, palco armado`,
+		);
+	}
 	score = Math.round(score * 100) / 100;
 	const nivel: NivelIBR =
 		score >= 0.8
@@ -239,6 +255,32 @@ export function calcularIFL(input: {
 	return { score, nivel, motivos };
 }
 
+/** Regime hidro sazonal (v3.1, 11/09/2026) — doutrina sazonal calibrada em
+ * 11 rótulos (3 verão convectivo + 5 inverno frontal + OUT23/JAN25/2011):
+ * - Convectivo (set–abr): célula hiper-local → só chuva local manda (JAN25:
+ *   Uvaia em P50 com régua em 4 m). IFL puro.
+ * - Frontal (mai–ago): frente fria ampla → Uvaia integra a bacia e carrega a
+ *   severidade (ranking Dave 13>14≈15>19>17 reproduzido pelo pico Uvaia
+ *   1033/995/986/921/659, NÃO pela pilha local). Palco arma com pouca água
+ *   (JUL24: 102 mm/mês → solo saturado 21/31d; radiação 8,7 vs 17–20 no verão).
+ * Confirmação contínua: radiação média 30d São Braz < 12 MJ/m²/dia bateu nos
+ * 6 invernos e em nenhum verão (SMA 2056, offline). Ao vivo usa só o mês
+ * (determinístico, zero fetch novo); rad fica como checagem de bancada. */
+export type RegimeHidro = "frontal" | "convectivo";
+
+export function regimeDoMes(mes1a12: number): RegimeHidro {
+	return mes1a12 >= 5 && mes1a12 <= 8 ? "frontal" : "convectivo";
+}
+
+/** Mês atual em America/Sao_Paulo (sem lib de data — só Intl). */
+export function mesAtualSPagora(): number {
+	return Number(
+		new Intl.DateTimeFormat("pt-BR", {
+			timeZone: "America/Sao_Paulo",
+			month: "numeric",
+		}).format(new Date()),
+	);
+}
 /** Posição do nível atual contra as faixas. */
 export function faixaNivel(
 	codigo: string,
@@ -289,8 +331,10 @@ export interface HidroState {
 	riscoCheia: "ok" | "watch" | "critical";
 	/** Permanência (v3) — dias fora da caixa SE transbordar (ajuste n=2) */
 	permanencia: ResultadoPermanencia | null;
-	/** IFL (Índice de Flash Local) — 100% chuva local, sem Tibagi */
+	/** IFL (Índice de Flash Local) — chuva local + antecedente + regime */
 	ifl: ResultadoIFL | null;
+	/** Regime sazonal vigente na avaliação (v3.1) */
+	regime: RegimeHidro | null;
 	/** Texto curto para o llms.txt */
 	resumoRisco: string;
 }
@@ -462,20 +506,23 @@ async function fetchEstacao(
 	}
 }
 
-/** Chuva local (CEMADEN, máx entre as estações) para o IFL e o remanso. */
+/** Chuva local (CEMADEN, máx entre as estações) para o IFL e o remanso.
+ * p72h = antecedente (acc72h máx) — o "palco" da v3.1. */
 export interface ChuvaLocal {
 	p1h: number | null;
 	p6h: number | null;
 	p24h: number | null;
+	p72h?: number | null;
 }
 
-/** Exportada para testes (lógica de faixas/flash/permanência). */
+/** Exportada para testes (lógica de faixas/flash/permanência/regime). */
 export function avaliarRisco(
 	estacoes: HidroEstacao[],
 	chuva: ChuvaLocal | null,
+	mesOverride?: number,
 ): Pick<
 	HidroState,
-	"riscoEnxurrada" | "riscoCheia" | "resumoRisco" | "permanencia" | "ifl"
+	"riscoEnxurrada" | "riscoCheia" | "resumoRisco" | "permanencia" | "ifl" | "regime"
 > {
 	// Triangulação é referência regional (Ipiranga NÃO tem estação
 	// fluviométrica própria — o Bitumirim não é medido direto). Por isso a
@@ -483,12 +530,14 @@ export function avaliarRisco(
 	// evidência convergente (rio subindo + chuva medida aqui e na sentinela).
 	// "critical" nunca é gerado aqui — cheia se confirma pela Defesa Civil/IAT.
 	const comDados = estacoes.filter((e) => !e.erro && e.nivelCm != null);
+	const regime: RegimeHidro = regimeDoMes(mesOverride ?? mesAtualSPagora());
 	if (comDados.length === 0) {
 		return {
 			riscoEnxurrada: "ok",
 			riscoCheia: "ok",
 			permanencia: null,
 			ifl: null,
+			regime,
 			resumoRisco:
 				"Triangulação indisponível no momento (sentinelas sem dados). Ipiranga não possui estação fluviométrica própria — para alertas oficiais, siga Defesa Civil e IAT.",
 		};
@@ -565,6 +614,8 @@ export function avaliarRisco(
 		p1h: chuva?.p1h ?? null,
 		p6h: chuva?.p6h ?? null,
 		p24h: chuva?.p24h ?? null,
+		p72h: chuva?.p72h ?? null,
+		regime,
 	});
 	if (ifl.nivel !== "verde") {
 		motivos.push(`flash local IFL ${ifl.score.toFixed(2).replace(".", ",")} (${ifl.nivel}): ${ifl.motivos.join("; ")}`);
@@ -580,8 +631,10 @@ export function avaliarRisco(
 		riscoCheia: watchFinal ? "watch" : "ok",
 		permanencia,
 		ifl,
+		regime,
 		resumoRisco:
 			`Triangulação no Rio Tibagi (referência regional — o Bitumirim em Ipiranga não é medido direto; faixas P90/P98 do ano hidrológico). ` +
+			`Regime ${regime} (v3.1: mai–ago frontal, Uvaia carrega severidade; set–abr convectivo, só local manda). ` +
 			`${trechos.join(" · ")}.` +
 			` Flash IFL ${ifl.score.toFixed(2).replace(".", ",")} (${ifl.nivel}) · permanência ${permanencia.diasEstimados.toString().replace(".", ",")}d (${permanencia.nivel}).` +
 			(motivos.length > 0
@@ -629,6 +682,7 @@ export async function fetchHidroTriangulacao(
 			riscoCheia: "ok",
 			permanencia: null,
 			ifl: null,
+			regime: null,
 			resumoRisco: "Dados hidro temporariamente indisponíveis.",
 		};
 	}
