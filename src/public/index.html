@@ -221,8 +221,8 @@
 .nowcast-status-row{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
 .cemaden-box{
   background:var(--md-sys-color-surface-container);border:1px solid var(--md-sys-color-outline-variant);
-  border-radius:var(--md-shape-corner-medium);padding:16px;
-  display:flex;flex-direction:column;gap:10px;color:var(--md-sys-color-on-surface);box-shadow:var(--md-elevation-1)
+  border-radius:var(--md-shape-corner-medium);padding:12px;
+  display:flex;flex-direction:column;gap:8px;color:var(--md-sys-color-on-surface);box-shadow:var(--md-elevation-1)
 }
 .cemaden-head{display:flex;align-items:center;justify-content:space-between;color:var(--md-sys-color-on-surface)}
 .cemaden-row{border-top:1px solid var(--md-sys-color-outline-variant);padding-top:10px;margin-top:6px}
@@ -1237,6 +1237,13 @@ function renderScheduledReminder(services){
     return;
   }
   const list=$('#scheduledReminderList');
+  // Takeover do alerta no topo: o Copel vira linha dentro do banner (fundido
+  // no renderTopAlert) — não reabrir o card separado por cima.
+  if (document.getElementById('banner')?.classList.contains('alert-takeover')) {
+    el.style.display = 'none';
+    list.innerHTML = html;
+    return;
+  }
   let html='';
   for(const ev of scheduled){
     const previsao=formatCopelPrevisao(ev);
@@ -2043,6 +2050,14 @@ function renderTopAlert(data) {
   const hot = a && (a.nivel === 'laranja' || a.nivel === 'vermelho');
   if (!hot) {
     bn.classList.remove('alert-takeover');
+    // Devolve a cena: card de alerta (se verde/amarelo) + lembrete Copel.
+    const ab = document.getElementById('alertaBox');
+    if (ab) ab.style.display = '';
+    const sr = document.getElementById('scheduledReminder');
+    if (sr && window.lastServicesSnapshot && typeof renderScheduledReminder === 'function') {
+      sr.style.display = '';
+      renderScheduledReminder(window.lastServicesSnapshot);
+    }
     if (window.lastServicesSnapshot) updateBanner(window.lastServicesSnapshot);
     return;
   }
@@ -2063,7 +2078,16 @@ function renderTopAlert(data) {
     const oficiais = (a.avisosOficiais || []).slice(0, 2).map((o) =>
       `<div style="font-size:11.5px;opacity:.8">• ${esc(o.fonte)}: ${esc(o.titulo)}</div>`
     ).join('');
-    detailsEl.innerHTML = `<div class="banner-detail-item" onclick="document.getElementById('alertaBox').scrollIntoView({behavior:'smooth',block:'center'})" role="button" tabindex="0" title="Ver detalhes do alerta">{MOTIVOS}${oficiais}<span class="banner-jump-tag">Ver alerta ➔</span></div>`.replace('{MOTIVOS}', motivos);
+    // Funde o lembrete Copel (desligamento programado) no MESMO card do topo
+    // pra não empilhar 2 banners: vira uma linha e o card separado sai de cena.
+    let copelLinha = '';
+    const srList = document.getElementById('scheduledReminderList');
+    const sr = document.getElementById('scheduledReminder');
+    if (srList && srList.innerHTML.trim()) {
+      copelLinha = `<div style="margin-top:6px;border-top:1px solid var(--md-sys-color-outline-variant);padding-top:6px">⚡ Desligamento programado (Copel): ${srList.innerHTML}</div>`;
+      if (sr) sr.style.display = 'none';
+    }
+    detailsEl.innerHTML = `<div class="banner-detail-item" onclick="document.getElementById('hidroBox').scrollIntoView({behavior:'smooth',block:'center'})" role="button" tabindex="0" title="Ver rios">{MOTIVOS}${oficiais}${copelLinha}<span class="banner-jump-tag">Ver rios ➔</span></div>`.replace('{MOTIVOS}', motivos);
     detailsEl.style.display = 'flex';
   }
 }
@@ -2075,11 +2099,14 @@ function renderAlertaCard(data) {
   if (!box || !content) return;
   const a = data?.alertaUnificado;
   if (!a) { box.style.display = 'none'; return; }
+  // Takeover ativo (laranja/vermelho no banner do topo): este card sai de
+  // cena pra não duplicar — a info já está lá em cima, compacta.
+  if (a.nivel === 'laranja' || a.nivel === 'vermelho') { box.style.display = 'none'; return; }
   box.style.display = 'flex';
   const cores = {
     verde: ['var(--g1)', 'var(--g6)'],
-    amarelo: ['var(--a1)', 'var(--a5)'],
-    laranja: ['var(--r1)', 'var(--r6)'],
+    amarelo: ['transparent', 'var(--a5)'],
+    laranja: ['var(--a1)', 'var(--a5)'],
     vermelho: ['var(--r1)', 'var(--r6)'],
   };
   const [bg, fg] = cores[a.nivel] || cores.verde;
@@ -2087,14 +2114,30 @@ function renderAlertaCard(data) {
     tag.textContent = a.nivel.toUpperCase();
     tag.style.background = bg;
     tag.style.color = fg;
-    if (a.nivel === 'vermelho') tag.style.fontWeight = '800';
+    tag.style.fontWeight = (a.nivel === 'laranja' || a.nivel === 'vermelho') ? '800' : '600';
+    tag.style.border = a.nivel === 'amarelo' ? '1px solid var(--a5)' : 'none';
   }
-  const motivos = (a.motivos || []).map((m) => `<div>• ${esc(m)}</div>`).join('');
+  // Sem triplicar: a descrição do backend já embute "Motivos: X" — mostra cada
+  // texto uma vez só.
+  const vistos = new Set();
+  const pushUnico = (txt) => {
+    const t = String(txt || '').trim();
+    if (!t) return '';
+    for (const v of vistos) {
+      if (v === t || v.includes(t)) return '';
+      if (t.includes(v) && v.length > 12) { vistos.delete(v); break; }
+    }
+    vistos.add(t);
+    return t;
+  };
+  const titulo = pushUnico(a.titulo);
+  const desc = pushUnico((a.descricao || '').replace(/^Alerta (verde|amarelo|laranja|vermelho) — /i, ''));
+  const motivos = (a.motivos || []).map((m) => pushUnico(m)).filter(Boolean).map((m) => `<div>• ${esc(m)}</div>`).join('');
   const oficiais = (a.avisosOficiais || []).slice(0, 3).map((o) =>
     `<div style="font-size:11.5px;opacity:.8">• ${esc(o.fonte)}: ${esc(o.titulo)} (${esc(o.nivel)})</div>`
   ).join('');
-  content.innerHTML = `<div style="font-weight:600;color:var(--text)">${esc(a.titulo)}</div>` +
-    `<div style="margin-top:4px">${esc(a.descricao)}</div>` +
+  content.innerHTML = (titulo ? `<div style="font-weight:600;color:var(--text)">${esc(titulo)}</div>` : '') +
+    (desc ? `<div style="margin-top:4px">${esc(desc)}</div>` : '') +
     (motivos ? `<div style="margin-top:6px">${motivos}</div>` : '') +
     (oficiais ? `<div style="margin-top:6px;border-top:1px solid var(--md-sys-color-outline-variant);padding-top:6px">${oficiais}</div>` : '');
 }
