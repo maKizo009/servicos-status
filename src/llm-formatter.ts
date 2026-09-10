@@ -207,17 +207,10 @@ export function renderLlmsTxt(
 	const bulletin =
 		sanitizeLlmField(weather?.bulletin?.bulletin, 800) ||
 		"Sem boletim recente.";
-	const bulletinSource = weather?.bulletin?.source
-		? weather.bulletin.source === "nvidia_nim_vision"
-			? "IA (VLM Vision — Llama 3.2 Vision)"
-			: weather.bulletin.source === "nvidia_nim"
-				? "IA (NVIDIA NIM Engine)"
-				: weather.bulletin.source === "gemini"
-					? "IA (Gemini API)"
-					: weather.bulletin.source === "openrouter"
-						? "IA (OpenRouter — analista)"
-						: "Regras Heurísticas Locais"
-		: "Sistema";
+	const bulletinSource =
+		weather?.bulletin?.source === "openrouter"
+			? "análise de IA"
+			: "análise de IA (local)";
 
 	const copelServices = report?.services.find((s) => s.name === "Copel");
 	const saneparServices = report?.services.find((s) => s.name === "Sanepar");
@@ -273,7 +266,7 @@ ${renderCemadenSection(weather)}
 ${renderHidroSection(weather)}
 ${renderSimeparSection(weather)}
 ${renderAlertaSection(weather)}
-## 🤖 Boletim Informativo IA (${bulletinSource})
+## 🤖 Boletim (${bulletinSource})
 ${bulletin}
 
 ## ⚡ Infraestrutura e Serviços Públicos Locais
