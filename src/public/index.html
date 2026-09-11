@@ -2254,6 +2254,30 @@ function renderHidroCard(data) {
   const iflLine = (h.ifl && h.ifl.nivel !== 'verde')
     ? `<div style="border:1px dashed var(--a4);border-radius:10px;padding:8px 10px;margin:6px 0;font-size:12.5px;color:var(--text)">⚡ <strong>Flash local (IFL ${esc(String(h.ifl.score).replace('.', ','))} · ${esc(h.ifl.nivel.toUpperCase())})</strong> — ${esc(h.ifl.motivos.join('; '))}</div>`
     : '';
+  // Projeção Bitumirim (v1.0)
+  const proj = h.projecao || null;
+  const projBadge = (c) => {
+    if (c === 'critico') return '<span style="background:var(--r1);color:var(--r6);font-weight:800;padding:2px 8px;border-radius:6px;font-size:11px">CRÍTICO</span>';
+    if (c === 'alerta') return '<span style="background:var(--r1);color:var(--r6);padding:2px 8px;border-radius:6px;font-size:11px">ALERTA</span>';
+    if (c === 'atencao') return '<span style="background:var(--a1);color:var(--a5);padding:2px 8px;border-radius:6px;font-size:11px">ATENÇÃO</span>';
+    return '<span style="background:var(--g1);color:var(--g6);padding:2px 8px;border-radius:6px;font-size:11px">NORMAL</span>';
+  };
+  const projPanel = proj && proj.classificacao !== 'normal'
+    ? `<div style="border:1px solid var(--md-sys-color-outline-variant);border-radius:10px;padding:10px;margin:6px 0;background:var(--md-sys-color-surface-container-low)">
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">
+          <strong style="color:var(--text)">🌊 Projeção Bitumirim</strong>
+          ${projBadge(proj.classificacao)}
+        </div>
+        <div style="font-size:13px;color:var(--text);line-height:1.6">
+          ${proj.nivelEstimadoM != null ? `<div>Nível estimado: <strong>${proj.nivelEstimadoM.toFixed(1)} m</strong></div>` : ''}
+          ${proj.saiuDaCalha ? '<div style="color:var(--r6);font-weight:700">⚠️ Provável fora da calha</div>' : ''}
+          ${proj.horasAteCalha != null ? `<div>Tempo até sair da calha: <strong>~${proj.horasAteCalha}h</strong> (~${Math.round(proj.horasAteCalha/24)} dias)</div>` : ''}
+          ${proj.horasAtePico != null ? `<div>Pico estimado: <strong>~${proj.horasAtePico}h</strong></div>` : ''}
+          ${proj.horasRecedencia != null ? `<div>Recedência: <strong>~${Math.round(proj.horasRecedencia/24)} dias</strong>${proj.horasRecedencia > 100 ? ' (solo saturado)' : ''}</div>` : ''}
+          <div style="margin-top:4px;font-size:12px;opacity:.7">${esc(proj.texto)}</div>
+        </div>
+      </div>`
+    : '';
   const motivos = (perm && perm.motivos && perm.motivos.length)
     ? `<div style="margin:6px 0">${perm.motivos.map((m) => `<div>• ${esc(m)}</div>`).join('')}</div>`
     : '';
@@ -2272,7 +2296,7 @@ function renderHidroCard(data) {
       <div style="margin-top:6px"><a href="/api/hidro" style="color:var(--g5)">Dados crus (JSON)</a> · <a href="https://github.com/maKizo009/servicos-status/issues" style="color:var(--g5)">Sugerir melhoria</a></div>
     </div>
   </details>`;
-  content.innerHTML = permPanel + iflLine + motivos + rows + formula +
+  content.innerHTML = permPanel + iflLine + projPanel + motivos + rows + formula +
     `<div style="border:1px solid var(--r5);border-radius:10px;padding:10px;margin-top:10px;font-size:11.5px;line-height:1.5;color:var(--text)">⚠️ <strong>Estimativa de algoritmo, não medição oficial.</strong> O Bitumirim não tem régua. Não prevê o futuro e não substitui a Defesa Civil (199) nem o IAT.</div>` +
     `<div style="font-size:11.5px;opacity:.6;margin-top:8px">Atualizado: ${h.atualizadoEm ? new Date(h.atualizadoEm).toLocaleString('pt-BR') : '—'}</div>`;
 }
