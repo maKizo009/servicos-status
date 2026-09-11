@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 115" width="100" height="115" fill="none">
+  <!-- Ipiranga Monitor - Símbolo Oficial -->
+  <!-- Pin de localização arredondado -->
+  <path d="M 20.5 64 A 36 36 0 1 1 79.5 64 L 52.8 104 A 3.6 3.6 0 0 1 47.2 104 Z"
+        stroke="#00C853" stroke-width="7.5" stroke-linecap="round" stroke-linejoin="round"/>
+  <!-- Arco externo de sinal/radar -->
+  <path d="M 24 48 A 39 39 0 0 1 76 48"
+        stroke="#00C853" stroke-width="6.5" stroke-linecap="round"/>
+  <!-- Arco interno de sinal/radar -->
+  <path d="M 34 56 A 24 24 0 0 1 66 56"
+        stroke="#00C853" stroke-width="6" stroke-linecap="round"/>
+  <!-- Ponto focal amarelo -->
+  <circle cx="50" cy="68" r="5.5" fill="#F0D835"/>
+  <!-- Elemento de horizonte/território/folha -->
+  <path d="M 39 77 C 44 80.5 56 80.5 61 77 C 57 83.5 43 83.5 39 77 Z" fill="#00C853"/>
+</svg>
