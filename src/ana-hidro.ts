@@ -272,6 +272,132 @@ export function regimeDoMes(mes1a12: number): RegimeHidro {
 	return mes1a12 >= 5 && mes1a12 <= 8 ? "frontal" : "convectivo";
 }
 
+// ============ Projeção Bitumirim (v1.0, 11/09/2026) ============
+//
+// Modelo calibrado em 2 eventos com dados reais + observação do Dave:
+// - OUT23: Bitumirim saiu da calha 29/10 ~16h (Uvaia 756 cm),
+//   subindo 4-5 cm/h medido na manhã do 30, estabilizou 31/dia,
+//   começou a BAIXAR 01/11 (Uvaia 1132 cm). Recedência lenta (7+ dias).
+// - DEZ24: Pico Bitumirim 11/dez (Uvaia 568 cm), BR liberada
+//   12/dez manhã (Uvaia 692 cm). Recedência rápida (~2 dias).
+// - JAN25: Flash local 143 mm em São Braz, Bitumirim NÃO saiu da calha.
+//
+// DEFASAGEM Uvaia → Bitumirim:
+//   - Bitumirim sai da calha: Uvaia ~700 cm + chuva > 50mm/dia
+//   - Pico Bitumirim: 0-2 dias após Uvaia atingir pico
+//   - Início da baixa: quando Uvaia começa a estabilizar/descer
+//   - Recedência: 2-3d (solo drenado) a 7+dias (solo saturado)
+
+/** Faixas de risco Bitumirim — calibradas em OUT23 e DEZ24 */
+export const BITUMIRIM_LIMIARES = {
+	saidaCalhaUvaiaCm: 700,
+	saidaCalhaChuvaMm: 50,
+	riscoSemSaidaUvaiaCm: 550,
+	riscoSemSaidaChuvaMm: 100,
+	taxaExplosivaCmd: 100,
+	taxaModeradaCmd: 30,
+} as const;
+
+export interface ProjecaoBitumirim {
+	nivelEstimadoM: number | null;
+	saiuDaCalha: boolean;
+	horasAteCalha: number | null;
+	horasAtePico: number | null;
+	horasRecedencia: number | null;
+	classificacao: "normal" | "atencao" | "alerta" | "critico";
+	texto: string;
+}
+
+/**
+ * Projeta comportamento do Bitumirim com base no Uvaia e chuva local.
+ * Modelo empírico calibrado em OUT23 (7 dias fora) e DEZ24 (2 dias fora).
+ * Sempre retorna resultado — nunca lança exceção.
+ */
+export function projetarBitumirim(
+	uvaiaCm: number | null,
+	taxaSubidaCmd24h: number | null,
+	chuvaLocalMm24h: number,
+): ProjecaoBitumirim {
+	const L = BITUMIRIM_LIMIARES;
+	const texto: string[] = [];
+	if (uvaiaCm == null) {
+		return {
+			nivelEstimadoM: null, saiuDaCalha: false, horasAteCalha: null,
+			horasAtePico: null, horasRecedencia: null, classificacao: "normal",
+			texto: "Uvaia sem dados — projeção indisponível.",
+		};
+	}
+	const taxa = taxaSubidaCmd24h ?? 0;
+	const riscoSaida =
+		uvaiaCm >= L.saidaCalhaUvaiaCm && chuvaLocalMm24h >= L.saidaCalhaChuvaMm;
+	const riscoSemSaida =
+		uvaiaCm >= L.riscoSemSaidaUvaiaCm && chuvaLocalMm24h >= L.riscoSemSaidaChuvaMm;
+	// Estimativa linear do nível do Bitumirim (m):
+	// OUT23: Uvaia 756 cm → ~2.5 m; Uvaia 1189 cm → 8 m
+	let nivelEstimadoM: number | null =
+		uvaiaCm > 400 ? Math.max(2, Math.min(8, (uvaiaCm - 400) / 120)) : null;
+	// Horas até sair da calha
+	let horasAteCalha: number | null = null;
+	if (!riscoSaida && uvaiaCm < L.saidaCalhaUvaiaCm && taxa > L.taxaModeradaCmd) {
+		horasAteCalha = Math.round(((L.saidaCalhaUvaiaCm - uvaiaCm) / taxa) * 24);
+	} else if (riscoSaida) {
+		horasAteCalha = 0;
+	}
+	// Horas até pico
+	let horasAtePico: number | null = null;
+	if (riscoSaida || riscoSemSaida) {
+		horasAtePico = taxa > L.taxaExplosivaCmd ? 24 : 48;
+	} else if (taxa > L.taxaModeradaCmd) {
+		horasAtePico = 72;
+	}
+	// Horas de recedência
+	let horasRecedencia: number | null = null;
+	if (riscoSaida || (nivelEstimadoM != null && nivelEstimadoM > 3)) {
+		// Solo saturado (chuva > 80mm) = OUT23 (7+ dias); drenado = DEZ24 (2 dias)
+		horasRecedencia = chuvaLocalMm24h > 80 ? 168 : 48;
+	}
+	// Classificação
+	let classificacao: ProjecaoBitumirim["classificacao"] = "normal";
+	if (nivelEstimadoM != null && nivelEstimadoM >= 6) classificacao = "critico";
+	else if (riscoSaida) classificacao = "alerta";
+	else if (riscoSemSaida || (nivelEstimadoM != null && nivelEstimadoM >= 4 && taxa > 0))
+		classificacao = "atencao";
+	// Texto
+	if (riscoSaida) {
+		texto.push(
+			`Bitumirim estimado ${nivelEstimadoM?.toFixed(1) ?? "?"} m — provável transbordamento ` +
+				`(Uvaia ${(uvaiaCm / 100).toFixed(2).replace(".", ",")} m + ${chuvaLocalMm24h.toFixed(0)} mm local)`,
+		);
+		if (horasAtePico != null) texto.push(`Pico estimado em ~${horasAtePico}h`);
+		if (horasRecedencia != null)
+			texto.push(
+				`Recedência: ~${Math.round(horasRecedencia / 24)} dias` +
+					(chuvaLocalMm24h > 80 ? " (solo saturado)" : ""),
+			);
+	} else if (riscoSemSaida) {
+		texto.push(
+			`Risco de transbordamento: Uvaia ${(uvaiaCm / 100).toFixed(2).replace(".", ",")} m + ${chuvaLocalMm24h.toFixed(0)} mm local`,
+		);
+	} else if (taxa > L.taxaExplosivaCmd) {
+		texto.push(
+			`Uvaia subindo ${taxa.toFixed(0)} cm/dia — cheia em 1-3 dias se chuva persistir`,
+		);
+	} else if (taxa > L.taxaModeradaCmd) {
+		texto.push(`Uvaia subindo ${taxa.toFixed(0)} cm/dia — monitorar`);
+	}
+	return {
+		nivelEstimadoM,
+		saiuDaCalha: riscoSaida,
+		horasAteCalha,
+		horasAtePico,
+		horasRecedencia,
+		classificacao,
+		texto:
+			texto.join(". ") ||
+			"Bitumirim dentro da calha, sem risco de cheia.",
+	};
+}
+
 /** Mês atual em America/Sao_Paulo (sem lib de data — só Intl). */
 export function mesAtualSPagora(): number {
 	return Number(
@@ -335,6 +461,8 @@ export interface HidroState {
 	ifl: ResultadoIFL | null;
 	/** Regime sazonal vigente na avaliação (v3.1) */
 	regime: RegimeHidro | null;
+	/** Projeção Bitumirim (v1.0) — nível estimado, tempo até cheia/recedência */
+	projecao: ProjecaoBitumirim | null;
 	/** Texto curto para o llms.txt */
 	resumoRisco: string;
 }
@@ -522,7 +650,7 @@ export function avaliarRisco(
 	mesOverride?: number,
 ): Pick<
 	HidroState,
-	"riscoEnxurrada" | "riscoCheia" | "resumoRisco" | "permanencia" | "ifl" | "regime"
+	"riscoEnxurrada" | "riscoCheia" | "resumoRisco" | "permanencia" | "ifl" | "regime" | "projecao"
 > {
 	// Triangulação é referência regional (Ipiranga NÃO tem estação
 	// fluviométrica própria — o Bitumirim não é medido direto). Por isso a
@@ -538,6 +666,7 @@ export function avaliarRisco(
 			permanencia: null,
 			ifl: null,
 			regime,
+			projecao: projetarBitumirim(null, null, 0),
 			resumoRisco:
 				"Triangulação indisponível no momento (sentinelas sem dados). Ipiranga não possui estação fluviométrica própria — para alertas oficiais, siga Defesa Civil e IAT.",
 		};
@@ -617,6 +746,13 @@ export function avaliarRisco(
 		p72h: chuva?.p72h ?? null,
 		regime,
 	});
+	// PROJEÇÃO BITUMIRIM (v1.0): Uvaia + taxa 24h + chuva local 24h
+	const chuvaLocal24h = chuva?.p24h ?? 0;
+	const projecao = projetarBitumirim(
+		uvaia?.nivelCm ?? null,
+		deltaUvaia24h,
+		chuvaLocal24h,
+	);
 	if (ifl.nivel !== "verde") {
 		motivos.push(`flash local IFL ${ifl.score.toFixed(2).replace(".", ",")} (${ifl.nivel}): ${ifl.motivos.join("; ")}`);
 	}
@@ -632,11 +768,15 @@ export function avaliarRisco(
 		permanencia,
 		ifl,
 		regime,
+		projecao,
 		resumoRisco:
 			`Triangulação no Rio Tibagi (referência regional — o Bitumirim em Ipiranga não é medido direto; faixas P90/P98 do ano hidrológico). ` +
 			`Regime ${regime} (v3.1: mai–ago frontal, Uvaia carrega severidade; set–abr convectivo, só local manda). ` +
 			`${trechos.join(" · ")}.` +
 			` Flash IFL ${ifl.score.toFixed(2).replace(".", ",")} (${ifl.nivel}) · permanência ${permanencia.diasEstimados.toString().replace(".", ",")}d (${permanencia.nivel}).` +
+			(projecao.classificacao !== "normal"
+				? ` Projeção Bitumirim: ${projecao.texto}`
+				: "") +
 			(motivos.length > 0
 				? ` Atenção: ${motivos.join("; ")} — acompanhe Defesa Civil/IAT.`
 				: " Níveis sem tendência de cheia no momento.") +
@@ -683,6 +823,7 @@ export async function fetchHidroTriangulacao(
 			permanencia: null,
 			ifl: null,
 			regime: null,
+			projecao: null,
 			resumoRisco: "Dados hidro temporariamente indisponíveis.",
 		};
 	}
