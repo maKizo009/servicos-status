@@ -238,6 +238,7 @@ async function runChecks(): Promise<void> {
 		config.latencyCritMs,
 		failureCounts,
 		DEBOUNCE_THRESHOLD,
+		config.copelTotalConsumersCity,
 	);
 	const now = Date.now();
 	if (

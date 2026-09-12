@@ -226,6 +226,10 @@ export async function buildUnifiedReport(
 	latencyCritMs = 300,
 	failureCounts: Map<string, number> = new Map(),
 	debounceThreshold = DEBOUNCE_THRESHOLD,
+	// Total de UCs do município (API validador_populacao da Copel; Ipiranga =
+	// 6017 em 2026-09-12). Passado pelo chamador a partir de
+	// config.copelTotalConsumersCity (override via COPEL_TOTAL_CONSUMERS_CITY).
+	cityTotalConsumersParam?: number,
 ): Promise<UnifiedReport> {
 	const services: ServiceHealth[] = [];
 	const signalReports = await getActiveSignalReports();
@@ -316,26 +320,53 @@ export async function buildUnifiedReport(
 		});
 	}
 
-	const copelStatus = data.copelOutages.length > 0 ? "critical" : "ok";
-
-	// Dedupe por idOcorrencia (Achado 6): mesma ocorrência listada 2x (ex:
-	// múltiplos grupos de consumidores) não deve contar dobrado na soma.
-	const { unique: uniqueOutages, duplicates: copelDupes } = dedupeCopelOutages(
-		data.copelOutages,
+	// PARIDADE COM O MAPA OFICIAL ANEEL (cdn.copel.com/aneel-informacoes):
+	// o front da Copel filtra tipo_principal=INTERRUPCAO antes de agregar
+	// (`if (!tipoPrinc.includes('INTERRUPCAO')) return;`) — EMERGENCIA é
+	// solicitação ainda não confirmada e NÃO entra nas UCs/OCs. Ocorrências =
+	// ids distintos; Desligados = SOMA de qtd_consumidores de todas as linhas
+	// (sem dedupe — ex: 12/09/2026: 5 ocorrências, 471 UCs, 160 em 6-12h e
+	// 311 em 12-24h). Programada x não-programada via eh_programada.
+	const isInterrupcao = (o: CopelOutage): boolean =>
+		(o.tipoPrincipal || "").toUpperCase().includes("INTERRUPCAO");
+	const interrupcoes = data.copelOutages.filter(isInterrupcao);
+	const emergenciasNaoConfirmadas = data.copelOutages.filter(
+		(o) => !isInterrupcao(o),
 	);
+	const interrupcaoIds = new Set(
+		interrupcoes.map((o) => o.idOcorrencia || `${o.bairro}|${o.dataInicio}`),
+	);
+	const copelStatusConfirmed =
+		interrupcoes.length > 0 ? "critical" : "ok";
+
+	// Dedupe informativo (Achado 6): mesma ocorrência listada 2x (ex:
+	// múltiplos grupos de consumidores). Mantido como estatística — a SOMA
+	// oficial não usa dedupe.
+	const { unique: uniqueOutages, duplicates: copelDupes } =
+		dedupeCopelOutages(interrupcoes);
 	if (copelDupes > 0) {
 		logger.warn("COPEL: idOcorrencia duplicado detectado na mesma leitura", {
 			dupes: copelDupes,
-			ocorrenciasBrutas: data.copelOutages.length,
+			ocorrenciasBrutas: interrupcoes.length,
 			ocorrenciasUnicas: uniqueOutages.length,
 		});
 	}
 
-	const copelTotalConsumers = uniqueOutages.reduce(
+	const copelTotalConsumers = interrupcoes.reduce(
 		(sum, o) => sum + (o.qtdConsumidores || 0),
 		0,
 	);
-	const cityTotalConsumers = 5200;
+	const copelProgConsumers = interrupcoes
+		.filter((o) => o.ehProgramada)
+		.reduce((sum, o) => sum + (o.qtdConsumidores || 0), 0);
+	const copelNonProgConsumers = copelTotalConsumers - copelProgConsumers;
+	const faixasDuracao: Record<string, number> = {};
+	for (const o of interrupcoes) {
+		const f = o.faixaDuracao || "desconhecida";
+		faixasDuracao[f] = (faixasDuracao[f] ?? 0) + (o.qtdConsumidores || 0);
+	}
+	// Total oficial de UCs do município (validador_populacao; default 6017).
+	const cityTotalConsumers = cityTotalConsumersParam ?? 6017;
 	const pctAffected = Number(
 		((copelTotalConsumers / cityTotalConsumers) * 100).toFixed(2),
 	);
@@ -344,27 +375,37 @@ export async function buildUnifiedReport(
 	// com eh_programada=true. A API da Copel (mapa_poligonos_data) expõe a
 	// lista na MESMA resposta das emergências — campo eh_programada — e o
 	// probe já filtra por município; aqui só separamos para a UI.
-	const scheduledOutages = uniqueOutages.filter((o) => o.ehProgramada);
+	const scheduledOutages = interrupcoes.filter((o) => o.ehProgramada);
 
 	services.push({
 		name: "Copel",
 		category: "utility",
-		status: copelStatus,
+		status: copelStatusConfirmed,
 		details:
-			copelStatus === "ok"
-				? "Sem ocorrências"
+			copelStatusConfirmed === "ok"
+				? emergenciasNaoConfirmadas.length > 0
+					? `${emergenciasNaoConfirmadas.length} solicitação(ões) não confirmada(s) — sem interrupção ativa`
+					: "Sem ocorrências"
 				: copelTotalConsumers > 0
-					? `${copelTotalConsumers} UCs sem energia em ${uniqueOutages.length} ocorrência(s)`
-					: `${uniqueOutages.length} ocorrência(s)`,
+					? `${copelTotalConsumers} UCs sem energia em ${interrupcaoIds.size} ocorrência(s)` +
+						(emergenciasNaoConfirmadas.length > 0
+							? ` (+${emergenciasNaoConfirmadas.length} não confirmada(s))`
+							: "")
+					: `${interrupcaoIds.size} ocorrência(s)`,
 		timestamp: data.timestamp,
 		data: {
-			activeEvents: uniqueOutages,
+			activeEvents: interrupcoes,
 			newEvents: data.newCopelOutages,
 			totalConsumers: copelTotalConsumers,
+			nonProgConsumers: copelNonProgConsumers,
+			progConsumers: copelProgConsumers,
+			ocorrencias: interrupcaoIds.size,
+			faixasDuracao,
 			cityTotalConsumers,
 			pctAffected,
 			duplicatesFound: copelDupes,
 			scheduledOutages,
+			emergencyRequests: emergenciasNaoConfirmadas,
 		},
 	});
 
