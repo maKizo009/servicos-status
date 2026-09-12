@@ -64,6 +64,14 @@ export async function checkCopel(
 
 			allOutages.push(outage);
 
+			// Só INTERRUPÇÃO confirmada vira alerta (site oficial só conta
+			// tipo_principal=INTERRUPCAO nas UCs/OCs; EMERGENCIA = solicitação
+			// ainda não confirmada pela Copel — não dispara Telegram/push).
+			const isInterrupcao = (outage.tipoPrincipal || "")
+				.toUpperCase()
+				.includes("INTERRUPCAO");
+			if (!isInterrupcao) continue;
+
 			const h = makeHash(
 				outage.idOcorrencia,
 				outage.numeroSequencial,
