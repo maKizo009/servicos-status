@@ -1373,6 +1373,7 @@ function renderCards(services){
       let summaryBoxHtml='';
       let kpiGridHtml='';
       let progressBarHtml='';
+      let faixasHtml='';
 
       if(st==='critical'){
         summaryBoxHtml=`<div class="summary-box critical">
@@ -1408,6 +1409,26 @@ function renderCards(services){
               <div class="progress-bar-fill" style="transform: scaleX(${Math.min(Math.max((pctAffected||0)/100, 0.02), 1)})"></div>
             </div>
           </div>`;
+
+          /* Detalhamento por duração (igual o mapa oficial da Copel):
+             faixasDuracao vem do backend (soma de UCs por faixa_duracao). */
+          const faixas=svc.data?.faixasDuracao || {};
+          const FAIXA_ORDEM=['ate_1h','1h_3h','3h_6h','6h_12h','12h_24h','24h_48h','mais_48h'];
+          const faixasRows=FAIXA_ORDEM.filter(f=>(faixas[f]||0)>0).map(f=>
+            `<div style="display:flex;justify-content:space-between;align-items:center;padding:5px 0;border-bottom:1px solid var(--md-sys-color-outline-variant);font-size:13px">`+
+            `<span>⏱️ ${esc(formatCopelDuracao(f))}</span>`+
+            `<strong>${faixas[f].toLocaleString('pt-BR')} UCs</strong></div>`
+          ).join('');
+          const faixasExtra=Object.keys(faixas).filter(f=>!FAIXA_ORDEM.includes(f)&&(faixas[f]||0)>0).map(f=>
+            `<div style="display:flex;justify-content:space-between;align-items:center;padding:5px 0;border-bottom:1px solid var(--md-sys-color-outline-variant);font-size:13px">`+
+            `<span>⏱️ ${esc(f)}</span><strong>${faixas[f].toLocaleString('pt-BR')} UCs</strong></div>`
+          ).join('');
+          if(faixasRows||faixasExtra){
+            faixasHtml=`<div style="margin-top:10px;border:1px solid var(--md-sys-color-outline-variant);border-radius:10px;padding:10px 12px">`+
+              `<div style="font-size:13px;font-weight:700;margin-bottom:4px">Detalhamento por duração</div>`+
+              faixasRows+faixasExtra+
+              `<div style="font-size:11px;opacity:.7;margin-top:6px">Fonte: Copel/ANEEL — mesmas faixas do mapa oficial</div></div>`;
+          }
         }
       }else{
         const lastCheckRel = relativeTime(svc.timestamp || Date.now());
@@ -1531,7 +1552,7 @@ function renderCards(services){
         `;
       }
 
-      contentHtml=summaryBoxHtml + kpiGridHtml + progressBarHtml + outagesListHtml;
+      contentHtml=summaryBoxHtml + kpiGridHtml + progressBarHtml + faixasHtml + outagesListHtml;
     }
 
     // ================= OPERADORAS (TELECOM) =================
