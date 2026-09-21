@@ -99,11 +99,13 @@ export function buildAnalystPrompt(ctx: AnalystContext): string {
 		}
 	}
 	linhas.push(
-		`MODELO ECMWF: ${ctx.ecmwfPct != null ? `${Math.round(ctx.ecmwfPct)}% de chuva` : "indisponível"}` +
+		`PREVISÃO (ECMWF — é PREVISÃO, NÃO medição): ${
+			ctx.ecmwfPct != null ? `${Math.round(ctx.ecmwfPct)}% de chance de chuva` : "indisponível"
+		}` +
 			(ctx.ecmwfProx6hMm != null
 				? `, ${ctx.ecmwfProx6hMm.toFixed(1)} mm nas próximas 6h`
 				: "") +
-			(ctx.condition ? `. Condição atual: ${ctx.condition}` : ""),
+			(ctx.condition ? `. Condição prevista pelo modelo: ${ctx.condition}` : ""),
 	);
 	if (ctx.hidroWatch)
 		linhas.push(
@@ -142,7 +144,8 @@ export function buildAnalystPrompt(ctx: AnalystContext): string {
 ${linhas.join("\n")}
 
 Escreva o boletim em 3 ou 4 frases curtas (máximo 600 caracteres), em português simples:
-1. Se está chovendo em Ipiranga, ABRA com isso (é a informação mais importante).
+1. A linha "CHUVA EM IPIRANGA AGORA" é a ÚNICA fonte sobre chuva acontecendo: se ela diz que não há chuva medida, NUNCA escreva que chove (nem "chove fraco", nem "chuva leve agora"). A previsão do ECMWF só pode aparecer como chance ("o modelo indica X% de chance"), jamais como chuva acontecendo — e se não há chuva medida nem núcleo perto, o boletim deve dizer isso com clareza.
+2. Se houver chuva medida em Ipiranga, ABRA com isso (é a informação mais importante).
 2. Depois o núcleo mais relevante, sempre com a distância em km.
 3. Nunca afirme certeza — use "pode", "se mantiver o curso".
 4. Se um núcleo está longe (>200 km), diga que está longe; não trate como iminente.

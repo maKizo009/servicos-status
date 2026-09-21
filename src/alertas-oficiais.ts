@@ -251,7 +251,14 @@ export function buildAlertaUnificado(
 			motivos.push(
 				`${c24.toFixed(1).replace(".", ",")} mm em 24h nos pluviômetros`,
 			);
-		if (pct >= 70) motivos.push(`ECMWF indica ${Math.round(pct)}% de chuva`);
+		if (pct >= 70)
+			motivos.push(
+				`ECMWF indica ${Math.round(pct)}% de chance de chuva (previsão — não é medição)`,
+			);
+		if ((local.ecmwfProx6hMm ?? 0) >= 5)
+			motivos.push(
+				`previsão de ${(local.ecmwfProx6hMm as number).toFixed(1).replace(".", ",")} mm nas próximas 6h (modelo, não medição)`,
+			);
 		if (local.hidroWatch)
 			motivos.push("nível dos rios em atenção (triangulação ANA)");
 	}
@@ -279,13 +286,26 @@ export function buildAlertaUnificado(
 		nivel = "amarelo";
 	}
 
+	// O título só pode AFIRMAR chuva em Ipiranga se houver MEDIÇÃO (pluviômetro
+	// fresco ou núcleo de radar perto). Previsão do ECMWF sozinha vira "previsão
+	// de chuva", nunca "chuva". Bug ao vivo 21/09/2026: o alerta dizia "chuva em
+	// Ipiranga/região" com o CEMADEN zerado e nenhum núcleo no radar.
+	const medidoChuva =
+		c1 >= 0.5 ||
+		c6 >= 5 ||
+		c24 >= 10 ||
+		local.radarAlertLevel === "alert" ||
+		local.radarAlertLevel === "watch";
+	const soPrevisao = nivel !== "verde" && !medidoChuva;
 	const titulo =
 		nivel === "vermelho"
 			? "Alerta vermelho — risco alto de chuva forte em Ipiranga"
 			: nivel === "laranja"
 				? "Alerta laranja — chuva forte em Ipiranga/região"
 				: nivel === "amarelo"
-					? "Atenção — chuva em Ipiranga/região"
+					? soPrevisao
+						? "Atenção — previsão de chuva para Ipiranga/região (nada medido ainda)"
+						: "Atenção — chuva em Ipiranga/região"
 					: "Tempo sem alertas em Ipiranga";
 
 	const descricao =

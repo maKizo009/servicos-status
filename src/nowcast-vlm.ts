@@ -80,11 +80,15 @@ export function fraseChuvaLocal(
 		local.acc1hrMax != null ||
 		local.acc6hrMax != null ||
 		local.acc24hrMax != null;
-	const condChove = /chuva|garoa|temporal|pancada|granizo/i.test(
+	// A "condition" vem do MODELO (previsão) — NÃO é medição. Ela nunca pode virar
+	// "chove agora": quem diz isso é o pluviômetro. Bug ao vivo 21/09/2026: o
+	// boletim abria com "Chove em Ipiranga agora" com os pluviômetros zerados e
+	// nenhum núcleo no radar, só porque o ECMWF marcava "Pancadas de Chuva Leves".
+	const condPrevisao = /chuva|garoa|temporal|pancada|granizo/i.test(
 		local.condition ?? "",
 	);
-	if (!temCemaden && !condChove) return null;
-	const choveAgora = c1 >= 0.5 || c6 >= 5 || condChove;
+	if (!temCemaden) return null;
+	const choveAgora = c1 >= 0.5 || c6 >= 5;
 	const volumeAlto = c24 >= 20 || c6 >= 15;
 	if (!choveAgora && !volumeAlto) return null;
 	const partes: string[] = [];
@@ -101,7 +105,9 @@ export function fraseChuvaLocal(
 			? ` (${partes.join(" · ")} nos pluviômetros da cidade)`
 			: "";
 	const cond =
-		condChove && local.condition ? ` Condição atual: ${local.condition}.` : "";
+		condPrevisao && local.condition
+			? ` Previsão do modelo: ${local.condition}.`
+			: "";
 	if (volumeAlto && !choveAgora)
 		return `Chuva forte já acumulada em Ipiranga hoje${detalhe}.${cond} Atenção a alagamentos e ao nível de córregos.`;
 	return `Chove em Ipiranga agora${detalhe}.${cond}`;

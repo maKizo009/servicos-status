@@ -459,13 +459,13 @@ export interface HidroState {
 	riscoEnxurrada: "ok" | "warn" | "critical";
 	riscoCheia: "ok" | "watch" | "critical";
 	/** Permanência (v3) — dias fora da caixa SE transbordar (ajuste n=2) */
-	permanencia: ResultadoPermanencia | null;
+	/** @deprecated 21/09/2026 — insumo (Uvaia) não separa transbordo; ver previsao. */
 	/** IFL (Índice de Flash Local) — chuva local + antecedente + regime */
 	ifl: ResultadoIFL | null;
 	/** Regime sazonal vigente na avaliação (v3.1) */
 	regime: RegimeHidro | null;
 	/** Projeção Bitumirim (v1.0) — nível estimado, tempo até cheia/recedência */
-	projecao: ProjecaoBitumirim | null;
+	/** @deprecated 21/09/2026 — nível em metros pelo Uvaia não tem lastro; ver previsao. */
 	/** Previsão de saída da calha: vai sair? quando? com que confiança (v1) */
 	previsao: PrevisaoCalha | null;
 	/** Texto curto para o llms.txt */
@@ -655,7 +655,7 @@ export function avaliarRisco(
 	mesOverride?: number,
 ): Pick<
 	HidroState,
-	"riscoEnxurrada" | "riscoCheia" | "resumoRisco" | "permanencia" | "ifl" | "regime" | "projecao"
+	"riscoEnxurrada" | "riscoCheia" | "resumoRisco" | "ifl" | "regime"
 > {
 	// Triangulação é referência regional (Ipiranga NÃO tem estação
 	// fluviométrica própria — o Bitumirim não é medido direto). Por isso a
@@ -668,10 +668,8 @@ export function avaliarRisco(
 		return {
 			riscoEnxurrada: "ok",
 			riscoCheia: "ok",
-			permanencia: null,
 			ifl: null,
 			regime,
-			projecao: projetarBitumirim(null, null, 0),
 			resumoRisco:
 				"Triangulação indisponível no momento (sentinelas sem dados). Ipiranga não possui estação fluviométrica própria — para alertas oficiais, siga Defesa Civil e IAT.",
 		};
@@ -740,10 +738,13 @@ export function avaliarRisco(
 		serieU.length >= 2
 			? serieU[serieU.length - 1].nivelCm - serieU[0].nivelCm
 			: (uvaia?.delta6hCm ?? null);
-	const permanencia = calcularPermanencia({
-		uvaiaCm: uvaia?.nivelCm ?? null,
-		deltaUvaia24h,
-	});
+	// APOSENTADOS (21/09/2026): `permanencia` e a `projecao` v1.0 saíram do estado.
+	// O estudo v3.1 mostrou que o Uvaia — insumo dos dois — NÃO separa transbordo de
+	// não-transbordo (INV2015 986 cm × JAN25 168 cm, desfechos trocados), então ambos
+	// emitiam número com cara de medição sem lastro, e a permanência ainda acendia o
+	// "nível dos rios em atenção" do alerta. Quem responde agora é `previsao`
+	// ("vai sair da calha?" com confiança) em bitumirim-previsao.ts.
+	// As funções seguem no arquivo para consulta/histórico — não são mais chamadas.
 	const ifl = calcularIFL({
 		p1h: chuva?.p1h ?? null,
 		p6h: chuva?.p6h ?? null,
@@ -751,37 +752,21 @@ export function avaliarRisco(
 		p72h: chuva?.p72h ?? null,
 		regime,
 	});
-	// PROJEÇÃO BITUMIRIM (v1.0): Uvaia + taxa 24h + chuva local 24h
-	const chuvaLocal24h = chuva?.p24h ?? 0;
-	const projecao = projetarBitumirim(
-		uvaia?.nivelCm ?? null,
-		deltaUvaia24h,
-		chuvaLocal24h,
-	);
 	if (ifl.nivel !== "verde") {
 		motivos.push(`flash local IFL ${ifl.score.toFixed(2).replace(".", ",")} (${ifl.nivel}): ${ifl.motivos.join("; ")}`);
 	}
 	const watchFinal =
-		watch ||
-		permanencia.nivel === "laranja" ||
-		permanencia.nivel === "vermelho" ||
-		ifl.nivel === "laranja" ||
-		ifl.nivel === "vermelho";
+		watch || ifl.nivel === "laranja" || ifl.nivel === "vermelho";
 	return {
 		riscoEnxurrada: watchFinal ? "warn" : "ok",
 		riscoCheia: watchFinal ? "watch" : "ok",
-		permanencia,
 		ifl,
 		regime,
-		projecao,
 		resumoRisco:
 			`Triangulação no Rio Tibagi (referência regional — o Bitumirim em Ipiranga não é medido direto; faixas P90/P98 do ano hidrológico). ` +
 			`Regime ${regime} (v3.1: mai–ago frontal, Uvaia carrega severidade; set–abr convectivo, só local manda). ` +
 			`${trechos.join(" · ")}.` +
-			` Flash IFL ${ifl.score.toFixed(2).replace(".", ",")} (${ifl.nivel}) · permanência ${permanencia.diasEstimados.toString().replace(".", ",")}d (${permanencia.nivel}).` +
-			(projecao.classificacao !== "normal"
-				? ` Projeção Bitumirim: ${projecao.texto}`
-				: "") +
+			` Flash IFL ${ifl.score.toFixed(2).replace(".", ",")} (${ifl.nivel}).` +
 			(motivos.length > 0
 				? ` Atenção: ${motivos.join("; ")} — acompanhe Defesa Civil/IAT.`
 				: " Níveis sem tendência de cheia no momento.") +
@@ -836,10 +821,8 @@ export async function fetchHidroTriangulacao(
 			erro: msg,
 			riscoEnxurrada: "ok",
 			riscoCheia: "ok",
-			permanencia: null,
 			ifl: null,
 			regime: null,
-			projecao: null,
 			previsao: null,
 			resumoRisco: "Dados hidro temporariamente indisponíveis.",
 		};

@@ -129,7 +129,6 @@ describe("avaliarRisco v3", () => {
 			SECA,
 		);
 		expect(r.riscoCheia).toBe("ok");
-		expect(r.permanencia?.diasEstimados).toBe(0);
 		expect(r.ifl?.nivel).toBe("verde");
 	});
 	test("Cebolão em alerta SOZINHO não gera watch falso de flash (só registra)", () => {
@@ -141,15 +140,12 @@ describe("avaliarRisco v3", () => {
 			],
 			SECA,
 		);
-		// jusante em alerta ainda marca algumaEmAlerta → watch (referência regional),
-		// mas permanência (Uvaia) fica verde: sem falso transbordo
-		expect(r.permanencia?.nivel).toBe("verde");
+		// jusante em alerta ainda marca algumaEmAlerta → watch (referência regional).
 		expect(r.ifl?.nivel).toBe("verde");
 	});
 	test("sem dados → ok degradado", () => {
 		const r = avaliarRisco([], null);
 		expect(r.riscoCheia).toBe("ok");
-		expect(r.permanencia).toBeNull();
 		expect(r.ifl).toBeNull();
 	});
 	test("regime via mesOverride (jun=frontal, jan=convectivo)", () => {

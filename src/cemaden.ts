@@ -128,6 +128,16 @@ export async function fetchCemadenIpiranga(): Promise<CemadenState> {
 				const dh = x.datahoraUltimovalor ? String(x.datahoraUltimovalor) : null;
 				const ep = utcParaEpoch(dh);
 				const frescorMin = ep === null ? null : Math.round((Date.now() - ep) / 60_000);
+				// Estação FRESCA que manda "-" numa janela = ZERO chuva naquela janela
+				// (o CEMADEN só publica valor quando chove). Estação VELHA continua
+				// null = "sem dado" — nunca vira "sem chuva".
+				// Bug ao vivo 21/09/2026: com "-" virando null, o card mostrava "— em
+				// 24h" e o boletim dizia que chovia.
+				const semLeitura = frescorMin === null || frescorMin > CEMADEN_FRESCOR_MAX_MIN;
+				const accJanela = (v: unknown): number | null => {
+					const p = parseAcc(v);
+					return p === null && !semLeitura ? 0 : p;
+				};
 				return {
 					idestacao: id,
 					// Rótulo por localidade (Centro / São Brás) — nome técnico
@@ -136,19 +146,19 @@ export async function fetchCemadenIpiranga(): Promise<CemadenState> {
 					cidade: String(x.cidade || ""),
 					uf: String(x.uf || ""),
 					codibge: Number(x.codibge),
-					ultimoValor: parseAcc(x.ultimovalor),
+					ultimoValor: accJanela(x.ultimovalor),
 					// CEMADEN entrega em UTC — converte para horário de Brasília.
 					dataHoraUltimoValor: utcParaHorarioBrasilia(
 						x.datahoraUltimovalor ? String(x.datahoraUltimovalor) : null,
 					),
-					acc1hr: parseAcc(x.acc1hr),
-					acc3hr: parseAcc(x.acc3hr),
-					acc6hr: parseAcc(x.acc6hr),
-					acc12hr: parseAcc(x.acc12hr),
-					acc24hr: parseAcc(x.acc24hr),
-					acc48hr: parseAcc(x.acc48hr),
-					acc72hr: parseAcc(x.acc72hr),
-					acc96hr: parseAcc(x.acc96hr),
+					acc1hr: accJanela(x.acc1hr),
+					acc3hr: accJanela(x.acc3hr),
+					acc6hr: accJanela(x.acc6hr),
+					acc12hr: accJanela(x.acc12hr),
+					acc24hr: accJanela(x.acc24hr),
+					acc48hr: accJanela(x.acc48hr),
+					acc72hr: accJanela(x.acc72hr),
+					acc96hr: accJanela(x.acc96hr),
 					frescorMin,
 					stale: frescorMin === null || frescorMin > CEMADEN_FRESCOR_MAX_MIN,
 				};

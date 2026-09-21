@@ -145,16 +145,22 @@ function renderHidroSection(weather: WeatherState | null): string {
 		? new Date(hidro.atualizadoEm).toISOString()
 		: "—";
 
-	const permTxt =
-		hidro.permanencia != null
-			? ` Permanência atual: ~${hidro.permanencia.diasEstimados.toString().replace(".", ",")} dias fora da caixa SE transbordar (${hidro.permanencia.nivel}, preliminar n=2) — ${sanitizeLlmField(hidro.permanencia.motivos.join("; "), 300)}`
+	const prevTxt =
+		hidro.previsao != null
+			? ` PREVISÃO "vai sair da calha?": ${
+					hidro.previsao.vaiSair === "sim"
+						? "SIM"
+						: hidro.previsao.vaiSair === "nao"
+							? "NÃO"
+							: "INDEFINIDO"
+				} — confiança ${hidro.previsao.confianca}% (${hidro.previsao.faixa}); regra: ${sanitizeLlmField(hidro.previsao.regra, 200)}; casos parecidos: ${sanitizeLlmField(hidro.previsao.motivos.join("; "), 300)}. É estimativa calibrada em 11 eventos, não medição oficial.`
 			: "";
 	const iflTxt =
 		hidro.ifl != null && hidro.ifl.nivel !== "verde"
 			? ` IFL atual: ${hidro.ifl.score.toFixed(2).replace(".", ",")} (${hidro.ifl.nivel}) — ${sanitizeLlmField(hidro.ifl.motivos.join("; "), 300)}`
 			: "";
 
-	return `## 🌊 Rios — Triangulação ANA (referência regional)\n- ${sanitizeLlmField(hidro.resumoRisco, 900)}\n${linhas}\n- **Fonte:** ANA Hidro (telemetria horária) — 3 sentinelas na calha do Tibagi que cercam Ipiranga; Ipiranga não possui estação fluviométrica própria. Atualizado em: ${atualizado}${permTxt}${iflTxt}\n- **Rótulos de transbordo do Bitumirim (fotos + memória + Uvaia horária ANA):** OUT23 transbordou 29/10 18h com Uvaia ~739 (7 dias fora, pico 1189) · DEZ24 transbordou 09/12 13h com Uvaia ~339 (3 dias fora, pico 815) · JAN25 NÃO transbordou com Uvaia ~180 (régua 4m no máximo, 143 mm/dia em São Braz) · invernos 13/14/15/17/19 todos saíram (2013 o mais dramático; severidade segue o pico Uvaia 1033/995/986/921/659). Doutrina sazonal v3.1: verão convectivo = só chuva local manda; inverno frontal (mai–ago) = Uvaia carrega a severidade + antecedente 72h (≥100 mm) arma o palco. Uvaia NÃO prevê transbordo sozinha. Foz a montante de Mauá: descarga da usina NÃO causa remanso em Ipiranga.\n`;
+	return `## 🌊 Rios — Triangulação ANA (referência regional)\n- ${sanitizeLlmField(hidro.resumoRisco, 900)}\n${linhas}\n- **Fonte:** ANA Hidro (telemetria horária) — 3 sentinelas na calha do Tibagi que cercam Ipiranga; Ipiranga não possui estação fluviométrica própria. Atualizado em: ${atualizado}${prevTxt}${iflTxt}\n- **Rótulos de transbordo do Bitumirim (fotos + memória + Uvaia horária ANA):** OUT23 transbordou 29/10 18h com Uvaia ~739 (7 dias fora, pico 1189) · DEZ24 transbordou 09/12 13h com Uvaia ~339 (3 dias fora, pico 815) · JAN25 NÃO transbordou com Uvaia ~180 (régua 4m no máximo, 143 mm/dia em São Braz) · invernos 13/14/15/17/19 todos saíram (2013 o mais dramático; severidade segue o pico Uvaia 1033/995/986/921/659). Doutrina sazonal v3.1: verão convectivo = só chuva local manda; inverno frontal (mai–ago) = Uvaia carrega a severidade + antecedente 72h (≥100 mm) arma o palco. Uvaia NÃO prevê transbordo sozinha. Foz a montante de Mauá: descarga da usina NÃO causa remanso em Ipiranga.\n`;
 }
 
 /** Seção Simepar — mosaico oficial de radares (display, com timestamp na imagem). */

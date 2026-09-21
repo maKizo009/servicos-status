@@ -566,6 +566,41 @@ export async function syncWeatherCycle(): Promise<WeatherState> {
 				}
 			}
 			if (!state.nowcastBulletin) {
+				// GATE DE CRÉDITO (Dave, 21/09/2026): sem sinal REAL medido, não se
+				// gasta LLM. Sinal = chuva medida fresca, núcleo de radar perto, rio em
+				// atenção ou aviso oficial. Previsão do ECMWF SOZINHA não é sinal —
+				// foi ela que fez o boletim dizer que chovia sem chover.
+				const estsGate = state.cemaden?.estacoes ?? [];
+				const gAcc = (f: (e: (typeof estsGate)[number]) => number | null) =>
+					maxAcumuladoFresco(estsGate, f) ?? 0;
+				const sinalChuva =
+					gAcc((e) => e.acc1hr) >= 0.5 ||
+					gAcc((e) => e.acc6hr) >= 5 ||
+					gAcc((e) => e.acc24hr) >= 10;
+				const sinalRadar =
+					state.alertLevel === "alert" || state.alertLevel === "watch";
+				const sinalRio =
+					state.hidro?.riscoCheia === "watch" ||
+					state.hidro?.riscoCheia === "critical" ||
+					state.hidro?.previsao?.vaiSair === "sim";
+				const sinalOficial = (state.alertasOficiais?.avisos ?? []).length > 0;
+				if (!(sinalChuva || sinalRadar || sinalRio || sinalOficial)) {
+					const texto = [
+						"Sem chuva medida em Ipiranga",
+						"sem núcleo de chuva próximo no radar",
+						"rios em nível normal",
+					].join(", ");
+					state.nowcastBulletin = {
+						text: `${texto}. Nada a reportar agora.`,
+						source: "heuristic",
+						generatedAt: Date.now(),
+					};
+					logger.info(
+						"Boletim sem sinal real — LLM NÃO chamado (gate de crédito)",
+					);
+				}
+			}
+			if (!state.nowcastBulletin) {
 				// Boletim inteligente (10/09/2026): LLM analista (30 min) → heurística.
 				// O LLM reconcilia fontes contraditórias (template não sabe fazer
 				// isso); a heurística preenche intervalos e assume sem rede.
