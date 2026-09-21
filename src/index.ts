@@ -4,7 +4,7 @@ import {
 	logAlertaUnificado,
 } from "./alertas-oficiais.js";
 import { fetchHidroTriangulacao } from "./ana-hidro.js";
-import { fetchCemadenIpiranga } from "./cemaden.js";
+import { fetchCemadenIpiranga, maxAcumuladoFresco, temEstacaoFresca } from "./cemaden.js";
 import {
 	assessLevel,
 	buildUnifiedReport,
@@ -348,11 +348,10 @@ export async function syncWeatherCycle(): Promise<WeatherState> {
 		fetchCemadenIpiranga(),
 	]);
 
-	// Triangulação hidro — mesmo ciclo (chuva CEMADEN alimenta IBR/IFL)
+	// Triangulação hidro — mesmo ciclo (chuva CEMADEN alimenta IBR/IFL).
+	// Só estações FRESCAS: pluviômetro parado não pode virar "sem chuva" aqui.
 	const maxAcc = (f: (e: (typeof cemaden.estacoes)[number]) => number | null) =>
-		cemaden.estacoes.length
-			? Math.max(...cemaden.estacoes.map((e) => f(e) ?? 0))
-			: null;
+		maxAcumuladoFresco(cemaden.estacoes, f);
 	const hidro = await fetchHidroTriangulacao({
 		p1h: maxAcc((e) => e.acc1hr),
 		p6h: maxAcc((e) => e.acc6hr),
@@ -524,7 +523,7 @@ export async function syncWeatherCycle(): Promise<WeatherState> {
 				);
 				const ests = state.cemaden?.estacoes ?? [];
 				const maxAcc = (f: (e: (typeof ests)[number]) => number | null) =>
-					ests.length ? Math.max(...ests.map((e) => f(e) ?? 0)) : null;
+					maxAcumuladoFresco(ests, f);
 				const localCtx = {
 					acc1hrMax: maxAcc((e) => e.acc1hr),
 					acc6hrMax: maxAcc((e) => e.acc6hr),
@@ -598,7 +597,7 @@ export async function syncWeatherCycle(): Promise<WeatherState> {
 		state.alertasOficiais = oficiais;
 		const estsA = state.cemaden?.estacoes ?? [];
 		const maxA = (f: (e: (typeof estsA)[number]) => number | null) =>
-			estsA.length ? Math.max(...estsA.map((e) => f(e) ?? 0)) : null;
+			maxAcumuladoFresco(estsA, f);
 		const prox6h = (weatherInfo.hourlyForecast || [])
 			.slice(0, 6)
 			.reduce((s, h) => s + (h.precipitationMm ?? 0), 0);
@@ -607,6 +606,7 @@ export async function syncWeatherCycle(): Promise<WeatherState> {
 				acc1hrMax: maxA((e) => e.acc1hr),
 				acc6hrMax: maxA((e) => e.acc6hr),
 				acc24hrMax: maxA((e) => e.acc24hr),
+				pluviometroSemDado: !temEstacaoFresca(estsA),
 				ecmwfPct: weatherInfo.rainProbabilityPct,
 				ecmwfProx6hMm: prox6h,
 				radarAlertLevel: state.alertLevel ?? "monitor",

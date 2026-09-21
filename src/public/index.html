@@ -234,6 +234,9 @@
 .cemaden-24h{font-size:22px;font-weight:700;color:var(--md-sys-color-on-surface);font-variant-numeric:tabular-nums}
 .cemaden-24h-label{font-size:12px;color:var(--text2)}
 .cemaden-meta{font-size:12px;margin-top:2px}
+/* Estação parada: o acumulado é congelado e mente — marca explícita (nunca silencioso). */
+.cemaden-stale{color:var(--md-sys-color-error);font-weight:600}
+.cemaden-row-stale .cemaden-24h{opacity:.55}
 .nowcast-intensity-badge{
   font-size:12px;font-weight:700;padding:4px 10px;border-radius:var(--md-shape-corner-full);text-transform:uppercase;
   background:var(--g1);color:var(--g6);border:1px solid var(--g5)
@@ -2076,10 +2079,15 @@ function renderCemadenCard(data) {
   const hora = (h) => esc(h || '—').replace(/(\d{2})\/(\d{2})\/\d{2} (\d{2}:\d{2})/, '$1/$2 às $3');
 
   const rows = c.estacoes.map((e) => {
-    return '<div class="cemaden-row">' +
+    // Estação parada = acumulado congelado: marca explícita, nunca "0 mm" limpo.
+    const stale = e.stale
+      ? ' <span class="cemaden-stale">⚠️ sem leitura recente' +
+        (e.frescorMin != null ? ' (' + e.frescorMin + ' min)' : '') + '</span>'
+      : '';
+    return '<div class="cemaden-row' + (e.stale ? ' cemaden-row-stale' : '') + '">' +
       '<div class="cemaden-line1"><strong>' + esc(e.nome) + '</strong> <span class="cemaden-tag">' + esc(e.cidade) + '</span></div>' +
       '<div class="cemaden-line2"><span class="cemaden-24h">' + fmt(e.acc24hr) + '</span> <span class="cemaden-24h-label">em 24h</span></div>' +
-      '<div class="cemaden-meta">Leitura: ' + hora(e.dataHoraUltimoValor) + ' (Brasília)</div>' +
+      '<div class="cemaden-meta">Leitura: ' + hora(e.dataHoraUltimoValor) + ' (Brasília)' + stale + '</div>' +
       '</div>';
   }).join('');
   content.innerHTML = rows;

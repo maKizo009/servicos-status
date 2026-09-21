@@ -104,7 +104,12 @@ function renderCemadenSection(weather: WeatherState | null): string {
 						"$1/$2 às $3",
 					)
 				: "—";
-			return `- **${sanitizeLlmField(e.nome, 60)}:** ${acc} em 24h (leitura ${hora}, horário de Brasília)`;
+			// Estação parada não pode aparecer como "0 mm" limpo: o número é
+			// congelado e mente. Marca explícita (falha silenciosa é inaceitável).
+			const marca = e.stale
+				? ` — ⚠️ **sem leitura recente**${e.frescorMin != null ? ` (${e.frescorMin} min)` : ""}`
+				: "";
+			return `- **${sanitizeLlmField(e.nome, 60)}:** ${acc} em 24h (leitura ${hora}, horário de Brasília)${marca}`;
 		})
 		.join("\n");
 

@@ -186,6 +186,8 @@ export interface DadosLocaisAlerta {
 	acc1hrMax: number | null;
 	acc6hrMax: number | null;
 	acc24hrMax: number | null;
+	/** true = nenhuma estação CEMADEN fresca: acumulado é "sem dado", não "sem chuva". */
+	pluviometroSemDado?: boolean;
 	ecmwfPct: number | null;
 	ecmwfProx6hMm: number | null;
 	radarAlertLevel: "alert" | "watch" | "monitor" | "none";
@@ -209,6 +211,14 @@ export function buildAlertaUnificado(
 	const pct = local.ecmwfPct ?? 0;
 
 	// --- Base: o que está MEDIDO aqui ---
+	// Pluviômetro local parado NÃO é "sem chuva": sem leitura fresca, os
+	// acumulados valem null (sem dado) e o motivo aparece explícito — nunca
+	// silencioso. Nível continua vindo do radar/ECMWF, mas o operador sabe.
+	if (local.pluviometroSemDado) {
+		motivos.push(
+			"pluviômetro local sem leitura fresca (CEMADEN) — chuva medida indisponível",
+		);
+	}
 	if (c1 >= 20 || c6 >= 50) {
 		nivel = "vermelho";
 		motivos.push(

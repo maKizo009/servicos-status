@@ -26,6 +26,25 @@ const ROTULOS_LOCALIDADE: Record<number, string> = {
 };
 
 /**
+ * Frescor máximo aceitável para DECISÃO. A cadência do CEMADEN é de 10 min;
+ * 90 min dá margem para falha de transmissão sem confundir com "sem chuva".
+ * Motivo de existir: o campo `"-"`/nulo é AMBÍGUO (pode ser "não choveu" ou
+ * "estação parada") — e estação parada lida como 0 vira "sem chuva" silencioso,
+ * que é pior que não ter dado nenhum. Casos reais no PR: estações paradas há
+ * meses (Dois Vizinhos 23/06/26, Campo do Tenente 13/03/26).
+ */
+export const CEMADEN_FRESCOR_MAX_MIN = 90;
+
+/** "DD/MM/YY HH:mm" (UTC, como o CEMADEN entrega) → epoch ms. null se não parsear. */
+export function utcParaEpoch(dataHoraUtc: string | null): number | null {
+	if (!dataHoraUtc) return null;
+	const m = dataHoraUtc.match(/^(\d{2})\/(\d{2})\/(\d{2}) (\d{2}):(\d{2})$/);
+	if (!m) return null;
+	const [, dd, mm, yy, hh, min] = m;
+	return Date.UTC(2000 + Number(yy), Number(mm) - 1, Number(dd), Number(hh), Number(min));
+}
+
+/**
  * O CEMADEN entrega dataHoraUltimovalor em UTC ("DD/MM/YY HH:mm").
  * Converte para horário de Brasília (UTC-3 fixo — sem DST no BR desde 2019).
  * Devolve no MESMO formato "DD/MM/YY HH:mm" para não quebrar os consumidores.
@@ -70,6 +89,10 @@ export interface CemadenLeitura {
 	acc48hr: number | null;
 	acc72hr: number | null;
 	acc96hr: number | null;
+	/** Minutos desde a última leitura (null = horário ilegível). */
+	frescorMin: number | null;
+	/** true = leitura velha demais para decidir: os acumulados NÃO valem como "sem chuva". */
+	stale: boolean;
 }
 
 export interface CemadenState {
@@ -101,6 +124,10 @@ export async function fetchCemadenIpiranga(): Promise<CemadenState> {
 			.filter((x) => Number(x.codibge) === CODIBGE_IPIRANGA)
 			.map((x) => {
 				const id = Number(x.idestacao);
+				// Frescor: o CEMADEN entrega em UTC. Estação velha NÃO pode virar "sem chuva".
+				const dh = x.datahoraUltimovalor ? String(x.datahoraUltimovalor) : null;
+				const ep = utcParaEpoch(dh);
+				const frescorMin = ep === null ? null : Math.round((Date.now() - ep) / 60_000);
 				return {
 					idestacao: id,
 					// Rótulo por localidade (Centro / São Brás) — nome técnico
@@ -122,6 +149,8 @@ export async function fetchCemadenIpiranga(): Promise<CemadenState> {
 					acc48hr: parseAcc(x.acc48hr),
 					acc72hr: parseAcc(x.acc72hr),
 					acc96hr: parseAcc(x.acc96hr),
+					frescorMin,
+					stale: frescorMin === null || frescorMin > CEMADEN_FRESCOR_MAX_MIN,
 				};
 			})
 			.sort((a, b) => a.idestacao - b.idestacao);
@@ -130,4 +159,25 @@ export async function fetchCemadenIpiranga(): Promise<CemadenState> {
 	} catch (e: any) {
 		return { estacoes: [], fonte: "Cemaden", atualizadoEm: null, erro: e?.message || "falha" };
 	}
+}
+
+/**
+ * Máximo de um acumulado considerando SÓ estações FRESCAS.
+ *
+ * Sem estação fresca → null (= "sem dado"), nunca 0 (= "sem chuva"). Essa é a
+ * diferença que o alerta precisa saber: "não choveu" e "não sei" levam a
+ * decisões diferentes, e antes do fix os dois viravam 0.
+ */
+export function maxAcumuladoFresco(
+	estacoes: CemadenLeitura[],
+	f: (e: CemadenLeitura) => number | null,
+): number | null {
+	const frescas = estacoes.filter((e) => !e.stale);
+	if (!frescas.length) return null;
+	return Math.max(...frescas.map((e) => f(e) ?? 0));
+}
+
+/** Há alguma estação fresca? false = o pluviômetro local não está reportando. */
+export function temEstacaoFresca(estacoes: CemadenLeitura[]): boolean {
+	return estacoes.some((e) => !e.stale);
 }
