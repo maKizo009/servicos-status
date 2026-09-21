@@ -110,10 +110,28 @@ export function buildAnalystPrompt(ctx: AnalystContext): string {
 	linhas.push(`NÍVEL DA CAMADA A: ${ctx.alertLevel}`);
 	const nucleos = ctx.threats.filter((t) => t.kind !== "area");
 	const areas = ctx.threats.filter((t) => t.kind === "area");
+	// Intensidade/aproximação em PORTUGUÊS: o enum cru vazava pro prompt
+	// ("área de chuva moderate", "chuva heavy") e o analista tinha de traduzir
+	// sozinho — risco de erro de leitura num dado que É a fonte da verdade.
+	const INTENSIDADE_PT: Record<string, string> = {
+		light: "fraca",
+		moderate: "moderada",
+		heavy: "forte",
+		extreme: "muito forte (temporal)",
+	};
+	const APROXIMACAO_PT: Record<string, string> = {
+		approaching: "se aproximando",
+		receding: "se afastando",
+		crossing: "trajetória tangencial (passa de lado)",
+	};
 	const linhaEntidade = (t: AnalystThreat) => {
 		const eta = t.approach === "approaching" ? `, ETA ${fmtEta(t.etaMin)}` : "";
 		const nome = t.kind === "area" ? "área de chuva" : "núcleo de chuva";
-		return `- ${nome} ${t.intensity} em ${t.municipio}${t.uf ? `/${t.uf}` : ""}, a ${Math.round(t.distKm)} km, ${t.approach ?? "movimento incerto"}${eta}`;
+		const intensidade = INTENSIDADE_PT[t.intensity] ?? t.intensity;
+		const movimento = t.approach
+			? (APROXIMACAO_PT[t.approach] ?? t.approach)
+			: "movimento incerto";
+		return `- ${nome} ${intensidade} em ${t.municipio}${t.uf ? `/${t.uf}` : ""}, a ${Math.round(t.distKm)} km, ${movimento}${eta}`;
 	};
 	if (ctx.threats.length === 0) {
 		linhas.push(
