@@ -262,7 +262,6 @@
 .rain-tile {
   image-rendering: smooth;
   filter: contrast(1.12) brightness(1.03) saturate(1.15);
-  transition: opacity 0.25s ease-in-out;
 }
 
 .llm-banner-box{
@@ -2298,8 +2297,8 @@ function renderHidroCard(data) {
         </div>
       </div>`
     : '';
-  const motivos = (perm && perm.motivos && perm.motivos.length)
-    ? `<div style="margin:6px 0">${perm.motivos.map((m) => `<div>• ${esc(m)}</div>`).join('')}</div>`
+  const motivos = (h.ifl && h.ifl.motivos && h.ifl.motivos.length)
+    ? `<div style="margin:6px 0">${h.ifl.motivos.map((m) => `<div>• ${esc(m)}</div>`).join('')}</div>`
     : '';
   const rows = h.estacoes.map((e) => {
     const nome = esc(e.nome.split(' (')[0]);
