@@ -914,6 +914,13 @@ export function buildHeuristicBulletin(
 		intensityLabel[cell.intensity] ??
 		intensityLabel[nowcast.currentDominant] ??
 		"presente";
+	// Área de chuva (moderada) x núcleo (tempestade): muda o SUBSTANTIVO e a
+	// concordância. Antes o texto fixava "Núcleo/O núcleo" e, com uma área
+	// moderada entrando no gate, sairia "O núcleo de chuva moderada" — a área
+	// não é núcleo e o feminino quebra (pitfall de texto enganoso).
+	const isArea = cell.kind === "area";
+	const sujeitoLoc = isArea ? "Área de chuva" : "Núcleo de chuva";
+	const sujeitoCurto = isArea ? "A área" : "O núcleo";
 	const rotulo = rotularLocalizacao(cell.lat, cell.lon, haversineKm);
 	const rotUf = rotulo.uf ? ` (${rotulo.uf})` : "";
 	const ipirangaKm = Math.round(
@@ -980,7 +987,7 @@ export function buildHeuristicBulletin(
 	const movimentoTxt = temMovimento
 		? `${dirLabel ? `, deslocando-se para ${dirLabel}` : ", em movimento"} a ${Math.round(m!.speedKmh)} km/h`
 		: ", sem movimento significativo (estacionário)";
-	const baseLoc = `Núcleo de chuva ${intensity} em ${rotulo.nome}${rotUf}${rotulo.metodo}, a ${ipirangaKm} km de Ipiranga${movimentoTxt}.`;
+	const baseLoc = `${sujeitoLoc} ${intensity} em ${rotulo.nome}${rotUf}${rotulo.metodo}, a ${ipirangaKm} km de Ipiranga${movimentoTxt}.`;
 
 	let corpo: string;
 	if (verdict?.approach === "approaching") {
@@ -992,18 +999,18 @@ export function buildHeuristicBulletin(
 			// Bug B: com chuva ATIVA em Ipiranga, núcleo vindo pra cá pode
 			// REFORÇAR — nunca "sem alerta iminente" seco.
 			const reforco = fraseLocal
-				? " Como já chove em Ipiranga, este núcleo pode reforçar a chuva nas próximas horas — acompanhe."
+				? ` Como já chove em Ipiranga, ${isArea ? "esta área" : "este núcleo"} pode reforçar a chuva nas próximas horas — acompanhe.`
 				: " Está longe demais para alerta iminente (pode dissipar no caminho).";
-			corpo = `${baseLoc} O núcleo ${approachLabel.approaching}.${reforco}${projNote}`;
+			corpo = `${baseLoc} ${sujeitoCurto} ${approachLabel.approaching}.${reforco}${projNote}`;
 		} else if (alertLevel === "alert") {
-			corpo = `${baseLoc} O núcleo ${approachLabel.approaching} — ALERTA: há risco real de chuva em Ipiranga nas próximas ~2 horas.${projNote}`;
+			corpo = `${baseLoc} ${sujeitoCurto} ${approachLabel.approaching} — ALERTA: há risco real de chuva em Ipiranga nas próximas ~2 horas.${projNote}`;
 		} else {
-			corpo = `${baseLoc} O núcleo ${approachLabel.approaching} — acompanhe, mas ainda não é alerta para Ipiranga.${projNote}`;
+			corpo = `${baseLoc} ${sujeitoCurto} ${approachLabel.approaching} — acompanhe, mas ainda não é alerta para Ipiranga.${projNote}`;
 		}
 	} else if (verdict?.approach === "receding") {
-		corpo = `${baseLoc} O núcleo está ${approachLabel.receding} — sem alerta iminente para Ipiranga.${projNote}`;
+		corpo = `${baseLoc} ${sujeitoCurto} está ${approachLabel.receding} — sem alerta iminente para Ipiranga.${projNote}`;
 	} else if (verdict?.approach === "crossing") {
-		corpo = `${baseLoc} O núcleo ${approachLabel.crossing} — risco direto baixo para Ipiranga.${projNote}`;
+		corpo = `${baseLoc} ${sujeitoCurto} ${approachLabel.crossing} — risco direto baixo para Ipiranga.${projNote}`;
 	} else {
 		// Sem veredito confiável (sem movimento associável).
 		corpo = `${baseLoc} Movimento não confiável no momento — trajetória incerta; sem alerta iminente.${ecmwfAlto ? ` Modelo ECMWF: ${ecmwfPct}% de chuva (pode chegar às cidades à frente).` : ""}`;

@@ -71,6 +71,14 @@ export interface AnalystThreat {
 	uf: string | null;
 	distKm: number;
 	intensity: string;
+	/**
+	 * `nucleo` = tempestade (heavy/extreme); `area` = área de chuva contínua
+	 * moderada. O analista precisa saber a diferença: área molha o chão sem
+	 * trovoada, e antes ela nem chegava no contexto (caso 21/09/2026: o
+	 * boletim dizia "nenhum núcleo por perto" com uma área de chuva a 113 km
+	 * com ETA ~69 min).
+	 */
+	kind: "nucleo" | "area";
 	approach: ThreatVerdict["approach"] | null;
 	etaMin: number | null;
 	speedKmh: number | null;
@@ -100,16 +108,29 @@ export function buildAnalystPrompt(ctx: AnalystContext): string {
 		`CHUVA EM IPIRANGA AGORA: ${ctx.fraseLocal ?? "sem chuva medida (pluviômetros zerados)"}`,
 	);
 	linhas.push(`NÍVEL DA CAMADA A: ${ctx.alertLevel}`);
+	const nucleos = ctx.threats.filter((t) => t.kind !== "area");
+	const areas = ctx.threats.filter((t) => t.kind === "area");
+	const linhaEntidade = (t: AnalystThreat) => {
+		const eta = t.approach === "approaching" ? `, ETA ${fmtEta(t.etaMin)}` : "";
+		const nome = t.kind === "area" ? "área de chuva" : "núcleo de chuva";
+		return `- ${nome} ${t.intensity} em ${t.municipio}${t.uf ? `/${t.uf}` : ""}, a ${Math.round(t.distKm)} km, ${t.approach ?? "movimento incerto"}${eta}`;
+	};
 	if (ctx.threats.length === 0) {
-		linhas.push("NÚCLEOS: nenhum núcleo forte/extremo no radar");
+		linhas.push(
+			"NÚCLEOS E ÁREAS: nenhuma chuva relevante no radar (nem núcleo forte/extremo nem área de chuva moderada)",
+		);
 	} else {
-		linhas.push("NÚCLEOS (top 3, já ordenados por perigo):");
-		for (const t of ctx.threats.slice(0, 3)) {
-			const eta =
-				t.approach === "approaching" ? `, ETA ${fmtEta(t.etaMin)}` : "";
+		if (nucleos.length === 0) {
+			linhas.push("NÚCLEOS (tempestade): nenhum núcleo forte/extremo no radar");
+		} else {
+			linhas.push("NÚCLEOS (tempestade, já ordenados por perigo):");
+			for (const t of nucleos.slice(0, 3)) linhas.push(linhaEntidade(t));
+		}
+		if (areas.length > 0) {
 			linhas.push(
-				`- chuva ${t.intensity} em ${t.municipio}${t.uf ? `/${t.uf}` : ""}, a ${Math.round(t.distKm)} km, ${t.approach ?? "movimento incerto"}${eta}`,
+				"ÁREAS DE CHUVA (chuva contínua moderada — molha o chão, não é trovoada; NÃO chame de núcleo/tempestade):",
 			);
+			for (const t of areas.slice(0, 3)) linhas.push(linhaEntidade(t));
 		}
 	}
 	linhas.push(
@@ -158,14 +179,14 @@ export function buildAnalystPrompt(ctx: AnalystContext): string {
 ${linhas.join("\n")}
 
 Escreva o boletim em 3 ou 4 frases curtas (máximo 600 caracteres), em português simples:
-1. A linha "CHUVA EM IPIRANGA AGORA" é a ÚNICA fonte sobre chuva acontecendo: se ela diz que não há chuva medida, NUNCA escreva que chove (nem "chove fraco", nem "chuva leve agora"). A previsão do ECMWF só pode aparecer como chance ("o modelo indica X% de chance"), jamais como chuva acontecendo — e se não há chuva medida nem núcleo perto, o boletim deve dizer isso com clareza.
+1. A linha "CHUVA EM IPIRANGA AGORA" é a ÚNICA fonte sobre chuva acontecendo: se ela diz que não há chuva medida, NUNCA escreva que chove (nem "chove fraco", nem "chuva leve agora"). A previsão do ECMWF só pode aparecer como chance ("o modelo indica X% de chance"), jamais como chuva acontecendo — e se não há chuva medida nem núcleo perto (nem área de chuva a ≤200 km), o boletim deve dizer isso com clareza.
 2. Se houver chuva medida em Ipiranga, ABRA com isso (é a informação mais importante).
-2. Depois o núcleo mais relevante, sempre com a distância em km.
+2. Depois a entidade mais relevante (núcleo de tempestade OU área de chuva contínua), sempre com a distância em km — e use o nome certo: "núcleo" só para a linha de NÚCLEOS, "área de chuva moderada" para a linha de ÁREAS.
 3. Nunca afirme certeza — use "pode", "se mantiver o curso".
-4. Se um núcleo está longe (>200 km), diga que está longe; não trate como iminente.
+4. Se a entidade está longe (>200 km), diga que está longe; não trate como iminente. Se existe ÁREA DE CHUVA se aproximando, ela DEVE aparecer no boletim (é a chuva que está vindo) — nunca diga "nenhum núcleo por perto" se a linha de ÁREAS estiver preenchida.
 5. Se houver linha de SOLO, use-a para dizer a SEVERIDADE (rajada forte, pressão caindo, acumulado alto) — ela mede o que o radar não mede.
 6. Sem markdown, sem emoji, sem título. Termine com ponto final.
-7. NÃO repita os rótulos do bloco de dados ("CHUVA EM IPIRANGA AGORA:", "NÚCLEOS:", "PREVISÃO..."). Escreva o boletim direto, como quem fala com o leitor.`;
+7. NÃO repita os rótulos do bloco de dados ("CHUVA EM IPIRANGA AGORA:", "NÚCLEOS:", "ÁREAS DE CHUVA:", "PREVISÃO..."). Escreva o boletim direto, como quem fala com o leitor.`;
 }
 
 /** Gate de coerência local: chovendo aqui e o texto não fala disso? Lixo. */
@@ -409,6 +430,7 @@ export function buildAnalystContext(
 			uf: r.municipio?.uf ?? r.uf ?? null,
 			distKm: t.distToTargetKm,
 			intensity: t.intensity,
+			kind: t.kind ?? "nucleo",
 			approach: t.threat?.approach ?? null,
 			etaMin: t.threat?.etaMin ?? null,
 			speedKmh: t.movement?.speedKmh ?? null,

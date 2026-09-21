@@ -47,7 +47,7 @@ import {
 	ANALYSIS_TILE_PX,
 	getRadarNowcast,
 } from "./nowcast-service.js";
-import { fmtEta } from "./radar-analysis.js";
+import { fmtEta, formatRainEntityAlert } from "./radar-analysis.js";
 import { checkRateLimit, checkRateLimitScope } from "./rate-limiter.js";
 import {
 	CIDADES_CORREDOR,
@@ -447,32 +447,23 @@ export async function syncWeatherCycle(): Promise<WeatherState> {
 				? Math.round(topThreat.distToTargetKm)
 				: null;
 
-			const threatLabel =
-				topThreat &&
-				topThreat.intensity !== "light" &&
-				topThreat.intensity !== "moderate"
-					? (intensityLabel[topThreat.intensity] ?? topThreat.intensity)
-					: null;
-
-			if (alertLevel === "alert") {
-				const t = nearestAlert;
-				const etaTxt =
-					t?.threat?.approach === "approaching" && t.threat.etaMin != null
-						? `, aproximando-se (chegada em ${fmtEta(t.threat.etaMin)})`
-						: "";
-				state.hasRegionalRain = true;
-				state.regionalRainAlert = `🌩️ Núcleo de chuva ${threatLabel ?? "forte"} detectado a ~${Math.round(t?.distToTargetKm ?? 0)} km de Ipiranga${etaTxt}. Atenção a oscilações na rede elétrica (COPEL).`;
-			} else if (alertLevel === "watch") {
-				const t = nearestWatch;
-				const etaTxt =
-					t?.threat?.approach === "approaching" && t.threat.etaMin != null
-						? ` (chegada em ${fmtEta(t.threat.etaMin)})`
-						: "";
-				state.hasRegionalRain = false;
-				state.regionalRainAlert = `👁️ Vigilância: núcleo de chuva ${threatLabel ?? "forte"} detectado a ~${Math.round(t?.distToTargetKm ?? 0)} km de Ipiranga${etaTxt}. Sem alerta iminente, acompanhe.`;
-			} else {
-				state.hasRegionalRain = false;
+			state.hasRegionalRain = alertLevel === "alert";
+			if (alertLevel === "monitor") {
 				state.regionalRainAlert = `ℹ️ Monitoramento: atividade de radar detectada a ${topThreat ? `~${Math.round(topThreat.distToTargetKm)} km` : "grande distância"} de Ipiranga. Sem risco iminente no momento.`;
+			} else {
+				// Área de chuva (moderada) x núcleo (tempestade): o texto muda, o gate
+				// não. Texto montado em formatRainEntityAlert (testável).
+				const t = alertLevel === "alert" ? nearestAlert : nearestWatch;
+				state.regionalRainAlert = t
+					? formatRainEntityAlert({
+							level: alertLevel,
+							kind: t.kind,
+							intensity: t.intensity,
+							distKm: t.distToTargetKm,
+							approach: t.threat?.approach ?? null,
+							etaMin: t.threat?.etaMin ?? null,
+						})
+					: `ℹ️ Monitoramento: sem chuva relevante no radar a caminho de Ipiranga.`;
 			}
 		}
 		// ── Solo sob demanda (regra do Dave 21/09/2026) ─────────────────────

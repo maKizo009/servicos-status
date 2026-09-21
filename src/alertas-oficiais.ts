@@ -227,7 +227,7 @@ export function buildAlertaUnificado(
 	} else if (c6 >= 25 || c24 >= 50 || local.radarAlertLevel === "alert") {
 		nivel = "laranja";
 		if (local.radarAlertLevel === "alert")
-			motivos.push("núcleo de chuva iminente no radar (≤80 km)");
+			motivos.push("chuva iminente no radar (≤80 km)");
 		if (c6 >= 25)
 			motivos.push(
 				`${c6.toFixed(1).replace(".", ",")} mm em 6h nos pluviômetros`,
@@ -246,7 +246,7 @@ export function buildAlertaUnificado(
 	) {
 		nivel = "amarelo";
 		if (local.radarAlertLevel === "watch")
-			motivos.push("núcleo de chuva em vigilância no radar");
+			motivos.push("chuva em vigilância no radar");
 		if (c24 >= 20)
 			motivos.push(
 				`${c24.toFixed(1).replace(".", ",")} mm em 24h nos pluviômetros`,

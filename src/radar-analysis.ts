@@ -96,9 +96,77 @@ export interface RainCell {
 export const THREAT_MIN_PIXELS_AT_256 = 12;
 
 /**
+ * Piso de tamanho para uma ÁREA DE CHUVA moderada (20–37 dBZ) contar como
+ * entidade avaliada contra o alvo (@256px, escala com a resolução no assess).
+ *
+ * Por que existe (caso real 21/09/2026, 19:30): uma área de chuva moderada de
+ * 4.504 px no tile 512 (~1.100 px @256, ~1.700 km²) estava a 113 km de
+ * Ipiranga vindo a ~98 km/h — ETA ~69 min. O gate só olhava heavy/extreme,
+ * então ela era invisível: o site dizia "nenhum núcleo por perto" e narrava um
+ * núcleo de 279 px a 153 km. `verify-anel-radar.ts` mediu 10.554 px de chuva a
+ * ≤80 km sendo IGNORADOS (0 px heavy/extreme). Chuva média continuada molha o
+ * chão do mesmo jeito — e o monitor existe pra avisar disso.
+ *
+ * 250 px @256 ≈ 370 km² de chuva contínua (blob de ~22 km de diâmetro):
+ * descarta respingo de garoa (33–90 px) e aceita área de chuva de verdade.
+ */
+export const MODERATE_AREA_MIN_PX_AT_256 = 250;
+
+/**
  * Formata ETA para gente, não para robô (10/09/2026): ninguém pensa em
  * "337 minutos". <120 min → minutos; acima → horas ("~4h", "cerca de 6 horas").
  */
+/**
+ * Rótulos de intensidade usados no texto do alerta (mesma régua do boletim).
+ */
+const INTENSITY_LABEL: Record<string, string> = {
+	none: "ausente",
+	light: "fraca",
+	moderate: "moderada",
+	heavy: "forte",
+	extreme: "muito forte (temporal)",
+};
+
+/**
+ * Texto do alerta de chuva regional (Camada A → card do site).
+ *
+ * ÁREA (chuva contínua moderada) x NÚCLEO (tempestade) mudam o substantivo, o
+ * emoji e a cauda — NUNCA o gate. A área avisa "chuva a caminho" e fala de
+ * acumulados; o núcleo mantém o aviso de rede elétrica (COPEL). Antes desta
+ * separação, uma área moderada recebia o texto de tempestade ("núcleo de chuva
+ * forte"), o que é enganoso — pitfall do caso real de 21/09/2026.
+ */
+export function formatRainEntityAlert(opts: {
+	level: "alert" | "watch";
+	kind: "nucleo" | "area";
+	intensity: Exclude<RainIntensity, "none">;
+	distKm: number;
+	approach: ThreatVerdict["approach"] | null;
+	etaMin: number | null;
+}): string {
+	const isArea = opts.kind === "area";
+	const label = INTENSITY_LABEL[opts.intensity] ?? opts.intensity;
+	const km = `~${Math.round(opts.distKm)} km`;
+	const temEta = opts.approach === "approaching" && opts.etaMin != null;
+	if (opts.level === "alert") {
+		const eta = temEta
+			? `, aproximando-se (chegada em ${fmtEta(opts.etaMin)})`
+			: "";
+		const rotulo = isArea
+			? `🌧️ Área de chuva ${label}`
+			: `🌩️ Núcleo de chuva ${label}`;
+		const cauda = isArea
+			? " Chuva a caminho — acompanhe os acumulados."
+			: " Atenção a oscilações na rede elétrica (COPEL).";
+		return `${rotulo} detectad${isArea ? "a" : "o"} a ${km} de Ipiranga${eta}.${cauda}`;
+	}
+	const eta = temEta ? ` (chegada em ${fmtEta(opts.etaMin)})` : "";
+	const rotulo = isArea
+		? `área de chuva ${label}`
+		: `núcleo de chuva ${label}`;
+	return `👁️ Vigilância: ${rotulo} detectad${isArea ? "a" : "o"} a ${km} de Ipiranga${eta}. Sem alerta iminente, acompanhe.`;
+}
+
 export function fmtEta(etaMin: number | null | undefined): string {
 	if (etaMin == null || !Number.isFinite(etaMin) || etaMin <= 0)
 		return "tempo indeterminado";
@@ -121,6 +189,13 @@ export interface ThreatCell extends RainCell {
 	movement: MovementVector | null;
 	/** Veredicto de ameaça determinístico (null se sem movimento confiável) */
 	threat: ThreatVerdict | null;
+	/**
+	 * O que é: `nucleo` = torre de tempestade (heavy/extreme, piso 12 px);
+	 * `area` = área de chuva contínua moderada (20–37 dBZ, piso
+	 * MODERATE_AREA_MIN_PX_AT_256). Muda o TEXTO (área vs núcleo), não o gate:
+	 * distância/ETA/direção valem igual para os dois.
+	 */
+	kind: "nucleo" | "area";
 	/**
 	 * Zona de relevância para o alvo (gates de distância/ETA — Camada A).
 	 * alert = iminente (≤80 km, ETA ≤120 min) | watch = vigilância
@@ -851,8 +926,11 @@ export function markReversals(
 }
 
 /**
- * Avalia TODOS os núcleos fortes/extremos contra um alvo (ex.: Ipiranga).
- * Cada núcleo recebe distância + veredicto de ameaça com seu movimento
+ * Avalia TODAS as entidades de chuva contra um alvo (ex.: Ipiranga):
+ *  - NÚCLEO: torre de tempestade (heavy/extreme, piso 12 px @256).
+ *  - ÁREA: chuva contínua moderada (20–37 dBZ, piso 250 px @256) — a chuva
+ *    que molha o chão sem trovoada, que antes era invisível pro alerta.
+ * Cada entidade recebe distância + veredicto de ameaça com seu movimento
  * individual. Ordena por perigo: aproximando (menor ETA) → mais próximo.
  */
 export function assessAllThreats(
@@ -867,12 +945,23 @@ export function assessAllThreats(
 		THREAT_MIN_PIXELS_AT_256,
 		Math.round(THREAT_MIN_PIXELS_AT_256 * (tileSize / 256) ** 2),
 	);
+	// Piso das ÁREAS DE CHUVA (moderada): maior, porque garoa em área grande
+	// é comum e não pode virar alerta. Escala com a resolução igual ao minPx.
+	const minAreaPx = Math.max(
+		MODERATE_AREA_MIN_PX_AT_256,
+		Math.round(MODERATE_AREA_MIN_PX_AT_256 * (tileSize / 256) ** 2),
+	);
 	return cells
-		.filter(
-			(c) =>
-				(c.intensity === "heavy" || c.intensity === "extreme") &&
-				c.pixelCount >= minPx,
-		)
+		.filter((c) => {
+			if (c.intensity === "heavy" || c.intensity === "extreme") {
+				return c.pixelCount >= minPx;
+			}
+			// Área de chuva contínua: entra no MESMO gate (distância/ETA/direção)
+			// do núcleo. Sem isto, chuva moderada chegando de área grande é
+			// invisível pro alerta (caso real 21/09/2026).
+			if (c.intensity === "moderate") return c.pixelCount >= minAreaPx;
+			return false;
+		})
 		.map((c) => {
 			const movement = c.trackedMovement ?? null;
 			const threat = movement
@@ -881,6 +970,9 @@ export function assessAllThreats(
 			const distToTargetKm = haversineKm(c.lat, c.lon, targetLat, targetLon);
 			return {
 				...c,
+				kind: (c.intensity === "moderate" ? "area" : "nucleo") as
+					| "area"
+					| "nucleo",
 				distToTargetKm,
 				movement,
 				threat,

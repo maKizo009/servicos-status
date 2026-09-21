@@ -13,12 +13,15 @@
  */
 import { getMunicipioComFallback } from "../src/geo-municipio.js";
 import {
+	assessAllThreats,
 	assessThreat,
 	classifyRelevanceZone,
 	ETA_MAX_MIN,
 	type FrameAnalysis,
 	haversineKm,
+	formatRainEntityAlert,
 	markReversals,
+	MODERATE_AREA_MIN_PX_AT_256,
 	projectCell,
 	type RainCell,
 	RELEVANCE_ZONES,
@@ -332,6 +335,214 @@ check(
 check(
 	"9f. Sem par anterior NÃO é reversal",
 	!fSem[2].cells[0].trackedMovement?.reversal,
+);
+
+// ==========================================================================
+// 10. ÁREA DE CHUVA MODERADA (fix 21/09/2026) — a regressão que motivou tudo.
+//     Caso real 19:30 BRT: área de chuva moderada (28 dBZ) de 4.504 px no tile
+//     512 a 113 km de Ipiranga (NW), movendo 151° a 98 km/h → ETA ~69 min.
+//     Antes deste fix o gate só olhava heavy/extreme, então o site dizia
+//     "nenhum núcleo por perto" e narrava um núcleo de 279 px a 153 km,
+//     enquanto 10.554 px de chuva a ≤80 km eram ignorados (verify-anel-radar).
+// ==========================================================================
+
+/** Desloca um ponto (bearing 0=N, sentido horário) por km — Web Mercator local. */
+function deslocar(lat: number, lon: number, bearingDeg: number, km: number) {
+	const rad = (bearingDeg * Math.PI) / 180;
+	const dLat = (km * Math.cos(rad)) / 111.32;
+	const dLon = (km * Math.sin(rad)) / (111.32 * Math.cos((lat * Math.PI) / 180));
+	return { lat: lat + dLat, lon: lon + dLon };
+}
+
+const areaReal = {
+	lat: -24.489,
+	lon: -51.542,
+	pixelCount: 4504, // @512 (tileSize passado no assess)
+	maxDbz: 28,
+	meanDbz: 24,
+	centroidX: 120,
+	centroidY: 80,
+	intensity: "moderate" as const,
+	trackedMovement: { directionDeg: 151, speedKmh: 98, confirmed: true },
+};
+const th10 = assessAllThreats([areaReal], IPIRANGA.lat, IPIRANGA.lon, 512);
+check(
+	"10a. Área moderada de 4.504 px @512 vira ameaça avaliada (era invisível)",
+	th10.length === 1,
+	`deu ${th10.length} ameaça(s)`,
+);
+check(
+	'10b. Vem marcada como kind="area" (não "nucleo")',
+	th10[0]?.kind === "area",
+	`deu ${th10[0]?.kind}`,
+);
+check(
+	"10c. Área aproximando (movimento 151° rumo a Ipiranga)",
+	th10[0]?.threat?.approach === "approaching",
+	`deu ${th10[0]?.threat?.approach}`,
+);
+check(
+	"10d. ETA ~80 min (113 km na velocidade RADIAL: 98 km/h × cos(29°) ≈ 86 km/h)",
+	Math.abs((th10[0]?.threat?.etaMin ?? 0) - 80) < 10,
+	`deu ${th10[0]?.threat?.etaMin?.toFixed(0)} min`,
+);
+check(
+	"10e. Zona de relevância = watch (113 km, fora do gate de alerta ≤80 km)",
+	th10[0]?.relevanceZone === "watch",
+	`deu ${th10[0]?.relevanceZone}`,
+);
+
+// 11. A mesma área já dentro do gate de alerta (75 km): vira ALERTA.
+const ponto75 = deslocar(IPIRANGA.lat, IPIRANGA.lon, 315, 75);
+const th11 = assessAllThreats(
+	[{ ...areaReal, lat: ponto75.lat, lon: ponto75.lon }],
+	IPIRANGA.lat,
+	IPIRANGA.lon,
+	512,
+);
+check(
+	"11. Área moderada a 75 km aproximando = ALERTA (≤80 km + ETA ≤120 min)",
+	th11[0]?.relevanceZone === "alert",
+	`deu ${th11[0]?.relevanceZone}`,
+);
+
+// 12. Área moderada GRANDE mas longe (>250 km) continua fora: teto de distância.
+const ponto300 = deslocar(IPIRANGA.lat, IPIRANGA.lon, 315, 300);
+const th12 = assessAllThreats(
+	[{ ...areaReal, lat: ponto300.lat, lon: ponto300.lon, pixelCount: 9000 }],
+	IPIRANGA.lat,
+	IPIRANGA.lon,
+	512,
+);
+check(
+	"12. Área moderada a 300 km = monitor (teto de 250 km preservado)",
+	th12.length === 0 || th12[0]?.relevanceZone === "monitor",
+	`deu ${th12[0]?.relevanceZone ?? "fora da lista"}`,
+);
+
+// 13. GAROA moderada pequena (240 px @512 = 60 @256) NÃO pode virar ameaça —
+//     senão todo chuvisco grande vira alerta (ruído).
+const th13 = assessAllThreats(
+	[{ ...areaReal, pixelCount: 240 }],
+	IPIRANGA.lat,
+	IPIRANGA.lon,
+	512,
+);
+check(
+	"13. Garoa moderada de 60 px @256 fica FORA (piso de área)",
+	th13.length === 0,
+	`deu ${th13.length} ameaça(s)`,
+);
+
+// 14. Núcleo heavy pequeno continua entrando (comportamento antigo intacto).
+const th14 = assessAllThreats(
+	[
+		{
+			...areaReal,
+			pixelCount: 50,
+			maxDbz: 42,
+			intensity: "heavy" as const,
+		},
+	],
+	IPIRANGA.lat,
+	IPIRANGA.lon,
+	512,
+);
+check(
+	'14. Núcleo heavy de 50 px @512 continua sendo ameaça kind="nucleo"',
+	th14.length === 1 && th14[0]?.kind === "nucleo",
+	`deu ${th14.length} ameaça(s), kind ${th14[0]?.kind}`,
+);
+
+// 15. O piso de área escala com a resolução (256 x 512) — sem isto, o mesmo
+//     sistema julgaria diferente em z6 e z7.
+check(
+	"15. Piso de área documentado escala com a resolução (250 @256 → 1000 @512)",
+	MODERATE_AREA_MIN_PX_AT_256 === 250 &&
+		assessAllThreats(
+			[{ ...areaReal, pixelCount: 999 }],
+			IPIRANGA.lat,
+			IPIRANGA.lon,
+			512,
+		).length === 0,
+	"piso não escalou",
+);
+
+// 16. TEXTO do alerta: área x núcleo. Núcleo TEM que continuar idêntico ao que
+//     a produção emitiu em 21/09 19:30 (regressão de texto é regressão de UX).
+const txtAreaWatch = formatRainEntityAlert({
+	level: "watch",
+	kind: "area",
+	intensity: "moderate",
+	distKm: 113,
+	approach: "approaching",
+	etaMin: 79,
+});
+check(
+	"16a. Área moderada em watch fala 'área de chuva moderada' (não núcleo/forte)",
+	txtAreaWatch.includes("área de chuva moderada") &&
+		!txtAreaWatch.includes("núcleo") &&
+		!txtAreaWatch.includes("forte"),
+	txtAreaWatch,
+);
+check(
+	"16b. Área em watch cita distância e chegada",
+	txtAreaWatch.includes("~113 km") && txtAreaWatch.includes("chegada em ~79 min"),
+	txtAreaWatch,
+);
+const txtNucleoWatch = formatRainEntityAlert({
+	level: "watch",
+	kind: "nucleo",
+	intensity: "heavy",
+	distKm: 153,
+	approach: "approaching",
+	etaMin: 113,
+});
+check(
+	"16c. Núcleo em watch = texto IDÊNTICO ao que a produção emitiu em 21/09 19:30",
+	txtNucleoWatch ===
+		"👁️ Vigilância: núcleo de chuva forte detectado a ~153 km de Ipiranga (chegada em ~113 min). Sem alerta iminente, acompanhe.",
+	txtNucleoWatch,
+);
+const txtAreaAlert = formatRainEntityAlert({
+	level: "alert",
+	kind: "area",
+	intensity: "moderate",
+	distKm: 74,
+	approach: "approaching",
+	etaMin: 45,
+});
+check(
+	"16d. Área iminente (alerta) fala de acumulados e NÃO promete rede elétrica",
+	txtAreaAlert.startsWith("🌧️ Área de chuva moderada detectada") &&
+		txtAreaAlert.includes("acumulados") &&
+		!txtAreaAlert.includes("COPEL"),
+	txtAreaAlert,
+);
+const txtNucleoAlert = formatRainEntityAlert({
+	level: "alert",
+	kind: "nucleo",
+	intensity: "extreme",
+	distKm: 60,
+	approach: "approaching",
+	etaMin: 30,
+});
+check(
+	"16e. Núcleo iminente mantém o aviso de rede elétrica (COPEL)",
+	txtNucleoAlert.startsWith("🌩️ Núcleo de chuva muito forte (temporal) detectado") &&
+		txtNucleoAlert.includes("COPEL"),
+	txtNucleoAlert,
+);
+check(
+	"16f. Sem ETA (movimento incerto) o texto não inventa tempo de chegada",
+	!formatRainEntityAlert({
+		level: "watch",
+		kind: "area",
+		intensity: "moderate",
+		distKm: 120,
+		approach: "crossing",
+		etaMin: null,
+	}).includes("chegada em"),
 );
 
 console.log(

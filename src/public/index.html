@@ -1444,7 +1444,7 @@ function renderCards(services){
         const rainTitle = hasRainAlert
           ? '⚠️ Alerta de Tempestade: Risco de Oscilação / Queda de Energia (COPEL)'
           : (rainLevel === 'watch')
-            ? '👁️ Vigilância: Núcleos de chuva se aproximando da região (COPEL)'
+            ? '👁️ Vigilância: chuva se aproximando da região (rede COPEL)'
             : (rainLevel === 'monitor')
               ? 'ℹ️ Monitoramento: Atividade de radar distante (COPEL)'
               : '✅ Sem interrupções ativas';
@@ -1455,7 +1455,7 @@ function renderCards(services){
             <span>${rainTitle}</span>
           </div>
           ${(hasRainAlert || rainLevel === 'watch' || rainLevel === 'monitor') ? `<div style="font-size:13px;color:var(--text);font-weight:500;padding-left:30px;line-height:1.4">
-            ${window.latestWeatherData?.regionalRainAlert || 'Núcleos de chuva foram detectados no radar RainViewer na região dos Campos Gerais. Raios e ventos podem afetar a rede elétrica da COPEL em Ipiranga nas próximas horas.'}
+            ${window.latestWeatherData?.regionalRainAlert || 'Chuva foi detectada no radar RainViewer na região dos Campos Gerais. Raios e ventos podem afetar a rede elétrica da COPEL em Ipiranga nas próximas horas.'}
           </div>` : ''}
           <div style="font-size:13px;color:var(--text2);font-weight:500;display:flex;flex-direction:column;gap:4px;padding-left:30px">
             <div>🕒 <strong>Última verificação:</strong> ${lastCheckRel}</div>
