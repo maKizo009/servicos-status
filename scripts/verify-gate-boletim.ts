@@ -295,48 +295,51 @@ check(
 //    contradizer o radar. Nasceu do caso real 21/09 22:55 — LLM escreveu "nenhum
 //    núcleo por perto" com núcleo de 58 dBZ a 147 km em vigilância, e o texto
 //    ficou 30 min no cache. Prompt não segura modelo; gate determinístico segura.
-const incoerente =
-	"Em Ipiranga não há chuva medida agora e nenhum núcleo por perto. O modelo indica 79 por cento de chance de chuva.";
+//
+//    ⚠️ Este bloco já passou por dois bugs silenciosos (barra dupla no regex;
+//    `nenhum[ao]s?` que exigia a vogal e nunca casava "nenhum" puro). Os testes
+//    antigos usavam FRAGMENTO de texto e passaram por acidente. Regra: aqui o
+//    caso obrigatório é o TEXTO REAL de produção, completo, com as flexões de
+//    número/gênero — fragmento não conta.
+const TEXTO_REAL_PROD =
+	"Em Ipiranga não há chuva medida agora e nenhum núcleo por perto. O núcleo mais relevante é de chuva forte em Palmital, a 153 km, se aproximando e pode chegar em cerca de 113 minutos se mantiver o curso.";
+const WATCH = [{ distToTargetKm: 147, relevanceZone: "watch" }];
+const ALERTA = [{ distToTargetKm: 55, relevanceZone: "alert" }];
+const casosIncoerentes: [string, string, typeof WATCH][] = [
+	["F1. TEXTO REAL de produção (frase + 153 km)", TEXTO_REAL_PROD, WATCH],
+	["F2. nenhum núcleo por perto", "nenhum núcleo por perto. Núcleo a 147 km.", WATCH],
+	["F3. nenhuma chuva por perto", "nenhuma chuva por perto. Núcleo a 147 km.", WATCH],
+	["F4. nenhuns núcleos por perto", "nenhuns núcleos por perto. Núcleo a 147 km.", WATCH],
+	["F5. nenhumas chuvas por perto", "nenhumas chuvas por perto. Núcleo a 147 km.", WATCH],
+	["F6. sem núcleo relevante", "sem núcleo relevante na região. Núcleo a 147 km.", WATCH],
+	["F7. radar limpo", "radar limpo. Núcleo a 147 km.", WATCH],
+	["F8. omite distância com entidade relevante", "Chuva se aproximando da região.", WATCH],
+	["F9. sem urgência em zona de ALERTA", "Chuva a 55 km de Ipiranga se aproximando.", ALERTA],
+];
+for (const [nome, texto, ths] of casosIncoerentes) {
+	check(nome + " → rejeitado", !passaCoerenciaAmeaca(texto, ths));
+}
 check(
-	"F1. rejeita 'nenhum núcleo por perto' com entidade em watch a ≤200 km",
-	!passaCoerenciaAmeaca(incoerente, [
-		{ distToTargetKm: 147, relevanceZone: "watch" },
-	]),
-);
-check(
-	"F2. aceita o mesmo texto quando nada está em watch/alert (radar não contradiz)",
-	passaCoerenciaAmeaca(incoerente, [
-		{ distToTargetKm: 147, relevanceZone: "monitor" },
-	]),
-);
-const coerente =
-	"Núcleo de chuva forte em Palmital, a 147 km de Ipiranga, se aproximando e pode chegar em cerca de 80 minutos.";
-check(
-	"F3. aceita texto coerente que cita a distância",
-	passaCoerenciaAmeaca(coerente, [
-		{ distToTargetKm: 147, relevanceZone: "watch" },
-	]),
-);
-check(
-	"F4. rejeita texto que OMITE a distância com entidade relevante",
-	!passaCoerenciaAmeaca("Chuva se aproximando da região.", [
-		{ distToTargetKm: 147, relevanceZone: "watch" },
-	]),
-);
-check(
-	"F5. em zona de ALERTA exige urgência no texto",
-	!passaCoerenciaAmeaca("Chuva moderada a 70 km de Ipiranga se aproximando.", [
-		{ distToTargetKm: 70, relevanceZone: "alert" },
-	]),
-);
-check(
-	"F6. e aceita o mesmo com urgência explícita",
+	"F10. coerente com urgência em zona de alerta → aceito",
 	passaCoerenciaAmeaca(
-		"Alerta: chuva a 70 km de Ipiranga, chegando nas próximas 2 horas.",
-		[{ distToTargetKm: 70, relevanceZone: "alert" }],
+		"Alerta: chuva a 55 km de Ipiranga, chegando nas próximas horas.",
+		ALERTA,
 	),
 );
-check("F7. texto vazio nunca passa", !passaCoerenciaAmeaca("", []));
+check(
+	"F11. coerente simples → aceito",
+	passaCoerenciaAmeaca(
+		"Núcleo de chuva forte a 147 km de Ipiranga, se aproximando.",
+		WATCH,
+	),
+);
+check(
+	"F12. sem entidade relevante o radar não contradiz nada → aceito",
+	passaCoerenciaAmeaca("Nenhum núcleo por perto.", [
+		{ distToTargetKm: 556, relevanceZone: "monitor" },
+	]),
+);
+check("F13. texto vazio → rejeitado", !passaCoerenciaAmeaca("", []));
 
 console.log(
 	`\n${falhas === 0 ? "✅ GATE VERIFICADO (fixtures determinísticas)" : `❌ ${falhas} VERIFICAÇÃO(ÕES) FALHARAM`}`,
