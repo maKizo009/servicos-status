@@ -104,13 +104,16 @@ const raceTimeout = <T,>(p: Promise<T>, ms: number, msg: string) =>
 	});
 
 type Answer = {
-	noul?: boolean;
+	/** Noul: a OpenRouter/TypeSafe devolve PROBABILIDADE (0–1). Aceita boolean
+	 *  por robustez, caso algum provedor normalize. */
+	noul?: number | boolean;
 	probability?: number;
 	confidence?: number;
 };
 
 function chave(): string {
 	return (
+		process.env.OPENROUTER_API_KEY ||
 		process.env.TYPESAFE_API_KEY ||
 		process.env.VERCEL_AI_GATEWAY_KEY ||
 		process.env.AI_GATEWAY_API_KEY ||
@@ -130,10 +133,10 @@ export async function decidirCalhaComJev(
 	const key = chave();
 	if (!key) return null;
 
-	const base = (process.env.TYPESAFE_BASE_URL || "https://api.typesafe.ai").replace(
-		/\/+$/,
-		"",
-	);
+	// OpenRouter por padrão (o TypeSafe nativo está em waitlist).
+	const base = (
+		process.env.TYPESAFE_BASE_URL || "https://openrouter.ai/api"
+	).replace(/\/+$/, "");
 	const model = process.env.TYPESAFE_MODEL || "jev-latest";
 	const timeoutMs = Number(process.env.JEV_TIMEOUT_MS || 8000);
 	const t0 = Date.now();
@@ -171,14 +174,28 @@ export async function decidirCalhaComJev(
 		const a = data.answers?.vai_sair_da_calha;
 		const b = data.answers?.transborda_se_sair;
 		if (!a && !b) return null;
-		const veredito = (x?: Answer): "sim" | "nao" | "indefinido" =>
-			x?.noul === true ? "sim" : x?.noul === false ? "nao" : "indefinido";
+		// `noul` é a probabilidade do "sim" (0–1); booleano é aceito por robustez.
+		const prob = (x?: Answer): number | null => {
+			if (typeof x?.noul === "number") return x.noul;
+			if (typeof x?.noul === "boolean") return x.noul ? 1 : 0;
+			if (typeof x?.probability === "number") return x.probability;
+			return null;
+		};
+		const veredito = (p: number | null): "sim" | "nao" | "indefinido" =>
+			p === null ? "indefinido" : p >= 0.5 ? "sim" : "nao";
+		const pa = prob(a);
+		const pb = prob(b);
 		return {
-			vaiSair: veredito(a),
-			probVaiSair: typeof a?.probability === "number" ? a.probability : null,
-			confianca: typeof a?.confidence === "number" ? a.confidence : null,
-			transborda: veredito(b),
-			probTransborda: typeof b?.probability === "number" ? b.probability : null,
+			vaiSair: veredito(pa),
+			probVaiSair: pa,
+			confianca:
+				typeof a?.confidence === "number"
+					? a.confidence
+					: pa === null
+						? null
+						: Math.round(Math.abs(pa - 0.5) * 200) / 100, // margem: distância do cara-ou-coroa
+			transborda: veredito(pb),
+			probTransborda: pb,
 			modelo: data.model ?? model,
 			fonte: base.includes("openrouter") ? "openrouter" : "typesafe",
 			ms: Date.now() - t0,
