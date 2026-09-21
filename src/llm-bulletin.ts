@@ -199,12 +199,12 @@ ${linhas.join("\n")}
 Escreva o boletim em 3 ou 4 frases curtas (máximo 600 caracteres), em português simples:
 1. A linha "CHUVA EM IPIRANGA AGORA" é a ÚNICA fonte sobre chuva acontecendo: se ela diz que não há chuva medida, NUNCA escreva que chove (nem "chove fraco", nem "chuva leve agora"). A previsão do ECMWF só pode aparecer como chance ("o modelo indica X% de chance"), jamais como chuva acontecendo — e se não há chuva medida nem núcleo perto (nem área de chuva a ≤200 km), o boletim deve dizer isso com clareza.
 2. Se houver chuva medida em Ipiranga, ABRA com isso (é a informação mais importante).
-2. Depois a entidade mais relevante (núcleo de tempestade OU área de chuva contínua), sempre com a distância em km — e use o nome certo: "núcleo" só para a linha de NÚCLEOS, "área de chuva moderada" para a linha de ÁREAS.
-3. Nunca afirme certeza — use "pode", "se mantiver o curso".
-4. Se a entidade está longe (>200 km), diga que está longe; não trate como iminente. Se existe ÁREA DE CHUVA se aproximando, ela DEVE aparecer no boletim (é a chuva que está vindo) — nunca diga "nenhum núcleo por perto" se a linha de ÁREAS estiver preenchida.
-5. Se houver linha de SOLO, use-a para dizer a SEVERIDADE (rajada forte, pressão caindo, acumulado alto) — ela mede o que o radar não mede.
-6. Sem markdown, sem emoji, sem título. Termine com ponto final.
-7. NÃO repita os rótulos do bloco de dados ("CHUVA EM IPIRANGA AGORA:", "NÚCLEOS:", "ÁREAS DE CHUVA:", "PREVISÃO..."). Escreva o boletim direto, como quem fala com o leitor.`;
+3. Depois a entidade mais relevante (núcleo de tempestade OU área de chuva contínua), sempre com a distância em km — e use o nome certo: "núcleo" só para a linha de NÚCLEOS, "área de chuva" para a linha de ÁREAS.
+4. Nunca afirme certeza — use "pode", "se mantiver o curso".
+5. Se a entidade está longe (>200 km), diga que está longe; não trate como iminente. PROIBIDO escrever "nenhum núcleo por perto" (ou "nenhuma chuva por perto") se as listas NÚCLEOS ou ÁREAS tiverem QUALQUER entidade a ≤200 km — nesse caso diga onde ela está e quando pode chegar. E nunca fale de núcleo distante omitindo a ÁREA DE CHUVA que está vindo: a chuva que se aproxima DEVE aparecer no boletim.
+6. Se houver linha de SOLO, use-a para dizer a SEVERIDADE (rajada forte, pressão caindo, acumulado alto) — ela mede o que o radar não mede.
+7. Sem markdown, sem emoji, sem título. Termine com ponto final.
+8. NÃO repita os rótulos do bloco de dados ("CHUVA EM IPIRANGA AGORA:", "NÚCLEOS:", "ÁREAS DE CHUVA:", "PREVISÃO..."). Escreva o boletim direto, como quem fala com o leitor.`;
 }
 
 /** Gate de coerência local: chovendo aqui e o texto não fala disso? Lixo. */

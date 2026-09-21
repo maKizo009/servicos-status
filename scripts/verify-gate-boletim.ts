@@ -237,13 +237,57 @@ check(
 	/área de chuva moderada .*\b11[0-9] km\b/i.test(promptC),
 );
 check(
-	"D3. instrução proíbe 'nenhum núcleo por perto' se houver área",
-	promptC.includes("DEVE aparecer no boletim"),
+	"D3. instrução proíbe 'nenhum núcleo por perto' a ≤200 km (núcleo OU área)",
+	promptC.includes('PROIBIDO escrever "nenhum núcleo por perto"') &&
+		promptC.includes("deve aparecer no boletim".replace("deve", "DEVE")),
 );
 check(
 	"D4. tipo de ameaça (kind) chega ao contexto do analista",
 	ctxC.analyst.threats[0]?.kind === "area",
 	`deu ${ctxC.analyst.threats[0]?.kind}`,
+);
+
+// E. CENÁRIO REAL de 21/09 22:55 em produção: núcleo muito forte (58 dBZ) a
+//    147 km, zona watch. O boletim do LLM dizia "nenhum núcleo por perto" E
+//    descrevia o núcleo na frase seguinte — contradição que o Dave reportou.
+//    A heurística tem de narrar com distância + ETA, e o prompt do analista tem
+//    de PROIBIR a frase.
+const real147 = ameaca({ distToTargetKm: 147, relevanceZone: "watch" });
+const ncE = { ...base, threats: [real147] } as NowcastResult;
+const txtE = buildHeuristicBulletin(ncE, ecmwf, relevance, local);
+console.log(`\nE. núcleo a 147 km em vigilância (caso real):\n  "${txtE}"`);
+check(
+	"E1. narra com distância e chegada (não engole o núcleo em vigilância)",
+	// A distância do boletim vem do haversine (lat/lon da fixture), não do campo
+	// distToTargetKm — por isso a asserção aceita a faixa de 3 dígitos.
+	/\b1[0-9]{2} km\b/.test(txtE) && /chegada estimada em|pode chegar em/i.test(txtE),
+	txtE.slice(0, 130),
+);
+check(
+	"E2. não abre dizendo que não há nada por perto com núcleo a ≤200 km",
+	!/^Sem chuva relevante|nenhum núcleo por perto/i.test(txtE),
+	txtE.slice(0, 130),
+);
+const ctxE = buildAnalystContext(ncE, {
+	local: null,
+	condition: (d.condition as string) ?? null,
+	ecmwfPct: ecmwf.rainProbabilityPct,
+	ecmwfProx6hMm: (d.ecmwfProx6hMm as number) ?? null,
+	alertLevel: "watch",
+	hidroWatch: false,
+	avisosOficiais: [],
+});
+const promptE = buildAnalystPrompt(ctxE.analyst);
+check(
+	"E3. prompt lista o núcleo em português (sem enum cru 'heavy/extreme')",
+	/núcleo de chuva muito forte \(temporal\) em .*\b14[0-9] km\b, se aproximando, ETA/i.test(
+		promptE,
+	),
+	promptE.split("\n").find((l) => l.startsWith("- ")) ?? "(sem linha)",
+);
+check(
+	"E4. prompt proíbe a frase contraditória também no caso de núcleo",
+	promptE.includes('PROIBIDO escrever "nenhum núcleo por perto"'),
 );
 
 console.log(
