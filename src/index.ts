@@ -48,6 +48,7 @@ import {
 	getRadarNowcast,
 } from "./nowcast-service.js";
 import { fmtEta, formatRainEntityAlert } from "./radar-analysis.js";
+import { passaCoerenciaAmeaca } from "./bulletin-coherence.js";
 import { checkRateLimit, checkRateLimitScope } from "./rate-limiter.js";
 import {
 	CIDADES_CORREDOR,
@@ -539,7 +540,11 @@ export async function syncWeatherCycle(): Promise<WeatherState> {
 				// — evita boletim stale citando distância de núcleo que já sumiu.
 				// Compara a lista de distâncias do boletim cached com os threats atuais.
 				cachedBulletin.text.length > 0 &&
-				!/sem núcleos/i.test(cachedBulletin.text)
+				!/sem núcleos/i.test(cachedBulletin.text) &&
+				// Gate determinístico (21/09/2026): texto em cache que contradiz o
+				// radar (ex.: "nenhum núcleo por perto" com núcleo em watch a
+				// 147 km) não pode ser servido — regenera.
+				passaCoerenciaAmeaca(cachedBulletin.text, nowcast.threats)
 			) {
 				// Se o boletim cita distâncias mas os threats atuais estão vazios, regenera.
 				const hasDistances = /\d{2,4}\s*km/.test(cachedBulletin.text);

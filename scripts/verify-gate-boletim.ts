@@ -19,6 +19,7 @@
  * Uso: bun run scripts/verify-gate-boletim.ts
  */
 import { buildAnalystContext, buildAnalystPrompt } from "../src/llm-bulletin.js";
+import { passaCoerenciaAmeaca } from "../src/bulletin-coherence.js";
 import { buildHeuristicBulletin } from "../src/nowcast-vlm.js";
 import type {
 	MovementVector,
@@ -289,6 +290,53 @@ check(
 	"E4. prompt proíbe a frase contraditória também no caso de núcleo",
 	promptE.includes('PROIBIDO escrever "nenhum núcleo por perto"'),
 );
+
+// F. GATE DE COERÊNCIA (determinístico, módulo puro): o texto do boletim não pode
+//    contradizer o radar. Nasceu do caso real 21/09 22:55 — LLM escreveu "nenhum
+//    núcleo por perto" com núcleo de 58 dBZ a 147 km em vigilância, e o texto
+//    ficou 30 min no cache. Prompt não segura modelo; gate determinístico segura.
+const incoerente =
+	"Em Ipiranga não há chuva medida agora e nenhum núcleo por perto. O modelo indica 79 por cento de chance de chuva.";
+check(
+	"F1. rejeita 'nenhum núcleo por perto' com entidade em watch a ≤200 km",
+	!passaCoerenciaAmeaca(incoerente, [
+		{ distToTargetKm: 147, relevanceZone: "watch" },
+	]),
+);
+check(
+	"F2. aceita o mesmo texto quando nada está em watch/alert (radar não contradiz)",
+	passaCoerenciaAmeaca(incoerente, [
+		{ distToTargetKm: 147, relevanceZone: "monitor" },
+	]),
+);
+const coerente =
+	"Núcleo de chuva forte em Palmital, a 147 km de Ipiranga, se aproximando e pode chegar em cerca de 80 minutos.";
+check(
+	"F3. aceita texto coerente que cita a distância",
+	passaCoerenciaAmeaca(coerente, [
+		{ distToTargetKm: 147, relevanceZone: "watch" },
+	]),
+);
+check(
+	"F4. rejeita texto que OMITE a distância com entidade relevante",
+	!passaCoerenciaAmeaca("Chuva se aproximando da região.", [
+		{ distToTargetKm: 147, relevanceZone: "watch" },
+	]),
+);
+check(
+	"F5. em zona de ALERTA exige urgência no texto",
+	!passaCoerenciaAmeaca("Chuva moderada a 70 km de Ipiranga se aproximando.", [
+		{ distToTargetKm: 70, relevanceZone: "alert" },
+	]),
+);
+check(
+	"F6. e aceita o mesmo com urgência explícita",
+	passaCoerenciaAmeaca(
+		"Alerta: chuva a 70 km de Ipiranga, chegando nas próximas 2 horas.",
+		[{ distToTargetKm: 70, relevanceZone: "alert" }],
+	),
+);
+check("F7. texto vazio nunca passa", !passaCoerenciaAmeaca("", []));
 
 console.log(
 	`\n${falhas === 0 ? "✅ GATE VERIFICADO (fixtures determinísticas)" : `❌ ${falhas} VERIFICAÇÃO(ÕES) FALHARAM`}`,

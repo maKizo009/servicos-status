@@ -65,6 +65,7 @@ interface LlmEntry {
 }
 
 import type { SoloCidade } from "./sigma-feed.js";
+import { passaCoerenciaAmeaca } from "./bulletin-coherence.js";
 
 export interface AnalystThreat {
 	municipio: string;
@@ -505,7 +506,10 @@ export async function generateSmartBulletin(
 			if (
 				choviaAntes === choveAgora &&
 				!(temDist && vazioAgora) &&
-				cached.text.length > 0
+				cached.text.length > 0 &&
+				// Gate determinístico: texto em cache que contradiz o radar
+				// (diz "nada por perto" com entidade em watch/alert) é lixo.
+				passaCoerenciaAmeaca(cached.text, nowcast.threats)
 			) {
 				logger.info("Boletim LLM reutilizado (<30 min, cenário igual)");
 				return cached;
@@ -518,7 +522,12 @@ export async function generateSmartBulletin(
 
 	// 2. Tenta a cadeia LLM.
 	const llm = await tryLlmBulletin(analyst, verdict, ecmwf, relevance);
-	if (llm) {
+	if (llm && !passaCoerenciaAmeaca(llm.text, nowcast.threats)) {
+		logger.warn(
+			"Boletim LLM rejeitado pelo gate de coerência de ameaça — caindo na heurística",
+			{ provider: llm.provider, texto: llm.text.slice(0, 160) },
+		);
+	} else if (llm) {
 		const bulletin: NowcastBulletin = {
 			text: llm.text,
 			source:
