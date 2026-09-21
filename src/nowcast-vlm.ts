@@ -864,10 +864,18 @@ export function buildHeuristicBulletin(
 	const t0Km =
 		typeof t0?.distToTargetKm === "number" ? t0.distToTargetKm : null;
 	const t0Aproximando = t0?.threat?.approach === "approaching";
-	if (
-		nowcast.threats.length === 0 ||
-		(t0Km != null && t0Km > 250 && !t0Aproximando)
-	) {
+	// Gate por ZONA DE RELEVÂNCIA (regra do Dave 21/09/2026): núcleo em
+	// "monitor" não vira narrativa — só alert/vigilância narram. Antes o
+	// gate dependia do rótulo "approaching" do radial, e um erro de sinal
+	// nele derrubava a proteção inteira (núcleo de Guarujá/SP a 556 km
+	// narrado como ameaça a Ipiranga). Fallback para estado antigo sem zone.
+	const t0ForaDeAlcance =
+		t0?.relevanceZone === "monitor" ||
+		(t0?.relevanceZone == null &&
+			t0Km != null &&
+			t0Km > 250 &&
+			!t0Aproximando);
+	if (nowcast.threats.length === 0 || t0ForaDeAlcance) {
 		const nc = nowcast.nearestCell ?? t0 ?? null;
 		const kmDistante =
 			t0Km ??

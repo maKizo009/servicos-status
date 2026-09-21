@@ -141,6 +141,12 @@ export const RELEVANCE_ZONES = {
 	alert: { maxKm: 80, maxEtaMin: 120 },
 	/** Vigilância: ≤200 km e ETA ≤360 min → "Vigilância" (sem card de alerta) */
 	watch: { maxKm: 200, maxEtaMin: 360 },
+	/**
+	 * Teto absoluto de relevância: além disto é SEMPRE monitor, mesmo
+	 * aproximando. Núcleo a 556 km "chegando" em 50 h não é ameaça de
+	 * nowcast — é ruído que vira boletim bizarro (regra do Dave 21/09/2026).
+	 */
+	maxRelevantKm: 250,
 	/** Núcleo extreme dentro deste raio SEMPRE gera alerta (fallback segurança) */
 	extremeFallbackKm: 50,
 } as const;
@@ -160,6 +166,10 @@ export function classifyRelevanceZone(
 	intensity: RainCell["intensity"],
 	speedKmh: number | null,
 ): "alert" | "watch" | "monitor" {
+	// Teto absoluto: além de maxRelevantKm é SEMPRE monitor (nem alerta nem
+	// vigilância), mesmo com veredito "approaching". A 556 km/11 km/h o ETA
+	// seria de 50 h — não é horizonte de nowcast.
+	if (distKm > RELEVANCE_ZONES.maxRelevantKm) return "monitor";
 	// Movimento confiável MEDIDO entre frames (>2 km/h com veredito) manda:
 	// receding/crossing nunca é alerta, mesmo extreme a 30 km (está indo
 	// embora). approaching usa as zonas de distância/ETA.
@@ -216,6 +226,12 @@ export interface MovementVector {
 	fromLon: number;
 	toLat: number;
 	toLon: number;
+	/** Rumo confirmado no par anterior (consistente dentro de 120°) */
+	confirmed?: boolean;
+	/** Rumo INVERTIDO entre pares consecutivos → vetor descartado */
+	reversal?: boolean;
+	/** Rumo medido no par anterior (para auditoria da inversão) */
+	previousDirectionDeg?: number;
 }
 
 // ============ Classificação de pixel ============
@@ -632,15 +648,29 @@ export interface ThreatVerdict {
 	bearingFromTargetDeg: number;
 	/** Componente radial da velocidade: <0 aproximando, >0 afastando (km/h) */
 	radialKmh: number;
+	/**
+	 * Fração da velocidade que é radial (cos do ângulo entre rumo e bearing).
+	 * −1 = vindo direto; 0 = tangencial puro. |valor| baixo = passa de lado.
+	 */
+	radialFraction: number;
 	approach: "approaching" | "receding" | "crossing";
 	/** ETA em minutos se approaching, senão null */
 	etaMin: number | null;
+	/** Rumo invertido entre pares consecutivos → veredito descartado */
+	reversal?: boolean;
 }
+
+/**
+ * Horizonte máximo de ETA (24 h). Acima disto o número não é previsão de
+ * nowcast — é extrapolação sem significado (núcleo a centenas de km em
+ * velocidade baixa). Regra do Dave 21/09/2026.
+ */
+export const ETA_MAX_MIN = 1440;
 
 export function assessThreat(
 	cellLat: number,
 	cellLon: number,
-	movement: { directionDeg: number; speedKmh: number },
+	movement: { directionDeg: number; speedKmh: number; reversal?: boolean },
 	targetLat: number,
 	targetLon: number,
 ): ThreatVerdict {
@@ -660,19 +690,46 @@ export function assessThreat(
 	// -1 = na direção oposta. Multiplicando pela velocidade:
 	//   negativo = aproximando do alvo, positivo = afastando.
 	const deltaDeg = movement.directionDeg - bearingFromTargetDeg;
-	const radialKmh = movement.speedKmh * Math.cos((deltaDeg * Math.PI) / 180);
+	const cosDelta = Math.cos((deltaDeg * Math.PI) / 180);
+	const radialKmh = movement.speedKmh * cosDelta;
 
 	const distKm = haversineKm(cellLat, cellLon, targetLat, targetLon);
-	let approach: ThreatVerdict["approach"] = "crossing";
-	if (radialKmh < -2) approach = "approaching";
-	else if (radialKmh > 2) approach = "receding";
 
-	const etaMin =
+	// ⛔ GATE DE DIREÇÃO (regra do Dave 21/09/2026): "um núcleo que se move
+	// em direção contrária é ruído". Um núcleo quase TANGENCIAL projeta
+	// radial pequeno e negativo por acaso e virava "approaching" — caso
+	// real: Guarujá/SP a 556 km, movimento 327° vs bearing 76° → 251° fora
+	// do radial → radial −3,7 km/h de 11,4 (32% da velocidade) e o boletim
+	// dizia que "podia chegar em Ipiranga". Só é aproximação se o rumo
+	// aponta pro alvo dentro de ±60° (cos ≤ −0,5). Fora da janela é
+	// crossing: passa de lado, não vem.
+	const APROX_COS_MAX = -0.5; // ±60° do bearing do alvo
+	if (movement.reversal) {
+		// Rumo INVERTIDO entre pares consecutivos: associação espúria
+		// (núcleo dissipou e outro surgiu perto). Nunca vira aproximação.
+		return {
+			bearingFromTargetDeg,
+			radialKmh,
+			radialFraction: cosDelta,
+			approach: "crossing",
+			etaMin: null,
+			reversal: true,
+		};
+	}
+	let approach: ThreatVerdict["approach"] = "crossing";
+	if (radialKmh < -2 && cosDelta <= APROX_COS_MAX) approach = "approaching";
+	else if (radialKmh > 2 && cosDelta >= -APROX_COS_MAX) approach = "receding";
+
+	// ETA só faz sentido dentro do horizonte de nowcast: um núcleo a 556 km
+	// a 11 km/h daria 50 h — isso não é ETA, é física de papel. Acima de
+	// ETA_MAX_MIN o veredito perde o ETA e a zona cai pra monitor.
+	let etaMin =
 		approach === "approaching" && Math.abs(radialKmh) > 1
 			? (distKm / Math.abs(radialKmh)) * 60
 			: null;
+	if (etaMin != null && etaMin > ETA_MAX_MIN) etaMin = null;
 
-	return { bearingFromTargetDeg, radialKmh, approach, etaMin };
+	return { bearingFromTargetDeg, radialKmh, radialFraction: cosDelta, approach, etaMin };
 }
 
 /** Projeção da posição do núcleo em t minutos (extrapolação linear). */
@@ -737,6 +794,53 @@ export function associateMovements(
 			toLat: cell.lat,
 			toLon: cell.lon,
 		};
+	}
+}
+
+/** Diferença angular absoluta entre dois rumos (0..180°) */
+function angleDeltaDeg(a: number, b: number): number {
+	const d = Math.abs(a - b) % 360;
+	return d > 180 ? 360 - d : d;
+}
+
+/**
+ * Consistência de RUMO entre pares consecutivos (regra do Dave 21/09/2026):
+ * "um núcleo que se move em direção contrária é ruído".
+ *
+ * Se o núcleo vinha andando pra um lado e no par seguinte aparece andando
+ * pro lado oposto, a associação é espúria (o núcleo dissipou e outro surgiu
+ * perto). Sem este gate o modelo lê a inversão como "o núcleo mudou de rumo
+ * e está voltando pra Ipiranga" — o que é fisicamente impossível e gerava
+ * boletim bizarro.
+ *
+ * Usa o encadeamento já existente: o núcleo do último frame guarda em
+ * fromLat/fromLon de onde veio (frame do meio), e o núcleo correspondente do
+ * frame do meio carrega o movimento do par anterior.
+ */
+export function markReversals(
+	analyses: FrameAnalysis[],
+	maxDeltaDeg = 120,
+): void {
+	const latest = analyses[analyses.length - 1];
+	const mid = analyses[analyses.length - 2];
+	if (!latest || !mid) return;
+	for (const cell of latest.cells) {
+		const m1 = cell.trackedMovement;
+		if (!m1) continue;
+		const prev = mid.cells.find(
+			(c) => haversineKm(c.lat, c.lon, m1.fromLat, m1.fromLon) < 1,
+		);
+		const m2 = prev?.trackedMovement;
+		if (!m2) {
+			// Só apareceu no último par: sem histórico pra confirmar o rumo.
+			cell.trackedMovement = { ...m1, confirmed: false };
+			continue;
+		}
+		const delta = angleDeltaDeg(m1.directionDeg, m2.directionDeg);
+		cell.trackedMovement =
+			delta > maxDeltaDeg
+				? { ...m1, reversal: true, previousDirectionDeg: m2.directionDeg }
+				: { ...m1, confirmed: true, previousDirectionDeg: m2.directionDeg };
 	}
 }
 
@@ -880,6 +984,9 @@ export async function analyzeRadarNowcast(
 	for (let i = 1; i < analyses.length; i++) {
 		associateMovements(analyses[i - 1], analyses[i]);
 	}
+	// Rumo invertido entre pares consecutivos = ruído → descarta o vetor
+	// (antes virava "núcleo voltando pra Ipiranga", impossível).
+	markReversals(analyses);
 
 	// Movimento global: o do núcleo mais intenso do último frame (retrocompatível)
 	const latest = analyses[analyses.length - 1];
