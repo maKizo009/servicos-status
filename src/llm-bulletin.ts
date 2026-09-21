@@ -47,19 +47,20 @@ const LLM_TIMEOUT_MS = 30_000;
 // raciocínio + ~150 tokens de boletim (custo segue irrelevante: ~US$0,0006).
 const LLM_MAX_TOKENS = 2000;
 
-// Cadeia do boletim (21/09/2026): OpenRouter APOSENTADO a pedido do Dave.
-// NIM openai/gpt-oss-20b é o provedor: verificado AO VIVO no bun com o prompt
-// real (2,9s curto / ~15s com o prompt do analista, texto correto em PT-BR).
-// Gemini ficou FORA: via curl responde em 5s, mas o POST do fetch do bun trava
-// (30s de timeout, 3 tentativas) — produção roda bun, então não serve.
-// (O outro modelo vivo da conta NIM, z-ai/glm-5.3, passou de 120s: inviável.)
-// Reserva = heurística determinística (grátis, sempre funciona).
+// Cadeia do boletim. OpenRouter é o PRINCIPAL — foi o que sempre funcionou aqui.
+// Em 21/09/2026 eu li "use no openrouter" como proibição e troquei tudo pra NIM;
+// era o contrário (o Dave quis dizer "use o Jev NA OpenRouter"). Revertido.
+// NIM fica como RESERVA: verificado vivo no bun (openai/gpt-oss-20b com
+// reasoning_effort=low → 5,8-20s), mas a chave de produção não respondeu, então
+// não é ele quem carrega o boletim. Heurística determinística fecha a fila.
 export const LLM_CHAIN: LlmEntry[] = [
+	{ provider: "openrouter", model: "meta/muse-spark-1.3-contributor" },
+	{ provider: "openrouter", model: "minimax/minimax-m3" },
 	{ provider: "nim", model: "openai/gpt-oss-20b" },
 ];
 
 interface LlmEntry {
-	provider: "gemini" | "nim";
+	provider: "openrouter" | "gemini" | "nim";
 	model: string;
 }
 
@@ -176,6 +177,51 @@ export function passaCoerenciaLocal(
 	return /chove|mm|pluviômetro|garoa|chuva/i.test(text);
 }
 
+async function chamaOpenRouter(
+	model: string,
+	prompt: string,
+	apiKey: string,
+): Promise<string | null> {
+	try {
+		const res = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+			method: "POST",
+			headers: {
+				"Content-Type": "application/json",
+				Authorization: `Bearer ${apiKey}`,
+				"HTTP-Referer": "https://servicos-status.vercel.app",
+				"X-Title": "Monitor Ipiranga",
+			},
+			body: JSON.stringify({
+				model,
+				messages: [{ role: "user", content: prompt }],
+				temperature: 0.3,
+				max_tokens: LLM_MAX_TOKENS,
+				// Medido 21/09/2026 com o prompt real: sem isso o gpt-oss-20b raciocina
+				// por 22-60s+ (estourou o timeout 3x); com reasoning_effort=low vai a
+				// 5,8s e o texto segue correto. O gargalo era o raciocínio, não a rede.
+				reasoning_effort: "low",
+			}),
+			signal: AbortSignal.timeout(LLM_TIMEOUT_MS),
+		});
+		if (!res.ok) {
+			logger.warn("LLM analista: HTTP", { model, status: res.status });
+			return null;
+		}
+		const json = (await res.json()) as {
+			choices?: Array<{ message?: { content?: string } }>;
+			error?: { message?: string };
+		};
+		if (json.error) {
+			logger.warn("LLM analista: erro do provedor", { model, error: json.error.message });
+			return null;
+		}
+		return (json.choices?.[0]?.message?.content ?? "").trim() || null;
+	} catch (e) {
+		logger.warn("LLM analista: falha", { model, error: String(e) });
+		return null;
+	}
+}
+
 async function chamaNim(
 	model: string,
 	prompt: string,
@@ -196,7 +242,7 @@ async function chamaNim(
 				max_tokens: LLM_MAX_TOKENS,
 				// Medido 21/09/2026 com o prompt real: sem isso o gpt-oss-20b raciocina
 				// por 22-60s+ (estourou o timeout 3x); com reasoning_effort=low vai a
-				// 5,8s e o texto continua correto. O raciocínio é o gargalo, não a rede.
+				// 5,8s e o texto segue correto. O gargalo era o raciocínio, não a rede.
 				reasoning_effort: "low",
 			}),
 			signal: AbortSignal.timeout(LLM_TIMEOUT_MS),
@@ -279,23 +325,26 @@ export async function tryLlmBulletin(
 		alertLevel?: "alert" | "watch" | "monitor" | "none";
 		nearestThreatKm?: number | null;
 	},
-): Promise<{ text: string; model: string; provider: "gemini" | "nim" } | null> {
+): Promise<{ text: string; model: string; provider: "openrouter" | "gemini" | "nim" } | null> {
 	const cfg = loadConfig();
-	if (!cfg.geminiApiKey && !cfg.nvidiaNimApiKey) {
+	if (!cfg.openRouterApiKey && !cfg.geminiApiKey && !cfg.nvidiaNimApiKey) {
 		logger.warn(
-			"LLM analista: sem chave de provedor (GEMINI/NIM), pulando para heurística",
+			"LLM analista: sem chave de provedor (OpenRouter/NIM/Gemini), pulando para heurística",
 		);
 		return null;
 	}
 	const prompt = buildAnalystPrompt(ctx);
 	for (const entry of LLM_CHAIN) {
 		const { model, provider } = entry;
+		if (provider === "openrouter" && !cfg.openRouterApiKey) continue;
 		if (provider === "gemini" && !cfg.geminiApiKey) continue;
 		if (provider === "nim" && !cfg.nvidiaNimApiKey) continue;
 		const text =
-			provider === "gemini"
-				? await chamaGemini(model, prompt, cfg.geminiApiKey)
-				: await chamaNim(model, prompt, cfg.nvidiaNimApiKey, cfg.nvidiaNimEndpoint);
+			provider === "openrouter"
+				? await chamaOpenRouter(model, prompt, cfg.openRouterApiKey)
+				: provider === "gemini"
+					? await chamaGemini(model, prompt, cfg.geminiApiKey)
+					: await chamaNim(model, prompt, cfg.nvidiaNimApiKey, cfg.nvidiaNimEndpoint);
 		if (!text) continue;
 		if (text.length > 700) {
 			logger.warn("LLM analista: texto prolixo demais, rejeitado", {
@@ -401,10 +450,10 @@ export async function generateSmartBulletin(
 		const cached = await getLatestNowcastBulletin();
 		if (
 			cached &&
-			// Só reusa boletim da cadeia ATUAL. De propósito NÃO aceita "openrouter":
-			// o cache velho seria reaproveitado por 30 min e mascararia a migração
-			// pra NIM (foi o que aconteceu em 21/09).
-			(cached.source === "nvidia_nim" || cached.source === "gemini") &&
+			// Reusa boletim de qualquer fonte de LLM da cadeia atual (não da heurística).
+			(cached.source === "openrouter" ||
+				cached.source === "nvidia_nim" ||
+				cached.source === "gemini") &&
 			Date.now() - cached.generatedAt < LLM_TTL_MS
 		) {
 			const choviaAntes = /chove em ipiranga|chuva forte já acumulada/i.test(
@@ -432,13 +481,22 @@ export async function generateSmartBulletin(
 	if (llm) {
 		const bulletin: NowcastBulletin = {
 			text: llm.text,
-			source: llm.provider === "gemini" ? "gemini" : "nvidia_nim",
+			source:
+				llm.provider === "openrouter"
+					? "openrouter"
+					: llm.provider === "gemini"
+						? "gemini"
+						: "nvidia_nim",
 			generatedAt: Date.now(),
 		};
 		try {
 			await saveNowcastBulletin(
 				llm.text,
-				llm.provider === "gemini" ? "gemini" : "nvidia_nim",
+				llm.provider === "openrouter"
+					? "openrouter"
+					: llm.provider === "gemini"
+						? "gemini"
+						: "nvidia_nim",
 			);
 		} catch (e) {
 			logger.warn("LLM: persistência falhou", { error: String(e) });

@@ -889,7 +889,7 @@ export function buildHeuristicBulletin(
 			(nc ? Math.round(haversineKm(nc.lat, nc.lon, -25.0244, -50.5847)) : null);
 		const mencao =
 			kmDistante != null && kmDistante > 100
-				? ` Radar registra atividade distante (~${kmDistante} km de Ipiranga), sem influência direta.`
+				? ` Radar registra atividade distante (~${Math.round(kmDistante)} km de Ipiranga), sem influência direta.`
 				: "";
 		if (fraseLocal) return `${fraseLocal} ${resumoNumerico(ecmwf)}${mencao}`;
 		return `Sem chuva relevante na região de Ipiranga no momento.${mencao} ${resumoNumerico(ecmwf)}`;
