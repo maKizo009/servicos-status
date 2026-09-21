@@ -41,7 +41,7 @@ export const LLM_TTL_MS = 30 * 60_000;
 // prompt real: 2,9s / 14,6s / 15,6s / 28,6s / 47,5s / >40s). 25s cortava demais.
 // O boletim é gerado no CICLO (cron), não na requisição do usuário — o card serve
 // do cache — então esperar é aceitável. Estourou o timeout? Cai na heurística.
-const LLM_TIMEOUT_MS = 60_000;
+const LLM_TIMEOUT_MS = 30_000;
 // Modelos de raciocínio (minimax-m3 etc.) gastam o budget PENSANDO: com 400
 // tokens o finish vinha "length" com content vazio. 2000 dá folga pro
 // raciocínio + ~150 tokens de boletim (custo segue irrelevante: ~US$0,0006).
@@ -163,7 +163,8 @@ Escreva o boletim em 3 ou 4 frases curtas (máximo 600 caracteres), em portuguê
 3. Nunca afirme certeza — use "pode", "se mantiver o curso".
 4. Se um núcleo está longe (>200 km), diga que está longe; não trate como iminente.
 5. Se houver linha de SOLO, use-a para dizer a SEVERIDADE (rajada forte, pressão caindo, acumulado alto) — ela mede o que o radar não mede.
-6. Sem markdown, sem emoji, sem título. Termine com ponto final.`;
+6. Sem markdown, sem emoji, sem título. Termine com ponto final.
+7. NÃO repita os rótulos do bloco de dados ("CHUVA EM IPIRANGA AGORA:", "NÚCLEOS:", "PREVISÃO..."). Escreva o boletim direto, como quem fala com o leitor.`;
 }
 
 /** Gate de coerência local: chovendo aqui e o texto não fala disso? Lixo. */
@@ -193,6 +194,10 @@ async function chamaNim(
 				messages: [{ role: "user", content: prompt }],
 				temperature: 0.3,
 				max_tokens: LLM_MAX_TOKENS,
+				// Medido 21/09/2026 com o prompt real: sem isso o gpt-oss-20b raciocina
+				// por 22-60s+ (estourou o timeout 3x); com reasoning_effort=low vai a
+				// 5,8s e o texto continua correto. O raciocínio é o gargalo, não a rede.
+				reasoning_effort: "low",
 			}),
 			signal: AbortSignal.timeout(LLM_TIMEOUT_MS),
 		});

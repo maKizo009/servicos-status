@@ -2292,6 +2292,9 @@ function renderHidroCard(data) {
           <div style="margin-top:4px;font-size:12.5px">${esc(prev.regra)}</div>
           <div style="margin-top:4px;font-size:11.5px;opacity:.75">${prev.motivos.map((m) => esc(m)).join(' · ')}</div>
           <div style="margin-top:4px;font-size:11px;opacity:.6">${esc(prev.fonte)}</div>
+          ${prev.jev ? `<div style="margin-top:6px;padding-top:6px;border-top:1px dashed var(--md-sys-color-outline-variant);font-size:11.5px">
+            <strong>Segunda opinião (modelo de decisão):</strong> ${prev.jev.vaiSair === 'sim' ? 'sai da calha' : prev.jev.vaiSair === 'nao' ? 'não sai da calha' : 'indefinido'}${prev.jev.probVaiSair != null ? ` · probabilidade ${Math.round(prev.jev.probVaiSair * 100)}%` : ''}${prev.jev.confianca != null ? ` · confiança própria ${Math.round(prev.jev.confianca * 100)}%` : ''}${prev.jev.transborda !== 'indefinido' ? ` · se sair, cheia grande: ${prev.jev.transborda === 'sim' ? 'sim' : 'não'}` : ''}
+          </div>` : ''}
         </div>
       </div>`
     : '';

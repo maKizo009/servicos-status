@@ -1,3 +1,4 @@
+import { decidirCalhaComJev, jevDisponivel, type JevDecisaoCalha } from "./bitumirim-jev.js";
 /**
  * Previsão de saída da calha do Rio Bitumirim (Ipiranga-PR).
  *
@@ -363,6 +364,9 @@ export interface PrevisaoCalha {
 	regra: string;
 	motivos: string[];
 	fonte: string;
+	/** Julgamento do Jev sobre o MESMO estado (null/ausente = sem key ou falhou).
+	 *  Nunca substitui os números: se discordar, os dois aparecem lado a lado. */
+	jev?: JevDecisaoCalha | null;
 }
 
 export interface PrevisaoInput {
@@ -553,6 +557,13 @@ async function obterSerieABC(
 	return cacheABC;
 }
 
+/** Desfechos já observados — vai como `state` para o Jev. */
+const HISTORICO_DESFECHOS =
+	"Saíram da calha: 2011, 2013, 2014 (antes de haver registro de armazenamento), " +
+	"2017 e 2019 (a água passou do limite mas ainda dava para atravessar), 2024-07, " +
+	"2024-09, 2024-12 e 2026-09. Transbordo grande (área baixa atingida): 2023-10 e " +
+	"2024-12. Não saiu: 2025-01.";
+
 export async function preverCalhaAoVivo(input: {
 	regime: RegimeHidro;
 	uvaiaCm: number | null;
@@ -564,10 +575,30 @@ export async function preverCalhaAoVivo(input: {
 	const series = await obterSerieABC(dia);
 	if (!series) return null;
 	const impr = impressaoDigital(series.sb, series.su, dia);
-	return preverSaidaDaCalha({
+	const prev = preverSaidaDaCalha({
 		impr,
 		regime: input.regime,
 		uvaiaCm: input.uvaiaCm,
 		chuvaAgora: input.chuvaAgora ?? null,
 	});
+	// Camada JEV (opcional — Dave, 21/09/2026): julga o MESMO estado e devolve
+	// probabilidade + confiança próprias. Sem key devolve null e o site mostra só
+	// a camada determinística. Nunca inventa veredito nem sobrescreve número.
+	if (jevDisponivel()) {
+		prev.jev = await decidirCalhaComJev({
+			regime: input.regime,
+			chuvaLocal96h: `São Braz ${impr.sb96 ?? "s/d"} mm · Suruvi ${impr.su96 ?? "s/d"} mm`,
+			diasPesados: impr.diasAmbas40,
+			uvaiaCm: input.uvaiaCm,
+			antecedente30dMm: impr.sb30d,
+			regraAplicada: prev.regra,
+			vizinhos:
+				prev.vizinhos.total > 0
+					? `${prev.vizinhos.total} caso(s) parecido(s) (${prev.vizinhos.ids.join(", ")}): ${prev.vizinhos.sairam} saíram da calha`
+					: "nenhum caso parecido no histórico",
+			historico: HISTORICO_DESFECHOS,
+			agora: `${dia} (regime ${input.regime})`,
+		});
+	}
+	return prev;
 }
