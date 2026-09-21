@@ -2307,6 +2307,28 @@ function renderHidroCard(data) {
         </div>
       </div>`
     : '';
+  // Previsão de saída da calha (v1) — "vai sair? quando?" com confiança
+  const prev = h.previsao || null;
+  const prevCor = (v) => v === 'sim' ? 'var(--r6)' : v === 'nao' ? 'var(--g6)' : 'var(--a5)';
+  const prevBadge = (v) => {
+    const txt = v === 'sim' ? 'SIM' : v === 'nao' ? 'NÃO' : 'INDEFINIDO';
+    return `<span style="background:${prevCor(v)};color:#fff;font-weight:800;padding:2px 8px;border-radius:6px;font-size:11px">${txt}</span>`;
+  };
+  const previsaoPanel = prev
+    ? `<div style="border:1px solid var(--md-sys-color-outline-variant);border-radius:10px;padding:10px;margin:6px 0;background:var(--md-sys-color-surface-container-low)">
+        <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:6px">
+          <strong style="color:var(--text)">🌊 Vai sair da calha?</strong>
+          ${prevBadge(prev.vaiSair)}
+          <span style="font-size:12px;opacity:.85">confiança ${prev.confianca}% (${esc(prev.faixa)})</span>
+        </div>
+        <div style="font-size:13px;color:var(--text);line-height:1.6">
+          ${prev.quandoHoras ? `<div>Se sair: <strong>~${prev.quandoHoras.provavel}h</strong> <span style="opacity:.8">(faixa ${prev.quandoHoras.min}–${prev.quandoHoras.max}h)</span></div>` : ''}
+          <div style="margin-top:4px;font-size:12.5px">${esc(prev.regra)}</div>
+          <div style="margin-top:4px;font-size:11.5px;opacity:.75">${prev.motivos.map((m) => esc(m)).join(' · ')}</div>
+          <div style="margin-top:4px;font-size:11px;opacity:.6">${esc(prev.fonte)}</div>
+        </div>
+      </div>`
+    : '';
   const motivos = (perm && perm.motivos && perm.motivos.length)
     ? `<div style="margin:6px 0">${perm.motivos.map((m) => `<div>• ${esc(m)}</div>`).join('')}</div>`
     : '';
@@ -2321,11 +2343,12 @@ function renderHidroCard(data) {
     <summary style="cursor:pointer;font-weight:600;color:var(--text)">∑ Como é calculado (fórmula aberta)</summary>
     <div style="margin-top:6px;line-height:1.6">
       <div><strong>Flash (IFL v3.1)</strong> = chuva 1h/6h/24h em Ipiranga (0–1): &lt;0,3 verde · 0,3–0,5 amarelo · 0,5–0,8 laranja · ≥0,8 vermelho. <strong>Antecedente 72h</strong> (palco): ≥150 mm eleva a amarelo — no regime frontal (mai–ago) a barra cai pra ≥100 mm, porque o inverno arma o palco com pouca água. Antecedente sozinho nunca passa de amarelo: laranja/vermelho exigem chuva atual. <strong>Permanência</strong> = dias fora da caixa SE transbordar: 0,0107 × Uvaia − 5,7 (ajuste preliminar com 2 rótulos reais: OUT23 7d, DEZ24 3d). Doutrina sazonal: no verão convectivo só o local manda (JAN25: Uvaia em P50 com régua em 4 m); no inverno frontal o Uvaia carrega a severidade (2013>2014≈2015>2019>2017 pelo pico Uvaia).</div>
-      <div style="margin-top:4px">Rótulos: OUT23 (29/10 18h, Uvaia ~739) · DEZ24 (09/12 13h, Uvaia ~339) · JAN25 (21/01 07:29, régua 4m sem sair, Uvaia ~180) · invernos 13/14/15/17/19 (todos saíram; 2013 o mais dramático). Faixas P90/P98 do ano hidrológico.</div>
+      <div style="margin-top:4px"><strong>Vai sair da calha? (v1)</strong> = regra por regime + vizinhança em 11 rótulos de campo. <em>Convectivo (set–abr)</em>: chuva local em DUAS estações do município — ≥2 dias com ≥40 mm nas duas dentro de 96 h → sai (chuva de bacia; 1 dia isolado não enche, assinatura JAN25). <em>Frontal (mai–ago)</em>: a chuva local fica cega (os invernos saíram com 6–21 mm/96 h) — decide o antecedente de 30 dias (≥250 mm) somado à carga de bacia (Uvaia ≥500 cm). <strong>Confiança</strong> = fração dos casos parecidos no histórico que saíram da calha, com teto pelo tamanho da amostra (n=1 nunca passa de 55%). <strong>Quando</strong> = janela medida nos rótulos convectivos (13–48 h depois do último dia pesado); no frontal não há janela em horas. Estimativa, não oficial.</div>
+      <div style="margin-top:4px">Rótulos: OUT23 (29/10 18h, Uvaia ~739) · DEZ24 (09/12 13h, Uvaia ~339) · SET26 (13/09, saiu sem transbordar) · JAN25 (21/01, régua 4m sem sair) · jul/24 e set/24 (não saíram) · invernos 13/14/15/17/19 (todos saíram; 2013 o mais dramático). Faixas P90/P98 do ano hidrológico.</div>
       <div style="margin-top:6px"><a href="/api/hidro" style="color:var(--g5)">Dados crus (JSON)</a> · <a href="https://github.com/maKizo009/servicos-status/issues" style="color:var(--g5)">Sugerir melhoria</a></div>
     </div>
   </details>`;
-  content.innerHTML = permPanel + iflLine + projPanel + motivos + rows + formula +
+  content.innerHTML = previsaoPanel + permPanel + iflLine + projPanel + motivos + rows + formula +
     `<div style="border:1px solid var(--r5);border-radius:10px;padding:10px;margin-top:10px;font-size:11.5px;line-height:1.5;color:var(--text)">⚠️ <strong>Estimativa de algoritmo, não medição oficial.</strong> O Bitumirim não tem régua. Não prevê o futuro e não substitui a Defesa Civil (199) nem o IAT.</div>` +
     `<div style="font-size:11.5px;opacity:.6;margin-top:8px">Atualizado: ${h.atualizadoEm ? new Date(h.atualizadoEm).toLocaleString('pt-BR') : '—'}</div>`;
 }

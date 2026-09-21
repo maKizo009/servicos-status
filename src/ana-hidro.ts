@@ -14,6 +14,9 @@
  * exposto no WeatherState.hidro + /llms.txt + /api/hidro.
  */
 
+import { preverCalhaAoVivo } from "./bitumirim-previsao.js";
+import type { PrevisaoCalha } from "./bitumirim-previsao.js";
+
 const REQUEST_TIMEOUT_MS = 15_000;
 
 // 3 sentinelas na calha do Tibagi — montante→jusante em relação à foz do
@@ -463,6 +466,8 @@ export interface HidroState {
 	regime: RegimeHidro | null;
 	/** Projeção Bitumirim (v1.0) — nível estimado, tempo até cheia/recedência */
 	projecao: ProjecaoBitumirim | null;
+	/** Previsão de saída da calha: vai sair? quando? com que confiança (v1) */
+	previsao: PrevisaoCalha | null;
 	/** Texto curto para o llms.txt */
 	resumoRisco: string;
 }
@@ -804,12 +809,23 @@ export async function fetchHidroTriangulacao(
 
 		const risco = avaliarRisco(resultados, chuva);
 
+		// Previsão de saída da calha — chuva local da SMA ABC (duas estações) +
+		// regime + Uvaia. Degrada para null se a ABC não responder (nunca quebra
+		// o ciclo e nunca inventa número).
+		const uvaia = resultados.find((r) => r.codigo === "64444000");
+		const previsao = await preverCalhaAoVivo({
+			regime: risco.regime ?? "convectivo",
+			uvaiaCm: uvaia?.nivelCm ?? null,
+			chuvaAgora: chuva ? { p1h: chuva.p1h, p6h: chuva.p6h } : null,
+		});
+
 		return {
 			estacoes: resultados,
 			fonte: "ANA Hidro (telemetria)",
 			atualizadoEm: Date.now(),
 			erro,
 			...risco,
+			previsao,
 		};
 	} catch (e: unknown) {
 		const msg = e instanceof Error ? e.message : String(e);
@@ -824,6 +840,7 @@ export async function fetchHidroTriangulacao(
 			ifl: null,
 			regime: null,
 			projecao: null,
+			previsao: null,
 			resumoRisco: "Dados hidro temporariamente indisponíveis.",
 		};
 	}
