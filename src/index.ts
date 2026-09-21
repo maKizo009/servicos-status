@@ -4,7 +4,11 @@ import {
 	logAlertaUnificado,
 } from "./alertas-oficiais.js";
 import { fetchHidroTriangulacao } from "./ana-hidro.js";
-import { fetchCemadenIpiranga, maxAcumuladoFresco, temEstacaoFresca } from "./cemaden.js";
+import {
+	fetchCemadenIpiranga,
+	maxAcumuladoFresco,
+	temEstacaoFresca,
+} from "./cemaden.js";
 import {
 	assessLevel,
 	buildUnifiedReport,
@@ -45,6 +49,14 @@ import {
 } from "./nowcast-service.js";
 import { fmtEta } from "./radar-analysis.js";
 import { checkRateLimit, checkRateLimitScope } from "./rate-limiter.js";
+import {
+	CIDADES_CORREDOR,
+	cidadesComNucleo,
+	fetchSigmaRede,
+	resumoSolo,
+	SIGMA_RAIO_CIDADE_KM,
+	type SigmaResultado,
+} from "./sigma-feed.js";
 import { fetchSimeparRadar } from "./simepar-radar.js";
 import { EventTracker } from "./state.js";
 import {
@@ -463,6 +475,45 @@ export async function syncWeatherCycle(): Promise<WeatherState> {
 				state.regionalRainAlert = `ℹ️ Monitoramento: atividade de radar detectada a ${topThreat ? `~${Math.round(topThreat.distToTargetKm)} km` : "grande distância"} de Ipiranga. Sem risco iminente no momento.`;
 			}
 		}
+		// ── Solo sob demanda (regra do Dave 21/09/2026) ─────────────────────
+		// Só consultamos o feed do Sigma quando há NÚCLEO DE CHUVA perto de uma
+		// cidade do corredor — é quando dado de solo muda a severidade (rajada,
+		// queda de pressão, acumulado). Sem núcleo perto: ZERO requisições.
+		// Ordem: WU (mais densa, rajada+pressão, ~5 min) → SIMEPAR → INMET,
+		// parando assim que cobrir todas as cidades quentes.
+		try {
+			const quentes = cidadesComNucleo(
+				nowcast.threats.map((t) => ({ lat: t.lat, lon: t.lon })),
+				[...CIDADES_CORREDOR],
+				SIGMA_RAIO_CIDADE_KM,
+			);
+			if (quentes.length === 0) {
+				state.soloCidades = null;
+			} else {
+				const porRede: SigmaResultado[] = [];
+				for (const rede of ["wu", "simepar", "inmet"] as const) {
+					porRede.push(await fetchSigmaRede(rede));
+					if (
+						resumoSolo(quentes, porRede, SIGMA_RAIO_CIDADE_KM).length >=
+						quentes.length
+					) {
+						break;
+					}
+				}
+				state.soloCidades = resumoSolo(quentes, porRede, SIGMA_RAIO_CIDADE_KM);
+				logger.info("Sigma: solo sob demanda consultado", {
+					cidades: quentes.map((c) => c.nome).join(", "),
+					redes: porRede.map((r) => `${r.rede}=${r.estacoes.length}`).join(" "),
+					noResumo: state.soloCidades.length,
+				});
+			}
+		} catch (err) {
+			// Fonte auxiliar: falha dela NUNCA bloqueia o ciclo.
+			logger.warn("Sigma feed falhou (auxiliar, não bloqueia)", {
+				error: String(err),
+			});
+			state.soloCidades = null;
+		}
 		setCachedWeatherState(state);
 		logger.info("Nowcast integrado ao estado de clima", {
 			dominant: nowcast.currentDominant,
@@ -551,6 +602,7 @@ export async function syncWeatherCycle(): Promise<WeatherState> {
 					avisosOficiais: (state.alertasOficiais?.avisos ?? []).map(
 						(a) => `${a.fonte}: ${a.titulo}`,
 					),
+					solo: state.soloCidades ?? [],
 				});
 				const bulletin = await generateSmartBulletin({
 					nowcast,

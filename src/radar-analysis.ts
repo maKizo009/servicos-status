@@ -729,7 +729,13 @@ export function assessThreat(
 			: null;
 	if (etaMin != null && etaMin > ETA_MAX_MIN) etaMin = null;
 
-	return { bearingFromTargetDeg, radialKmh, radialFraction: cosDelta, approach, etaMin };
+	return {
+		bearingFromTargetDeg,
+		radialKmh,
+		radialFraction: cosDelta,
+		approach,
+		etaMin,
+	};
 }
 
 /** Projeção da posição do núcleo em t minutos (extrapolação linear). */

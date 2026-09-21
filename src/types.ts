@@ -193,6 +193,12 @@ export interface WeatherState {
 	} | null;
 	/** Chuva em tempo real dos pluviômetros CEMADEN de Ipiranga (fonte pública). */
 	cemaden?: import("./cemaden.js").CemadenState | null;
+	/**
+	 * Solo sob demanda (feed do Sigma): rajada, queda de pressão e acumulado
+	 * das cidades do corredor. Só é preenchido quando há núcleo de chuva perto
+	 * de uma cidade — fora disso é null e o site deles não é consultado.
+	 */
+	soloCidades?: import("./sigma-feed.js").SoloCidade[] | null;
 	/** Triangulação fluviométrica ANA — 3 sentinelas no Tibagi (sem estação dentro de Ipiranga). */
 	hidro?: import("./ana-hidro.js").HidroState | null;
 	/** Nosso alerta próprio: fusão determinística (CEMADEN+ECMWF+radar+hidro, oficiais como agravante). */

@@ -50,6 +50,8 @@ export const LLM_CHAIN = [
 	"z-ai/glm-5.3-flash",
 ] as const;
 
+import type { SoloCidade } from "./sigma-feed.js";
+
 export interface AnalystThreat {
 	municipio: string;
 	uf: string | null;
@@ -69,6 +71,12 @@ export interface AnalystContext {
 	condition: string | null;
 	hidroWatch: boolean;
 	avisosOficiais: string[];
+	/**
+	 * Solo medido nas cidades do corredor (feed do Sigma) — só vem preenchido
+	 * quando há núcleo de chuva perto de uma delas. É o dado que diz SEVERIDADE
+	 * (rajada, queda de pressão, acumulado), que a refletividade do radar não diz.
+	 */
+	solo: SoloCidade[];
 }
 
 /** Monta o prompt do analista a partir dos números da Camada A. */
@@ -101,6 +109,29 @@ export function buildAnalystPrompt(ctx: AnalystContext): string {
 		linhas.push(
 			"RIOS: triangulação ANA em atenção (nível subindo ou chuva convergente)",
 		);
+	if (ctx.solo.length > 0) {
+		linhas.push(
+			"SOLO (medição real em cidade do corredor — vale mais que a cor do radar para severidade):",
+		);
+		for (const s of ctx.solo.slice(0, 4)) {
+			const partes: string[] = [];
+			if (s.rajada1hKmh != null)
+				partes.push(`rajada ${s.rajada1hKmh.toFixed(0)} km/h na última hora`);
+			if (s.rajada24hKmh != null)
+				partes.push(`rajada máx 24h ${s.rajada24hKmh.toFixed(0)} km/h`);
+			if (s.quedaPressao24Hpa != null)
+				partes.push(
+					`pressão caiu ${s.quedaPressao24Hpa.toFixed(1)} hPa em 24h`,
+				);
+			if (s.chuva1hMm != null)
+				partes.push(`${s.chuva1hMm.toFixed(1)} mm na última hora`);
+			if (s.chuva24hMm != null)
+				partes.push(`${s.chuva24hMm.toFixed(1)} mm em 24h`);
+			linhas.push(
+				`- ${s.cidade} (${s.distanciaKm.toFixed(0)} km, ${s.rede}): ${partes.join(", ") || "sem dado útil"}`,
+			);
+		}
+	}
 	if (ctx.avisosOficiais.length > 0)
 		linhas.push(
 			`AVISOS OFICIAIS: ${ctx.avisosOficiais.slice(0, 2).join(" | ")}`,
@@ -115,7 +146,8 @@ Escreva o boletim em 3 ou 4 frases curtas (máximo 600 caracteres), em portuguê
 2. Depois o núcleo mais relevante, sempre com a distância em km.
 3. Nunca afirme certeza — use "pode", "se mantiver o curso".
 4. Se um núcleo está longe (>200 km), diga que está longe; não trate como iminente.
-5. Sem markdown, sem emoji, sem título. Termine com ponto final.`;
+5. Se houver linha de SOLO, use-a para dizer a SEVERIDADE (rajada forte, pressão caindo, acumulado alto) — ela mede o que o radar não mede.
+6. Sem markdown, sem emoji, sem título. Termine com ponto final.`;
 }
 
 /** Gate de coerência local: chovendo aqui e o texto não fala disso? Lixo. */
@@ -248,6 +280,7 @@ export function buildAnalystContext(
 		alertLevel: "alert" | "watch" | "monitor" | "none";
 		hidroWatch: boolean;
 		avisosOficiais: string[];
+		solo?: SoloCidade[];
 	},
 ): {
 	analyst: AnalystContext;
@@ -277,6 +310,7 @@ export function buildAnalystContext(
 			condition: opts.condition,
 			hidroWatch: opts.hidroWatch,
 			avisosOficiais: opts.avisosOficiais,
+			solo: opts.solo ?? [],
 		},
 		fraseLocal,
 		verdict: nowcast.threats[0]?.threat ?? null,
