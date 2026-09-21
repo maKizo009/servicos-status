@@ -120,7 +120,8 @@ export interface NowcastBulletin {
 		| "gemini"
 		| "nvidia_nim_vision"
 		| "heuristic"
-		| "openrouter";
+		| "openrouter"
+		| "nvidia_nim";
 	generatedAt: number;
 }
 

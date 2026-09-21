@@ -66,10 +66,13 @@ function nowcast(cells: ThreatCell[]): NowcastResult {
 }
 
 describe("cadeia LLM", () => {
-	test("Muse Spark primeiro, Minimax fallback, heurística por último (implícita)", () => {
-		expect(LLM_CHAIN[0]).toBe("meta/muse-spark-1.3-contributor");
-		expect(LLM_CHAIN).toContain("minimax/minimax-m3");
-		expect(LLM_CHAIN.length).toBeGreaterThanOrEqual(3);
+	// OpenRouter aposentado em 21/09/2026 (pedido do Dave). A cadeia agora é NIM
+	// (verificado vivo no bun com o prompt real) e a heurística é a reserva final,
+	// que é implícita: tryLlmBulletin devolve null e o chamador cai nela.
+	test("NIM primeiro, sem slug do OpenRouter, heurística por último (implícita)", () => {
+		expect(LLM_CHAIN[0].provider).toBe("nim");
+		expect(LLM_CHAIN[0].model).toBe("openai/gpt-oss-20b");
+		for (const e of LLM_CHAIN) expect(e.model).not.toMatch(/^(meta|minimax|tencent)\//);
 	});
 });
 

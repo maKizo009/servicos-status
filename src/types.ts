@@ -143,7 +143,8 @@ export interface WeatherBulletin {
 		| "heuristic"
 		| "nvidia_nim_vision"
 		| "opencode_vision"
-		| "openrouter";
+		| "openrouter"
+		| "nvidia_nim";
 	generatedAt: number;
 }
 
@@ -188,7 +189,8 @@ export interface WeatherState {
 			| "gemini"
 			| "nvidia_nim_vision"
 			| "heuristic"
-			| "openrouter";
+			| "openrouter"
+		| "nvidia_nim";
 		generatedAt: number;
 	} | null;
 	/** Chuva em tempo real dos pluviômetros CEMADEN de Ipiranga (fonte pública). */

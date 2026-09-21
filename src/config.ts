@@ -30,7 +30,8 @@ export interface AppConfig {
 	// VLM principal via OpenCode Go (OpenAI-compatível) — minimax-m3 (visão, custo baixo)
 	openCodeApiKey: string;
 	openCodeVlmModel: string;
-	/** OpenRouter (boletim analista LLM — Muse Spark + Minimax via HTTP). */
+	/** OpenRouter — APOSENTADO 21/09/2026 (Dave: "use no openrouter"). Mantido só
+	 * para ler boletins antigos do banco; o boletim agora vai pela NIM. */
 	openRouterApiKey: string;
 	weatherModel: string;
 	municipio: string;
@@ -94,14 +95,15 @@ export function loadConfig(): AppConfig {
 			process.env.SANEPAR_VIEW_NAME ?? "notices_panel_supply_stop",
 		saneparDisplays: ["supply_stop_desk", "supply_stop_mobile"],
 		nvidiaNimApiKey: process.env.NVIDIA_NIM_API_KEY ?? "",
-		nvidiaNimModel: process.env.NVIDIA_NIM_MODEL ?? "minimaxai/minimax-m3",
+		nvidiaNimModel: process.env.NVIDIA_NIM_MODEL ?? "z-ai/glm-5.3",
 		nvidiaNimEndpoint:
 			process.env.NVIDIA_NIM_ENDPOINT ??
 			"https://integrate.api.nvidia.com/v1/chat/completions",
 		geminiApiKey: process.env.GEMINI_API_KEY ?? "",
 		openCodeApiKey: process.env.OPENCODE_API_KEY ?? "",
 		openCodeVlmModel: process.env.OPENCODE_VLM_MODEL ?? "minimax-m3",
-		/** OpenRouter (boletim analista LLM — Muse Spark + Minimax via HTTP). */
+		/** OpenRouter — APOSENTADO 21/09/2026 (Dave: "use no openrouter"). Mantido só
+	 * para ler boletins antigos do banco; o boletim agora vai pela NIM. */
 		openRouterApiKey: process.env.OPENROUTER_API_KEY ?? "",
 		weatherModel: process.env.WEATHER_MODEL ?? "ecmwf_ifs04",
 		municipio: process.env.MUNICIPIO ?? "Ipiranga",

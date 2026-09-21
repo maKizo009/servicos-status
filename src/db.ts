@@ -708,7 +708,8 @@ export interface NowcastBulletinRecord {
 		| "gemini"
 		| "nvidia_nim_vision"
 		| "heuristic"
-		| "openrouter";
+		| "openrouter"
+		| "nvidia_nim";
 	generatedAt: number;
 }
 
@@ -719,7 +720,8 @@ export async function saveNowcastBulletin(
 		| "gemini"
 		| "nvidia_nim_vision"
 		| "heuristic"
-		| "openrouter",
+		| "openrouter"
+		| "nvidia_nim",
 ): Promise<NowcastBulletinRecord> {
 	const now = Date.now();
 	const db = await getDbClient();
@@ -749,8 +751,10 @@ export async function getLatestNowcastBulletin(): Promise<NowcastBulletinRecord 
 		source: row.source as
 			| "opencode_vision"
 			| "nvidia_nim_vision"
+			| "gemini"
 			| "heuristic"
-			| "openrouter",
+			| "openrouter"
+			| "nvidia_nim",
 		generatedAt: Number(row.generatedAt),
 	};
 }

@@ -37,18 +37,31 @@ import { fmtEta, haversineKm, type ThreatVerdict } from "./radar-analysis.js";
  */
 
 export const LLM_TTL_MS = 30 * 60_000;
-const LLM_TIMEOUT_MS = 25_000;
+// 60s: gpt-oss-20b é modelo de raciocínio e a latência é INSTÁVEL (medido com o
+// prompt real: 2,9s / 14,6s / 15,6s / 28,6s / 47,5s / >40s). 25s cortava demais.
+// O boletim é gerado no CICLO (cron), não na requisição do usuário — o card serve
+// do cache — então esperar é aceitável. Estourou o timeout? Cai na heurística.
+const LLM_TIMEOUT_MS = 60_000;
 // Modelos de raciocínio (minimax-m3 etc.) gastam o budget PENSANDO: com 400
 // tokens o finish vinha "length" com content vazio. 2000 dá folga pro
 // raciocínio + ~150 tokens de boletim (custo segue irrelevante: ~US$0,0006).
 const LLM_MAX_TOKENS = 2000;
 
-export const LLM_CHAIN = [
-	"meta/muse-spark-1.3-contributor",
-	"minimax/minimax-m3",
-	"tencent/hy3",
-	"z-ai/glm-5.3-flash",
-] as const;
+// Cadeia do boletim (21/09/2026): OpenRouter APOSENTADO a pedido do Dave.
+// NIM openai/gpt-oss-20b é o provedor: verificado AO VIVO no bun com o prompt
+// real (2,9s curto / ~15s com o prompt do analista, texto correto em PT-BR).
+// Gemini ficou FORA: via curl responde em 5s, mas o POST do fetch do bun trava
+// (30s de timeout, 3 tentativas) — produção roda bun, então não serve.
+// (O outro modelo vivo da conta NIM, z-ai/glm-5.3, passou de 120s: inviável.)
+// Reserva = heurística determinística (grátis, sempre funciona).
+export const LLM_CHAIN: LlmEntry[] = [
+	{ provider: "nim", model: "openai/gpt-oss-20b" },
+];
+
+interface LlmEntry {
+	provider: "gemini" | "nim";
+	model: string;
+}
 
 import type { SoloCidade } from "./sigma-feed.js";
 
@@ -162,19 +175,18 @@ export function passaCoerenciaLocal(
 	return /chove|mm|pluviômetro|garoa|chuva/i.test(text);
 }
 
-async function chamaOpenRouter(
+async function chamaNim(
 	model: string,
 	prompt: string,
 	apiKey: string,
+	endpoint: string,
 ): Promise<string | null> {
 	try {
-		const res = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+		const res = await fetch(endpoint, {
 			method: "POST",
 			headers: {
 				"Content-Type": "application/json",
 				Authorization: `Bearer ${apiKey}`,
-				"HTTP-Referer": "https://servicos-status.vercel.app",
-				"X-Title": "Monitor Ipiranga",
 			},
 			body: JSON.stringify({
 				model,
@@ -189,10 +201,47 @@ async function chamaOpenRouter(
 			return null;
 		}
 		const json = (await res.json()) as {
-			choices?: Array<{
-				message?: { content?: string };
-				finish_reason?: string;
-			}>;
+			choices?: Array<{ message?: { content?: string } }>;
+			error?: { message?: string };
+		};
+		if (json.error) {
+			logger.warn("LLM analista: erro do provedor", { model, error: json.error.message });
+			return null;
+		}
+		return (json.choices?.[0]?.message?.content ?? "").trim() || null;
+	} catch (e) {
+		logger.warn("LLM analista: falha", { model, error: String(e) });
+		return null;
+	}
+}
+
+async function chamaGemini(
+	model: string,
+	prompt: string,
+	apiKey: string,
+): Promise<string | null> {
+	try {
+		const res = await fetch(
+			`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`,
+			{
+				method: "POST",
+				headers: { "Content-Type": "application/json" },
+				body: JSON.stringify({
+					contents: [{ parts: [{ text: prompt }] }],
+					generationConfig: {
+						temperature: 0.3,
+						maxOutputTokens: LLM_MAX_TOKENS,
+					},
+				}),
+				signal: AbortSignal.timeout(LLM_TIMEOUT_MS),
+			},
+		);
+		if (!res.ok) {
+			logger.warn("LLM analista: HTTP", { model, status: res.status });
+			return null;
+		}
+		const json = (await res.json()) as {
+			candidates?: Array<{ content?: { parts?: Array<{ text?: string }> } }>;
 			error?: { message?: string };
 		};
 		if (json.error) {
@@ -202,7 +251,10 @@ async function chamaOpenRouter(
 			});
 			return null;
 		}
-		const text = (json.choices?.[0]?.message?.content ?? "").trim();
+		const text = (json.candidates?.[0]?.content?.parts ?? [])
+			.map((p) => p.text ?? "")
+			.join("")
+			.trim();
 		return text || null;
 	} catch (e) {
 		logger.warn("LLM analista: falha", { model, error: String(e) });
@@ -222,17 +274,23 @@ export async function tryLlmBulletin(
 		alertLevel?: "alert" | "watch" | "monitor" | "none";
 		nearestThreatKm?: number | null;
 	},
-): Promise<{ text: string; model: string } | null> {
-	const apiKey = loadConfig().openRouterApiKey;
-	if (!apiKey) {
+): Promise<{ text: string; model: string; provider: "gemini" | "nim" } | null> {
+	const cfg = loadConfig();
+	if (!cfg.geminiApiKey && !cfg.nvidiaNimApiKey) {
 		logger.warn(
-			"LLM analista: sem OPENROUTER_API_KEY, pulando para heurística",
+			"LLM analista: sem chave de provedor (GEMINI/NIM), pulando para heurística",
 		);
 		return null;
 	}
 	const prompt = buildAnalystPrompt(ctx);
-	for (const model of LLM_CHAIN) {
-		const text = await chamaOpenRouter(model, prompt, apiKey);
+	for (const entry of LLM_CHAIN) {
+		const { model, provider } = entry;
+		if (provider === "gemini" && !cfg.geminiApiKey) continue;
+		if (provider === "nim" && !cfg.nvidiaNimApiKey) continue;
+		const text =
+			provider === "gemini"
+				? await chamaGemini(model, prompt, cfg.geminiApiKey)
+				: await chamaNim(model, prompt, cfg.nvidiaNimApiKey, cfg.nvidiaNimEndpoint);
 		if (!text) continue;
 		if (text.length > 700) {
 			logger.warn("LLM analista: texto prolixo demais, rejeitado", {
@@ -250,8 +308,8 @@ export async function tryLlmBulletin(
 			});
 			continue;
 		}
-		logger.info("LLM analista: boletim aceito", { model, len: text.length });
-		return { text, model };
+		logger.info("LLM analista: boletim aceito", { model, provider, len: text.length });
+		return { text, model, provider };
 	}
 	return null;
 }
@@ -333,12 +391,15 @@ export async function generateSmartBulletin(
 	const heuristic = () =>
 		buildHeuristicBulletin(nowcast, ecmwf, relevance, local);
 
-	// 1. Reuso do LLM: texto openrouter <30 min E cenário igual.
+	// 1. Reuso do LLM: texto gemini <30 min E cenário igual.
 	try {
 		const cached = await getLatestNowcastBulletin();
 		if (
 			cached &&
-			cached.source === "openrouter" &&
+			// Aceita qualquer fonte de LLM (o rótulo mudou de openrouter → nvidia_nim).
+			(cached.source === "nvidia_nim" ||
+				cached.source === "gemini" ||
+				cached.source === "openrouter") &&
 			Date.now() - cached.generatedAt < LLM_TTL_MS
 		) {
 			const choviaAntes = /chove em ipiranga|chuva forte já acumulada/i.test(
@@ -366,11 +427,14 @@ export async function generateSmartBulletin(
 	if (llm) {
 		const bulletin: NowcastBulletin = {
 			text: llm.text,
-			source: "openrouter",
+			source: llm.provider === "gemini" ? "gemini" : "nvidia_nim",
 			generatedAt: Date.now(),
 		};
 		try {
-			await saveNowcastBulletin(llm.text, "openrouter");
+			await saveNowcastBulletin(
+				llm.text,
+				llm.provider === "gemini" ? "gemini" : "nvidia_nim",
+			);
 		} catch (e) {
 			logger.warn("LLM: persistência falhou", { error: String(e) });
 		}

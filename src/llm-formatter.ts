@@ -228,6 +228,7 @@ export function renderLlmsTxt(
 		sanitizeLlmField(weather?.bulletin?.bulletin, 800) ||
 		"Sem boletim recente.";
 	const bulletinSource =
+		weather?.bulletin?.source === "nvidia_nim" ||
 		weather?.bulletin?.source === "openrouter"
 			? "análise de IA"
 			: "análise de IA (local)";
