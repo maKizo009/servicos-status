@@ -158,6 +158,19 @@ export async function initDb(): Promise<Client> {
 				// Dedup de instalação: 1 evento 'install' por dispositivo (session_id).
 				// Sem isso, cada abertura do app em modo standalone contava +1 install
 				// (achado 2026-08-12 — número de instalações inflado no painel).
+				// ATENÇÃO (21/09/2026): o índice único abaixo FALHA se o banco já tiver
+				// installs duplicados de antes de 12/08 — e como isto roda em batch, a
+				// falha derrubava o init INTEIRO do schema ("Failed to initialize
+				// Database schema", SQLITE_CONSTRAINT UNIQUE app_events.session_id).
+				// Limpar antes, mantendo o install MAIS ANTIGO de cada sessão. É
+				// idempotente: sem duplicados o DELETE não apaga nada.
+				`DELETE FROM app_events
+				WHERE tipo = 'install' AND session_id IS NOT NULL
+				  AND id NOT IN (
+					SELECT MIN(id) FROM app_events
+					WHERE tipo = 'install' AND session_id IS NOT NULL
+					GROUP BY session_id
+				  )`,
 				`CREATE UNIQUE INDEX IF NOT EXISTS idx_app_events_install_once
 				ON app_events(session_id) WHERE tipo='install'`,
 				`CREATE TABLE IF NOT EXISTS app_sessions (
