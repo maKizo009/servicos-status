@@ -449,6 +449,17 @@ export async function syncWeatherCycle(): Promise<WeatherState> {
 				: null;
 
 			state.hasRegionalRain = alertLevel === "alert";
+			// SEVERIDADE (push) ≠ RELEVÂNCIA (site). Área de chuva moderada é
+			// relevante para o card e irrelevante para interromper o celular
+			// (regra do dono 21/09/2026: "alertas só em casos realmente
+			// importantes"). Só núcleo de tempestade na zona de alerta promove.
+			const entidadeSevera =
+				nearestAlert &&
+				nearestAlert.kind === "nucleo" &&
+				(nearestAlert.intensity === "heavy" ||
+					nearestAlert.intensity === "extreme");
+			state.radarSevero = Boolean(entidadeSevera);
+			state.radarKind = (nearestAlert ?? nearestWatch)?.kind ?? null;
 			if (alertLevel === "monitor") {
 				state.regionalRainAlert = `ℹ️ Monitoramento: atividade de radar detectada a ${topThreat ? `~${Math.round(topThreat.distToTargetKm)} km` : "grande distância"} de Ipiranga. Sem risco iminente no momento.`;
 			} else {
@@ -693,6 +704,8 @@ export async function syncWeatherCycle(): Promise<WeatherState> {
 				ecmwfPct: weatherInfo.rainProbabilityPct,
 				ecmwfProx6hMm: prox6h,
 				radarAlertLevel: state.alertLevel ?? "monitor",
+				radarSevero: state.radarSevero ?? false,
+				radarKind: state.radarKind ?? null,
 				hidroWatch: state.hidro?.riscoCheia === "watch",
 			},
 			oficiais,

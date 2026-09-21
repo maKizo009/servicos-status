@@ -171,6 +171,15 @@ export interface WeatherState {
 	windKmh: number;
 	humidityPct: number;
 	hasRegionalRain: boolean;
+	/**
+	 * Severidade p/ PUSH — conceito DIFERENTE de `alertLevel` (relevância p/ o site).
+	 * Regra do dono 21/09/2026: área de chuva moderada avisa no site, mas NÃO
+	 * interrompe o celular. Push exige núcleo de tempestade (heavy/extreme) na
+	 * zona de alerta; área e garoa ficam no amarelo do site.
+	 */
+	radarSevero?: boolean;
+	/** Tipo da entidade que dirigiu o alerta: área de chuva contínua ou núcleo. */
+	radarKind?: "nucleo" | "area" | null;
 	regionalRainAlert: string;
 	/** Nível de alerta graduado (substitui o booleano na decisão de UI) */
 	alertLevel?: RainAlertLevel;

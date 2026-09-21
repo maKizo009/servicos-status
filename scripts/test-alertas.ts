@@ -12,6 +12,7 @@ import {
 	buildAlertaUnificado,
 	type DadosLocaisAlerta,
 } from "../src/alertas-oficiais.js";
+import { pushParaAlerta } from "../src/push.js";
 
 function local(over: Partial<DadosLocaisAlerta> = {}): DadosLocaisAlerta {
 	return {
@@ -56,12 +57,52 @@ describe("Alerta unificado próprio", () => {
 		expect(a.motivos.length).toBeGreaterThan(0);
 	});
 
-	test("radar alert (núcleo iminente) → laranja", () => {
+	test("radar alert de NÚCLEO severo (iminente) → laranja", () => {
 		const a = buildAlertaUnificado(
-			local({ radarAlertLevel: "alert" }),
+			local({ radarAlertLevel: "alert", radarSevero: true, radarKind: "nucleo" }),
 			oficiais(),
 		);
 		expect(a.nivel).toBe("laranja");
+	});
+
+	// ── Regra do dono (21/09/2026): severidade ≠ relevância. ─────────────────
+	// Área de chuva moderada é relevante para o SITE e irrelevante para
+	// INTERROMPER o celular. O caso real que gerou a regra: o dono recebeu push
+	// laranja "chuva forte" enquanto a análise classificava a chuva que chegava
+	// como MODERADA, porque `radarAlertLevel === "alert"` (puro, sem olhar o
+	// tipo/intensidade da entidade) promovia qualquer entidade da zona de alerta.
+	test("área de chuva moderada na zona de alerta → amarelo (não laranja)", () => {
+		const a = buildAlertaUnificado(
+			local({ radarAlertLevel: "alert", radarSevero: false, radarKind: "area" }),
+			oficiais(),
+		);
+		expect(a.nivel).toBe("amarelo");
+		expect(a.titulo).not.toContain("chuva forte");
+		expect(a.titulo).toContain("se aproximando");
+		expect(a.motivos.join(" ")).toContain("área de chuva");
+	});
+
+	test("área de chuva moderada NÃO gera push no celular", () => {
+		const a = buildAlertaUnificado(
+			local({ radarAlertLevel: "alert", radarSevero: false, radarKind: "area" }),
+			oficiais(),
+		);
+		expect(pushParaAlerta(a.nivel)).toBeNull();
+	});
+
+	test("núcleo severo na zona de alerta GERA push (laranja)", () => {
+		const a = buildAlertaUnificado(
+			local({ radarAlertLevel: "alert", radarSevero: true, radarKind: "nucleo" }),
+			oficiais(),
+		);
+		const regra = pushParaAlerta(a.nivel);
+		expect(regra).not.toBeNull();
+		expect(regra?.evento).toBe("alerta:laranja");
+	});
+
+	test("chuva MEDIDA acima do limiar gera push mesmo sem radar", () => {
+		const a = buildAlertaUnificado(local({ acc6hrMax: 30 }), oficiais());
+		expect(pushParaAlerta(a.nivel)).not.toBeNull();
 	});
 
 	test("chuva extrema medida (50mm/6h) → vermelho", () => {
@@ -84,7 +125,7 @@ describe("Alerta unificado próprio", () => {
 
 	test("oficial não rebaixa alerta local (laranja local + amarelo oficial)", () => {
 		const a = buildAlertaUnificado(
-			local({ radarAlertLevel: "alert" }),
+			local({ radarAlertLevel: "alert", radarSevero: true, radarKind: "nucleo" }),
 			oficiais(["amarelo"]),
 		);
 		expect(a.nivel).toBe("laranja");

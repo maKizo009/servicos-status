@@ -191,6 +191,11 @@ export interface DadosLocaisAlerta {
 	ecmwfPct: number | null;
 	ecmwfProx6hMm: number | null;
 	radarAlertLevel: "alert" | "watch" | "monitor" | "none";
+	/** Núcleo de tempestade (heavy/extreme) na zona de alerta — é o que PODE
+	 * interromper o celular. Área de chuva moderada NÃO entra aqui. */
+	radarSevero?: boolean;
+	/** Entidade que dirigiu o alerta, p/ o texto não chamar área de "chuva forte". */
+	radarKind?: "nucleo" | "area" | null;
 	hidroWatch: boolean;
 }
 
@@ -224,10 +229,14 @@ export function buildAlertaUnificado(
 		motivos.push(
 			`chuva forte medida em Ipiranga (${c1.toFixed(1).replace(".", ",")} mm/1h, ${c6.toFixed(1).replace(".", ",")} mm/6h)`,
 		);
-	} else if (c6 >= 25 || c24 >= 50 || local.radarAlertLevel === "alert") {
+	} else if (c6 >= 25 || c24 >= 50 || local.radarSevero) {
+		// Laranja = interrompe o celular. Exige SEVERIDADE: chuva medida acima do
+		// limiar OU núcleo de tempestade na zona de alerta. Área de chuva moderada
+		// NÃO promove a laranja (regra do dono 21/09/2026) — ela fica no amarelo,
+		// e o título não pode afirmar "chuva forte" para uma área.
 		nivel = "laranja";
-		if (local.radarAlertLevel === "alert")
-			motivos.push("chuva iminente no radar (≤80 km)");
+		if (local.radarSevero)
+			motivos.push("núcleo de chuva forte se aproximando no radar (≤80 km)");
 		if (c6 >= 25)
 			motivos.push(
 				`${c6.toFixed(1).replace(".", ",")} mm em 6h nos pluviômetros`,
@@ -237,6 +246,7 @@ export function buildAlertaUnificado(
 				`${c24.toFixed(1).replace(".", ",")} mm em 24h nos pluviômetros`,
 			);
 	} else if (
+		local.radarAlertLevel === "alert" ||
 		local.radarAlertLevel === "watch" ||
 		c24 >= 20 ||
 		c6 >= 10 ||
@@ -245,8 +255,12 @@ export function buildAlertaUnificado(
 		local.hidroWatch
 	) {
 		nivel = "amarelo";
-		if (local.radarAlertLevel === "watch")
-			motivos.push("chuva em vigilância no radar");
+		if (local.radarAlertLevel === "alert" || local.radarAlertLevel === "watch")
+			motivos.push(
+				local.radarKind === "area"
+					? "área de chuva se aproximando no radar (sem núcleo de tempestade)"
+					: "núcleo de chuva em vigilância no radar",
+			);
 		if (c24 >= 20)
 			motivos.push(
 				`${c24.toFixed(1).replace(".", ",")} mm em 24h nos pluviômetros`,
@@ -297,6 +311,10 @@ export function buildAlertaUnificado(
 		local.radarAlertLevel === "alert" ||
 		local.radarAlertLevel === "watch";
 	const soPrevisao = nivel !== "verde" && !medidoChuva;
+	// Chuva ainda NÃO caiu aqui: o radar vê a entidade chegando (sem pluviômetro).
+	// Título diz "se aproximando", nunca "chuva em Ipiranga" (que o leitor lê como
+	// chuva caindo agora).
+	const soRadar = medidoChuva && !(c1 >= 0.5 || c6 >= 5 || c24 >= 10);
 	const titulo =
 		nivel === "vermelho"
 			? "Alerta vermelho — risco alto de chuva forte em Ipiranga"
@@ -305,7 +323,9 @@ export function buildAlertaUnificado(
 				: nivel === "amarelo"
 					? soPrevisao
 						? "Atenção — previsão de chuva para Ipiranga/região (nada medido ainda)"
-						: "Atenção — chuva em Ipiranga/região"
+						: soRadar
+							? "Atenção — chuva se aproximando de Ipiranga/região"
+							: "Atenção — chuva em Ipiranga/região"
 					: "Tempo sem alertas em Ipiranga";
 
 	const descricao =
