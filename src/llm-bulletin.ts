@@ -401,10 +401,10 @@ export async function generateSmartBulletin(
 		const cached = await getLatestNowcastBulletin();
 		if (
 			cached &&
-			// Aceita qualquer fonte de LLM (o rótulo mudou de openrouter → nvidia_nim).
-			(cached.source === "nvidia_nim" ||
-				cached.source === "gemini" ||
-				cached.source === "openrouter") &&
+			// Só reusa boletim da cadeia ATUAL. De propósito NÃO aceita "openrouter":
+			// o cache velho seria reaproveitado por 30 min e mascararia a migração
+			// pra NIM (foi o que aconteceu em 21/09).
+			(cached.source === "nvidia_nim" || cached.source === "gemini") &&
 			Date.now() - cached.generatedAt < LLM_TTL_MS
 		) {
 			const choviaAntes = /chove em ipiranga|chuva forte já acumulada/i.test(
