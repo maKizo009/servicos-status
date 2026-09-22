@@ -3200,13 +3200,24 @@ function copyPrompt(provider, text) {
           jaSaiu = true;
           window.removeEventListener('scroll', sair);
           document.removeEventListener('scroll', sair);
+          window.removeEventListener('pointerdown', interagiu);
+          window.removeEventListener('touchstart', interagiu);
           mark(false);
           window.__miPushPopup.hide();
+        };
+        // Toque/clique fora do próprio prompt também encerra o convite. É a rede
+        // mais confiável: não depende de evento de scroll chegar (medição no
+        // harness mostrou contexto onde scroll não chega ao listener).
+        const interagiu = (ev) => {
+          if (ev && ev.target && ev.target.closest && ev.target.closest('#pushPrompt')) return;
+          sair(ev);
         };
         // Nos dois alvos: o scroll do documento dispara em `document` e borbulha
         // para `window`, mas já vi mundo isolado/iframe onde só um dos dois chega.
         window.addEventListener('scroll', sair, { passive: true });
         document.addEventListener('scroll', sair, { passive: true });
+        window.addEventListener('pointerdown', interagiu, { passive: true });
+        window.addEventListener('touchstart', interagiu, { passive: true });
         // Rede de segurança: sem isso ele só sairia se o usuário clicasse ou rolasse.
         setTimeout(sair, 40000);
       }, 2500);
