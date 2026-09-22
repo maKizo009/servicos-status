@@ -64,6 +64,14 @@ function hora(ms: unknown): string {
 	});
 }
 
+/**
+ * Decimal em português: `toFixed` entrega "0.2 mm" com PONTO — errado em pt-BR.
+ * Numa página pública isso salta aos olhos.
+ */
+function dec(v: number, casas = 1): string {
+	return Number.isFinite(v) ? v.toFixed(casas).replace(".", ",") : "—";
+}
+
 function inteiro(v: number): string {
 	return Number.isFinite(v) ? String(Math.round(v)) : "—";
 }
@@ -426,9 +434,9 @@ function respostaChuva(d: Dados): string {
 	if (choveAgora && proximo) {
 		return (
 			"<strong>Sim.</strong> Está chovendo em Ipiranga: " +
-			d.chuva.acc1.toFixed(1) +
+			dec(d.chuva.acc1) +
 			" mm na última hora" +
-			(d.chuva.estacao ? " (" + esc(d.chuva.estacao) + ")" : "") +
+			(d.chuva.estacao ? " na estação " + esc(d.chuva.estacao) : "") +
 			". E vem mais: um núcleo de chuva " +
 			esc(proximo.intensidade) +
 			" está a ~" +
@@ -441,7 +449,7 @@ function respostaChuva(d: Dados): string {
 	if (choveAgora) {
 		return (
 			"<strong>Sim, está chovendo agora.</strong> " +
-			d.chuva.acc1.toFixed(1) +
+			dec(d.chuva.acc1) +
 			" mm na última hora em Ipiranga. " +
 			esc(fraseRisco(d.risco))
 		);
@@ -484,10 +492,10 @@ export function renderChuvaHoje(state: WeatherState | null): string {
 	const d = extrair(state);
 	const atualizado = horaDe(num(obj(state).updatedAt, 0));
 	const tabelaChuva = [
-		["Última hora", d.chuva.acc1.toFixed(1) + " mm"],
-		["Últimas 3 horas", d.chuva.acc3.toFixed(1) + " mm"],
-		["Últimas 6 horas", d.chuva.acc6.toFixed(1) + " mm"],
-		["Últimas 24 horas", d.chuva.acc24.toFixed(1) + " mm"],
+		["Última hora", dec(d.chuva.acc1) + " mm"],
+		["Últimas 3 horas", dec(d.chuva.acc3) + " mm"],
+		["Últimas 6 horas", dec(d.chuva.acc6) + " mm"],
+		["Últimas 24 horas", dec(d.chuva.acc24) + " mm"],
 	]
 		.map(
 			(l) =>
@@ -505,7 +513,7 @@ export function renderChuvaHoje(state: WeatherState | null): string {
 				"</td><td>" +
 				inteiro(f.prob) +
 				"%</td><td>" +
-				f.mm.toFixed(1) +
+				dec(f.mm) +
 				" mm</td></tr>",
 		)
 		.join("");
@@ -574,7 +582,7 @@ export function renderChuvaHoje(state: WeatherState | null): string {
 		alertaBloco +
 		'<div class="cartoes">' +
 		'<div class="cartao"><b>' +
-		(d.chuva.acc1 > 0 ? d.chuva.acc1.toFixed(1) + " mm" : "0 mm") +
+		(d.chuva.acc1 > 0 ? dec(d.chuva.acc1) + " mm" : "0 mm") +
 		"</b><span>chuva na última hora</span></div>" +
 		'<div class="cartao"><b>' +
 		(Number.isFinite(d.agora.tempC) ? inteiro(d.agora.tempC) + " °C" : "—") +
@@ -642,9 +650,9 @@ export function renderChuvaHoje(state: WeatherState | null): string {
 					q: "Quanto já choveu em Ipiranga?",
 					a:
 						"Nas últimas 24 horas o acumulado no município foi de " +
-						d.chuva.acc24.toFixed(1) +
+						dec(d.chuva.acc24) +
 						" mm; na última hora, " +
-						d.chuva.acc1.toFixed(1) +
+						dec(d.chuva.acc1) +
 						" mm.",
 				},
 				{
@@ -652,7 +660,7 @@ export function renderChuvaHoje(state: WeatherState | null): string {
 					a:
 						d.chuva.acc1 >= 0.2
 							? "Sim: " +
-								d.chuva.acc1.toFixed(1) +
+								dec(d.chuva.acc1) +
 								" mm na última hora segundo os pluviômetros do município."
 							: "Os pluviômetros do município marcaram 0,0 mm na última hora, ou seja, sem chuva registrada em Ipiranga" +
 								(condicaoComChuva(d.agora.condicao)
@@ -681,8 +689,8 @@ export function renderRioBitumirim(state: WeatherState | null): string {
 
 	const tendencia = (delta: number): string => {
 		if (!Number.isFinite(delta)) return "sem variação medida";
-		if (delta >= 2) return "subindo " + delta.toFixed(1) + " cm em 6 h";
-		if (delta <= -2) return "descendo " + Math.abs(delta).toFixed(1) + " cm em 6 h";
+		if (delta >= 2) return "subindo " + dec(delta) + " cm em 6 h";
+		if (delta <= -2) return "descendo " + dec(Math.abs(delta)) + " cm em 6 h";
 		return "praticamente estável nas últimas 6 h";
 	};
 
@@ -792,7 +800,7 @@ export function renderRioBitumirim(state: WeatherState | null): string {
 				},
 				{
 					q: "Quanto choveu nas últimas 24 horas em Ipiranga?",
-					a: d.chuva.acc24.toFixed(1) + " mm nos pluviômetros do município.",
+					a: dec(d.chuva.acc24) + " mm nos pluviômetros do município.",
 				},
 			],
 		),
