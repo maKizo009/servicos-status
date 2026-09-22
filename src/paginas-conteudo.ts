@@ -92,14 +92,16 @@ body{margin:0;background:#07130e;color:#e8f2ed;font:16px/1.65 Inter,system-ui,-a
 a{color:#5fd4a0}
 header,main,footer{max-width:820px;margin:0 auto;padding:0 20px}
 header{padding-top:28px;display:flex;flex-wrap:wrap;gap:14px;align-items:baseline;justify-content:space-between}
-header .marca{font-weight:700;letter-spacing:-.01em;font-size:1.05rem}
+header .marca{font-weight:700;letter-spacing:-.01em;font-size:1.05rem;text-decoration:none;color:#e8f2ed}
 header nav a{margin-left:14px;font-size:.9rem;color:#9fb8ac;text-decoration:none;white-space:nowrap}
 header nav a:hover{color:#5fd4a0}
-h1{font-size:1.75rem;line-height:1.25;margin:26px 0 6px;letter-spacing:-.02em}
+header nav a.ativo{color:#7ee2b3;font-weight:600}
+h1{font-size:1.75rem;line-height:1.25;margin:26px 0 6px;letter-spacing:-.02em;text-wrap:balance}
 h2{font-size:1.15rem;margin:34px 0 10px;color:#9fe6c4}
 p,li{margin:10px 0}
 .resposta{background:#0d2018;border:1px solid #1d3a2c;border-left:4px solid #11875b;border-radius:12px;padding:16px 18px;font-size:1.06rem}
 .resposta strong{color:#7ee2b3}
+.resposta .resto{display:block;font-weight:400;font-size:.95rem;color:#cfe0d7;margin-top:6px}
 table{width:100%;border-collapse:collapse;margin:12px 0;font-size:.95rem}
 th,td{text-align:left;padding:8px 10px;border-bottom:1px solid #1d3a2c}
 th{color:#9fb8ac;font-weight:600;font-size:.85rem;text-transform:uppercase;letter-spacing:.03em}
@@ -123,6 +125,20 @@ interface PaginaOpts {
 	corpo: string;
 	jsonLd: unknown;
 	modificadoEm: string;
+}
+
+/** Link de navegação com estado da página atual (também serve leitor de tela). */
+function linkNav(href: string, rotulo: string, atual: string): string {
+	const ativo = href === atual;
+	return (
+		'<a href="' +
+		href +
+		'"' +
+		(ativo ? ' class="ativo" aria-current="page"' : "") +
+		">" +
+		esc(rotulo) +
+		"</a>"
+	);
 }
 
 function shell(o: PaginaOpts): string {
@@ -151,9 +167,9 @@ function shell(o: PaginaOpts): string {
 		"</head>",
 		"<body>",
 		'<header><a class="marca" href="/">Monitor Ipiranga</a><nav>',
-		'<a href="/chuva-hoje">Chuva hoje</a>',
-		'<a href="/rio-bitumirim">Rio Bitumirim</a>',
-		'<a href="/como-ler-radar">Como ler o radar</a>',
+		linkNav("/chuva-hoje", "Chuva hoje", o.caminho),
+		linkNav("/rio-bitumirim", "Rio Bitumirim", o.caminho),
+		linkNav("/como-ler-radar", "Como ler o radar", o.caminho),
 		"</nav></header>",
 		"<main>",
 		o.cabecalho,
@@ -323,16 +339,22 @@ function enxugarAlerta(
 	titulo: string,
 	descricao: string,
 	motivos: string[],
-): { texto: string; mostrarMotivos: boolean } {
+): { cabeca: string; cauda: string; mostrarMotivos: boolean } {
 	const t = titulo.trim();
 	const d = descricao.trim();
 	const texto = !d ? t : d.startsWith(t) ? d : t.startsWith(d) ? t : t + " — " + d;
+	// Destaca só a primeira frase; o resto (normalmente "Motivos: ...") fica em
+	// texto normal, senão o bloco vira um paredão em negrito (revisão visual).
+	const corte = texto.indexOf(". ");
+	const corteFinal = corte > 20 ? corte + 1 : texto.length;
+	const cabeca = texto.slice(0, corteFinal).trim();
+	const cauda = texto.slice(corteFinal).trim();
 	// A `descricao` do payload às vezes já vem com os motivos concatenados
 	// ("... Motivos: núcleo de chuva forte ..."). Nesse caso a lista repetiria o
 	// que o texto acabou de dizer — foi o que a revisão visual pegou.
 	const jaDito =
 		motivos.length > 0 && motivos.every((m) => texto.indexOf(m.trim()) >= 0);
-	return { texto, mostrarMotivos: motivos.length > 0 && !jaDito };
+	return { cabeca, cauda, mostrarMotivos: motivos.length > 0 && !jaDito };
 }
 
 function horaDe(ms: number): string {
@@ -503,8 +525,11 @@ export function renderChuvaHoje(state: WeatherState | null): string {
 			? '<div class="resposta ' +
 				(d.alerta.nivel === "vermelho" ? "critico" : "alerta") +
 				'"><strong>' +
-				esc(alertaEnxuto.texto) +
+				esc(alertaEnxuto.cabeca) +
 				"</strong>" +
+				(alertaEnxuto.cauda
+					? '<span class="resto">' + esc(alertaEnxuto.cauda) + "</span>"
+					: "") +
 				(alertaEnxuto.mostrarMotivos
 					? "<ul>" +
 						d.alerta.motivos.map((m) => "<li>" + esc(m) + "</li>").join("") +
