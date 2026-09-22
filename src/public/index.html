@@ -40,6 +40,9 @@
 <!-- Tudo servido da PRÓPRIA origem (21/09/2026): antes eram 3 domínios de
      terceiros no caminho crítico — unpkg (Leaflet, CSS+JS bloqueando render) e
      Google Fonts (2 origens). Sem DNS/TLS de terceiro e com cache imutável. -->
+<link rel="preconnect" href="https://api.rainviewer.com" crossorigin>
+<link rel="preconnect" href="https://tilecache.rainviewer.com" crossorigin>
+<link rel="preconnect" href="https://server.arcgisonline.com" crossorigin>
 <link rel="preload" href="/vendor/fonts/inter-var.woff2" as="font" type="font/woff2" crossorigin fetchpriority="low">
 <link rel="stylesheet" href="/vendor/leaflet-1.9.4/leaflet.css" />
 <script src="/vendor/leaflet-1.9.4/leaflet.js" defer fetchpriority="high"></script>
@@ -1276,10 +1279,9 @@ async function runClientTelemetry(){
       const ispName = isp.ispName || (isp.operator ? `${isp.operator} (Rede Móvel)` : 'Banda Larga');
       $('#telemetryIsp').textContent = ispName;
       $('#telemetryPing').textContent = `⚡ Ping: ${rtt} ms ${connType ? '('+connType.toUpperCase()+')' : ''}`;
-      if(rtt > 200){
-        fetchData();
-bootstrapRadar();
-      }
+      // Aqui havia `if (rtt > 200) { fetchData(); bootstrapRadar(); }`: o radar
+      // instantâneo só ligava em conexão LENTA (parecia economia, era bug) e o
+      // fetchData() era um refetch redundante do que já está no boot.
     }
   }catch(e){
     clearTimeout(telemetryTimeout);
@@ -2032,9 +2034,13 @@ window.toggleCopelOutages = toggleCopelOutages;
 
 updateClock();
 setInterval(updateClock,60000);
+// Clima e status são independentes: disparar juntos tira ~900 ms do caminho
+// crítico (medido 22/09/2026 em 3G: o /api/weather só saía aos 1490 ms porque
+// esperava o /api/services e o parse dele dentro da mesma função).
+fetchWeatherData();
 fetchData();
 runClientTelemetry();
-setInterval(fetchData,REFRESH_MS);
+setInterval(() => { fetchData(); fetchWeatherData(); }, REFRESH_MS);
 
 // Weather & RainViewer Radar Map Logic
 let map = null;
@@ -2162,8 +2168,6 @@ async function initWeatherMap() {
   } catch (err) {
     console.warn("IBGE GeoJSON load error", err);
   }
-
-	fetchWeatherData();
 }
 
 /**
@@ -2865,7 +2869,11 @@ document.getElementById('radarSlider')?.addEventListener('input', (e) => {
 
 document.addEventListener('DOMContentLoaded', () => {
   initThemeToggle();
-  initWeatherMap();
+  // O radar instantâneo (índice do RainViewer) desenha ANTES da API chegar —
+  // mas só faz sentido depois do mapa existir. Antes ele estava preso dentro do
+  // `if (rtt > 200)` da telemetria, então em conexão boa o cidadão olhava um
+  // retângulo vazio até o /api/weather responder.
+  initWeatherMap().then(() => { if (map) bootstrapRadar(); });
 });
 setTimeout(initWeatherMap, 600);
 
