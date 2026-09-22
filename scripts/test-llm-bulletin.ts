@@ -5,7 +5,7 @@
  */
 import { describe, expect, test } from "bun:test";
 import type { NowcastBulletinRecord } from "../src/db.js";
-import { fraseChuvaLocal } from "../src/nowcast-vlm.js";
+import { fraseChuvaLocal, validateBulletinAgainstVerdict } from "../src/nowcast-vlm.js";
 import {
 	avaliarReuso,
 	buildAnalystContext,
@@ -285,6 +285,49 @@ describe("avaliarReuso do boletim", () => {
 			agora,
 		});
 		expect(r.reusar).toBe(true);
+	});
+});
+
+/**
+ * O gate de ETA comparava toda duração citada com UM único `verdict.etaMin`.
+ * O texto cita uma ETA por entidade (área + núcleo, como o prompt entrega), então
+ * boletim correto era reprovado em série e o card caía na heurística (22/09/2026).
+ */
+describe("validateBulletinAgainstVerdict: ETA por entidade", () => {
+	const verdict = {
+		bearingFromTargetDeg: 0,
+		radialKmh: -60,
+		radialFraction: -1,
+		approach: "approaching" as const,
+		etaMin: 60,
+	};
+	const texto =
+		"Choveu em Ipiranga nas últimas horas, 5,0 mm em 6 h. Um núcleo de chuva forte a 120 km chega em cerca de 1 hora; uma área de chuva moderada em Ibiporã/PR, a 209 km, pode chegar em cerca de 5 horas.";
+	const opts = { alertLevel: "monitor" as const, nearestThreatKm: 120 };
+
+	test("cada ETA citada bate com uma entidade do contexto → aceita", () => {
+		expect(
+			validateBulletinAgainstVerdict(texto, verdict, undefined, {
+				...opts,
+				etasValidas: [60, 300],
+			}),
+		).toBe(true);
+	});
+
+	test("sem a lista de ETAs (comportamento antigo) → reprova: era o bug", () => {
+		// A área (300 min) comparada só com o núcleo (60 min) divergia 400%.
+		expect(
+			validateBulletinAgainstVerdict(texto, verdict, undefined, opts),
+		).toBe(false);
+	});
+
+	test("ETA que não é de nenhuma entidade → reprova de verdade", () => {
+		expect(
+			validateBulletinAgainstVerdict(texto, verdict, undefined, {
+				...opts,
+				etasValidas: [600, 700],
+			}),
+		).toBe(false);
 	});
 });
 

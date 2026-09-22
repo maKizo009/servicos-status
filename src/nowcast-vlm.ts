@@ -597,6 +597,11 @@ export function validateBulletinAgainstVerdict(
 		alertLevel?: "alert" | "watch" | "monitor" | "none" | null;
 		/** Distância do núcleo mais ameaçador (gate de distância omitida) */
 		nearestThreatKm?: number | null;
+		/**
+		 * ETAs de TODAS as entidades do contexto. O texto cita uma por entidade
+		 * (área e núcleo), então validar contra uma só reprova boletim correto.
+		 */
+		etasValidas?: number[];
 	},
 ): boolean {
 	// 1. Regurgitação de instruções do prompt: frases que NUNCA devem aparecer
@@ -762,14 +767,22 @@ export function validateBulletinAgainstVerdict(
 			const v = Number(mm[1]);
 			if (Number.isFinite(v) && v > 0) minutes.push(v);
 		}
+		// ETAs que o texto pode citar legitimamente: TODAS as entidades do contexto
+		// (o prompt traz uma ETA por entidade). Comparar tudo com um único
+		// verdict.etaMin reprovava boletim CORRETO que citava área e núcleo —
+		// caso real 22/09/2026: 4 textos bons reprovados em sequência e o boletim
+		// caiu na heurística ("ETA citado diverge do cálculo determinístico").
+		const etasValidas = (opts?.etasValidas ?? []).filter(
+			(n) => Number.isFinite(n) && n > 0,
+		);
+		const alvos = etasValidas.length > 0 ? etasValidas : [verdict.etaMin];
 		for (const c of minutes) {
 			if (!Number.isFinite(c) || c <= 0) continue;
-			const ratio = Math.abs(c - verdict.etaMin) / verdict.etaMin;
-			if (ratio > 0.35) {
+			const bate = alvos.some((eta) => Math.abs(c - eta) / eta <= 0.35);
+			if (!bate) {
 				logger.warn("Camada B: ETA citado diverge do cálculo determinístico", {
 					etaVlm: c,
-					etaCalc: Math.round(verdict.etaMin),
-					ratio,
+					etasValidas: alvos.map((n) => Math.round(n)),
 					text,
 				});
 				return false;

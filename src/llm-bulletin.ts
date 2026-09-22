@@ -397,7 +397,17 @@ export async function tryLlmBulletin(
 			});
 			continue;
 		}
-		if (!validateBulletinAgainstVerdict(text, verdict, ecmwf, relevance))
+		// O texto cita uma ETA por entidade (área e núcleo): valide contra TODAS as
+		// do contexto. Com um alvo só, boletim correto era reprovado em série e o
+		// card caía na heurística (22/09/2026).
+		if (
+			!validateBulletinAgainstVerdict(text, verdict, ecmwf, {
+				...relevance,
+				etasValidas: (ctx.threats ?? [])
+					.map((t) => t.etaMin ?? 0)
+					.filter((n) => n > 0),
+			})
+		)
 			continue;
 		if (!passaCoerenciaLocal(text, ctx.fraseLocal)) {
 			logger.warn("LLM analista: sem coerência local, rejeitado", {
