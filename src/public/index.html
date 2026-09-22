@@ -3199,10 +3199,14 @@ function copyPrompt(provider, text) {
           if (ev && ev.type === 'scroll' && Math.abs(window.scrollY - y0) < 80) return;
           jaSaiu = true;
           window.removeEventListener('scroll', sair);
+          document.removeEventListener('scroll', sair);
           mark(false);
           window.__miPushPopup.hide();
         };
+        // Nos dois alvos: o scroll do documento dispara em `document` e borbulha
+        // para `window`, mas já vi mundo isolado/iframe onde só um dos dois chega.
         window.addEventListener('scroll', sair, { passive: true });
+        document.addEventListener('scroll', sair, { passive: true });
         // Rede de segurança: sem isso ele só sairia se o usuário clicasse ou rolasse.
         setTimeout(sair, 40000);
       }, 2500);
