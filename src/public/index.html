@@ -40,9 +40,9 @@
 <!-- Tudo servido da PRÓPRIA origem (21/09/2026): antes eram 3 domínios de
      terceiros no caminho crítico — unpkg (Leaflet, CSS+JS bloqueando render) e
      Google Fonts (2 origens). Sem DNS/TLS de terceiro e com cache imutável. -->
-<link rel="preload" href="/vendor/fonts/inter-var.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="preload" href="/vendor/fonts/inter-var.woff2" as="font" type="font/woff2" crossorigin fetchpriority="low">
 <link rel="stylesheet" href="/vendor/leaflet-1.9.4/leaflet.css" />
-<script src="/vendor/leaflet-1.9.4/leaflet.js" defer></script>
+<script src="/vendor/leaflet-1.9.4/leaflet.js" defer fetchpriority="high"></script>
 <style>
 /* Inter VARIÁVEL self-hosted (OFL). Achado 21/09/2026: os 5 arquivos que o
    Google Fonts servia para 400/500/600/700/800 eram o MESMO woff2 (Inter
@@ -1784,8 +1784,15 @@ function montarRadarDoIndice(idx, substituir) {
     radarTileLayers.forEach((layer) => { if (!map.hasLayer(layer)) layer.addTo(map); });
   };
   window._carregarLoopRadar = carregarLoop;
-  radarTileLayers[alvoIdx].once('load', carregarLoop);
-  setTimeout(carregarLoop, 2500); // rede de segurança (rede ruim/erro de tile)
+  // 'load' do Leaflet NÃO serve de sinal: quando o mapa ainda não tem tamanho
+  // (ou não há tile na faixa visível) ele dispara na hora e o loop inteiro volta
+  // a entrar junto — medido 22/09/2026: 52 tiles pedidos em 300 ms. O sinal
+  // confiável é 'tileload': um tile do frame atual realmente chegou na tela.
+  radarTileLayers[alvoIdx].once('tileload', () => {
+    if (window._mostrarBaseMap) window._mostrarBaseMap();
+  });
+  radarTileLayers[alvoIdx].once('tileload', carregarLoop);
+  setTimeout(carregarLoop, 6000); // rede de segurança (rede ruim/erro de tile)
   const slider = document.getElementById('radarSlider');
   if (slider) {
     const anterior = Number(slider.value);
@@ -1808,7 +1815,7 @@ function montarRadarDoIndice(idx, substituir) {
  * camadas e monta as dela (frames alinhados com o boletim/alertas).
  */
 async function baixarIndiceRainViewer() {
-  const r = await fetch('https://api.rainviewer.com/public/weather-maps.json', { cache: 'no-store' });
+  const r = await fetch('https://api.rainviewer.com/public/weather-maps.json', { cache: 'no-store', priority: 'high' });
   if (!r.ok) return null;
   return await r.json();
 }
@@ -2014,8 +2021,15 @@ async function initWeatherMap() {
     opacity: 0.95
   });
 
-  // Mapa de satélite HD como padrão (mais fácil de visualizar — pedido do usuário)
-  satLayer.addTo(map);
+  // Mapa de satélite HD como padrão (mais fácil de visualizar — pedido do usuário).
+  // Só que ele entra DEPOIS do radar: medido em rede de celular (22/09/2026), os
+  // tiles de fundo entravam junto com os do radar e o primeiro tile de chuva só
+  // fechava aos 3,0 s. O fundo é enfeite; o radar é a informação.
+  const mostrarBaseMap = () => {
+    if (!map.hasLayer(satLayer) && !map.hasLayer(streetLayer)) satLayer.addTo(map);
+  };
+  window._mostrarBaseMap = mostrarBaseMap;
+  setTimeout(mostrarBaseMap, 3000);
 
   // Toggle Map Base Layers
   const btnStreet = document.getElementById('layerStreetBtn');
