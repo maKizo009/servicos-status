@@ -37,12 +37,56 @@
 <link rel="apple-touch-icon" href="/brand/icone-app.svg">
 <link rel="icon" type="image/svg+xml" href="/brand/favicon.svg">
 <link rel="icon" type="image/png" sizes="192x192" href="/icons/icon-192.png">
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<!-- Tudo servido da PRÓPRIA origem (21/09/2026): antes eram 3 domínios de
+     terceiros no caminho crítico — unpkg (Leaflet, CSS+JS bloqueando render) e
+     Google Fonts (2 origens). Sem DNS/TLS de terceiro e com cache imutável. -->
+<link rel="preload" href="/vendor/fonts/inter-400.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="preload" href="/vendor/fonts/inter-600.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="stylesheet" href="/vendor/leaflet/leaflet.css" />
+<script src="/vendor/leaflet/leaflet.js" defer></script>
 <style>
+/* Inter self-hosted (OFL) — 5 pesos usados pela UI */
+@font-face {
+  font-family: 'Inter';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url('/vendor/fonts/inter-400.woff2') format('woff2');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+@font-face {
+  font-family: 'Inter';
+  font-style: normal;
+  font-weight: 500;
+  font-display: swap;
+  src: url('/vendor/fonts/inter-500.woff2') format('woff2');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+@font-face {
+  font-family: 'Inter';
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+  src: url('/vendor/fonts/inter-600.woff2') format('woff2');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+@font-face {
+  font-family: 'Inter';
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url('/vendor/fonts/inter-700.woff2') format('woff2');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+@font-face {
+  font-family: 'Inter';
+  font-style: normal;
+  font-weight: 800;
+  font-display: swap;
+  src: url('/vendor/fonts/inter-800.woff2') format('woff2');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+
 *,*::before,*::after{margin:0;padding:0;box-sizing:border-box}
 :root{
   /* === Material Design 3 — Tonal Palette (Slate/Sky/Esmeralda) === */
@@ -1096,7 +1140,7 @@ const API_SERVICES='/api/services';
 const API_STATUS='/api/status';
 const API_TELEMETRY='/api/telemetry';
 const API_STATS='/api/stats/daily';
-const REFRESH_MS=30000;
+const REFRESH_MS=60000; // era 30s: o estado do backend muda a cada ~10 min (cron)
 
 const OFFICIAL_URLS={
   Copel:'https://cdn.copel.com/aneel-informacoes/index.html',
@@ -1738,45 +1782,86 @@ function showStaleNotice(ts){
 
 
 /**
- * Radar instantâneo: o índice do RainViewer vem DIRETO do navegador (~1 KB,
+ * Monta as camadas de radar a partir de um índice do RainViewer.
+ * Usado pelo boot (imagem ANTES da API) e pelo refresh de 5 min (frames NOVOS
+ * sem esperar o TTL do estado, que só muda a cada ~10 min).
+ */
+function montarRadarDoIndice(idx, substituir) {
+  const past = idx && idx.radar && idx.radar.past;
+  if (!past || !past.length) return false;
+  const host = idx.host || 'https://tilecache.rainviewer.com';
+  radarFrames = [...past, ...(idx.radar.nowcast || [])];
+  radarPastCount = past.length;
+  radarTileLayers.forEach((l) => map.removeLayer(l));
+  radarTileLayers = [];
+  radarFrames.forEach((frame) => {
+    // Display: esquema 6 (mais próximo do Simepar). A análise do backend segue
+    // no esquema 2 — não mexer nisso.
+    const layer = L.tileLayer(host + frame.path + '/256/{z}/{x}/{y}/6/1_1.png', {
+      pane: 'radarPane', tileSize: 256, opacity: 0, maxNativeZoom: 7, maxZoom: 14, className: 'rain-tile'
+    });
+    layer.addTo(map);
+    radarTileLayers.push(layer);
+  });
+  const slider = document.getElementById('radarSlider');
+  if (slider) {
+    const anterior = Number(slider.value);
+    slider.max = Math.max(0, radarFrames.length - 1);
+    const novo = substituir ? anterior : Math.max(0, radarPastCount - 1);
+    currentFrameIndex = Math.min(radarFrames.length - 1, novo);
+    slider.value = currentFrameIndex;
+    showRadarFrame(currentFrameIndex);
+  }
+  window._radarUltimoFrame = past[past.length - 1].path;
+  return true;
+}
+
+/**
+ * Radar instantâneo: o índice do RainViewer vem DIRETO no navegador (~1 KB,
  * CORS *), sem esperar por /api/weather. Medição 21/09/2026: primeiro tile aos
- * 13,3 s em instância fria (a API regenerava o estado, 12,5 s) contra 0,43 s
- * com API quente — o radar nunca foi lento, ele esperava a API. Aqui a imagem
+ * 13,3 s em instância fria (a API regenerava o estado, 12,5 s) contra 0,43 s com
+ * API quente — o radar nunca foi lento, ele esperava a API. Aqui a imagem
  * aparece primeiro; a ANÁLISE continua vindo da API, que ao chegar remove estas
  * camadas e monta as dela (frames alinhados com o boletim/alertas).
  */
+async function baixarIndiceRainViewer() {
+  const r = await fetch('https://api.rainviewer.com/public/weather-maps.json', { cache: 'no-store' });
+  if (!r.ok) return null;
+  return await r.json();
+}
+
 async function bootstrapRadar() {
   try {
     if (radarTileLayers.length > 0) return; // a API já montou: não mexer
-    const r = await fetch('https://api.rainviewer.com/public/weather-maps.json', { cache: 'no-store' });
-    if (!r.ok) return;
-    const idx = await r.json();
-    const past = idx && idx.radar && idx.radar.past;
-    if (!past || !past.length) return;
+    const idx = await baixarIndiceRainViewer();
+    if (!idx) return;
     if (radarTileLayers.length > 0) return; // corrida com a API: quem chegou primeiro fica
-    const host = idx.host || 'https://tilecache.rainviewer.com';
-    radarFrames = [...past, ...(idx.radar.nowcast || [])];
-    radarPastCount = past.length;
-    radarFrames.forEach((frame) => {
-      const layer = L.tileLayer(host + frame.path + '/256/{z}/{x}/{y}/6/1_1.png', {
-        pane: 'radarPane', tileSize: 256, opacity: 0, maxNativeZoom: 7, maxZoom: 14, className: 'rain-tile'
-      });
-      layer.addTo(map);
-      radarTileLayers.push(layer);
-    });
-    const slider = document.getElementById('radarSlider');
-    if (slider) {
-      slider.max = Math.max(0, radarFrames.length - 1);
-      currentFrameIndex = Math.max(0, radarPastCount - 1);
-      slider.value = currentFrameIndex;
-      showRadarFrame(currentFrameIndex);
-    }
-    window._radarBootstrap = true;
+    if (montarRadarDoIndice(idx, false)) window._radarBootstrap = true;
   } catch (e) {
     console.warn('bootstrap do radar falhou (a API segue como fonte da análise)', e);
   }
 }
 window.bootstrapRadar = bootstrapRadar;
+
+/**
+ * Refresh do radar a cada 5 min: o frame mais novo do RainViewer aparece sem
+ * depender do TTL do /api/weather (~10 min). Só refaz quando muda de verdade.
+ */
+async function refreshRadar() {
+  try {
+    const idx = await baixarIndiceRainViewer();
+    const past = idx && idx.radar && idx.radar.past;
+    if (!past || !past.length) return;
+    const novo = past[past.length - 1].path;
+    if (window._radarUltimoFrame === novo) return; // sem frame novo: no-op
+    montarRadarDoIndice(idx, true);
+    window._radarUltimoFrame = novo;
+  } catch (e) {
+    console.warn('refresh do radar falhou', e);
+  }
+}
+window.refreshRadar = refreshRadar;
+setInterval(refreshRadar, 5 * 60 * 1000);
 
 async function fetchData(){
   const ri=$('#refreshIcon');
