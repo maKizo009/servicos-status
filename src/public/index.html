@@ -1091,6 +1091,14 @@ body{font-family:var(--font);background:var(--md-sys-color-surface);color:var(--
     <span style="margin:0 6px">·</span>
     <span id="footerTime">Atualizado há --s</span>
   </div>
+  <!-- Links para as páginas de resposta direta: é por aqui que o buscador
+       descobre as páginas internas (link interno também passa relevância).
+       Reusa a classe de botão existente: zero CSS novo, e funciona nos dois temas. -->
+  <nav aria-label="Respostas diretas" style="display:flex;gap:8px;flex-wrap:wrap;justify-content:center;margin:8px 0 2px">
+    <a href="/chuva-hoje" class="llm-btn">Vai chover hoje?</a>
+    <a href="/rio-bitumirim" class="llm-btn">Rio Bitumirim</a>
+    <a href="/como-ler-radar" class="llm-btn">Como ler o radar</a>
+  </nav>
   <details class="footer-llm" style="margin:6px 0 2px;font-size:12px;color:var(--text3);text-align:left;max-width:560px;margin-left:auto;margin-right:auto">
     <summary style="cursor:pointer;font-weight:500">Dados para assistentes de IA</summary>
     <div style="display:flex;gap:8px;margin-top:8px;flex-wrap:wrap;justify-content:center">
