@@ -2164,7 +2164,10 @@ async function fetchWeatherData() {
         if(rEl) {
           rEl.style.background = 'rgba(220, 38, 38, 0.25)';
           rEl.style.borderColor = '#ef4444';
-          rEl.textContent = `⚡ Radar: Chuva na Região (${data.rainProbabilityPct}%)`;
+          // Radar (chuva JÁ detectada) ao lado da probabilidade do modelo no mesmo
+          // parêntese dava 'Chuva na Região (0%)' — leitura contraditória. Agora o
+          // número diz de onde vem (mesma convenção do badge de condição).
+          rEl.textContent = `⚡ Radar: chuva na região · previsão ${data.rainProbabilityPct ?? 0}%`;
         }
       }
 
