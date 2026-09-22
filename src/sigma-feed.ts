@@ -23,7 +23,7 @@
 
 const BASE = "https://sigmameteorologia.com";
 const PAGINA = `${BASE}/nowcasting/`;
-const REQUEST_TIMEOUT_MS = 20_000;
+const REQUEST_TIMEOUT_MS = 8_000;
 /** O WAF deles devolve 403 sem UA completo (UA curto cai no bloqueio). */
 const UA_BROWSER =
 	"Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/151.0.0.0 Safari/537.36";

@@ -17,7 +17,7 @@
 import { preverCalhaAoVivo } from "./bitumirim-previsao.js";
 import type { PrevisaoCalha } from "./bitumirim-previsao.js";
 
-const REQUEST_TIMEOUT_MS = 15_000;
+const REQUEST_TIMEOUT_MS = 10_000;
 
 // 3 sentinelas na calha do Tibagi — montante→jusante em relação à foz do
 // Bitumirim (-25,0049, -50,4279). CORREÇÃO 11/09/2026 (auditoria Antigravity

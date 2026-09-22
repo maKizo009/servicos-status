@@ -355,6 +355,13 @@ let weatherInterval: ReturnType<typeof setInterval> | null = null;
 export async function syncWeatherCycle(): Promise<WeatherState> {
 	await ensureInitialized();
 	logger.info("Starting weather & radar sync cycle...");
+	// Os avisos oficiais (INMET/Simepar/Defesa Civil) não dependem de nada do
+	// ciclo e levam até 8 s: dispara JUNTO com o primeiro lote em vez de esperar
+	// no fim. Era uma das chamadas em série que faziam o ciclo chegar a 26 s
+	// (medido 22/09/2026) — o boletim já tinha saído do caminho crítico e o
+	// tempo restante estava aqui. fetchAlertasOficiais nunca lança (timeout
+	// curto interno), então iniciar cedo não cria rejeição solta.
+	const promessaOficiais = fetchAlertasOficiais();
 	const [radar, weatherInfo, cemaden] = await Promise.all([
 		fetchRainViewerRadar(),
 		fetchCurrentWeather(),
@@ -365,16 +372,18 @@ export async function syncWeatherCycle(): Promise<WeatherState> {
 	// Só estações FRESCAS: pluviômetro parado não pode virar "sem chuva" aqui.
 	const maxAcc = (f: (e: (typeof cemaden.estacoes)[number]) => number | null) =>
 		maxAcumuladoFresco(cemaden.estacoes, f);
-	const hidro = await fetchHidroTriangulacao({
-		p1h: maxAcc((e) => e.acc1hr),
-		p6h: maxAcc((e) => e.acc6hr),
-		p24h: maxAcc((e) => e.acc24hr),
-		p72h: maxAcc((e) => e.acc72hr),
-	});
-
-	// Mosaico Simepar (display): só um HEAD barato para carimbar frescor.
-	// Nunca quebra o ciclo — se falhar, o card usa a imagem direta.
-	const simeparRadar = await fetchSimeparRadar();
+	const [hidro, simeparRadar] = await Promise.all([
+		fetchHidroTriangulacao({
+			p1h: maxAcc((e) => e.acc1hr),
+			p6h: maxAcc((e) => e.acc6hr),
+			p24h: maxAcc((e) => e.acc24hr),
+			p72h: maxAcc((e) => e.acc72hr),
+		}),
+		// Mosaico Simepar (display): só um HEAD barato para carimbar frescor.
+		// Nunca quebra o ciclo — se falhar, o card usa a imagem direta.
+		// Em paralelo com a hidro: são independentes e em série somavam latência.
+		fetchSimeparRadar(),
+	]);
 
 	// Boletim da tabela legada (weather_bulletins, formato "NIM texto" que não
 	// é mais gravado): só é usado se FRESCO (<60 min), senão a Camada B
@@ -493,16 +502,14 @@ export async function syncWeatherCycle(): Promise<WeatherState> {
 			if (quentes.length === 0) {
 				state.soloCidades = null;
 			} else {
-				const porRede: SigmaResultado[] = [];
-				for (const rede of ["wu", "simepar", "inmet"] as const) {
-					porRede.push(await fetchSigmaRede(rede));
-					if (
-						resumoSolo(quentes, porRede, SIGMA_RAIO_CIDADE_KM).length >=
-						quentes.length
-					) {
-						break;
-					}
-				}
+				const porRede: SigmaResultado[] = await Promise.all(
+					(["wu", "simepar", "inmet"] as const).map((rede) => fetchSigmaRede(rede)),
+				);
+				// Antes isto era um `for` em série com `break` de economia de
+				// requisição: cada rede podia gastar o timeout inteiro e o pior caso
+				// chegava a 24 s — o maior resto de tempo do ciclo depois que o
+				// boletim saiu do caminho crítico (22/09/2026). Pedir as três custa
+				// pouco e o ganho de tempo é grande quando as três estão lentas.
 				state.soloCidades = resumoSolo(quentes, porRede, SIGMA_RAIO_CIDADE_KM);
 				logger.info("Sigma: solo sob demanda consultado", {
 					cidades: quentes.map((c) => c.nome).join(", "),
@@ -714,7 +721,7 @@ export async function syncWeatherCycle(): Promise<WeatherState> {
 	// dados (CEMADEN+ECMWF+radar+hidro) com os avisos oficiais como agravante.
 	// Roda no mesmo ciclo, nunca quebra o sync (try/catch interno).
 	try {
-		const oficiais = await fetchAlertasOficiais();
+		const oficiais = await promessaOficiais;
 		state.alertasOficiais = oficiais;
 		const estsA = state.cemaden?.estacoes ?? [];
 		const maxA = (f: (e: (typeof estsA)[number]) => number | null) =>

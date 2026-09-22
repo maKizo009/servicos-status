@@ -12,7 +12,7 @@
 
 const GETJSON2_BASE = "https://resources.cemaden.gov.br/graficos/interativo/getJson2.php";
 const CODIBGE_IPIRANGA = 4110508;
-const REQUEST_TIMEOUT_MS = 15_000;
+const REQUEST_TIMEOUT_MS = 8_000;
 
 /**
  * Rótulos amigáveis por idestacao (localidade real em Ipiranga/PR):
