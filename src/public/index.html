@@ -1837,14 +1837,13 @@ function montarRadarDoIndice(idx, substituir) {
     navigator.connection || navigator.mozConnection || navigator.webkitConnection || {};
   const redeFolgada =
     !conn.saveData && (!conn.effectiveType || conn.effectiveType === '4g');
+  window._radarLoopAdiado = !redeFolgada;
   if (redeFolgada) {
     camadaAtual.once('load', () => {
       const s = map.getSize ? map.getSize() : null;
       if (s && s.x > 0 && s.y > 0) dispararLoop();
     });
     setTimeout(dispararLoop, 12000); // rede de segurança (rede ruim/erro de tile)
-  } else {
-    window._radarLoopAdiado = true; // diagnóstico: loop aguardando interação
   }
   const slider = document.getElementById('radarSlider');
   if (slider) {
@@ -2270,7 +2269,13 @@ async function fetchWeatherData() {
       radarTileLayers.forEach(l => map.removeLayer(l));
       radarTileLayers = [];
 
-      radarFrames.forEach((frame) => {
+      // Só o frame que o cidadão olha entra agora; o resto do loop entra depois
+      // (rede folgada) ou quando ele PEDIR play/slider. Medição 22/09/2026:
+      // 13 frames × 4 tiles = 52 requisições, e o loop inteiro competia com a
+      // imagem que aparece primeiro. A animação é manual — dado baixado que
+      // ninguém olha é banda (e bateria) jogada fora em rede de celular.
+      const idxAlvo = Math.max(0, Math.min(radarFrames.length - 1, radarPastCount - 1));
+      radarFrames.forEach((frame, i) => {
         // Display: esquema de cor 6 (o mais próximo do Simepar). A análise
         // determinística do backend (radar-analysis.ts) continua no esquema 2,
         // que é o que o decodificador de paleta espera — não mexer.
@@ -2283,9 +2288,33 @@ async function fetchWeatherData() {
           maxZoom: 14,
           className: 'rain-tile'
         });
-        layer.addTo(map);
         radarTileLayers.push(layer);
+        if (i === idxAlvo) layer.addTo(map);
       });
+
+      const camadaAtual = radarTileLayers[idxAlvo];
+      let loopDisparado = false;
+      const dispararLoop = () => {
+        if (loopDisparado) return;
+        loopDisparado = true;
+        radarTileLayers.forEach((layer) => { if (!map.hasLayer(layer)) layer.addTo(map); });
+      };
+      // O slider e o botão ▶ chamam este mesmo carregador: pedido do usuário
+      // vence qualquer adiamento.
+      window._carregarLoopRadar = dispararLoop;
+      window._dispararLoopRadar = dispararLoop;
+      const conn =
+        navigator.connection || navigator.mozConnection || navigator.webkitConnection || {};
+      const redeFolgada =
+        !conn.saveData && (!conn.effectiveType || conn.effectiveType === '4g');
+      window._radarLoopAdiado = !redeFolgada;
+      if (redeFolgada) {
+        camadaAtual.once('load', () => {
+          const s = map.getSize ? map.getSize() : null;
+          if (s && s.x > 0 && s.y > 0) dispararLoop();
+        });
+        setTimeout(dispararLoop, 12000); // rede de segurança (rede ruim/erro de tile)
+      }
 
       const slider = document.getElementById('radarSlider');
       if(slider) {
