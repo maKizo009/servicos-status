@@ -88,8 +88,12 @@ export function fraseChuvaLocal(
 		local.condition ?? "",
 	);
 	if (!temCemaden) return null;
-	const choveAgora = c1 >= 0.5 || c6 >= 5;
-	const volumeAlto = c24 >= 20 || c6 >= 15;
+	// "Agora" é a ÚLTIMA HORA. Acumulado de 6 h/24 h com a última hora zerada é
+	// chuva que JÁ PASSOU — dizer "chove agora" ali é mentira. Incidente 22/09/2026:
+	// o boletim abria com "Chove em Ipiranga agora, 5,8 mm em 6 horas" com a última
+	// hora em 0,0 mm, e o LLM só repetia o que o contexto afirmava.
+	const choveAgora = c1 >= 0.5;
+	const volumeAlto = c24 >= 20 || c6 >= 15 || c6 >= 5;
 	if (!choveAgora && !volumeAlto) return null;
 	const partes: string[] = [];
 	if (local.acc1hrMax != null && local.acc1hrMax >= 0.5)
@@ -109,7 +113,7 @@ export function fraseChuvaLocal(
 			? ` Previsão do modelo: ${local.condition}.`
 			: "";
 	if (volumeAlto && !choveAgora)
-		return `Chuva forte já acumulada em Ipiranga hoje${detalhe}.${cond} Atenção a alagamentos e ao nível de córregos.`;
+		return `Choveu em Ipiranga nas últimas horas${detalhe}.${cond} Chuva forte já acumulada hoje — atenção a alagamentos e ao nível de córregos.`;
 	return `Chove em Ipiranga agora${detalhe}.${cond}`;
 }
 

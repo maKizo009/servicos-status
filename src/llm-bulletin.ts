@@ -110,7 +110,7 @@ export interface AnalystContext {
 export function buildAnalystPrompt(ctx: AnalystContext): string {
 	const linhas: string[] = [];
 	linhas.push(
-		`CHUVA EM IPIRANGA AGORA: ${ctx.fraseLocal ?? "sem chuva medida (pluviômetros zerados)"}`,
+		`CHUVA MEDIDA EM IPIRANGA: ${ctx.fraseLocal ?? "sem chuva medida (pluviômetros zerados)"}`,
 	);
 	linhas.push(`NÍVEL DA CAMADA A: ${ctx.alertLevel}`);
 	const nucleos = ctx.threats.filter((t) => t.kind !== "area");
@@ -202,14 +202,14 @@ export function buildAnalystPrompt(ctx: AnalystContext): string {
 ${linhas.join("\n")}
 
 Escreva o boletim em 3 ou 4 frases curtas (máximo 600 caracteres), em português simples:
-1. A linha "CHUVA EM IPIRANGA AGORA" é a ÚNICA fonte sobre chuva acontecendo: se ela diz que não há chuva medida, NUNCA escreva que chove (nem "chove fraco", nem "chuva leve agora"). A previsão do ECMWF só pode aparecer como chance ("o modelo indica X% de chance"), jamais como chuva acontecendo — e se não há chuva medida nem núcleo perto (nem área de chuva a ≤200 km), o boletim deve dizer isso com clareza.
+1. A linha "CHUVA MEDIDA EM IPIRANGA" é a ÚNICA fonte sobre chuva acontecendo. Use o TEMPO VERBAL dela: "chove agora" só quando ela citar mm na última hora; acumulado de 6 h/24 h com a última hora zerada é chuva que JÁ PASSOU — escreva "choveu nas últimas horas", nunca "chove agora". Se ela diz que não há chuva medida, NUNCA escreva que chove (nem "chove fraco", nem "chuva leve agora"). A previsão do ECMWF só pode aparecer como chance ("o modelo indica X% de chance"), jamais como chuva acontecendo — e se não há chuva medida nem núcleo perto (nem área de chuva a ≤200 km), o boletim deve dizer isso com clareza.
 2. Se houver chuva medida em Ipiranga, ABRA com isso (é a informação mais importante).
 3. Depois a entidade mais relevante (núcleo de tempestade OU área de chuva contínua), sempre com a distância em km — e use o nome certo: "núcleo" só para a linha de NÚCLEOS, "área de chuva" para a linha de ÁREAS.
 4. Nunca afirme certeza — use "pode", "se mantiver o curso".
 5. Se a entidade está longe (>200 km), diga que está longe; não trate como iminente. PROIBIDO escrever "nenhum núcleo por perto" (ou "nenhuma chuva por perto") se as listas NÚCLEOS ou ÁREAS tiverem QUALQUER entidade a ≤200 km — nesse caso diga onde ela está e quando pode chegar. E nunca fale de núcleo distante omitindo a ÁREA DE CHUVA que está vindo: a chuva que se aproxima DEVE aparecer no boletim.
 6. Se houver linha de SOLO, use-a para dizer a SEVERIDADE (rajada forte, pressão caindo, acumulado alto) — ela mede o que o radar não mede.
 7. Sem markdown, sem emoji, sem título. Termine com ponto final.
-8. NÃO repita os rótulos do bloco de dados ("CHUVA EM IPIRANGA AGORA:", "NÚCLEOS:", "ÁREAS DE CHUVA:", "PREVISÃO..."). Escreva o boletim direto, como quem fala com o leitor.`;
+8. NÃO repita os rótulos do bloco de dados ("CHUVA MEDIDA EM IPIRANGA:", "NÚCLEOS:", "ÁREAS DE CHUVA:", "PREVISÃO..."). Escreva o boletim direto, como quem fala com o leitor.`;
 }
 
 /** Gate de coerência local: chovendo aqui e o texto não fala disso? Lixo. */
@@ -542,10 +542,9 @@ export function avaliarReuso(i: {
 	if (!fonteLlm) return { reusar: false, motivo: "último boletim é heurística" };
 	const idadeMs = agora - cached.generatedAt;
 	if (idadeMs >= LLM_TTL_MS) return { reusar: false, motivo: "TTL vencido" };
-	// "Está chovendo agora" é MEDIÇÃO, não presença de frase: fraseChuvaLocal também
-	// devolve texto quando só o ACUMULADO é alto (24h ≥ 20 mm).
-	const choveAgoraMedido =
-		(local?.acc1hrMax ?? 0) >= 0.5 || (local?.acc6hrMax ?? 0) >= 5;
+	// "Está chovendo agora" é MEDIÇÃO na ÚLTIMA HORA — acumulado de 6 h/24 h é
+	// chuva que já passou (fraseChuvaLocal também fala de acumulado).
+	const choveAgoraMedido = (local?.acc1hrMax ?? 0) >= 0.5;
 	const textoDizChoveAgora = /chove (em ipiranga )?agora|est[áa] chovendo/i.test(
 		cached.text,
 	);

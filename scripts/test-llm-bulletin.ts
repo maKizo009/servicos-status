@@ -5,6 +5,7 @@
  */
 import { describe, expect, test } from "bun:test";
 import type { NowcastBulletinRecord } from "../src/db.js";
+import { fraseChuvaLocal } from "../src/nowcast-vlm.js";
 import {
 	avaliarReuso,
 	buildAnalystContext,
@@ -187,6 +188,22 @@ describe("avaliarReuso do boletim", () => {
 		expect(r.motivo).toMatch(/parou de chover/);
 	});
 
+	test("texto diz que chove agora com 6h acumulado e 1h zerada → NÃO reusa", () => {
+		// Caso exato do incidente: "Chove em Ipiranga agora, com 5,8 mm em 6 horas"
+		// com a última hora em 0,0 mm. Acumulado não é chuva acontecendo.
+		const r = avaliarReuso({
+			cached: cached({
+				text: "Chove em Ipiranga agora, com 5,8 mm em 6 horas e 37,4 mm em 24 horas nos pluviômetros da cidade.",
+			}),
+			local: { ...semChuva, acc6hrMax: 5.8 },
+			nowcast: nowcast([]),
+			chaveCenario: "outro-11",
+			agora,
+		});
+		expect(r.reusar).toBe(false);
+		expect(r.motivo).toMatch(/parou de chover/);
+	});
+
 	test("cenário igual → reusa", () => {
 		const r = avaliarReuso({
 			cached: cached(),
@@ -268,5 +285,41 @@ describe("avaliarReuso do boletim", () => {
 			agora,
 		});
 		expect(r.reusar).toBe(true);
+	});
+});
+
+/**
+ * O LLM não inventou "chove agora": ele repetiu o contexto, que afirmava
+ * "CHUVA EM IPIRANGA AGORA" só porque o acumulado de 6 h passava de 5 mm.
+ */
+describe("fraseChuvaLocal (tempo verbal)", () => {
+	const base = {
+		acc1hrMax: 0,
+		acc6hrMax: 5.8,
+		acc24hrMax: 37.4,
+		condition: "Garoa Moderada",
+	};
+
+	test("acumulado de 6h com a última hora zerada NÃO vira 'chove agora'", () => {
+		const f = fraseChuvaLocal(base);
+		expect(f).toMatch(/choveu/i);
+		expect(f).not.toMatch(/chove em ipiranga agora/i);
+	});
+
+	test("medição na última hora vira 'chove agora'", () => {
+		expect(fraseChuvaLocal({ ...base, acc1hrMax: 2.4 })).toMatch(
+			/chove em ipiranga agora/i,
+		);
+	});
+
+	test("sem sinal nenhum → null (nada a afirmar)", () => {
+		expect(
+			fraseChuvaLocal({
+				acc1hrMax: 0,
+				acc6hrMax: 0,
+				acc24hrMax: 0,
+				condition: "Céu Limpo",
+			}),
+		).toBeNull();
 	});
 });
