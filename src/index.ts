@@ -47,7 +47,6 @@ import {
 	getRadarNowcast,
 } from "./nowcast-service.js";
 import { fmtEta, formatRainEntityAlert } from "./radar-analysis.js";
-import { passaCoerenciaAmeaca } from "./bulletin-coherence.js";
 import { checkRateLimit, checkRateLimitScope } from "./rate-limiter.js";
 import {
 	CIDADES_CORREDOR,
@@ -347,8 +346,9 @@ function handleServices(): Response {
 
 let weatherInterval: ReturnType<typeof setInterval> | null = null;
 
-/** TTL do boletim narrativo do nowcast (Camada B): vale até a próxima leitura de radar (10 min). */
-const NOWCAST_BULLETIN_TTL_MS = 5 * 60_000; // 5 min — alinhado com TTL do nowcast
+// O TTL do boletim narrativo agora vive em llm-bulletin.ts (avaliarReuso), junto
+// com as checagens de medição/cenário. Havia um TTL separado aqui e as duas
+// lógicas divergiram — o texto congelado passava pela checagem de fora.
 
 /** Exportado para o /api/cron (api/cron.ts) rodar o ciclo completo de clima+radar+NIM. */
 export async function syncWeatherCycle(): Promise<WeatherState> {
@@ -534,42 +534,70 @@ export async function syncWeatherCycle(): Promise<WeatherState> {
 				: null,
 		});
 
-		// Camada B: boletim narrativo (VLM NIM ou heurística).
-		// Persistido no DB e reutilizado até a próxima leitura de radar (15 min) —
-		// evita regerar texto a cada reload/cold start e gasta cota NIM à toa.
+		// Camada B: boletim narrativo (LLM analista → heurística).
+		// UM gate de reuso só (avaliarReuso, em llm-bulletin.js): compara a MEDIÇÃO e
+		// a impressão do cenário, não só a idade. Havia duas lógicas de cache aqui e
+		// elas divergiram — a de fora só olhava tempo + coerência com o radar, então
+		// "chove agora" com pluviômetro zerado era servido de novo a cada ciclo
+		// (incidente do Boletim IA, 22/09/2026).
 		if (state.radar) {
-			const cachedBulletin = await getLatestNowcastBulletin();
-			const bulletinAgeMs = cachedBulletin
-				? Date.now() - cachedBulletin.generatedAt
-				: Infinity;
+			const {
+				avaliarReuso,
+				buildAnalystContext,
+				chaveDoCenario,
+				generateSmartBulletin,
+			} = await import("./llm-bulletin.js");
+			const ests = state.cemaden?.estacoes ?? [];
+			const maxAcc = (f: (e: (typeof ests)[number]) => number | null) =>
+				maxAcumuladoFresco(ests, f);
+			const localCtx = {
+				acc1hrMax: maxAcc((e) => e.acc1hr),
+				acc6hrMax: maxAcc((e) => e.acc6hr),
+				acc24hrMax: maxAcc((e) => e.acc24hr),
+				condition: weatherInfo.condition,
+			};
+			const ecmwfCtx = {
+				rainProbabilityPct: weatherInfo.rainProbabilityPct,
+				hourlyForecast: weatherInfo.hourlyForecast || [],
+			};
+			const relevance = {
+				alertLevel: state.alertLevel ?? "monitor",
+				nearestThreatKm: state.nearestThreatKm ?? null,
+			} as const;
+			const prox6h = (weatherInfo.hourlyForecast || [])
+				.slice(0, 6)
+				.reduce((s, h) => s + (h.precipitationMm ?? 0), 0);
+			const built = buildAnalystContext(nowcast, {
+				local: localCtx,
+				condition: weatherInfo.condition,
+				ecmwfPct: weatherInfo.rainProbabilityPct,
+				ecmwfProx6hMm: prox6h,
+				alertLevel: state.alertLevel ?? "monitor",
+				hidroWatch: state.hidro?.riscoCheia === "watch",
+				avisosOficiais: (state.alertasOficiais?.avisos ?? []).map(
+					(a) => `${a.fonte}: ${a.titulo}`,
+				),
+				solo: state.soloCidades ?? [],
+			});
 
-			if (
-				cachedBulletin &&
-				bulletinAgeMs < NOWCAST_BULLETIN_TTL_MS &&
-				// Invalida se os threats mudaram (núcleo dissipou ou novo apareceu)
-				// — evita boletim stale citando distância de núcleo que já sumiu.
-				// Compara a lista de distâncias do boletim cached com os threats atuais.
-				cachedBulletin.text.length > 0 &&
-				!/sem núcleos/i.test(cachedBulletin.text) &&
-				// Gate determinístico (21/09/2026): texto em cache que contradiz o
-				// radar (ex.: "nenhum núcleo por perto" com núcleo em watch a
-				// 147 km) não pode ser servido — regenera.
-				passaCoerenciaAmeaca(cachedBulletin.text, nowcast.threats)
-			) {
-				// Se o boletim cita distâncias mas os threats atuais estão vazios, regenera.
-				const hasDistances = /\d{2,4}\s*km/.test(cachedBulletin.text);
-				const threatsEmpty = nowcast.threats.length === 0;
-				if (hasDistances && threatsEmpty) {
-					logger.info("Boletim nowcast stale (núcleo dissipou), regenerando", {
-						ageMin: Math.round(bulletinAgeMs / 60000),
-					});
-				} else {
-					state.nowcastBulletin = cachedBulletin;
-					logger.info("Boletim nowcast reutilizado do cache persistido", {
-						ageMin: Math.round(bulletinAgeMs / 60000),
-						source: cachedBulletin.source,
-					});
-				}
+			const cachedBulletin = await getLatestNowcastBulletin();
+			const aval = avaliarReuso({
+				cached: cachedBulletin,
+				local: localCtx,
+				nowcast,
+				chaveCenario: chaveDoCenario(built.analyst),
+			});
+			if (aval.reusar && cachedBulletin) {
+				state.nowcastBulletin = cachedBulletin;
+				logger.info("Boletim nowcast reutilizado do cache persistido", {
+					ageMin: Math.round((Date.now() - cachedBulletin.generatedAt) / 60000),
+					source: cachedBulletin.source,
+					motivo: aval.motivo,
+				});
+			} else if (cachedBulletin) {
+				logger.info("Boletim nowcast stale no cache, regenerando", {
+					motivo: aval.motivo,
+				});
 			}
 			if (!state.nowcastBulletin) {
 				// GATE DE CRÉDITO (Dave, 21/09/2026): sem sinal REAL medido, não se
@@ -610,41 +638,8 @@ export async function syncWeatherCycle(): Promise<WeatherState> {
 				// Boletim inteligente (10/09/2026): LLM analista (30 min) → heurística.
 				// O LLM reconcilia fontes contraditórias (template não sabe fazer
 				// isso); a heurística preenche intervalos e assume sem rede.
-				const { buildAnalystContext, generateSmartBulletin } = await import(
-					"./llm-bulletin.js"
-				);
-				const ests = state.cemaden?.estacoes ?? [];
-				const maxAcc = (f: (e: (typeof ests)[number]) => number | null) =>
-					maxAcumuladoFresco(ests, f);
-				const localCtx = {
-					acc1hrMax: maxAcc((e) => e.acc1hr),
-					acc6hrMax: maxAcc((e) => e.acc6hr),
-					acc24hrMax: maxAcc((e) => e.acc24hr),
-					condition: weatherInfo.condition,
-				};
-				const ecmwfCtx = {
-					rainProbabilityPct: weatherInfo.rainProbabilityPct,
-					hourlyForecast: weatherInfo.hourlyForecast || [],
-				};
-				const relevance = {
-					alertLevel: state.alertLevel ?? "monitor",
-					nearestThreatKm: state.nearestThreatKm ?? null,
-				} as const;
-				const prox6h = (weatherInfo.hourlyForecast || [])
-					.slice(0, 6)
-					.reduce((s, h) => s + (h.precipitationMm ?? 0), 0);
-				const built = buildAnalystContext(nowcast, {
-					local: localCtx,
-					condition: weatherInfo.condition,
-					ecmwfPct: weatherInfo.rainProbabilityPct,
-					ecmwfProx6hMm: prox6h,
-					alertLevel: state.alertLevel ?? "monitor",
-					hidroWatch: state.hidro?.riscoCheia === "watch",
-					avisosOficiais: (state.alertasOficiais?.avisos ?? []).map(
-						(a) => `${a.fonte}: ${a.titulo}`,
-					),
-					solo: state.soloCidades ?? [],
-				});
+				// O contexto do analista foi montado ACIMA (o gate de reuso usa a
+				// mesma impressão de cenário) — recalcular aqui só criaria divergência.
 				const bulletin = await generateSmartBulletin({
 					nowcast,
 					ecmwf: ecmwfCtx,

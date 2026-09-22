@@ -490,8 +490,7 @@ const REUSE_MIN_MS = 12 * 60_000;
  * material (chuva medida, núcleo, previsão, rio, aviso, solo) ⇒ chave nova.
  * É o que permite reusar texto sem servir número velho.
  */
-function contextoKey(input: SmartBulletinInput): string {
-	const a = input.analyst;
+export function chaveDoCenario(a: AnalystContext | null | undefined): string {
 	const partes = [
 		a?.fraseLocal ?? "sem-chuva",
 		String(a?.alertLevel ?? ""),
@@ -515,6 +514,10 @@ function contextoKey(input: SmartBulletinInput): string {
 		h = ((h << 5) + h + partes.charCodeAt(i)) | 0;
 	}
 	return `${(h >>> 0).toString(36)}-${partes.length.toString(36)}`;
+}
+
+function contextoKey(input: SmartBulletinInput): string {
+	return chaveDoCenario(input.analyst);
 }
 
 /**
