@@ -1768,6 +1768,17 @@ function showStaleNotice(ts){
 function montarRadarDoIndice(idx, substituir) {
   const past = idx && idx.radar && idx.radar.past;
   if (!past || !past.length) return false;
+  // Quem manda é o frame MAIS NOVO, não quem chamou por último (22/09/2026).
+  // O estado do /api/weather pode estar horas atrás — o cron que o atualiza é
+  // agendado no GitHub Actions, que entrega a cada 2-3 h em vez de 10 min — e o
+  // navegador já baixou o índice fresco por conta própria. Sem esta guarda a
+  // resposta da API rebaixava o loop para um frame velho e o rótulo travava
+  // (caso real: site exibindo 22:20 com a fonte publicando 23:10).
+  const maisNovo = (lista) => Number((lista && lista.length ? lista[lista.length - 1] : {}).time) || 0;
+  if (substituir && radarFrames.length && maisNovo(radarFrames.slice(0, radarPastCount)) > maisNovo(past)) {
+    window._radarIgnorouEstadoVelho = maisNovo(past);
+    return false;
+  }
   const host = idx.host || 'https://tilecache.rainviewer.com';
   radarFrames = [...past, ...(idx.radar.nowcast || [])];
   radarPastCount = past.length;
