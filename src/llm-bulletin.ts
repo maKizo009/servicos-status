@@ -46,6 +46,13 @@ export const LLM_TTL_MS = 30 * 60_000;
 // O boletim é gerado no CICLO (cron), não na requisição do usuário — o card serve
 // do cache — então esperar é aceitável. Estourou o timeout? Cai na heurística.
 const LLM_TIMEOUT_MS = 30_000;
+// Teto da CADEIA INTEIRA (todos os modelos somados). Motivo: o cron-job.org capa a
+// requisição em 30 s no plano atual e ciclo acima disso é registrado como FALHA —
+// e falha em série desabilita o job (foi assim que ele amanheceu desligado em
+// 12/08). O ciclo já gasta ~5-10 s em dados+radar, então a cadeia ganha 15 s: o 1º
+// modelo responde em 1-2 s (medido) e o NIM, último da fila, tem ~10 s. Estourou?
+// Heurística — que agora fala a verdade sobre a chuva.
+const LLM_ORCAMENTO_MS = 15_000;
 // Modelos de raciocínio (minimax-m3 etc.) gastam o budget PENSANDO: com 400
 // tokens o finish vinha "length" com content vazio. 2000 dá folga pro
 // raciocínio + ~150 tokens de boletim (custo segue irrelevante: ~US$0,0006).
@@ -225,6 +232,7 @@ async function chamaOpenRouter(
 	model: string,
 	prompt: string,
 	apiKey: string,
+	timeoutMs?: number,
 ): Promise<string | null> {
 	try {
 		const res = await fetch("https://openrouter.ai/api/v1/chat/completions", {
@@ -245,7 +253,7 @@ async function chamaOpenRouter(
 				// 5,8s e o texto segue correto. O gargalo era o raciocínio, não a rede.
 				reasoning_effort: "low",
 			}),
-			signal: AbortSignal.timeout(LLM_TIMEOUT_MS),
+			signal: AbortSignal.timeout(timeoutMs ?? LLM_TIMEOUT_MS),
 		});
 		if (!res.ok) {
 			logger.warn("LLM analista: HTTP", { model, status: res.status });
@@ -271,6 +279,7 @@ async function chamaNim(
 	prompt: string,
 	apiKey: string,
 	endpoint: string,
+	timeoutMs?: number,
 ): Promise<string | null> {
 	try {
 		const res = await fetch(endpoint, {
@@ -289,7 +298,7 @@ async function chamaNim(
 				// 5,8s e o texto segue correto. O gargalo era o raciocínio, não a rede.
 				reasoning_effort: "low",
 			}),
-			signal: AbortSignal.timeout(LLM_TIMEOUT_MS),
+			signal: AbortSignal.timeout(timeoutMs ?? LLM_TIMEOUT_MS),
 		});
 		if (!res.ok) {
 			logger.warn("LLM analista: HTTP", { model, status: res.status });
@@ -314,6 +323,7 @@ async function chamaGemini(
 	model: string,
 	prompt: string,
 	apiKey: string,
+	timeoutMs?: number,
 ): Promise<string | null> {
 	try {
 		const res = await fetch(
@@ -328,7 +338,7 @@ async function chamaGemini(
 						maxOutputTokens: LLM_MAX_TOKENS,
 					},
 				}),
-				signal: AbortSignal.timeout(LLM_TIMEOUT_MS),
+				signal: AbortSignal.timeout(timeoutMs ?? LLM_TIMEOUT_MS),
 			},
 		);
 		if (!res.ok) {
@@ -378,17 +388,38 @@ export async function tryLlmBulletin(
 		return null;
 	}
 	const prompt = buildAnalystPrompt(ctx);
+	// Orçamento da CADEIA inteira (ver LLM_ORCAMENTO_MS): o ciclo precisa caber nos
+	// 30 s do cron-job.org. Antes, cada modelo tinha 30 s de folga — três modelos
+	// lentos davam 90 s de ciclo, falha registrada e risco de desabilitar o job.
+	const prazo = Date.now() + LLM_ORCAMENTO_MS;
+	let tentados = 0;
 	for (const entry of LLM_CHAIN) {
 		const { model, provider } = entry;
 		if (provider === "openrouter" && !cfg.openRouterApiKey) continue;
 		if (provider === "gemini" && !cfg.geminiApiKey) continue;
 		if (provider === "nim" && !cfg.nvidiaNimApiKey) continue;
+		const restante = prazo - Date.now();
+		if (restante < 3_000) {
+			logger.warn(
+				"LLM analista: orçamento da cadeia esgotado, indo para a heurística",
+				{ tentados, orcamentoMs: LLM_ORCAMENTO_MS },
+			);
+			break;
+		}
+		tentados++;
+		const teto = Math.min(LLM_TIMEOUT_MS, restante);
 		const text =
 			provider === "openrouter"
-				? await chamaOpenRouter(model, prompt, cfg.openRouterApiKey)
+				? await chamaOpenRouter(model, prompt, cfg.openRouterApiKey, teto)
 				: provider === "gemini"
-					? await chamaGemini(model, prompt, cfg.geminiApiKey)
-					: await chamaNim(model, prompt, cfg.nvidiaNimApiKey, cfg.nvidiaNimEndpoint);
+					? await chamaGemini(model, prompt, cfg.geminiApiKey, teto)
+					: await chamaNim(
+							model,
+							prompt,
+							cfg.nvidiaNimApiKey,
+							cfg.nvidiaNimEndpoint,
+							teto,
+						);
 		if (!text) continue;
 		if (text.length > 700) {
 			logger.warn("LLM analista: texto prolixo demais, rejeitado", {

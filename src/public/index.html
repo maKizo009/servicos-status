@@ -1810,15 +1810,29 @@ function montarRadarDoIndice(idx, substituir) {
     radarTileLayers.forEach((layer) => { if (!map.hasLayer(layer)) layer.addTo(map); });
   };
   window._carregarLoopRadar = carregarLoop;
-  // 'load' do Leaflet NÃO serve de sinal: quando o mapa ainda não tem tamanho
-  // (ou não há tile na faixa visível) ele dispara na hora e o loop inteiro volta
-  // a entrar junto — medido 22/09/2026: 52 tiles pedidos em 300 ms. O sinal
-  // confiável é 'tileload': um tile do frame atual realmente chegou na tela.
-  radarTileLayers[alvoIdx].once('tileload', () => {
+  // Prioridade de banda: o frame que o cidadão olha termina ANTES do loop entrar.
+  // Medição 22/09/2026 (rede de celular + CPU 4x mais lenta): com o loop disparando
+  // no 1º tile, as 13 camadas (64 requisições) disputavam a banda e a última imagem
+  // só chegava aos 10,3 s. A animação é MANUAL (▶ + slider, sem auto-play), então
+  // não há motivo para baixar o loop antes de o usuário pedir: agora ele espera o
+  // frame atual COMPLETAR (evento 'load' da camada — que só vale com o mapa medido,
+  // a ressalva do comentário antigo), a interação do usuário, ou a rede de segurança.
+  const camadaAtual = radarTileLayers[alvoIdx];
+  let loopDisparado = false;
+  const dispararLoop = () => {
+    if (loopDisparado) return;
+    loopDisparado = true;
+    carregarLoop();
+  };
+  window._dispararLoopRadar = dispararLoop;
+  camadaAtual.once('tileload', () => {
     if (window._mostrarBaseMap) window._mostrarBaseMap();
   });
-  radarTileLayers[alvoIdx].once('tileload', carregarLoop);
-  setTimeout(carregarLoop, 6000); // rede de segurança (rede ruim/erro de tile)
+  camadaAtual.once('load', () => {
+    const s = map.getSize ? map.getSize() : null;
+    if (s && s.x > 0 && s.y > 0) dispararLoop();
+  });
+  setTimeout(dispararLoop, 12000); // rede de segurança (rede ruim/erro de tile)
   const slider = document.getElementById('radarSlider');
   if (slider) {
     const anterior = Number(slider.value);
@@ -2784,6 +2798,10 @@ function toggleRadarPlay() {
   if(btn) btn.textContent = isPlaying ? '⏸' : '▶';
 
   if (isPlaying) {
+    // O loop de frames pode ainda não ter sido baixado (ele espera o frame atual
+    // terminar, para não roubar banda da imagem que o cidadão olha). Pedir play é
+    // pedido explícito: carrega agora.
+    if (window._carregarLoopRadar) window._carregarLoopRadar();
     playInterval = setInterval(() => {
       let nextIndex = currentFrameIndex + 1;
       if (nextIndex >= radarFrames.length) nextIndex = 0;
