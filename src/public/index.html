@@ -1829,6 +1829,11 @@ function montarRadarDoIndice(idx, substituir) {
   window._dispararLoopRadar = dispararLoop;
   camadaAtual.once('tileload', () => {
     if (window._mostrarBaseMap) window._mostrarBaseMap();
+    // O fade dos tiles é um loop de rAF do Leaflet que pode parar antes de
+    // chegar a 1, e o setOpacity feito na montagem cai no vazio (os tiles ainda
+    // não estavam em _tiles). Sem reaplicar, a chuva fica com opacity 0 preso e
+    // o mapa parece vazio (medido 22/09/2026).
+    showRadarFrame(currentFrameIndex);
   });
   // A animação é MANUAL (▶ + slider) e o loop custa ~50 requisições de tile. Em
   // rede folgada ele entra logo depois do frame atual; em rede de celular/saveData
@@ -2297,6 +2302,9 @@ async function fetchWeatherData() {
       });
 
       const camadaAtual = radarTileLayers[idxAlvo];
+      // Mesmo motivo do caminho do bootstrap: reaplica o frame a cada tile que
+      // carrega (inclusive depois de pan/zoom, quando nascem tiles novos).
+      camadaAtual.on('tileload', () => showRadarFrame(currentFrameIndex));
       let loopDisparado = false;
       const dispararLoop = () => {
         if (loopDisparado) return;
