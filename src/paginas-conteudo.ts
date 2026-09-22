@@ -93,7 +93,7 @@ a{color:#5fd4a0}
 header,main,footer{max-width:820px;margin:0 auto;padding:0 20px}
 header{padding-top:28px;display:flex;flex-wrap:wrap;gap:14px;align-items:baseline;justify-content:space-between}
 header .marca{font-weight:700;letter-spacing:-.01em;font-size:1.05rem}
-header nav a{margin-left:14px;font-size:.9rem;color:#9fb8ac;text-decoration:none}
+header nav a{margin-left:14px;font-size:.9rem;color:#9fb8ac;text-decoration:none;white-space:nowrap}
 header nav a:hover{color:#5fd4a0}
 h1{font-size:1.75rem;line-height:1.25;margin:26px 0 6px;letter-spacing:-.02em}
 h2{font-size:1.15rem;margin:34px 0 10px;color:#9fe6c4}
@@ -104,7 +104,9 @@ table{width:100%;border-collapse:collapse;margin:12px 0;font-size:.95rem}
 th,td{text-align:left;padding:8px 10px;border-bottom:1px solid #1d3a2c}
 th{color:#9fb8ac;font-weight:600;font-size:.85rem;text-transform:uppercase;letter-spacing:.03em}
 .alerta{border-left-color:#e8a33d}
+.alerta strong{color:#f0b45c}
 .critico{border-left-color:#e2574c}
+.critico strong{color:#ff8b7f}
 .mudo{color:#9fb8ac;font-size:.9rem}
 footer{margin-top:40px;padding-bottom:40px;color:#9fb8ac;font-size:.85rem;border-top:1px solid #1d3a2c;padding-top:18px}
 footer a{color:#7ee2b3}
@@ -312,6 +314,27 @@ function extrair(state: WeatherState | null): Dados {
 	};
 }
 
+/**
+ * O payload traz `titulo` e `descricao` que muitas vezes são a MESMA frase (o
+ * alerta laranja de hoje vinha idêntico nos dois campos). Imprimir os dois faz
+ * a página parecer template mal preenchido — então imprime uma vez só.
+ */
+function enxugarAlerta(
+	titulo: string,
+	descricao: string,
+	motivos: string[],
+): { texto: string; mostrarMotivos: boolean } {
+	const t = titulo.trim();
+	const d = descricao.trim();
+	const texto = !d ? t : d.startsWith(t) ? d : t.startsWith(d) ? t : t + " — " + d;
+	// A `descricao` do payload às vezes já vem com os motivos concatenados
+	// ("... Motivos: núcleo de chuva forte ..."). Nesse caso a lista repetiria o
+	// que o texto acabou de dizer — foi o que a revisão visual pegou.
+	const jaDito =
+		motivos.length > 0 && motivos.every((m) => texto.indexOf(m.trim()) >= 0);
+	return { texto, mostrarMotivos: motivos.length > 0 && !jaDito };
+}
+
 function horaDe(ms: number): string {
 	if (!Number.isFinite(ms) || ms <= 0) return "agora";
 	return new Date(ms).toLocaleString("pt-BR", {
@@ -470,15 +493,19 @@ export function renderChuvaHoje(state: WeatherState | null): string {
 					)
 					.join("");
 
+	const alertaEnxuto = enxugarAlerta(
+		d.alerta.titulo || "Atenção",
+		d.alerta.descricao,
+		d.alerta.motivos,
+	);
 	const alertaBloco =
 		d.alerta.nivel && d.alerta.nivel !== "verde"
 			? '<div class="resposta ' +
 				(d.alerta.nivel === "vermelho" ? "critico" : "alerta") +
 				'"><strong>' +
-				esc(d.alerta.titulo || "Atenção") +
-				"</strong><br>" +
-				esc(d.alerta.descricao || "") +
-				(d.alerta.motivos.length
+				esc(alertaEnxuto.texto) +
+				"</strong>" +
+				(alertaEnxuto.mostrarMotivos
 					? "<ul>" +
 						d.alerta.motivos.map((m) => "<li>" + esc(m) + "</li>").join("") +
 						"</ul>"
