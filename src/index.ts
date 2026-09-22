@@ -1,3 +1,4 @@
+import { waitUntil } from "@vercel/functions";
 import {
 	buildAlertaUnificado,
 	fetchAlertasOficiais,
@@ -640,7 +641,7 @@ export async function syncWeatherCycle(): Promise<WeatherState> {
 				// isso); a heurística preenche intervalos e assume sem rede.
 				// O contexto do analista foi montado ACIMA (o gate de reuso usa a
 				// mesma impressão de cenário) — recalcular aqui só criaria divergência.
-				const bulletin = await generateSmartBulletin({
+				const paramsBoletim = {
 					nowcast,
 					ecmwf: ecmwfCtx,
 					relevance: {
@@ -651,17 +652,44 @@ export async function syncWeatherCycle(): Promise<WeatherState> {
 					fraseLocal: built.fraseLocal,
 					analyst: built.analyst,
 					verdict: built.verdict,
-				});
-				state.nowcastBulletin = bulletin;
+				};
+				if (!cachedBulletin) {
+					// Sem NENHUM texto persistido (primeira execução, cache zerado):
+					// aqui vale esperar — senão o site fica sem boletim nenhum.
+					const bulletin = await generateSmartBulletin(paramsBoletim);
+					state.nowcastBulletin = bulletin;
+					logger.info("Boletim nowcast pronto (sem cache, aguardado)", {
+						source: bulletin.source,
+					});
+				} else {
+					// FORA DO CAMINHO CRÍTICO (22/09/2026): a cadeia de LLM pode gastar
+					// os 15 s do orçamento e o ciclo chegava a 27-30 s — acima dos 30 s
+					// que o cron-job.org capa (5 falhas em 50 execuções, cada uma virando
+					// e-mail de falha e risco de auto-desabilitar o job). O texto é
+					// persistido no Turso, então a geração pode terminar DEPOIS da
+					// resposta: o ciclo devolve rápido servindo o cache anterior, e o
+					// próximo ciclo já encontra o texto novo.
+					state.nowcastBulletin = cachedBulletin;
+					waitUntil(
+						generateSmartBulletin(paramsBoletim)
+							.then((b) => {
+								logger.info("Boletim nowcast pronto em background", {
+									source: b.source,
+									idadeMin: Math.round((Date.now() - b.generatedAt) / 60000),
+								});
+							})
+							.catch((err) => {
+								logger.warn("Boletim nowcast falhou em background", {
+									error: err instanceof Error ? err.message : String(err),
+								});
+							}),
+					);
+				}
 				// NÃO regravar aqui: generateSmartBulletin já persistiu o texto novo —
 				// e, quando reusa o cache, devolve o registro ANTIGO. Regravar um texto
 				// reusado renovava o generated_at, então o cache de 30 min nunca
 				// expirava e o boletim ficava congelado com horário "novo" a cada
 				// ciclo. Foi o incidente do "Boletim IA" (22/09/2026).
-				logger.info("Boletim nowcast pronto", {
-					source: bulletin.source,
-					idadeMin: Math.round((Date.now() - bulletin.generatedAt) / 60000),
-				});
 			}
 
 			// O boletim principal do dashboard/llms.txt é o texto do VLM vision.

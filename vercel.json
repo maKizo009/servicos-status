@@ -1,6 +1,9 @@
 {
   "version": 2,
   "outputDirectory": "src/public",
+  "functions": {
+    "api/cron.ts": { "maxDuration": 60 }
+  },
   "rewrites": [
     {
       "source": "/chuva-hoje",
