@@ -1828,11 +1828,24 @@ function montarRadarDoIndice(idx, substituir) {
   camadaAtual.once('tileload', () => {
     if (window._mostrarBaseMap) window._mostrarBaseMap();
   });
-  camadaAtual.once('load', () => {
-    const s = map.getSize ? map.getSize() : null;
-    if (s && s.x > 0 && s.y > 0) dispararLoop();
-  });
-  setTimeout(dispararLoop, 12000); // rede de segurança (rede ruim/erro de tile)
+  // A animação é MANUAL (▶ + slider) e o loop custa ~50 requisições de tile. Em
+  // rede folgada ele entra logo depois do frame atual; em rede de celular/saveData
+  // ele espera o usuário PEDIR (play ou slider), que é quando o dado vira imagem.
+  // Medição 22/09/2026: mesmo com o frame atual na frente, o loop inteiro baixado
+  // em 3G custa banda que a maioria das visitas nunca usa.
+  const conn =
+    navigator.connection || navigator.mozConnection || navigator.webkitConnection || {};
+  const redeFolgada =
+    !conn.saveData && (!conn.effectiveType || conn.effectiveType === '4g');
+  if (redeFolgada) {
+    camadaAtual.once('load', () => {
+      const s = map.getSize ? map.getSize() : null;
+      if (s && s.x > 0 && s.y > 0) dispararLoop();
+    });
+    setTimeout(dispararLoop, 12000); // rede de segurança (rede ruim/erro de tile)
+  } else {
+    window._radarLoopAdiado = true; // diagnóstico: loop aguardando interação
+  }
   const slider = document.getElementById('radarSlider');
   if (slider) {
     const anterior = Number(slider.value);
