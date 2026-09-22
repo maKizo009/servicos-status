@@ -160,7 +160,6 @@
   --md-elevation-1:0 1px 3px 0 rgba(0,0,0,.3),0 1px 2px -1px rgba(0,0,0,.3);
   --md-elevation-2:0 4px 6px -1px rgba(0,0,0,.35),0 2px 4px -2px rgba(0,0,0,.25);
   --md-elevation-3:0 10px 15px -3px rgba(0,0,0,.4),0 4px 6px -4px rgba(0,0,0,.3);
-  --copel:#4ADE80;--sanepar:#38BDF8;--claro:#F87171;--vivo:#C084FC;--tim:#60A5FA;
   --s900:#F8FAFC;--s800:#F1F5F9;--s700:#E2E8F0;--s600:#CBD5E1;--s500:#94A3B8;--s400:#64748B;--s300:#475569;--s200:#334155;--s100:#1E293B;--s50:#0F172A;
   --g6:#4ADE80;--g5:#16A34A;--g1:rgba(34,197,94,.18);--g0:rgba(6,78,59,.3);
   --a5:#FBBF24;--a4:#F59E0B;--a1:rgba(245,158,11,.18);--a0:rgba(120,53,15,.3);
@@ -403,16 +402,6 @@ body{font-family:var(--font);background:var(--md-sys-color-surface);color:var(--
 .header :focus-visible,.radar-play-btn:focus-visible,.layer-btn:focus-visible,.theme-toggle-btn:focus-visible,.push-btn:focus-visible{outline-color:#A7F3D0}
 
 /* User Connection Telemetry Pill */
-.user-telemetry-pill{
-  margin-top:10px;background:var(--surface);border:1px solid var(--md-sys-color-outline-variant);border-radius:var(--md-shape-corner-medium);
-  padding:8px 14px;display:flex;align-items:center;justify-content:space-between;gap:10px;
-  font-size:13px;font-weight:400;color:var(--text2);box-shadow:var(--md-elevation-1)
-}
-.user-telemetry-pill strong{color:var(--text);font-weight:600}
-.user-connection-badge{
-  font-size:12px;font-weight:500;padding:3px 10px;border-radius:var(--md-shape-corner-full);background:var(--md-sys-color-surface-container-high);color:var(--md-sys-color-on-surface);
-  display:inline-flex;align-items:center;gap:4px
-}
 
 /* Banner */
 .banner{
@@ -614,9 +603,6 @@ body{font-family:var(--font);background:var(--md-sys-color-surface);color:var(--
   width:40px;height:40px;border-radius:var(--md-shape-corner-medium);display:flex;align-items:center;justify-content:center;flex-shrink:0
 }
 .card-icon svg{width:24px;height:24px}
-.card-icon.claro{background:rgba(237,28,36,.08)}
-.card-icon.vivo{background:rgba(102,0,153,.08)}
-.card-icon.tim{background:rgba(0,61,165,.08)}
 .card-icon.copel{background:rgba(0,146,63,.08)}
 .card-icon.sanepar{background:rgba(0,63,135,.08)}
 
@@ -628,7 +614,6 @@ body{font-family:var(--font);background:var(--md-sys-color-surface);color:var(--
   font-size:11px;font-weight:500;text-transform:uppercase;letter-spacing:.3px;
   padding:2px 8px;border-radius:6px;display:inline-block;flex-shrink:0
 }
-.card-cb.telecom{background:rgba(237,28,36,.08);color:var(--claro)}
 .card-cb.utility{background:rgba(0,146,63,.08);color:var(--copel)}
 
 .card-status-badge{
@@ -726,37 +711,16 @@ body{font-family:var(--font);background:var(--md-sys-color-surface);color:var(--
 }
 
 /* Telecom Specific Layout */
-.telecom-grid{display:flex;flex-direction:column;gap:10px}
 .status-tag{font-weight:600;padding:2px 8px;border-radius:4px;font-size:11px}
 .status-tag.ok{background:var(--g1);color:var(--g6)}
 .status-tag.warn-tag{background:var(--a1);color:var(--a5)}
 .status-tag.fail{background:var(--r1);color:var(--r6)}
 
-.bgp-box{
-  background:var(--md-sys-color-surface-container-low);padding:10px 14px;border-radius:var(--md-shape-corner-small);border:1px solid var(--md-sys-color-outline-variant);
-  font-size:12px;color:var(--text2);display:flex;flex-direction:column;gap:4px
-}
 
-.telecom-section{display:flex;flex-direction:column;gap:8px}
-.telecom-section-title{font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.4px;color:var(--text2);margin-bottom:2px}
 
-.telecom-local-box{
-  background:var(--md-sys-color-surface-container-low);border:1px solid var(--md-sys-color-outline-variant);border-radius:var(--md-shape-corner-medium);padding:14px;
-  display:flex;flex-direction:column;gap:10px;margin-top:12px;transition:all .2s
-}
-.telecom-local-box.critical{background:var(--r0);border-color:var(--r6)}
-.telecom-local-box.warn{background:var(--a0);border-color:var(--a5)}
 
-.telecom-local-head{display:flex;align-items:center;justify-content:space-between;gap:8px}
-.telecom-local-title{font-size:13px;font-weight:600;color:var(--text);display:flex;align-items:center;gap:6px}
 
-.telecom-local-body{display:flex;align-items:center;justify-content:space-between;gap:12px;background:var(--md-sys-color-surface-container);padding:10px 12px;border-radius:var(--md-shape-corner-small);border:1px solid var(--md-sys-color-outline-variant)}
-.telecom-local-metric{display:flex;flex-direction:column}
-.telecom-local-val{font-size:18px;font-weight:700;color:var(--text);line-height:1.1}
-.telecom-local-sub{font-size:11px;color:var(--text3);font-weight:400}
-.telecom-local-info{font-size:12px;color:var(--text2);text-align:right;line-height:1.4}
 
-.telecom-local-foot{font-size:11px;color:var(--text3);font-style:italic;text-align:right;margin-top:-2px}
 
 .card-foot{
   font-size:12px;color:var(--text3);padding:12px 20px;border-top:1px solid var(--border);
@@ -812,7 +776,6 @@ body{font-family:var(--font);background:var(--md-sys-color-surface);color:var(--
 .badge-source{font-size:11px;font-weight:600;padding:3px 8px;border-radius:6px;text-transform:uppercase;display:inline-block}
 .badge-source.copel{background:rgba(0,146,63,.1);color:var(--copel)}
 .badge-source.sanepar{background:rgba(0,63,135,.1);color:var(--sanepar)}
-.badge-source.telecom{background:rgba(237,28,36,.1);color:var(--claro)}
 
 /* Footer */
 .footer{
@@ -851,7 +814,7 @@ body{font-family:var(--font);background:var(--md-sys-color-surface);color:var(--
     </div>
     <div>
       <h1 class="header-title">Ipiranga <span>Monitor</span></h1>
-      <div class="header-subtitle">Status em tempo real das utilidades e telecomunicações · Ipiranga/PR</div>
+      <div class="header-subtitle">Status em tempo real dos serviços essenciais · Ipiranga/PR</div>
     </div>
   </div>
   <button class="push-btn" id="btnPush" type="button" aria-label="Ativar alertas no celular" title="Receber alertas de tempestade, energia e água no celular" style="display:none">
@@ -1335,7 +1298,7 @@ function updateBanner(services){
   }else{
     bn.classList.add('ok');
     t.textContent='Tudo Operando Estável';
-    s.textContent='Todos os serviços monitorados (telecomunicações e utilidades) estão funcionando normalmente em Ipiranga.';
+    s.textContent='Todos os serviços monitorados (energia e água) estão funcionando normalmente em Ipiranga.';
     badge.textContent=`${okCount} OK`;
     dot.className='ov-dot ok';
     iconEl.innerHTML=ICON.ok;
@@ -1363,7 +1326,7 @@ function renderCards(services){
   let html='';
   for(const svc of sortedServices){
     const name=svc.name;
-    const br=BRANDS[name]||{label:name,cls:'claro',cat:'telecom',desc:'Serviço'};
+    const br=BRANDS[name]||{label:name,cls:'utility',cat:'utility',desc:'Serviço'};
     const st=svc.status||'ok';
     const ico=LOGO[br.cls];
     const stLabel=st==='ok'?'Normal':st==='warn'?'Atenção':'CRÍTICO';
@@ -1562,84 +1525,8 @@ function renderCards(services){
       contentHtml=summaryBoxHtml + kpiGridHtml + progressBarHtml + faixasHtml + outagesListHtml;
     }
 
-    // ================= OPERADORAS (TELECOM) =================
-    else if(br.cat==='telecom'){
-      const conn=svc.data?.connectivityResults || [];
-      const bgp=svc.data?.bgp || null;
-      const crowdsourced=svc.data?.crowdsourcedState || null;
-
-      // ===== SEÇÃO 1 (TOP): Rede Móvel Local em Ipiranga =====
-      let localSection='';
-      if(crowdsourced && crowdsourced.sampleCount>0){
-        const csSt = crowdsourced.status || 'ok';
-        const csStLabel = csSt==='critical' ? '🔴 CRÍTICO' : csSt==='warn' ? '⚠️ ATENÇÃO' : '🟢 NORMAL';
-        const csStCls = csSt==='critical' ? 'fail' : csSt==='warn' ? 'warn-tag' : 'ok';
-        const updatedRel = relativeTime(crowdsourced.lastUpdated);
-
-        localSection=`<div class="telecom-local-box ${csSt}">
-          <div class="telecom-local-head">
-            <div class="telecom-local-title">📱 Rede Móvel Local (Ipiranga/PR)</div>
-            <span class="status-tag ${csStCls}">${csStLabel}</span>
-          </div>
-          <div class="telecom-local-body">
-            <div class="telecom-local-metric">
-              <span class="telecom-local-val">${crowdsourced.avgRttMs} ms</span>
-              <span class="telecom-local-sub">latência média local</span>
-            </div>
-            <div class="telecom-local-info">
-              <div><strong>Amostras:</strong> ${crowdsourced.sampleCount} morador(es)</div>
-              <div><strong>Atualizado:</strong> ${updatedRel}</div>
-            </div>
-          </div>
-          <div class="telecom-local-foot">Fonte: Relatos de moradores (crowdsourcing)</div>
-        </div>`;
-      }else{
-        localSection=`<div class="telecom-local-box ok">
-          <div class="telecom-local-head">
-            <div class="telecom-local-title">📱 Rede Móvel Local (Ipiranga/PR)</div>
-            <span class="status-tag ok">🟢 NORMAL</span>
-          </div>
-          <div class="telecom-local-body">
-            <div class="telecom-local-metric">
-              <span class="telecom-local-val" style="font-size:15px">-- ms</span>
-              <span class="telecom-local-sub">sem relatos de falhas</span>
-            </div>
-            <div class="telecom-local-info">
-              <div><strong>Amostras:</strong> 0 relatos diretos no ciclo</div>
-              <div><strong>Status:</strong> Sinal Estável</div>
-            </div>
-          </div>
-          <div class="telecom-local-foot">Fonte: Relatos de moradores (crowdsourcing)</div>
-        </div>`;
-      }
-
-      // ===== SEÇÃO 2 (BOTTOM): Infraestrutura Nacional =====
-      let connSummary='';
-      if(conn.length>0){
-        const okConn=conn.filter(x=>x.success && x.latencyMs<=300).length;
-        connSummary=`<div style="font-size:13px;font-weight:600;color:var(--text2)">
-          Backbone Global: <strong style="color:${okConn===conn.length?'var(--g6)':'var(--r6)'}">${okConn}/${conn.length} testes OK</strong>
-        </div>`;
-      }
-
-      let bgpSummary='';
-      if(bgp){
-        bgpSummary=`<div class="bgp-box">
-          <div><strong>Roteamento BGP Nacional (AS${bgp.asn}):</strong></div>
-          <div>IPv4: <strong>${bgp.prefixCountV4||0} prefixos</strong> | IPv6: <strong>${bgp.prefixCountV6||0} prefixos</strong></div>
-        </div>`;
-      }
-
-      const backboneSection=`<div class="telecom-section" style="margin-top:10px">
-        <div class="telecom-section-title">🌐 Infraestrutura Nacional (Backbone & Roteamento BGP)</div>
-        <div class="telecom-grid">
-          ${connSummary}
-          ${bgpSummary}
-        </div>
-      </div>`;
-
-      contentHtml = localSection + backboneSection;
-    }
+    // O ramo de OPERADORAS (telecom) do renderizador saiu em 22/09/2026:
+    // nao ha mais servico com category 'telecom' (so COPEL e Sanepar).
 
     const officialUrl = OFFICIAL_URLS[name] || null;
     const sourceBtnHtml = officialUrl ? `<a href="${esc(officialUrl)}" target="_blank" rel="noopener noreferrer" class="source-link-btn" title="Verificar no site oficial">Fonte Oficial ↗</a>` : '';
@@ -1653,7 +1540,7 @@ function renderCards(services){
             <div class="card-name-group">
               <div class="card-name">
                 ${esc(br.label)}
-                <span class="card-cb ${br.cat}">${br.cat==='telecom'?'Telefonia':'Utilidade'}</span>
+                <span class="card-cb ${br.cat}">Utilidade</span>
               </div>
               <div class="card-sub">${esc(br.desc)}</div>
             </div>
@@ -1942,7 +1829,7 @@ async function fetchStats(){
 
     let rowsHtml = '';
     for(const item of logs){
-      const srcBadge = item.source === 'copel' ? 'copel' : item.source === 'sanepar' ? 'sanepar' : 'telecom';
+      const srcBadge = item.source === 'copel' ? 'copel' : item.source === 'sanepar' ? 'sanepar' : '';
       const srcName = item.source.toUpperCase();
       const dtStr = new Date(item.timestamp).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' });
 
