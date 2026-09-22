@@ -339,6 +339,32 @@ export async function buildUnifiedReport(
 	const copelStatusConfirmed =
 		interrupcoes.length > 0 ? "critical" : "ok";
 
+	// Idade da interrupção mais antiga. Sem isso o card mostra só a contagem de
+	// UCs — que fica IGUAL por horas numa queda longa e parece scraper travado
+	// (foi a suspeita do Dave em 22/09/2026: 180 UCs desde 21/09 17:37, uma
+	// interrupção real da Copel, não falha nossa). A API da Copel devolve hora
+	// LOCAL de Brasília e o runtime da Vercel roda em UTC: sem o offset
+	// explícito a idade sairia 3 h errada.
+	const idadeInterrupcaoMaisAntiga = (lista: CopelOutage[]): string => {
+		const tempos = lista
+			.map((o) => {
+				const m = String(o.dataInicio ?? "").match(
+					/^(\d{4})-(\d{2})-(\d{2})[ T](\d{2}):(\d{2}):(\d{2})$/,
+				);
+				if (!m) return null;
+				return Date.parse(
+					`${m[1]}-${m[2]}-${m[3]}T${m[4]}:${m[5]}:${m[6]}-03:00`,
+				);
+			})
+			.filter((t): t is number => t !== null && Number.isFinite(t));
+		if (tempos.length === 0) return "";
+		const horas = (Date.now() - Math.min(...tempos)) / 3_600_000;
+		if (horas < 1) return "a mais antiga há menos de 1 hora";
+		const h = Math.floor(horas);
+		return `a mais antiga há ${h} ${h === 1 ? "hora" : "horas"}`;
+	};
+	const copelIdadeAntiga = idadeInterrupcaoMaisAntiga(interrupcoes);
+
 	// Dedupe informativo (Achado 6): mesma ocorrência listada 2x (ex:
 	// múltiplos grupos de consumidores). Mantido como estatística — a SOMA
 	// oficial não usa dedupe.
@@ -388,6 +414,7 @@ export async function buildUnifiedReport(
 					: "Sem ocorrências"
 				: copelTotalConsumers > 0
 					? `${copelTotalConsumers} UCs sem energia em ${interrupcaoIds.size} ocorrência(s)` +
+						(copelIdadeAntiga ? ` — ${copelIdadeAntiga}` : "") +
 						(emergenciasNaoConfirmadas.length > 0
 							? ` (+${emergenciasNaoConfirmadas.length} não confirmada(s))`
 							: "")
