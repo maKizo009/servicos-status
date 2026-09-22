@@ -408,6 +408,18 @@ function fraseRisco(r: { cheia: string; enxurrada: string }): string {
 
 /* ────────────────────────── /chuva-hoje ────────────────────────── */
 
+/**
+ * A `condition` vem do modelo meteorológico e pode dizer "Garoa Moderada"
+ * enquanto os pluviômetros marcam 0,0 mm. Dizer "não chove" nesse caso contradiz
+ * o próprio card ao lado (a revisão visual pegou). A resposta fala do que foi
+ * MEDIDO e, se a condição indicar chuva, diz isso separadamente.
+ */
+function condicaoComChuva(condicao: string): boolean {
+	const c = condicao.toLowerCase();
+	const pistas = ["chuva", "garoa", "chuvis", "pancada", "trovoad", "tempestade", "precipita"];
+	return pistas.some((p) => c.indexOf(p) >= 0);
+}
+
 function respostaChuva(d: Dados): string {
 	const choveAgora = d.chuva.acc1 >= 0.2;
 	const proximo = d.nucleos.find((n) => n.km <= 150);
@@ -436,7 +448,7 @@ function respostaChuva(d: Dados): string {
 	}
 	if (proximo) {
 		return (
-			"<strong>Ainda não, mas vem chuva.</strong> Neste momento não chove em Ipiranga, mas há um núcleo de chuva " +
+			"<strong>Ainda não, mas vem chuva.</strong> Os pluviômetros de Ipiranga não registraram chuva na última hora (0,0 mm), mas há um núcleo de chuva " +
 			esc(proximo.intensidade) +
 			" no radar a ~" +
 			inteiro(proximo.km) +
@@ -450,8 +462,14 @@ function respostaChuva(d: Dados): string {
 		);
 	}
 	const melhorHora = d.horas.slice().sort((a, b) => b.prob - a.prob)[0];
+	const condicaoDizChuva = condicaoComChuva(d.agora.condicao);
 	return (
-		"<strong>Não.</strong> Não chove em Ipiranga agora e o radar não mostra chuva a menos de 150 km. " +
+		"<strong>Sem chuva registrada.</strong> Os pluviômetros de Ipiranga marcaram 0,0 mm na última hora e o radar não mostra chuva a menos de 150 km. " +
+		(condicaoDizChuva
+			? "A condição informada para agora é \"" +
+				esc(d.agora.condicao) +
+				"\" — pelo modelo, não pela medição em Ipiranga. "
+			: "") +
 		(melhorHora && melhorHora.prob > 0
 			? "Nas próximas horas a maior chance de chuva é às " +
 				esc(melhorHora.time) +
@@ -528,7 +546,13 @@ export function renderChuvaHoje(state: WeatherState | null): string {
 				esc(alertaEnxuto.cabeca) +
 				"</strong>" +
 				(alertaEnxuto.cauda
-					? '<span class="resto">' + esc(alertaEnxuto.cauda) + "</span>"
+					? '<span class="resto">' +
+						esc(
+							d.alerta.motivos.length === 1
+								? alertaEnxuto.cauda.replace("Motivos:", "Motivo:")
+								: alertaEnxuto.cauda,
+						) +
+						"</span>"
 					: "") +
 				(alertaEnxuto.mostrarMotivos
 					? "<ul>" +
@@ -541,7 +565,7 @@ export function renderChuvaHoje(state: WeatherState | null): string {
 	const perguntaResposta = respostaChuva(d).replace(/<[^>]+>/g, "");
 	const cabecalho =
 		"<h1>Vai chover em Ipiranga hoje?</h1>" +
-		'<p class="mudo">Ipiranga (PR) · leitura ' +
+		'<p class="mudo">Ipiranga (PR) · dados de ' +
 		esc(atualizado) +
 		"</p>" +
 		'<div class="resposta">' +
@@ -630,7 +654,10 @@ export function renderChuvaHoje(state: WeatherState | null): string {
 							? "Sim: " +
 								d.chuva.acc1.toFixed(1) +
 								" mm na última hora segundo os pluviômetros do município."
-							: "Não: os pluviômetros do município marcaram 0 mm na última hora.",
+							: "Os pluviômetros do município marcaram 0,0 mm na última hora, ou seja, sem chuva registrada em Ipiranga" +
+								(condicaoComChuva(d.agora.condicao)
+									? ", embora a condição informada pelo modelo seja de " + d.agora.condicao.toLowerCase() + "."
+									: "."),
 				},
 			],
 		),
@@ -699,7 +726,7 @@ export function renderRioBitumirim(state: WeatherState | null): string {
 
 	const cabecalho =
 		"<h1>Como está o rio Bitumirim em Ipiranga?</h1>" +
-		'<p class="mudo">Ipiranga (PR) · leitura ' +
+		'<p class="mudo">Ipiranga (PR) · dados de ' +
 		esc(atualizado) +
 		"</p>" +
 		'<div class="resposta">' +
