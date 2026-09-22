@@ -10,32 +10,18 @@ import {
 	maxAcumuladoFresco,
 	temEstacaoFresca,
 } from "./cemaden.js";
-import {
-	assessLevel,
-	buildUnifiedReport,
-	DEBOUNCE_THRESHOLD,
-	deriveProbeStatus,
-	runAllChecks,
-} from "./checker.js";
+import { buildUnifiedReport, runAllChecks } from "./checker.js";
 import { loadConfig } from "./config.js";
 import {
 	closeDb,
 	getDailyStatsSummary,
-	getLatestBgpResults,
-	getLatestConnectivityResults,
 	getLatestNowcastBulletin,
 	getLatestWeatherBulletin,
-	getTelemetryStats,
 	getWeatherStateCache,
 	initDb,
-	saveBgpResult,
-	saveConnectivityResult,
 	saveEventLog,
-	saveSignalReport,
-	saveTelemetryLog,
 	saveWeatherStateCache,
 } from "./db.js";
-import { detectIsp } from "./isp-detector.js";
 import {
 	renderJsonLd,
 	renderLlmsInstructions,
@@ -62,15 +48,9 @@ import { EventTracker } from "./state.js";
 import {
 	sendCopelAlert,
 	sendSaneparAlert,
-	sendTelegramAlert,
 	sendUnifiedReport,
 } from "./telegram.js";
 import type {
-	AlertLevel,
-	BgpResult,
-	CheckResult,
-	ConnectivityResult,
-	OperatorName,
 	RainAlertLevel,
 	UnifiedReport,
 	WeatherState,
@@ -102,36 +82,15 @@ export async function ensureInitialized(): Promise<void> {
 	}
 }
 
-const checkResults: Map<OperatorName, CheckResult> = new Map();
-let lastResults: ConnectivityResult[] = [];
-
-let currentLevel: AlertLevel = "ok";
 let lastUnifiedReportTime = 0;
 let lastUnifiedReport: UnifiedReport | null = null;
 
-/**
- * Debounce de falhas (Achado 4): contagem de ciclos consecutivos em que cada
- * host não respondeu (failure ou timeout). Só promove a "critical" após
- * DEBOUNCE_THRESHOLD ciclos. Resetado quando o host volta a responder.
- */
-const failureCounts = new Map<string, number>();
-
-function updateFailureCounts(
-	results: Array<{
-		host: string;
-		success: boolean;
-		error: string;
-		probeStatus?: "ok" | "timeout" | "failure";
-	}>,
-): void {
-	for (const r of results) {
-		if (deriveProbeStatus(r) === "ok") {
-			failureCounts.set(r.host, 0);
-		} else {
-			failureCounts.set(r.host, (failureCounts.get(r.host) ?? 0) + 1);
-		}
-	}
-}
+// Aqui viviam checkResults, lastResults, currentLevel, failureCounts e
+// updateFailureCounts — o debounce de falhas (Achado 4) e o nível agregado das
+// OPERADORAS. Removidos em 22/09/2026 junto com os probes de conectividade/BGP:
+// sem eles o debounce não tem o que contar e `currentLevel` nunca mais mudaria
+// (seria um "ok" mentiroso no log e no /health). O nível agora vem de
+// lastUnifiedReport.overallStatus.
 
 async function runChecks(): Promise<void> {
 	await ensureInitialized();
@@ -139,77 +98,10 @@ async function runChecks(): Promise<void> {
 
 	const data = await runAllChecks(config, tracker);
 
-	// Atualiza debounce ANTES de classificar (Achado 4): falha isolada = warn,
-	// N consecutivas = critical.
-	for (const op of data.operators) {
-		updateFailureCounts(op.connectivityResults);
-	}
-
-	// Save operator results to DB and update in-memory state
-	const allConnResults: ConnectivityResult[] = [];
-	const allBgpResults: BgpResult[] = [];
-
-	for (const op of data.operators) {
-		for (const r of op.connectivityResults) await saveConnectivityResult(r);
-		await saveBgpResult(op.bgpResult);
-
-		allConnResults.push(...op.connectivityResults);
-		allBgpResults.push(op.bgpResult);
-
-		const opLevel = assessLevel(
-			op.connectivityResults,
-			op.bgpResult,
-			config.latencyWarnMs,
-			config.latencyCritMs,
-			failureCounts,
-			DEBOUNCE_THRESHOLD,
-		);
-		checkResults.set(op.name, {
-			operator: op.name,
-			connectivityResults: op.connectivityResults,
-			bgpResult: op.bgpResult,
-			status: opLevel,
-			timestamp: data.timestamp,
-		});
-	}
-
-	lastResults = allConnResults;
-
-	// Operator aggregated alert (only on level change — existing behavior)
-	const newLevel = assessLevel(
-		allConnResults,
-		allBgpResults,
-		config.latencyWarnMs,
-		config.latencyCritMs,
-		failureCounts,
-		DEBOUNCE_THRESHOLD,
-	);
-	if (newLevel !== currentLevel) {
-		currentLevel = newLevel;
-		const failedOps = [...checkResults.entries()]
-			.filter(([, r]) => r.status !== "ok")
-			.map(([name]) => name);
-		const summary =
-			failedOps.length > 0
-				? `⚠️ Problemas em: ${failedOps.join(", ")}`
-				: "✅ Todas as operadoras OK";
-
-		await sendTelegramAlert({
-			botToken: config.telegramBotToken,
-			chatId: config.telegramChatId,
-			level: newLevel,
-			operatorResults: [...checkResults.entries()].map(([name, r]) => ({
-				operator: name,
-				status:
-					r.status === "ok"
-						? "✅ Normal"
-						: r.status === "warn"
-							? "⚠️ Atenção"
-							: "❌ Crítico",
-			})),
-			summary,
-		});
-	}
+	// Aqui rodava o ciclo das OPERADORAS: debounce de falhas, gravação de
+	// conectividade/BGP no banco, nível agregado (assessLevel) e o alerta no
+	// Telegram ("Todas as operadoras OK"). Removido em 22/09/2026 — os testes de
+	// operadora/ISP saíram do produto e não geram mais dado.
 
 	// Per-event alerts for COPEL
 	for (const outage of data.newCopelOutages) {
@@ -246,10 +138,6 @@ async function runChecks(): Promise<void> {
 	// Build and optionally send unified report
 	lastUnifiedReport = await buildUnifiedReport(
 		data,
-		config.latencyWarnMs,
-		config.latencyCritMs,
-		failureCounts,
-		DEBOUNCE_THRESHOLD,
 		config.copelTotalConsumersCity,
 	);
 	const now = Date.now();
@@ -270,7 +158,7 @@ async function runChecks(): Promise<void> {
 		newCopel: data.newCopelOutages.length,
 		activeSanepar: data.saneparInterruptions.length,
 		newSanepar: data.newSaneparInterruptions.length,
-		alertLevel: currentLevel,
+		alertLevel: lastUnifiedReport?.overallStatus ?? "ok",
 	});
 }
 
@@ -292,61 +180,20 @@ function handleHealth(): Response {
 
 	return Response.json({
 		status: healthy ? "healthy" : "degraded",
-		level: lastUnifiedReport?.overallStatus ?? currentLevel,
+		level: lastUnifiedReport?.overallStatus ?? "ok",
 		uptime: Math.floor((Date.now() - startTime) / 1000),
 		serviceCount: services.length,
 		services: services.map((s) => ({ name: s.name, status: s.status })),
 		levels: levelCounts,
-		lastCheck:
-			lastUnifiedReport?.generatedAt ??
-			(lastResults.length > 0 ? lastResults[0].timestamp : null),
+		lastCheck: lastUnifiedReport?.generatedAt ?? null,
 		timestamp: Date.now(),
 	});
 }
 
-function handleStatus(): Response {
-	const results = [...checkResults.entries()].map(([name, r]) => ({
-		operator: name,
-		status: r.status,
-		connectivity: r.connectivityResults.map((c) => ({
-			label: c.label,
-			success: c.success,
-			latencyMs: c.latencyMs,
-			error: c.error,
-			probeStatus: c.probeStatus ?? deriveProbeStatus(c),
-		})),
-		bgp: r.bgpResult
-			? {
-					asn: r.bgpResult.asn,
-					prefixCountV4: r.bgpResult.prefixCountV4,
-					prefixCountV6: r.bgpResult.prefixCountV6,
-					samplePrefixes: r.bgpResult.samplePrefixes,
-					error: r.bgpResult.error,
-				}
-			: null,
-	}));
-
-	return Response.json({
-		level: currentLevel,
-		operators: results,
-		timestamp: Date.now(),
-	});
-}
-
-async function handleHistory(url: URL): Promise<Response> {
-	// Clamp de input: limit ausente/0/negativo/NaN vira 100; teto de 1000
-	// (achado pentest: limit=-5 retornava o histórico inteiro).
-	const limitRaw = Number(url.searchParams.get("limit"));
-	const limit =
-		Number.isFinite(limitRaw) && limitRaw > 0
-			? Math.min(Math.floor(limitRaw), 1000)
-			: 100;
-
-	return Response.json({
-		connectivity: await getLatestConnectivityResults(limit),
-		bgp: await getLatestBgpResults(limit),
-	});
-}
+// handleStatus (/api/status) e handleHistory (/api/history) serviam só as
+// operadoras: listavam conectividade/BGP por operadora e o histórico de
+// medições. Removidos em 22/09/2026 com as rotas — os dados não são mais
+// coletados, então os endpoints só poderiam devolver vazio.
 
 function handleServices(): Response {
 	if (!lastUnifiedReport) {
@@ -945,7 +792,6 @@ export async function handleRequest(
 		"/rio-bitumirim",
 		"/como-ler-radar",
 		"/sitemap.xml",
-		"/api/status",
 		"/api/services",
 		"/api/report",
 		"/api/weather",
@@ -955,12 +801,8 @@ export async function handleRequest(
 		"/api/weather/bulletin",
 		"/api/hidro",
 		"/api/alertas",
-		"/api/history",
-		"/api/operators",
-		"/api/bgp",
 		"/api/stats/daily",
 		"/api/stats",
-		"/api/telemetry/stats",
 		"/api/push/status",
 	]);
 	if (READ_ONLY_PATHS.has(path) && method !== "GET" && method !== "HEAD") {
@@ -1108,7 +950,6 @@ export async function handleRequest(
 			});
 		}
 		if (path === "/health" || path === "/health/") return handleHealth();
-		if (path === "/api/status") return handleStatus();
 		if (path === "/api/services" || path === "/api/report") {
 			if (!lastUnifiedReport) await runChecks();
 			return handleServices();
@@ -1228,13 +1069,6 @@ export async function handleRequest(
 			});
 		}
 
-		if (path === "/api/history") return handleHistory(url);
-		if (path === "/api/operators") {
-			return Response.json({ operators: Object.keys(config.operators) });
-		}
-		if (path === "/api/bgp") {
-			return Response.json({ results: await getLatestBgpResults(20) });
-		}
 		if (path === "/api/check" && method === "POST") {
 			// Dispara ciclo completo (probes externos + NIM + Telegram): só
 			// com Bearer CRON_SECRET — nunca público (achado pentest:
@@ -1556,97 +1390,20 @@ export async function handleRequest(
 			);
 			return Response.json({ ...r, timestamp: Date.now() });
 		}
-		if (path === "/api/signal-report" && method === "POST") {
-			try {
-				const body = (await getReqJson(req)) as {
-					operator: OperatorName;
-					status: "ok" | "degraded" | "down";
-					signalType: string;
-					notes?: string;
-				};
-				if (!body.operator || !body.status || !body.signalType) {
-					return new Response(
-						JSON.stringify({ error: "Parâmetros inválidos" }),
-						{ status: 400, headers: { "Content-Type": "application/json" } },
-					);
-				}
-				const report = await saveSignalReport(
-					body.operator,
-					body.status,
-					body.signalType,
-					body.notes ?? "",
-				);
-				// Sem runChecks por request (achado pentest: cada POST público
-				// rodava probes + NIM + alertas — DoS de custo). O ciclo roda
-				// no cron (/api/cron) e no intervalo do worker.
-				return Response.json({ status: "ok", report, timestamp: Date.now() });
-			} catch (err: unknown) {
-				const errMsg = err instanceof Error ? err.message : String(err);
-				logger.error("Handler error", { path, error: errMsg });
-				return new Response(JSON.stringify({ error: "Requisição inválida" }), {
-					status: 400,
-					headers: { "Content-Type": "application/json" },
-				});
-			}
-		}
-		if (path === "/api/telemetry/stats") {
-			return Response.json({
-				stats: await getTelemetryStats(30),
-				timestamp: Date.now(),
-			});
-		}
+		// /api/signal-report (relato de sinal do morador por operadora) foi
+		// removido em 22/09/2026: só alimentava o status das operadoras, que
+		// saiu do produto. Não confundir com /api/track (telemetria de uso do
+		// site — acessos/sessões/instalações), que continua.
 		if (path === "/api/stats/daily" || path === "/api/stats") {
 			return Response.json({
 				daily: await getDailyStatsSummary(),
 				timestamp: Date.now(),
 			});
 		}
-		if (
-			path === "/api/telemetry" &&
-			(method === "HEAD" || (method === "GET" && url.searchParams.has("ping")))
-		) {
-			return new Response(null, { status: 200 });
-		}
-		if (path === "/api/telemetry" && method === "POST") {
-			try {
-				const ip =
-					getClientIp(req) === "unknown" ? "127.0.0.1" : getClientIp(req);
-				const body = (await getReqJson(req)) as {
-					rttMs?: number;
-					effectiveType?: string;
-					operator?: OperatorName;
-				};
-
-				const isp = await detectIsp(ip);
-				const operator = body.operator || isp.operator;
-				const rttMs = Number(body.rttMs) || 0;
-				const effectiveType = String(body.effectiveType || "");
-
-				await saveTelemetryLog(
-					ip,
-					operator,
-					isp.ispName ||
-						(operator ? `${operator} (Rede Móvel)` : "Banda Larga"),
-					rttMs,
-					effectiveType,
-				);
-				// Sem runChecks por request (achado pentest: DoS de custo —
-				// cada POST de telemetria rodava probes + NIM + alertas).
-
-				return Response.json({
-					status: "ok",
-					isp,
-					timestamp: Date.now(),
-				});
-			} catch (err: unknown) {
-				const errMsg = err instanceof Error ? err.message : String(err);
-				logger.error("Handler error", { path, error: errMsg });
-				return new Response(JSON.stringify({ error: "Requisição inválida" }), {
-					status: 400,
-					headers: { "Content-Type": "application/json" },
-				});
-			}
-		}
+		// /api/telemetry (HEAD/GET de ping + POST com rtt/tipo de conexão) e o
+		// /api/telemetry/stats eram o teste de provedor/ISP do visitante —
+		// removidos em 22/09/2026 junto com as operadoras. O /api/track
+		// (acessos/instalações/sessões) é outra coisa e continua.
 		// Static file fallback for local Bun runtime
 		if (typeof Bun !== "undefined" && typeof Bun.file === "function") {
 			const staticPath = `${import.meta.dir}/public${path === "/" ? "/index.html" : path}`;
@@ -1683,11 +1440,6 @@ async function runOnce(): Promise<void> {
 
 	const data = await runAllChecks(config, tracker);
 
-	for (const op of data.operators) {
-		for (const r of op.connectivityResults) saveConnectivityResult(r);
-		saveBgpResult(op.bgpResult);
-	}
-
 	for (const outage of data.newCopelOutages) {
 		await sendCopelAlert(
 			outage,
@@ -1705,7 +1457,6 @@ async function runOnce(): Promise<void> {
 	}
 
 	logger.info("Single check cycle completed", {
-		operators: data.operators.length,
 		newCopel: data.newCopelOutages.length,
 		newSanepar: data.newSaneparInterruptions.length,
 	});
@@ -1719,7 +1470,6 @@ async function main(): Promise<void> {
 	}
 
 	logger.info("Starting services-health monitor", {
-		operators: Object.keys(config.operators),
 		municipio: config.municipio || "(não configurado)",
 		checkIntervalMs: config.checkIntervalMs,
 		httpPort: config.httpPort,

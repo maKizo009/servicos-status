@@ -11,10 +11,6 @@ interface AlertPayload {
 	botToken: string;
 	chatId: string;
 	level: AlertLevel;
-	operatorResults: {
-		operator: string;
-		status: string;
-	}[];
 	summary: string;
 }
 
@@ -24,13 +20,11 @@ function buildAlertText(payload: AlertPayload): string {
 		warn: "🟡",
 		critical: "🔴",
 	};
-	const header = `${emoji[payload.level]} *Monitor de Conectividade - Ipiranga/PR*\n${payload.summary}\n`;
+	// O corpo com uma linha por operadora saiu em 22/09/2026 (telefonia/ISP fora
+	// do produto); o alerta agora é só o cabeçalho + resumo.
+	const header = `${emoji[payload.level]} *Monitor Ipiranga/PR*\n${payload.summary}\n`;
 
-	const body = payload.operatorResults
-		.map((op) => `*${op.operator}* (${op.status})`)
-		.join("\n\n");
-
-	return `${header}\n${body}\n\n🕐 ${new Date().toISOString()}`;
+	return `${header}\n🕐 ${new Date().toISOString()}`;
 }
 
 let hasWarnedTelegramNotConfigured = false;
@@ -162,15 +156,9 @@ export async function sendUnifiedReport(
 	lines.push(`📊 *RELATÓRIO UNIFICADO - IPIRANGA/PR*`);
 	lines.push(`🕐 ${new Date(report.generatedAt).toISOString()}\n`);
 
-	const telecom = report.services.filter((s) => s.category === "telecom");
 	const utilities = report.services.filter((s) => s.category === "utility");
 
-	lines.push(`*📡 Operadoras*`);
-	for (const s of telecom) {
-		lines.push(`${emojiMap[s.status] || "⚪"} *${s.name}* — ${s.details}`);
-	}
-
-	lines.push(`\n*🔧 Utilidades*`);
+	lines.push(`*🔧 Utilidades*`);
 	for (const s of utilities) {
 		lines.push(`${emojiMap[s.status] || "⚪"} *${s.name}* — ${s.details}`);
 	}

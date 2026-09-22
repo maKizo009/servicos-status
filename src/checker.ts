@@ -1,29 +1,16 @@
 import type { AppConfig } from "./config.js";
-import { connectivityTargets } from "./config.js";
-import { getActiveIspHealthStates, getActiveSignalReports } from "./db.js";
 import { logger } from "./logger.js";
-import { checkBgpPrefixes } from "./probes/bgp.js";
-import { checkConnectivity } from "./probes/connectivity.js";
 import { checkCopel } from "./probes/copel.js";
 import { checkSanepar } from "./probes/sanepar.js";
 import type { EventTracker } from "./state.js";
 import type {
-	BgpResult,
-	ConnectivityResult,
 	CopelOutage,
-	OperatorName,
-	ProbeStatus,
 	SaneparInterruption,
 	ServiceHealth,
 	UnifiedReport,
 } from "./types.js";
 
 export interface AllCheckData {
-	operators: {
-		name: OperatorName;
-		connectivityResults: ConnectivityResult[];
-		bgpResult: BgpResult;
-	}[];
 	copelOutages: CopelOutage[];
 	newCopelOutages: CopelOutage[];
 	saneparInterruptions: SaneparInterruption[];
@@ -37,12 +24,9 @@ export async function runAllChecks(
 ): Promise<AllCheckData> {
 	const timestamp = Date.now();
 	// Operadoras de telefonia/ISP: REMOVIDAS em 22/09/2026 (pedido do Dave — os
-	// testes não tinham utilidade e o monitor não consegue medir a rede da
-	// operadora: ping em minhaclaro/meuvivo/meutim mede o site de autoatendimento,
-	// não a rede; o BGP só diz o que a operadora anuncia). Cada ciclo gastava 3
-	// alvos de conectividade + 3 consultas BGP por operadora. A lista fica vazia
-	// para os consumidores (API, alertas, banco) não mudarem de forma de uma vez.
-	const operatorResults: AllCheckData["operators"] = [];
+	// testes não tinham utilidade: o monitor não mede a rede da operadora, só o
+	// site de autoatendimento, e o BGP só diz o que ela anuncia). Cada ciclo
+	// gastava 3 alvos de conectividade + 3 consultas BGP por operadora.
 
 	const copelRes = config.municipio
 		? await checkCopel(
@@ -66,111 +50,12 @@ export async function runAllChecks(
 		: { allInterruptions: [], newInterruptions: [] };
 
 	return {
-		operators: operatorResults,
 		copelOutages: copelRes.allOutages,
 		newCopelOutages: copelRes.newOutages,
 		saneparInterruptions: saneparRes.allInterruptions,
 		newSaneparInterruptions: saneparRes.newInterruptions,
 		timestamp,
 	};
-}
-
-/**
- * Deriva a classificação fina de uma sondagem. Usa `probeStatus` quando
- * presente (probes atuais) ou infere de success/error (dados antigos do DB).
- */
-export function deriveProbeStatus(r: {
-	success: boolean;
-	error?: string;
-	probeStatus?: ProbeStatus;
-}): ProbeStatus {
-	if (r.probeStatus) return r.probeStatus;
-	if (r.success) return "ok";
-	if ((r.error ?? "").toLowerCase().includes("timeout")) return "timeout";
-	return "failure";
-}
-
-/**
- * Número de ciclos consecutivos de falha exigidos para promover uma sondagem
- * a "critical" (debounce — Achado 4). Com checkIntervalMs=60s, 2 = ~2 min.
- */
-export const DEBOUNCE_THRESHOLD = 2;
-
-/**
- * Classifica o nível de saúde de uma operadora.
- *
- * Semântica corrigida (Achados 3 e 4) e simplificada (2026-08-12: removido o
- * probe de portal das operadoras — ping em minhaclaro/meuvivo/meutim não mede
- * a rede da operadora, só o site de autoatendimento; fora do escopo do
- * monitor, que não tem como testar a conexão das operadoras diretamente):
- * - Falha CONFIRMADA de conectividade (DNS/HTTP>=500/SSL) → critical após
- *   `debounceThreshold` ciclos (1ª falha = warn).
- * - Timeout de conectividade é INDETERMINADO (problema do monitor ou da rede
- *   dele) → warn.
- * - Latência alta de conectividade (>latencyCritMs) → critical (rede lenta de
- *   verdade no monitor — sinal de problema de rede regional).
- * - BGP: 0 prefixos anunciados (sem erro) → critical (rede da operadora não
- *   está anunciando rotas — dado real vindo do RIPE).
- */
-export function assessLevel(
-	connectivity: ConnectivityResult[],
-	bgp: BgpResult | BgpResult[] | null,
-	latencyWarnMs = 150,
-	latencyCritMs = 300,
-	failureCounts: Map<string, number> = new Map(),
-	debounceThreshold = DEBOUNCE_THRESHOLD,
-): "ok" | "warn" | "critical" {
-	const isFailure = (r: {
-		host: string;
-		success: boolean;
-		error: string;
-		probeStatus?: ProbeStatus;
-	}) => deriveProbeStatus(r) === "failure";
-	const isTimeout = (r: {
-		success: boolean;
-		error: string;
-		probeStatus?: ProbeStatus;
-	}) => deriveProbeStatus(r) === "timeout";
-	// Debounce: falha só é "confirmada" após N ciclos consecutivos.
-	const confirmed = (host: string, failed: boolean): boolean =>
-		!failed || (failureCounts.get(host) ?? 0) >= debounceThreshold;
-
-	const bgpList = Array.isArray(bgp) ? bgp : bgp ? [bgp] : [];
-	const bgpZeroPrefixes = bgpList.some(
-		(b) =>
-			Boolean(b) &&
-			!b.error &&
-			b.prefixCountV4 === 0 &&
-			b.prefixCountV6 === 0 &&
-			b.asn > 0,
-	);
-
-	const connFailures = connectivity.filter(isFailure);
-	const confirmedConnFailures = connFailures.filter((c) =>
-		confirmed(c.host, true),
-	);
-	const connTimeouts = connectivity.filter(isTimeout);
-
-	// Latência
-	const criticalLatencyConnectivity = connectivity.some(
-		(c) => c.latencyMs > latencyCritMs && c.success,
-	);
-
-	if (
-		confirmedConnFailures.length > 0 ||
-		bgpZeroPrefixes ||
-		criticalLatencyConnectivity
-	)
-		return "critical";
-
-	const highLatency = connectivity.some(
-		(c) => c.latencyMs > latencyWarnMs && c.success,
-	);
-
-	if (connFailures.length > 0 || connTimeouts.length > 0 || highLatency)
-		return "warn";
-
-	return "ok";
 }
 
 /**
@@ -205,103 +90,17 @@ export function dedupeCopelOutages(outages: CopelOutage[]): {
 
 export async function buildUnifiedReport(
 	data: AllCheckData,
-	latencyWarnMs = 150,
-	latencyCritMs = 300,
-	failureCounts: Map<string, number> = new Map(),
-	debounceThreshold = DEBOUNCE_THRESHOLD,
 	// Total de UCs do município (API validador_populacao da Copel; Ipiranga =
 	// 6017 em 2026-09-12). Passado pelo chamador a partir de
 	// config.copelTotalConsumersCity (override via COPEL_TOTAL_CONSUMERS_CITY).
 	cityTotalConsumersParam?: number,
 ): Promise<UnifiedReport> {
 	const services: ServiceHealth[] = [];
-	const signalReports = await getActiveSignalReports();
-	const ispHealthStates = await getActiveIspHealthStates();
 
-	for (const op of data.operators) {
-		let status = assessLevel(
-			op.connectivityResults,
-			op.bgpResult,
-			latencyWarnMs,
-			latencyCritMs,
-			failureCounts,
-			debounceThreshold,
-		);
-		const connFailures = op.connectivityResults.filter(
-			(c) => deriveProbeStatus(c) === "failure",
-		).length;
-		const bgpFail =
-			op.bgpResult &&
-			!op.bgpResult.error &&
-			op.bgpResult.prefixCountV4 === 0 &&
-			op.bgpResult.prefixCountV6 === 0;
-
-		const activeSignalReport = signalReports.find(
-			(r) => r.operator === op.name && r.status !== "ok",
-		);
-
-		const crowdsourcedIspState = ispHealthStates.find(
-			(i) => i.operator === op.name,
-		);
-
-		if (activeSignalReport) {
-			if (activeSignalReport.status === "down") {
-				status = "critical";
-			} else if (status === "ok") {
-				status = "warn";
-			}
-		} else if (crowdsourcedIspState && crowdsourcedIspState.status !== "ok") {
-			const csWeight = { ok: 0, warn: 1, critical: 2 };
-			const currentWeight = { ok: 0, warn: 1, critical: 2 }[status];
-			if (csWeight[crowdsourcedIspState.status] > currentWeight) {
-				status = crowdsourcedIspState.status;
-			}
-		}
-
-		let details = "OK";
-		if (activeSignalReport) {
-			details = `⚠️ Sinal Local: ${activeSignalReport.signalType} (${activeSignalReport.notes || "Relato de instabilidade local"})`;
-		} else if (crowdsourcedIspState && crowdsourcedIspState.status !== "ok") {
-			details = crowdsourcedIspState.details;
-		} else if (status === "critical") {
-			const parts: string[] = [];
-			if (connFailures > 0)
-				parts.push(`${connFailures} teste(s) de conectividade falharam`);
-			if (bgpFail) parts.push("0 prefixos BGP anunciados");
-			if (
-				op.connectivityResults.some(
-					(c) => c.latencyMs > latencyCritMs && c.success,
-				)
-			)
-				parts.push("Latência crítica de rede (>300ms)");
-			details = parts.join(", ") || "Falha de serviço";
-		} else if (status === "warn") {
-			const parts: string[] = [];
-			if (connFailures > 0)
-				parts.push(`${connFailures} teste(s) de conectividade falharam`);
-			if (
-				op.connectivityResults.some(
-					(c) => c.latencyMs > latencyWarnMs && c.success,
-				)
-			)
-				parts.push("Latência elevada de rede (>150ms)");
-			details = parts.join(", ") || "Latência elevada detectada";
-		}
-
-		services.push({
-			name: op.name,
-			category: "telecom",
-			status,
-			details,
-			timestamp: data.timestamp,
-			data: {
-				connectivityResults: op.connectivityResults,
-				bgp: op.bgpResult,
-				signalReport: activeSignalReport ?? null,
-				crowdsourcedState: crowdsourcedIspState ?? null,
-			},
-		});
-	}
+	// Aqui era montado o ServiceHealth de cada OPERADORA (Claro/Vivo/TIM): nível
+	// por assessLevel, falhas de conectividade, prefixos BGP e o relato de sinal do
+	// morador. Removido em 22/09/2026 com as operadoras — o relatório unificado
+	// agora só carrega COPEL e Sanepar abaixo.
 
 	// PARIDADE COM O MAPA OFICIAL ANEEL (cdn.copel.com/aneel-informacoes):
 	// o front da Copel filtra tipo_principal=INTERRUPCAO antes de agregar

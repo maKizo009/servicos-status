@@ -1,116 +1,24 @@
 /**
  * Testes de regressão das correções arquiteturais (RELATORIO-ARQUITETURA-CORRECOES.md):
- * - Achado 3: latência de conectividade >300ms = critical (rede lenta de verdade)
- * - Achado 4: timeout ≠ falha; debounce N consecutivas para critical
  * - Achado 6: dedupe de ocorrências COPEL por idOcorrencia
  * - Achado 2: validação pós-geração do VLM (veredito + ETA)
  * - Achado 7: sanitização de campos livres + separação de instruções
  *
+ * (Achado 3 e Achado 4 — latência/debounce das operadoras — saíram em
+ * 22/09/2026 junto com os testes de telefonia/ISP.)
+ *
  * Rode com: bun test scripts/test-regression.ts
  */
 import { describe, expect, test } from "bun:test";
-import {
-	assessLevel,
-	DEBOUNCE_THRESHOLD,
-	dedupeCopelOutages,
-	deriveProbeStatus,
-} from "../src/checker.js";
+import { dedupeCopelOutages } from "../src/checker.js";
 import { sanitizeLlmField } from "../src/llm-formatter.js";
 import {
 	generateNowcastBulletin,
 	validateBulletinAgainstVerdict,
 } from "../src/nowcast-vlm.js";
-import type { ConnectivityResult, CopelOutage } from "../src/types.js";
+import type { CopelOutage } from "../src/types.js";
 
 const now = Date.now();
-
-function conn(over: Partial<ConnectivityResult> = {}): ConnectivityResult {
-	return {
-		label: "Google",
-		host: "google.com",
-		success: true,
-		latencyMs: 40,
-		error: "",
-		timestamp: now,
-		probeStatus: "ok",
-		...over,
-	};
-}
-
-const okConn = [conn(), conn({ host: "cloudflare.com", label: "Cloudflare" })];
-
-describe("Achado 4 — timeout ≠ falha + debounce (conectividade)", () => {
-	test("timeout isolado de conectividade → warn, nunca critical na 1ª vez", () => {
-		const c = conn({
-			success: false,
-			latencyMs: 5_000,
-			error: "Timeout",
-			probeStatus: "timeout",
-		});
-		expect(assessLevel([c], null)).toBe("warn");
-	});
-
-	test("falha real (DNS) isolada → warn; 2ª consecutiva → critical", () => {
-		const c = conn({
-			success: false,
-			latencyMs: 0,
-			error: "DNS fail: ENOTFOUND",
-			probeStatus: "failure",
-		});
-		expect(assessLevel([c], null)).toBe("warn");
-		const counts = new Map<string, number>([[c.host, DEBOUNCE_THRESHOLD]]);
-		expect(assessLevel([c], null, 150, 300, counts)).toBe("critical");
-	});
-
-	test("falha de conectividade (rede do monitor) → critical após debounce", () => {
-		const badConn = [
-			conn({ success: false, error: "DNS fail", probeStatus: "failure" }),
-		];
-		expect(assessLevel(badConn, null)).toBe("warn");
-		const counts = new Map<string, number>([
-			["google.com", DEBOUNCE_THRESHOLD],
-		]);
-		expect(assessLevel(badConn, null, 150, 300, counts)).toBe("critical");
-	});
-
-	test("probeStatus ausente (dados antigos) é derivado de success/error", () => {
-		expect(deriveProbeStatus({ success: true, error: "" })).toBe("ok");
-		expect(deriveProbeStatus({ success: false, error: "Timeout" })).toBe(
-			"timeout",
-		);
-		expect(deriveProbeStatus({ success: false, error: "HTTP 503" })).toBe(
-			"failure",
-		);
-	});
-});
-
-describe("Achado 3 — latência de conectividade", () => {
-	test("connectivity com 350ms (success) → critical (rede lenta de verdade)", () => {
-		const slowConn = [
-			conn({ latencyMs: 350, success: true, probeStatus: "ok" }),
-		];
-		expect(assessLevel(slowConn, null)).toBe("critical");
-	});
-
-	test("latência >warn na conectividade → warn; tudo ok → ok", () => {
-		const p = conn({ latencyMs: 200, success: true, probeStatus: "ok" });
-		expect(assessLevel([p], null)).toBe("warn");
-		expect(assessLevel(okConn, null)).toBe("ok");
-	});
-
-	test("0 prefixos BGP anunciados → critical (rede da operadora fora do RIPE)", () => {
-		expect(
-			assessLevel(okConn, {
-				operator: "Claro",
-				asn: 28573,
-				prefixCountV4: 0,
-				prefixCountV6: 0,
-				samplePrefixes: [],
-				timestamp: now,
-			}),
-		).toBe("critical");
-	});
-});
 
 describe("Formatação de previsão Copel (inconsistência corrigida 2026-08-12)", () => {
 	const {

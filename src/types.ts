@@ -1,56 +1,8 @@
 import type { NowcastResult } from "./radar-analysis.js";
 
-export type OperatorName = "Claro" | "Vivo" | "TIM";
-
-export interface OperatorConfig {
-	asn: number;
-}
-
-/**
- * Resultado de uma sondagem: "ok" (respondeu), "timeout" (não respondeu a
- * tempo — indeterminado: pode ser o serviço OU o monitor), "failure" (falhou
- * de forma confirmada: DNS, HTTP >=500, SSL).
- */
-export type ProbeStatus = "ok" | "timeout" | "failure";
-
-export interface ConnectivityResult {
-	label: string;
-	host: string;
-	success: boolean;
-	latencyMs: number;
-	error: string;
-	timestamp: number;
-	/** Classificação fina da sondagem (Achado 4: timeout ≠ falha). */
-	probeStatus?: ProbeStatus;
-}
-
-export interface BgpResult {
-	operator: OperatorName;
-	asn: number;
-	prefixCountV4: number;
-	prefixCountV6: number;
-	samplePrefixes: string[];
-	timestamp: number;
-	error?: string;
-}
-
-export interface LocalSignalReport {
-	id?: number;
-	operator: OperatorName;
-	status: "ok" | "degraded" | "down";
-	signalType: string;
-	notes?: string;
-	reportedAt: number;
-	expiresAt: number;
-}
-
-export interface CheckResult {
-	operator: OperatorName;
-	connectivityResults: ConnectivityResult[];
-	bgpResult: BgpResult | null;
-	status: "ok" | "warn" | "critical";
-	timestamp: number;
-}
+// Tipos de OPERADORA removidos em 22/09/2026 junto com o monitoramento de
+// telefonia/ISP: OperatorName, OperatorConfig, ProbeStatus, ConnectivityResult,
+// BgpResult, LocalSignalReport e CheckResult.
 
 export type AlertLevel = "ok" | "warn" | "critical";
 
@@ -89,8 +41,8 @@ export interface SaneparInterruption {
 }
 
 // =================== Serviços de Utilidade ===================
-export type ServiceSource = OperatorName | "Copel" | "Sanepar";
-export type ServiceCategory = "telecom" | "utility";
+export type ServiceSource = "Copel" | "Sanepar";
+export type ServiceCategory = "utility";
 
 export interface ServiceHealth {
 	name: ServiceSource;

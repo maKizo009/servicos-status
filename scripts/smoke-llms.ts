@@ -33,13 +33,6 @@ const report: UnifiedReport = {
 	overallStatus: "warn",
 	services: [
 		{
-			name: "Claro",
-			category: "telecom",
-			status: "warn",
-			details: "1 teste(s) de conectividade falharam",
-			timestamp: Date.now(),
-		},
-		{
 			name: "Copel",
 			category: "utility",
 			status: "ok",
@@ -63,11 +56,8 @@ const checks: Record<string, boolean> = {
 	"link para /llms-instructions.txt presente": txt.includes(
 		"/llms-instructions.txt",
 	),
-	"rótulo 'Telecomunicações (Claro/Vivo/TIM)'": txt.includes(
-		"Telecomunicações (Claro/Vivo/TIM)",
-	),
-	"nota sobre telecom ≠ sinal celular": txt.includes(
-		"não mede a qualidade do sinal celular em tempo real",
+	"sem seção de Telecomunicações no llms.txt": !txt.includes(
+		"Telecomunicações",
 	),
 	"timestamp de geração da requisição": txt.includes(
 		"Documento gerado nesta requisição às:",
@@ -81,8 +71,8 @@ const checks: Record<string, boolean> = {
 	"instruções têm conteúdo no endpoint separado": instructions.includes(
 		"Instruções para Agentes de IA",
 	),
-	"instruções mencionam que telecom ≠ sinal": instructions.includes(
-		"NÃO sinal celular em tempo real",
+	"instruções avisam que operadoras saíram do monitor": instructions.includes(
+		"NÃO há mais indicador de operadoras",
 	),
 };
 

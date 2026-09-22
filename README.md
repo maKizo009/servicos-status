@@ -179,18 +179,6 @@ Health check do monitor. **Sem rate limit.** Usado por Docker, load balancers e 
   "overallStatus": "warn",
   "services": [
     {
-      "name": "Claro",
-      "category": "telecom",
-      "status": "ok",
-      "details": "OK",
-      "timestamp": 1785179123920,
-      "data": {
-        "portalResults": [{ "host": "minhaclaro.claro.com.br", "success": true, "latencyMs": 234, "error": "" }],
-        "connectivityResults": [{ "label": "Google", "success": true, "latencyMs": 15, "error": "" }],
-        "bgp": { "asn": 28573, "prefixCountV4": 42, "prefixCountV6": 12 }
-      }
-    },
-    {
       "name": "Copel",
       "category": "utility",
       "status": "ok",
@@ -223,83 +211,12 @@ Health check do monitor. **Sem rate limit.** Usado por Docker, load balancers e 
 
 ---
 
-#### `GET /api/status` — DESCONTINUADO (22/09/2026)
-
-O monitoramento de **operadoras de telefonia/ISP foi removido do produto**: os
-testes não tinham utilidade (o monitor não mede a rede da operadora — ping em
-portal de autoatendimento mede o portal, não a rede) e os cards poluíam a
-página. O endpoint continua respondendo por compatibilidade, sempre com
-`operators: []` — não use em integração nova. Os serviços monitorados são
-**COPEL** (energia) e **Sanepar** (água), em `/api/services`.
-
-O formato abaixo é o legado, mantido só como referência histórica.
-
-| Campo | Tipo | Descrição |
-|---|---|---|
-| `level` | string | Nível geral das operadoras |
-| `operators[]` | array | Lista de operadoras |
-| `operators[].operator` | string | Nome: `"Claro"`, `"Vivo"`, `"TIM"` |
-| `operators[].status` | string | `"ok"`, `"warn"`, `"critical"` |
-| `operators[].portals[].host` | string | Host do portal |
-| `operators[].portals[].success` | boolean | Se respondeu |
-| `operators[].portals[].latencyMs` | number | Latência em ms |
-| `operators[].portals[].error` | string | Vazio se OK |
-| `operators[].connectivity[].label` | string | Alvo: `"Google"`, `"Cloudflare"`, etc |
-| `operators[].bgp.asn` | number | ASN da operadora |
-| `operators[].bgp.prefixCountV4` | number | Prefixos IPv4 anunciados |
-| `operators[].bgp.prefixCountV6` | number | Prefixos IPv6 anunciados |
-
-```json
-{
-  "level": "ok",
-  "operators": [
-    {
-      "operator": "Claro",
-      "status": "ok",
-      "portals": [
-        { "host": "minhaclaro.claro.com.br", "success": true, "latencyMs": 234, "error": "" }
-      ],
-      "connectivity": [
-        { "label": "Google", "success": true, "latencyMs": 15, "error": "" }
-      ],
-      "bgp": { "asn": 28573, "prefixCountV4": 42, "prefixCountV6": 12, "samplePrefixes": ["179.183.0.0/16"], "error": "" }
-    }
-  ],
-  "timestamp": 1785179123920
-}
-```
 
 ---
 
-#### `GET /api/operators`
-
-Lista simples das operadoras configuradas.
-
-```json
-{ "operators": ["Claro", "Vivo", "TIM"] }
-```
 
 ---
 
-#### `GET /api/bgp`
-
-Últimos 20 resultados de BGP (prefixos anunciados por ASN).
-
-```json
-{
-  "results": [
-    {
-      "operator": "Claro",
-      "asn": 28573,
-      "prefixCountV4": 42,
-      "prefixCountV6": 12,
-      "samplePrefixes": ["179.183.0.0/16"],
-      "timestamp": 1785179123920,
-      "error": ""
-    }
-  ]
-}
-```
 
 ---
 
@@ -404,14 +321,6 @@ Executa um ciclo completo de verificação sob demanda. Apenas para uso interno 
 
 > Consulte `GET /api/services` após o POST para obter os resultados.
 
-#### `GET /api/history?operator=Claro&limit=100`
-
-Histórico de latência dos portais no SQLite. Expor apenas em redes internas.
-
-| Parâmetro | Tipo | Default | Descrição |
-|---|---|---|---|
-| `operator` | string | _(todos)_ | Filtrar: `"Claro"`, `"Vivo"`, `"TIM"` |
-| `limit` | number | `100` | Máximo: 1000 |
 
 #### `GET /api/report`
 
@@ -419,18 +328,6 @@ Alias para `/api/services`. Mesmo comportamento.
 
 ## Serviços Monitorados
 
-### Operadoras Móveis
-
-| Operadora | ASN | Portal |
-|---|---|---|
-| Claro | 28573 | minhaclaro.claro.com.br |
-| Vivo | 27699 | meuvivo.vivo.com.br |
-| TIM | 26615 | meutim.tim.com.br |
-
-Cada operadora é verificada em 3 dimensões:
-- **Portal**: requisição HTTPS ao portal da operadora
-- **Conectividade**: latência para Google, Cloudflare, 1.1.1.1
-- **BGP**: prefixos anunciados via RIPE Stat (ASN)
 
 ### Utilidades
 
@@ -482,14 +379,10 @@ src/
 ├── checker.ts          # Orquestrador unificado
 ├── weather-collector.ts # Clima: RainViewer radar + Open-Meteo (ECMWF IFS)
 ├── llm-formatter.ts    # llms.txt, JSON-LD e boletins IA (NIM/Gemini/heurístico)
-├── isp-detector.ts     # Detecção de ISP por IP (cache em DB)
 ├── rate-limiter.ts     # Rate limit por IP (10 req/min)
 ├── radar-analysis.ts   # Camada A: análise determinística de tiles (paleta Universal Blue, núcleos, tracking)
 ├── nowcast-service.ts  # Serviço de nowcast com cache TTL 5min (endpoint /api/weather/nowcast)
 └── probes/
-    ├── portal.ts       # Probe portal operadora
-    ├── connectivity.ts # Probe conectividade
-    ├── bgp.ts          # Probe BGP
     ├── copel.ts        # Probe COPEL
     └── sanepar.ts      # Probe Sanepar
 ```

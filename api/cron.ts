@@ -3,8 +3,6 @@ import { loadConfig } from "../src/config.js";
 import { formatCopelPrevisao } from "../src/copel-format.js";
 import {
 	initDb,
-	saveBgpResult,
-	saveConnectivityResult,
 	saveEventLog,
 } from "../src/db.js";
 import { syncWeatherCycle } from "../src/index.js";
@@ -70,11 +68,6 @@ export default async function handler(req: any, res: any) {
 			runAllChecks(config, tracker),
 		]);
 
-		for (const op of data.operators) {
-			for (const r of op.connectivityResults) await saveConnectivityResult(r);
-			await saveBgpResult(op.bgpResult);
-		}
-
 		for (const outage of data.newCopelOutages) {
 			await sendCopelAlert(
 				outage,
@@ -130,7 +123,6 @@ export default async function handler(req: any, res: any) {
 					botToken: config.telegramBotToken,
 					chatId: config.telegramChatId,
 					level: "critical",
-					operatorResults: [],
 					summary: weatherState.regionalRainAlert || "Alerta de tempestade",
 				});
 			}
@@ -151,7 +143,6 @@ export default async function handler(req: any, res: any) {
 					}
 				: null,
 			checks: {
-				operators: data.operators.length,
 				newCopel: data.newCopelOutages.length,
 				newSanepar: data.newSaneparInterruptions.length,
 			},
