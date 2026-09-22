@@ -30,7 +30,6 @@ import {
 	saveBgpResult,
 	saveConnectivityResult,
 	saveEventLog,
-	saveNowcastBulletin,
 	saveSignalReport,
 	saveTelemetryLog,
 	saveWeatherStateCache,
@@ -659,9 +658,14 @@ export async function syncWeatherCycle(): Promise<WeatherState> {
 					verdict: built.verdict,
 				});
 				state.nowcastBulletin = bulletin;
-				await saveNowcastBulletin(bulletin.text, bulletin.source);
-				logger.info("Boletim nowcast gerado e persistido", {
+				// NÃO regravar aqui: generateSmartBulletin já persistiu o texto novo —
+				// e, quando reusa o cache, devolve o registro ANTIGO. Regravar um texto
+				// reusado renovava o generated_at, então o cache de 30 min nunca
+				// expirava e o boletim ficava congelado com horário "novo" a cada
+				// ciclo. Foi o incidente do "Boletim IA" (22/09/2026).
+				logger.info("Boletim nowcast pronto", {
 					source: bulletin.source,
+					idadeMin: Math.round((Date.now() - bulletin.generatedAt) / 60000),
 				});
 			}
 

@@ -252,6 +252,10 @@
   font-size:12px;font-weight:600;letter-spacing:.4px;text-transform:uppercase;padding:3px 8px;border-radius:6px;
   background:var(--g1);color:var(--g6)
 }
+.bulletin-meta{display:flex;align-items:center;gap:8px;flex-wrap:wrap;justify-content:flex-end}
+/* Quando o boletim foi REALMENTE gerado. Sem isso o horário é opinião. */
+.bulletin-when{font-size:11px;color:var(--text2);font-variant-numeric:tabular-nums}
+.bulletin-when.stale{color:var(--md-sys-color-error);font-weight:600}
 .nowcast-box{
   background:var(--md-sys-color-surface-container);border:1px solid var(--md-sys-color-outline-variant);
   border-radius:var(--md-shape-corner-medium);padding:16px;
@@ -961,7 +965,10 @@ body{font-family:var(--font);background:var(--md-sys-color-surface);color:var(--
           <div class="bulletin-box">
             <div class="bulletin-head">
               <span style="font-size:13px;font-weight:600;color:var(--text)">Boletim IA do Radar</span>
-              <span class="bulletin-tag" id="bulletinSourceTag">análise de IA</span>
+              <span class="bulletin-meta">
+                <span class="bulletin-when" id="bulletinWhen"></span>
+                <span class="bulletin-tag" id="bulletinSourceTag">análise de IA</span>
+              </span>
             </div>
             <p class="bulletin-text" id="bulletinText">Carregando análise descritiva da situação climatológica de Ipiranga...</p>
             <div class="bulletin-disclaimer">
@@ -2198,6 +2205,25 @@ async function fetchWeatherData() {
       if(bEl) bEl.textContent = bulletinText.replace(/\*\*/g, '');
       const src = (data.bulletin?.source || data.nowcastBulletin?.source) === 'openrouter' ? 'análise de IA' : 'análise de IA (local)';
       if(sEl) sEl.textContent = src;
+    }
+    // Quando o texto foi REALMENTE gerado. Sem isso o boletim pode estar congelado
+    // e ninguém tem como saber (>90 min = marca em vermelho).
+    const whenEl = document.getElementById('bulletinWhen');
+    if (whenEl) {
+      const genAt = data.nowcastBulletin?.generatedAt || data.bulletin?.generatedAt;
+      if (genAt) {
+        const idadeMin = Math.max(0, Math.round((Date.now() - genAt) / 60000));
+        const hora = new Date(genAt).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+        const idadeTxt = idadeMin < 1 ? 'agora' : idadeMin < 60 ? `há ${idadeMin} min` : `há ${Math.round(idadeMin / 60)} h`;
+        whenEl.textContent = `atualizado às ${hora} · ${idadeTxt}`;
+        const velho = idadeMin > 90;
+        whenEl.classList.toggle('stale', velho);
+        whenEl.title = velho
+          ? 'O texto não é regenerado há mais de 90 minutos — pode não refletir o agora.'
+          : 'Horário em que o texto do boletim foi gerado.';
+      } else {
+        whenEl.textContent = '';
+      }
     }
 
     renderNowcastCard(data);

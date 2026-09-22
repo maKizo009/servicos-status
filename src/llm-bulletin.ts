@@ -1,5 +1,9 @@
 import { loadConfig } from "./config.js";
-import { getLatestNowcastBulletin, saveNowcastBulletin } from "./db.js";
+import {
+	getLatestNowcastBulletin,
+	saveNowcastBulletin,
+	type NowcastBulletinRecord,
+} from "./db.js";
 import { rotularLocalizacao } from "./geo-municipio.js";
 import { logger } from "./logger.js";
 import {
@@ -474,9 +478,112 @@ export function buildAnalystContext(
 }
 
 /**
+ * Janela em que o texto é reusado mesmo com o cenário diferente: trava de CUSTO.
+ * Fora dela, só reusa se a impressão do cenário bater. Antes o reuso era puramente
+ * por tempo (30 min), e como o ciclo regravava o texto reusado com timestamp novo,
+ * o cache nunca expirava e o boletim ficava congelado indefinidamente (22/09/2026).
+ */
+const REUSE_MIN_MS = 12 * 60_000;
+
+/**
+ * Impressão do CENÁRIO do boletim: mesmos insumos ⇒ mesma chave; qualquer mudança
+ * material (chuva medida, núcleo, previsão, rio, aviso, solo) ⇒ chave nova.
+ * É o que permite reusar texto sem servir número velho.
+ */
+function contextoKey(input: SmartBulletinInput): string {
+	const a = input.analyst;
+	const partes = [
+		a?.fraseLocal ?? "sem-chuva",
+		String(a?.alertLevel ?? ""),
+		String(a?.ecmwfPct ?? ""),
+		String(a?.ecmwfProx6hMm ?? ""),
+		String(a?.condition ?? ""),
+		a?.hidroWatch ? "hidro" : "",
+		String(a?.avisosOficiais?.length ?? 0),
+		(a?.threats ?? [])
+			.map(
+				(t) =>
+					`${t.kind}:${t.municipio}:${Math.round(t.distKm)}:${t.intensity}:${t.approach ?? "-"}`,
+			)
+			.join("|"),
+		(a?.solo ?? [])
+			.map((s) => `${s.cidade}:${s.chuva1hMm ?? "-"}:${s.rajada1hKmh ?? "-"}`)
+			.join("|"),
+	].join("§");
+	let h = 5381;
+	for (let i = 0; i < partes.length; i++) {
+		h = ((h << 5) + h + partes.charCodeAt(i)) | 0;
+	}
+	return `${(h >>> 0).toString(36)}-${partes.length.toString(36)}`;
+}
+
+/**
+ * Decide se o texto em cache ainda pode ser servido. Extraído para ser TESTÁVEL:
+ * a versão antiga comparava só tempo + presença de frase, e deixou um boletim de
+ * "chove agora" sobreviver com pluviômetro zerado (incidente 22/09/2026).
+ */
+export function avaliarReuso(i: {
+	cached: NowcastBulletinRecord | null;
+	local: LocalRainContext | null;
+	nowcast: NowcastResult;
+	chaveCenario: string;
+	agora?: number;
+}): { reusar: boolean; motivo: string } {
+	const { cached, local, nowcast, chaveCenario } = i;
+	const agora = i.agora ?? Date.now();
+	if (!cached) return { reusar: false, motivo: "sem boletim em cache" };
+	const fonteLlm =
+		cached.source === "openrouter" ||
+		cached.source === "nvidia_nim" ||
+		cached.source === "gemini";
+	if (!fonteLlm) return { reusar: false, motivo: "último boletim é heurística" };
+	const idadeMs = agora - cached.generatedAt;
+	if (idadeMs >= LLM_TTL_MS) return { reusar: false, motivo: "TTL vencido" };
+	// "Está chovendo agora" é MEDIÇÃO, não presença de frase: fraseChuvaLocal também
+	// devolve texto quando só o ACUMULADO é alto (24h ≥ 20 mm).
+	const choveAgoraMedido =
+		(local?.acc1hrMax ?? 0) >= 0.5 || (local?.acc6hrMax ?? 0) >= 5;
+	const textoDizChoveAgora = /chove (em ipiranga )?agora|est[áa] chovendo/i.test(
+		cached.text,
+	);
+	if (choveAgoraMedido !== textoDizChoveAgora) {
+		return {
+			reusar: false,
+			motivo: choveAgoraMedido
+				? "começou a chover e o texto não diz"
+				: "parou de chover e o texto diz que chove agora",
+		};
+	}
+	// Número citado que a medição de agora desmente (ex.: "13,6 mm na última hora"
+	// com pluviômetro zerado).
+	const mmTexto = /([\d]+(?:[.,]\d+)?)\s*mm na última hora/i.exec(cached.text);
+	const mmTextoNum = mmTexto ? Number(mmTexto[1].replace(",", ".")) : null;
+	if (mmTextoNum != null && mmTextoNum >= 0.5 && (local?.acc1hrMax ?? 0) < 0.5) {
+		return {
+			reusar: false,
+			motivo: "texto cita chuva na última hora e o pluviômetro está zerado",
+		};
+	}
+	if (/\d{2,4}\s*km/.test(cached.text) && nowcast.threats.length === 0) {
+		return { reusar: false, motivo: "texto cita núcleo e o radar está limpo" };
+	}
+	if (!cached.text || !passaCoerenciaAmeaca(cached.text, nowcast.threats)) {
+		return { reusar: false, motivo: "texto contradiz o radar" };
+	}
+	// Cenário igual = insumos iguais. Sem isso o texto congelava enquanto o
+	// timestamp era renovado a cada ciclo (ver o save redundante no index.ts).
+	const cenarioIgual = !cached.contextKey || cached.contextKey === chaveCenario;
+	if (cenarioIgual) return { reusar: true, motivo: "mesmo cenário" };
+	if (idadeMs < REUSE_MIN_MS) {
+		return { reusar: true, motivo: "texto recente (trava de custo)" };
+	}
+	return { reusar: false, motivo: "cenário mudou" };
+}
+
+/**
  * Orquestra boletim inteligente: LLM (30 min) → heurística (sempre).
- * Reutiliza texto LLM <30 min se o cenário não mudou (chuva começou/parou
- * ou núcleo dissipou → regenera). Persiste o vencedor para o cache.
+ * Reutiliza texto LLM se o cenário não mudou (chuva começou/parou, número citado
+ * desmentido pela medição, núcleo dissipou → regenera). Persiste o vencedor.
  */
 export async function generateSmartBulletin(
 	input: SmartBulletinInput,
@@ -486,35 +593,21 @@ export async function generateSmartBulletin(
 	const heuristic = () =>
 		buildHeuristicBulletin(nowcast, ecmwf, relevance, local);
 
-	// 1. Reuso do LLM: texto gemini <30 min E cenário igual.
+	// 1. Reuso do LLM: só com o MESMO cenário (impressão do contexto) dentro do TTL.
+	const chaveCenario = contextoKey(input);
 	try {
 		const cached = await getLatestNowcastBulletin();
-		if (
-			cached &&
-			// Reusa boletim de qualquer fonte de LLM da cadeia atual (não da heurística).
-			(cached.source === "openrouter" ||
-				cached.source === "nvidia_nim" ||
-				cached.source === "gemini") &&
-			Date.now() - cached.generatedAt < LLM_TTL_MS
-		) {
-			const choviaAntes = /chove em ipiranga|chuva forte já acumulada/i.test(
-				cached.text,
-			);
-			const choveAgora = fraseLocal != null;
-			const temDist = /\d{2,4}\s*km/.test(cached.text);
-			const vazioAgora = nowcast.threats.length === 0;
-			if (
-				choviaAntes === choveAgora &&
-				!(temDist && vazioAgora) &&
-				cached.text.length > 0 &&
-				// Gate determinístico: texto em cache que contradiz o radar
-				// (diz "nada por perto" com entidade em watch/alert) é lixo.
-				passaCoerenciaAmeaca(cached.text, nowcast.threats)
-			) {
-				logger.info("Boletim LLM reutilizado (<30 min, cenário igual)");
-				return cached;
-			}
-			logger.info("Boletim LLM stale (cenário mudou), regenerando");
+		const aval = avaliarReuso({ cached, local, nowcast, chaveCenario });
+		if (aval.reusar && cached) {
+			logger.info("Boletim LLM reutilizado", {
+				motivo: aval.motivo,
+				idadeMin: Math.round((Date.now() - cached.generatedAt) / 60000),
+				fraseLocal: fraseLocal ? "com-chuva" : "sem-chuva",
+			});
+			return cached;
+		}
+		if (cached) {
+			logger.info("Boletim LLM stale, regenerando", { motivo: aval.motivo });
 		}
 	} catch (e) {
 		logger.warn("LLM: leitura do cache falhou", { error: String(e) });
@@ -546,6 +639,7 @@ export async function generateSmartBulletin(
 					: llm.provider === "gemini"
 						? "gemini"
 						: "nvidia_nim",
+				chaveCenario,
 			);
 		} catch (e) {
 			logger.warn("LLM: persistência falhou", { error: String(e) });
@@ -556,7 +650,7 @@ export async function generateSmartBulletin(
 	// 3. Fallback: heurística (sempre funciona, zero rede).
 	const text = heuristic();
 	try {
-		await saveNowcastBulletin(text, "heuristic");
+		await saveNowcastBulletin(text, "heuristic", chaveCenario);
 	} catch (e) {
 		logger.warn("Heurística: persistência falhou", { error: String(e) });
 	}

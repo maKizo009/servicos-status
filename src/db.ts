@@ -128,11 +128,12 @@ export async function initDb(): Promise<Client> {
 				generated_at INTEGER NOT NULL
 			)`,
 				`CREATE TABLE IF NOT EXISTS weather_nowcast_bulletins (
-				id INTEGER PRIMARY KEY AUTOINCREMENT,
-				text TEXT NOT NULL,
-				source TEXT NOT NULL,
-				generated_at INTEGER NOT NULL
-			)`,
+					id INTEGER PRIMARY KEY AUTOINCREMENT,
+					text TEXT NOT NULL,
+					source TEXT NOT NULL,
+					generated_at INTEGER NOT NULL,
+					context_key TEXT
+				)`,
 				`CREATE TABLE IF NOT EXISTS weather_state_cache (
 				id INTEGER PRIMARY KEY CHECK (id = 1),
 				payload TEXT NOT NULL,
@@ -205,6 +206,18 @@ export async function initDb(): Promise<Client> {
 			],
 			"write",
 		);
+
+		// Migração idempotente (22/09/2026): bancos criados antes desta data não têm
+		// a coluna context_key. Ela é a impressão do CENÁRIO do boletim — sem ela o
+		// gate de reuso volta a comparar só tempo, e o texto congelava com timestamp
+		// novo a cada ciclo (ver llm-bulletin.ts e o incidente do "Boletim IA").
+		try {
+			await db.execute(
+				"ALTER TABLE weather_nowcast_bulletins ADD COLUMN context_key TEXT",
+			);
+		} catch {
+			// coluna já existe — caminho normal nas execuções seguintes
+		}
 
 		logger.info(
 			"Database schema initialized successfully via LibSQL Web batch",
@@ -724,6 +737,8 @@ export interface NowcastBulletinRecord {
 		| "openrouter"
 		| "nvidia_nim";
 	generatedAt: number;
+	/** Impressão do cenário que gerou o texto (null em boletins antigos). */
+	contextKey?: string | null;
 }
 
 export async function saveNowcastBulletin(
@@ -735,25 +750,27 @@ export async function saveNowcastBulletin(
 		| "heuristic"
 		| "openrouter"
 		| "nvidia_nim",
+	contextKey?: string | null,
 ): Promise<NowcastBulletinRecord> {
 	const now = Date.now();
 	const db = await getDbClient();
 	const res = await db.execute({
-		sql: "INSERT INTO weather_nowcast_bulletins (text, source, generated_at) VALUES (?, ?, ?)",
-		args: [text, source, now],
+		sql: "INSERT INTO weather_nowcast_bulletins (text, source, generated_at, context_key) VALUES (?, ?, ?, ?)",
+		args: [text, source, now, contextKey ?? null],
 	});
 	return {
 		id: Number(res.lastInsertRowid ?? now),
 		text,
 		source,
 		generatedAt: now,
+		contextKey: contextKey ?? null,
 	};
 }
 
 export async function getLatestNowcastBulletin(): Promise<NowcastBulletinRecord | null> {
 	const db = await getDbClient();
 	const res = await db.execute(
-		"SELECT id, text, source, generated_at as generatedAt FROM weather_nowcast_bulletins ORDER BY generated_at DESC LIMIT 1",
+		"SELECT id, text, source, generated_at as generatedAt, context_key as contextKey FROM weather_nowcast_bulletins ORDER BY generated_at DESC LIMIT 1",
 	);
 	if (res.rows.length === 0) return null;
 	const row = res.rows[0] as Record<string, unknown>;
@@ -769,6 +786,7 @@ export async function getLatestNowcastBulletin(): Promise<NowcastBulletinRecord 
 			| "openrouter"
 			| "nvidia_nim",
 		generatedAt: Number(row.generatedAt),
+		contextKey: row.contextKey == null ? null : String(row.contextKey),
 	};
 }
 
