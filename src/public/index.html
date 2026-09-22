@@ -2555,10 +2555,10 @@ function renderNowcastCard(data) {
       const obsNote = lastFrameTime
         ? `obs. ${new Date(lastFrameTime).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}`
         : '';
-      const framesNote = ` · ${nc.frames.length} frames (${obsNote})`;
+      const framesNote = ` · ${nc.framesTotal ?? nc.frames.length} frames (${obsNote})`;
       meta.textContent = note + framesNote;
     } else {
-      meta.textContent = `${nc.frames.length} frames analisados`;
+      meta.textContent = `${nc.framesTotal ?? nc.frames.length} frames analisados`;
     }
   }
 

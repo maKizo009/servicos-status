@@ -1006,6 +1006,11 @@ export function assessAllThreats(
 export interface NowcastResult {
 	analyzedAt: number;
 	frames: FrameAnalysis[];
+	/**
+	 * Quantos frames a ANÁLISE usou. A saída HTTP manda só o último frame (o
+	 * front não usa os outros) — sem isso a UI perderia o "N frames".
+	 */
+	framesTotal?: number;
 	/** Vetor de movimento entre o frame mais antigo e o mais recente */
 	movement: MovementVector | null;
 	/** dBZ máximo observado no frame mais recente */

@@ -834,6 +834,30 @@ async function getReqJson(req: IncomingRequest): Promise<unknown> {
 	return {};
 }
 
+/**
+ * Recorte do payload /api/weather (22/09/2026).
+ *
+ * Medido: 292 KB, dos quais 253 KB eram `nowcast.frames` — e o front usa SÓ o
+ * último frame (frames[length-1]) para as setas de direção, mais a contagem e o
+ * horário. Em celular (1,6 Mbps) isso é ~1,2 s de banda roubada do próprio
+ * radar, que aparece na mesma tela. O estado INTERNO continua completo (é ele
+ * que a análise, o boletim e o push consomem) — o recorte é só na saída HTTP.
+ */
+function enxugarPayloadParaCliente(state: WeatherState | null): unknown {
+	if (!state || !state.nowcast) return state;
+	const nc = state.nowcast;
+	const frames = nc.frames ?? [];
+	if (frames.length <= 1) return state;
+	return {
+		...state,
+		nowcast: {
+			...nc,
+			frames: [frames[frames.length - 1]],
+			framesTotal: frames.length,
+		},
+	};
+}
+
 export async function handleRequest(
 	reqIn: IncomingRequest | string,
 ): Promise<Response> {
@@ -1023,7 +1047,9 @@ export async function handleRequest(
 			}
 			if (!state) state = await syncWeatherCycle();
 			return Response.json(
-				state || { error: "Sem dados climatológicos no momento" },
+				enxugarPayloadParaCliente(state) ?? {
+					error: "Sem dados climatológicos no momento",
+				},
 				{
 					headers: {
 						// s-maxage: cache de BORDA (a resposta da função não era cacheada —
