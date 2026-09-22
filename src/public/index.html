@@ -2122,6 +2122,24 @@ async function initWeatherMap() {
 	fetchWeatherData();
 }
 
+/**
+ * A condição do topo vem do MODELO meteorológico; a chuva medida vem dos
+ * pluviômetros. Quando as duas divergem — "Garoa Moderada" no badge com 0,0 mm
+ * medido na última hora nos cards — a página se contradiz sozinha. É a mesma
+ * classe de defeito corrigida nas páginas de conteúdo (22/09/2026): aqui o
+ * rótulo diz de onde vem a informação, e SÓ quando há divergência real.
+ * Estação parada (stale) fica fora da conta: o acumulado dela é congelado.
+ */
+function rotuloCondicao(data) {
+  const cond = String(data && data.condition ? data.condition : 'Nublado');
+  const indicaChuva = /chuva|garoa|chuvis|pancada|trovoad|tempestade|precipita/i.test(cond);
+  if (!indicaChuva) return cond;
+  const estacoes = ((data && data.cemaden && data.cemaden.estacoes) || []).filter((e) => e && !e.stale);
+  if (!estacoes.length) return cond;
+  const medida = Math.max.apply(null, estacoes.map((e) => Number(e.acc1hr) || 0));
+  return medida > 0 ? cond : cond + ' (previsão)';
+}
+
 async function fetchWeatherData() {
   try {
     // Rede de segurança: nunca ficar pendurado "eternamente" se o backend
@@ -2137,7 +2155,7 @@ async function fetchWeatherData() {
       const rEl = document.getElementById('wxRainBadge');
       const wEl = document.getElementById('wxWindBadge');
       if(tEl) tEl.textContent = `🌡️ ${data.tempC}°C`;
-      if(cEl) cEl.textContent = `🌤️ ${data.condition || 'Nublado'}`;
+      if(cEl) cEl.textContent = `🌤️ ${rotuloCondicao(data)}`;
       if(rEl) rEl.textContent = `🌧️ ${data.rainProbabilityPct ?? 0}% Chuva`;
       if(wEl) wEl.textContent = `💨 ${data.windKmh ?? 0} km/h`;
 
