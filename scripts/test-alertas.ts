@@ -63,6 +63,23 @@ describe("Alerta unificado próprio", () => {
 			oficiais(),
 		);
 		expect(a.nivel).toBe("laranja");
+		// Núcleo a 55 km sem chuva medida AQUI: o título não pode afirmar chuva
+		// caindo em Ipiranga (o leitor lê "em Ipiranga" como chuva acontecendo).
+		expect(a.titulo).toContain("se aproximando");
+	});
+
+	test("núcleo severo COM chuva medida aqui → laranja 'em Ipiranga'", () => {
+		const a = buildAlertaUnificado(
+			local({
+				acc6hrMax: 26,
+				radarAlertLevel: "alert",
+				radarSevero: true,
+				radarKind: "nucleo",
+			}),
+			oficiais(),
+		);
+		expect(a.nivel).toBe("laranja");
+		expect(a.titulo).toContain("em Ipiranga/região");
 	});
 
 	// ── Regra do dono (21/09/2026): severidade ≠ relevância. ─────────────────

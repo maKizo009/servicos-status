@@ -319,7 +319,9 @@ export function buildAlertaUnificado(
 		nivel === "vermelho"
 			? "Alerta vermelho — risco alto de chuva forte em Ipiranga"
 			: nivel === "laranja"
-				? "Alerta laranja — chuva forte em Ipiranga/região"
+				? soRadar
+					? "Alerta laranja — chuva forte se aproximando de Ipiranga/região"
+					: "Alerta laranja — chuva forte em Ipiranga/região"
 				: nivel === "amarelo"
 					? soPrevisao
 						? "Atenção — previsão de chuva para Ipiranga/região (nada medido ainda)"
