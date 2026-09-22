@@ -3,7 +3,32 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Monitor Ipiranga — Status dos Serviços</title>
+<title>Monitor Ipiranga — radar de chuva, rios e status dos serviços</title>
+<meta name="description" content="Radar de chuva ao vivo, chuva medida nos pluviômetros, nível dos rios e alertas de temporal em Ipiranga (PR). Dados atualizados a cada 10 minutos, com análise de risco de alagamento do rio Bitumirim.">
+<link rel="canonical" href="https://servicos-status.vercel.app/">
+<meta name="robots" content="index, follow, max-image-preview:large">
+<meta name="author" content="Monitor Ipiranga">
+<meta name="geo.region" content="BR-PR">
+<meta name="geo.placename" content="Ipiranga, Paraná">
+<meta name="geo.position" content="-25.0244;-50.5847">
+<meta name="ICBM" content="-25.0244, -50.5847">
+<meta property="og:type" content="website">
+<meta property="og:locale" content="pt_BR">
+<meta property="og:site_name" content="Monitor Ipiranga">
+<meta property="og:title" content="Monitor Ipiranga — radar de chuva, rios e alertas ao vivo">
+<meta property="og:description" content="Radar de chuva ao vivo, chuva medida, nível dos rios e alertas de temporal em Ipiranga (PR). Atualiza a cada 10 minutos.">
+<meta property="og:url" content="https://servicos-status.vercel.app/">
+<meta property="og:image" content="https://servicos-status.vercel.app/brand/og.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:alt" content="Monitor Ipiranga — radar de chuva, rios e alertas ao vivo">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Monitor Ipiranga — radar de chuva, rios e alertas ao vivo">
+<meta name="twitter:description" content="Radar de chuva ao vivo, chuva medida, nível dos rios e alertas de temporal em Ipiranga (PR).">
+<meta name="twitter:image" content="https://servicos-status.vercel.app/brand/og.png">
+<script type="application/ld+json">
+{"@context":"https://schema.org","@type":"WebSite","name":"Monitor Ipiranga","alternateName":"Monitor de chuva e rios de Ipiranga (PR)","url":"https://servicos-status.vercel.app/","inLanguage":"pt-BR","description":"Monitoramento de chuva, radar meteorológico, nível dos rios e status de serviços em Ipiranga (PR).","publisher":{"@type":"Organization","name":"Monitor Ipiranga"},"about":[{"@type":"Thing","name":"radar de chuva"},{"@type":"Thing","name":"nível do rio Bitumirim"},{"@type":"Thing","name":"alagamento em Ipiranga (PR)"}]}
+</script>
 <link rel="manifest" href="/manifest.webmanifest">
 <meta name="theme-color" content="#064E3B">
 <meta name="mobile-web-app-capable" content="yes">
@@ -1223,6 +1248,7 @@ async function runClientTelemetry(){
       $('#telemetryPing').textContent = `⚡ Ping: ${rtt} ms ${connType ? '('+connType.toUpperCase()+')' : ''}`;
       if(rtt > 200){
         fetchData();
+bootstrapRadar();
       }
     }
   }catch(e){
@@ -1709,6 +1735,48 @@ function showStaleNotice(ts){
   bar.innerHTML=`<span>📡 Sem conexão agora — os dados abaixo são da última leitura (${fmtTime(ts)}).</span><button type="button" onclick="fetchData()">Tentar novamente</button>`;
   grid.prepend(bar);
 }
+
+
+/**
+ * Radar instantâneo: o índice do RainViewer vem DIRETO do navegador (~1 KB,
+ * CORS *), sem esperar por /api/weather. Medição 21/09/2026: primeiro tile aos
+ * 13,3 s em instância fria (a API regenerava o estado, 12,5 s) contra 0,43 s
+ * com API quente — o radar nunca foi lento, ele esperava a API. Aqui a imagem
+ * aparece primeiro; a ANÁLISE continua vindo da API, que ao chegar remove estas
+ * camadas e monta as dela (frames alinhados com o boletim/alertas).
+ */
+async function bootstrapRadar() {
+  try {
+    if (radarTileLayers.length > 0) return; // a API já montou: não mexer
+    const r = await fetch('https://api.rainviewer.com/public/weather-maps.json', { cache: 'no-store' });
+    if (!r.ok) return;
+    const idx = await r.json();
+    const past = idx && idx.radar && idx.radar.past;
+    if (!past || !past.length) return;
+    if (radarTileLayers.length > 0) return; // corrida com a API: quem chegou primeiro fica
+    const host = idx.host || 'https://tilecache.rainviewer.com';
+    radarFrames = [...past, ...(idx.radar.nowcast || [])];
+    radarPastCount = past.length;
+    radarFrames.forEach((frame) => {
+      const layer = L.tileLayer(host + frame.path + '/256/{z}/{x}/{y}/6/1_1.png', {
+        pane: 'radarPane', tileSize: 256, opacity: 0, maxNativeZoom: 7, maxZoom: 14, className: 'rain-tile'
+      });
+      layer.addTo(map);
+      radarTileLayers.push(layer);
+    });
+    const slider = document.getElementById('radarSlider');
+    if (slider) {
+      slider.max = Math.max(0, radarFrames.length - 1);
+      currentFrameIndex = Math.max(0, radarPastCount - 1);
+      slider.value = currentFrameIndex;
+      showRadarFrame(currentFrameIndex);
+    }
+    window._radarBootstrap = true;
+  } catch (e) {
+    console.warn('bootstrap do radar falhou (a API segue como fonte da análise)', e);
+  }
+}
+window.bootstrapRadar = bootstrapRadar;
 
 async function fetchData(){
   const ri=$('#refreshIcon');

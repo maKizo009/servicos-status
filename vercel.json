@@ -19,6 +19,10 @@
       "destination": "/api/index"
     },
     {
+      "source": "/admin",
+      "headers": [{ "key": "X-Robots-Tag", "value": "noindex, nofollow" }]
+    },
+    {
       "source": "/health",
       "destination": "/api/index"
     },

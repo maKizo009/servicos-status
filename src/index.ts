@@ -772,12 +772,14 @@ const TURSO_STATE_TTL_MS = 15 * 60_000;
  * (o chamador cai no sync inline como último recurso). Remove o ciclo VLM
  * completo do request path — visitante nunca espera o VLM.
  */
-async function loadWeatherState(): Promise<WeatherState | null> {
+async function loadWeatherState(
+	maxAgeMs: number = TURSO_STATE_TTL_MS,
+): Promise<WeatherState | null> {
 	const mem = getCachedWeatherState();
 	if (mem && Date.now() - mem.updatedAt <= 600_000) return mem;
 	try {
 		const cached = await getWeatherStateCache();
-		if (cached && Date.now() - cached.updatedAt <= TURSO_STATE_TTL_MS) {
+		if (cached && Date.now() - cached.updatedAt <= maxAgeMs) {
 			const parsed = JSON.parse(cached.payload) as WeatherState;
 			if (parsed && typeof parsed.updatedAt === "number") {
 				setCachedWeatherState(parsed);
@@ -1007,11 +1009,32 @@ export async function handleRequest(
 			// instância fria rodava o sync completo e o visitante esperava 60s+).
 			let state = await loadWeatherState();
 			if (!state) {
-				state = await syncWeatherCycle();
+				// NUNCA faça o VISITANTE pagar o ciclo completo (12,5 s medidos em
+				// instância fria — era o "radar demora pra aparecer"): serve o último
+				// estado persistido, mesmo velho, e deixa o cron de 10 min atualizar.
+				// O payload carrega updatedAt, então a UI continua honesta sobre a
+				// idade do dado; sync inline só se o Turso não tiver NADA.
+				state = await loadWeatherState(3 * 60 * 60_000);
+				if (state) {
+					logger.warn("Servindo estado PERSISTIDO mais velho que o TTL", {
+						idadeMin: Math.round((Date.now() - state.updatedAt) / 60_000),
+					});
+				}
 			}
+			if (!state) state = await syncWeatherCycle();
 			return Response.json(
 				state || { error: "Sem dados climatológicos no momento" },
-				{ headers: { "Cache-Control": "public, max-age=30" } },
+				{
+					headers: {
+						// s-maxage: cache de BORDA (a resposta da função não era cacheada —
+						// x-vercel-cache: MISS em toda visita, cold start na cara do visitante).
+						// stale-while-revalidate: serve o cache enquanto revalida em background.
+						"Cache-Control":
+							"public, max-age=30, s-maxage=60, stale-while-revalidate=600",
+						"Vercel-CDN-Cache-Control":
+							"public, s-maxage=60, stale-while-revalidate=600",
+					},
+				},
 			);
 		}
 		if (path === "/api/weather/nowcast") {

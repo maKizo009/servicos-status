@@ -1,0 +1,7 @@
+User-agent: *
+Allow: /
+Disallow: /admin
+Disallow: /api/
+Disallow: /health
+
+Sitemap: https://servicos-status.vercel.app/sitemap.xml
