@@ -897,6 +897,10 @@ export async function handleRequest(
 		"/llms.txt",
 		"/llms-full.txt",
 		"/llms-instructions.txt",
+		"/chuva-hoje",
+		"/rio-bitumirim",
+		"/como-ler-radar",
+		"/sitemap.xml",
 		"/api/status",
 		"/api/services",
 		"/api/report",
@@ -1020,6 +1024,45 @@ export async function handleRequest(
 	}
 
 	try {
+		// Páginas de resposta direta (conteúdo indexável + LLM-friendly). HTML puro
+		// servido do MESMO estado do dashboard: o texto não depende de JavaScript,
+		// porque quem lê é buscador, agente de IA e leitor de tela — nenhum deles
+		// executa script.
+		if (
+			path === "/chuva-hoje" ||
+			path === "/rio-bitumirim" ||
+			path === "/como-ler-radar"
+		) {
+			const { renderChuvaHoje, renderRioBitumirim, renderComoLerRadar } =
+				await import("./paginas-conteudo.js");
+			// Mesma regra do /api/weather: instância fria serve o último estado
+			// persistido em vez de fazer o visitante esperar o ciclo completo.
+			let state = await loadWeatherState();
+			if (!state) state = await loadWeatherState(3 * 60 * 60_000);
+			const html =
+				path === "/chuva-hoje"
+					? renderChuvaHoje(state)
+					: path === "/rio-bitumirim"
+						? renderRioBitumirim(state)
+						: renderComoLerRadar(state);
+			return new Response(html, {
+				headers: {
+					"Content-Type": "text/html; charset=utf-8",
+					"Cache-Control":
+						"public, max-age=60, s-maxage=300, stale-while-revalidate=900",
+				},
+			});
+		}
+		if (path === "/sitemap.xml") {
+			const { renderSitemap } = await import("./paginas-conteudo.js");
+			const state = await loadWeatherState();
+			return new Response(renderSitemap(state), {
+				headers: {
+					"Content-Type": "application/xml; charset=utf-8",
+					"Cache-Control": "public, max-age=600, s-maxage=1800",
+				},
+			});
+		}
 		if (path === "/health" || path === "/health/") return handleHealth();
 		if (path === "/api/status") return handleStatus();
 		if (path === "/api/services" || path === "/api/report") {

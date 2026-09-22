@@ -296,6 +296,11 @@ ${bulletin}
 - **Telecomunicações (Claro/Vivo/TIM):** ${telecomSummary}
 - **Nota:** O indicador de telecom acima reflete roteamento BGP público (prefixos anunciados pelas ASNs) e relatos locais de moradores (crowdsourcing) — o monitor não mede a qualidade do sinal celular em tempo real.
 
+## 📝 Páginas de resposta direta (leitura humana e por agentes)
+- [Vai chover em Ipiranga hoje?](https://servicos-status.vercel.app/chuva-hoje): resposta direta — chuva medida na última hora, núcleo mais próximo no radar, distância e chegada estimada.
+- [Rio Bitumirim em Ipiranga](https://servicos-status.vercel.app/rio-bitumirim): leituras de referência de nível, tendência das últimas 6 horas e projeção de saída da calha (estimativa própria).
+- [Como ler o radar de chuva](https://servicos-status.vercel.app/como-ler-radar): o que cada cor significa, o que as setas mostram e onde o radar engana.
+
 ## 🔗 Endpoints da API (dados estruturados)
 - **Status geral:** https://servicos-status.vercel.app/health (JSON: healthy/degraded)
 - **Status por operadora:** https://servicos-status.vercel.app/api/status
