@@ -1765,15 +1765,27 @@ function montarRadarDoIndice(idx, substituir) {
   radarPastCount = past.length;
   radarTileLayers.forEach((l) => map.removeLayer(l));
   radarTileLayers = [];
-  radarFrames.forEach((frame) => {
-    // Display: esquema 6 (mais próximo do Simepar). A análise do backend segue
-    // no esquema 2 — não mexer nisso.
-    const layer = L.tileLayer(host + frame.path + '/256/{z}/{x}/{y}/6/1_1.png', {
+  // Display: esquema 6 (mais próximo do Simepar). A análise do backend segue
+  // no esquema 2 — não mexer nisso.
+  radarTileLayers = radarFrames.map((frame) =>
+    L.tileLayer(host + frame.path + '/256/{z}/{x}/{y}/6/1_1.png', {
       pane: 'radarPane', tileSize: 256, opacity: 0, maxNativeZoom: 7, maxZoom: 14, className: 'rain-tile'
-    });
-    layer.addTo(map);
-    radarTileLayers.push(layer);
-  });
+    })
+  );
+  // ← Aqui mora a velocidade percebida (medido 22/09/2026 em rede de celular).
+  // Antes TODAS as camadas entravam de uma vez: ~13 frames × 4-6 tiles = 52+
+  // requisições disputando a mesma banda, e a imagem que o cidadão realmente
+  // olha (o frame mais recente) chegava atrás de 12 frames que ele nem vê. Agora
+  // só o frame atual entra; o resto do loop entra quando ele já está na tela.
+  const alvoIdx = Math.max(0, Math.min(radarFrames.length - 1,
+    substituir ? Number(document.getElementById('radarSlider')?.value ?? 0) : radarPastCount - 1));
+  radarTileLayers[alvoIdx].addTo(map);
+  const carregarLoop = () => {
+    radarTileLayers.forEach((layer) => { if (!map.hasLayer(layer)) layer.addTo(map); });
+  };
+  window._carregarLoopRadar = carregarLoop;
+  radarTileLayers[alvoIdx].once('load', carregarLoop);
+  setTimeout(carregarLoop, 2500); // rede de segurança (rede ruim/erro de tile)
   const slider = document.getElementById('radarSlider');
   if (slider) {
     const anterior = Number(slider.value);
@@ -2135,11 +2147,11 @@ async function fetchWeatherData() {
     }
 
     renderNowcastCard(data);
-    renderCemadenCard(data);
-    renderHidroCard(data);
+    renderQuandoVisivel('#cemadenBox', () => renderCemadenCard(data));
+    renderQuandoVisivel('#hidroBox', () => renderHidroCard(data));
     renderAlertaCard(data);
     renderTopAlert(data);
-    renderSimeparCard(data);
+    renderQuandoVisivel('#simeparBox', () => renderSimeparCard(data));
 
     if (data.radar?.radar?.past && data.radar.radar.past.length > 0) {
       const host = data.radar.host || 'https://tilecache.rainviewer.com';
@@ -2183,6 +2195,32 @@ async function fetchWeatherData() {
   } catch (e) {
     console.error("Weather fetch error", e);
   }
+}
+
+/**
+ * Render sob demanda (22/09/2026): os cards fora da primeira dobra (CEMADEN,
+ * hidrográfico e radar do Simepar) só montam o HTML quando o leitor se aproxima.
+ * O primeiro paint é justamente quando a página ainda está aparecendo — não faz
+ * sentido gastar main thread montando o que ninguém está vendo ainda.
+ * Se o observador não disparar (elemento escondido, navegador antigo), um timer
+ * garante o render de qualquer forma: card vazio por causa de otimização não.
+ */
+function renderQuandoVisivel(seletor, fn) {
+  const el = document.querySelector(seletor);
+  if (!el || typeof IntersectionObserver === 'undefined') { fn(); return; }
+  let feito = false;
+  let io = null;
+  const executar = () => {
+    if (feito) return;
+    feito = true;
+    if (io) io.disconnect();
+    fn();
+  };
+  io = new IntersectionObserver((entradas) => {
+    if (entradas.some((e) => e.isIntersecting)) executar();
+  }, { rootMargin: '300px 0px' });
+  io.observe(el);
+  setTimeout(executar, 6000);
 }
 
 function renderCemadenCard(data) {
@@ -2660,6 +2698,7 @@ function showRadarFrame(index) {
 }
 
 function toggleRadarPlay() {
+  if (!isPlaying && window._carregarLoopRadar) window._carregarLoopRadar();
   isPlaying = !isPlaying;
   const btn = document.getElementById('radarPlayBtn');
   if(btn) btn.textContent = isPlaying ? '⏸' : '▶';
@@ -2679,6 +2718,7 @@ function toggleRadarPlay() {
 
 document.getElementById('radarPlayBtn')?.addEventListener('click', toggleRadarPlay);
 document.getElementById('radarSlider')?.addEventListener('input', (e) => {
+  if (window._carregarLoopRadar) window._carregarLoopRadar();
   if (isPlaying) toggleRadarPlay();
   showRadarFrame(parseInt(e.target.value, 10));
 });
