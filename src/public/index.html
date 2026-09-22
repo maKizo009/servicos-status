@@ -1829,11 +1829,9 @@ function montarRadarDoIndice(idx, substituir) {
   window._dispararLoopRadar = dispararLoop;
   camadaAtual.once('tileload', () => {
     if (window._mostrarBaseMap) window._mostrarBaseMap();
-    // O fade dos tiles é um loop de rAF do Leaflet que pode parar antes de
-    // chegar a 1, e o setOpacity feito na montagem cai no vazio (os tiles ainda
-    // não estavam em _tiles). Sem reaplicar, a chuva fica com opacity 0 preso e
-    // o mapa parece vazio (medido 22/09/2026).
-    showRadarFrame(currentFrameIndex);
+    // 250 ms: o fade do Leaflet termina em ~200 ms e pode reescrever o tile com
+    // 0. Reaplicar depois disso é o que garante a chuva visível (medido).
+    setTimeout(() => showRadarFrame(currentFrameIndex), 250);
   });
   // A animação é MANUAL (▶ + slider) e o loop custa ~50 requisições de tile. Em
   // rede folgada ele entra logo depois do frame atual; em rede de celular/saveData
@@ -2302,9 +2300,9 @@ async function fetchWeatherData() {
       });
 
       const camadaAtual = radarTileLayers[idxAlvo];
-      // Mesmo motivo do caminho do bootstrap: reaplica o frame a cada tile que
-      // carrega (inclusive depois de pan/zoom, quando nascem tiles novos).
-      camadaAtual.on('tileload', () => showRadarFrame(currentFrameIndex));
+      // Mesmo motivo do caminho do bootstrap: reaplica o frame depois do fade
+      // (cobre também tiles novos criados por pan/zoom).
+      camadaAtual.on('tileload', () => setTimeout(() => showRadarFrame(currentFrameIndex), 250));
       let loopDisparado = false;
       const dispararLoop = () => {
         if (loopDisparado) return;
@@ -2829,7 +2827,20 @@ function showRadarFrame(index) {
   if (!radarTileLayers || radarTileLayers.length === 0) return;
   currentFrameIndex = index;
   radarTileLayers.forEach((layer, i) => {
-    layer.setOpacity(i === index ? 0.75 : 0);
+    const visivel = i === index;
+    layer.setOpacity(visivel ? 0.75 : 0);
+    // O Leaflet anima o fade-in dos tiles com um loop de rAF
+    // (opacity = (agora - carregado)/200) que pode parar antes de chegar a 1 e
+    // deixa o tile preso em 0 — o container fica em 0.75 mas 0,75 × 0 = 0, e a
+    // chuva não aparece (medido 22/09/2026). Aqui o estado é escrito direto no
+    // que já está no DOM; tiles novos são corrigidos no tileload da camada.
+    const cont = layer._container;
+    if (cont) {
+      cont.querySelectorAll('img.leaflet-tile').forEach((t) => {
+        const alvo = visivel ? '1' : '0';
+        if (t.style.opacity !== alvo) t.style.opacity = alvo;
+      });
+    }
   });
 
   const frame = radarFrames[index];
