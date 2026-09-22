@@ -36,9 +36,11 @@ flowchart TD
 - **Boletins IA (NVIDIA NIM)**: Síntese em linguagem natural gerada por modelos da NVIDIA NIM (`meta/llama-3.1-8b-instruct`) ou engine de regras heurísticas locais.
 
 ## 📡 Monitoramento de Infraestrutura Pública
-- **Operadoras móveis**: Claro, Vivo, TIM (portais, conectividade, BGP)
 - **COPEL**: Ocorrências de energia (programadas e emergenciais)
 - **Sanepar**: Interrupções programadas de abastecimento de água
+
+> Operadoras de telefonia/ISP (Claro, Vivo, TIM) foram monitoradas até 22/09/2026
+> e foram removidas — os testes não tinham utilidade e poluíam a página.
 
 ---
 
@@ -129,10 +131,11 @@ Health check do monitor. **Sem rate limit.** Usado por Docker, load balancers e 
 | `status` | string | `"healthy"` ou `"degraded"` |
 | `level` | string | Nível geral: `"ok"`, `"warn"`, `"critical"` |
 | `uptime` | number | Segundos desde a inicialização |
-| `operatorCount` | number | Quantidade de operadoras monitoradas |
-| `levels.critical` | number | Operadoras em estado crítico |
-| `levels.warn` | number | Operadoras em atenção |
-| `levels.ok` | number | Operadoras normais |
+| `serviceCount` | number | Quantidade de serviços monitorados (COPEL, Sanepar) |
+| `services[]` | array | `{ name, status }` de cada serviço monitorado |
+| `levels.critical` | number | Serviços em estado crítico |
+| `levels.warn` | number | Serviços em atenção |
+| `levels.ok` | number | Serviços normais |
 | `lastCheck` | number \| null | Timestamp do último ciclo |
 | `timestamp` | number | Timestamp da resposta |
 
@@ -152,7 +155,7 @@ Health check do monitor. **Sem rate limit.** Usado por Docker, load balancers e 
 
 #### `GET /api/services` ⭐
 
-**Endpoint principal.** Relatório unificado de **todos os serviços monitorados**: operadoras (Claro, Vivo, TIM) + utilidades (COPEL, Sanepar).
+**Endpoint principal.** Relatório unificado de **todos os serviços monitorados**: COPEL (energia) + Sanepar (água).
 
 É o endpoint recomendado para dashboards, agregadores e consumo externo.
 
@@ -161,8 +164,8 @@ Health check do monitor. **Sem rate limit.** Usado por Docker, load balancers e 
 | `generatedAt` | number | Timestamp do relatório |
 | `overallStatus` | string | Pior status entre todos os serviços: `"ok"`, `"warn"`, `"critical"` |
 | `services[]` | array | Lista de serviços monitorados |
-| `services[].name` | string | Nome: `"Claro"`, `"Vivo"`, `"TIM"`, `"Copel"`, `"Sanepar"` |
-| `services[].category` | string | Categoria: `"telecom"` ou `"utility"` |
+| `services[].name` | string | Nome: `"Copel"`, `"Sanepar"` |
+| `services[].category` | string | Categoria: `"utility"` |
 | `services[].status` | string | `"ok"`, `"warn"`, `"critical"` |
 | `services[].details` | string | Resumo legível em português |
 | `services[].timestamp` | number | Timestamp da última verificação |
@@ -220,9 +223,16 @@ Health check do monitor. **Sem rate limit.** Usado por Docker, load balancers e 
 
 ---
 
-#### `GET /api/status`
+#### `GET /api/status` — DESCONTINUADO (22/09/2026)
 
-Status detalhado das **operadoras de telecom** (portais, conectividade, BGP). Útil para monitoramento técnico granular.
+O monitoramento de **operadoras de telefonia/ISP foi removido do produto**: os
+testes não tinham utilidade (o monitor não mede a rede da operadora — ping em
+portal de autoatendimento mede o portal, não a rede) e os cards poluíam a
+página. O endpoint continua respondendo por compatibilidade, sempre com
+`operators: []` — não use em integração nova. Os serviços monitorados são
+**COPEL** (energia) e **Sanepar** (água), em `/api/services`.
+
+O formato abaixo é o legado, mantido só como referência histórica.
 
 | Campo | Tipo | Descrição |
 |---|---|---|

@@ -871,14 +871,6 @@ body{font-family:var(--font);background:var(--md-sys-color-surface);color:var(--
 </header>
 
 <div class="container">
-  <div class="user-telemetry-pill" id="telemetryPill">
-    <div>
-      <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;margin-right:4px;" aria-hidden="true"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg> Internet deste aparelho: <strong id="telemetryIsp">Identificando operadora...</strong>
-    </div>
-    <div class="user-connection-badge" id="telemetryPing">
-      ⚡ Medindo sinal...
-    </div>
-  </div>
 
   <div id="banner" class="banner ok" role="status" aria-live="polite">
     <div class="banner-top-row">
@@ -1126,32 +1118,21 @@ body{font-family:var(--font);background:var(--md-sys-color-surface);color:var(--
 
 <script>
 const API_SERVICES='/api/services';
-const API_STATUS='/api/status';
-const API_TELEMETRY='/api/telemetry';
 const API_STATS='/api/stats/daily';
 const REFRESH_MS=60000; // era 30s: o estado do backend muda a cada ~10 min (cron)
 
 const OFFICIAL_URLS={
   Copel:'https://cdn.copel.com/aneel-informacoes/index.html',
-  Sanepar:'https://www.sanepar.com.br/esta-sem-agua',
-  Claro:'https://minhaclaro.claro.com.br',
-  Vivo:'https://meuvivo.vivo.com.br',
-  TIM:'https://meutim.tim.com.br'
+  Sanepar:'https://www.sanepar.com.br/esta-sem-agua'
 };
 
 const BRANDS={
-  Claro:{label:'Claro',cls:'claro',cat:'telecom',desc:'Rede Móvel e Conectividade'},
-  Vivo:{label:'Vivo',cls:'vivo',cat:'telecom',desc:'Rede Móvel e Conectividade'},
-  TIM:{label:'TIM',cls:'tim',cat:'telecom',desc:'Rede Móvel e Conectividade'},
   Copel:{label:'COPEL',cls:'copel',cat:'utility',desc:'Energia Elétrica (Copel ANEEL)'},
   Sanepar:{label:'Sanepar',cls:'sanepar',cat:'utility',desc:'Abastecimento de Água'}
 };
 
 const SVG=`<svg viewBox="0 0 24 24">`;
 const LOGO={
-  claro:`<svg viewBox="0 0 24 24"><rect x="1" y="1" width="22" height="22" rx="6" fill="#1E1E1E"/><text x="12" y="16.5" text-anchor="middle" fill="#F5F7FA" font-family="'Montserrat','Inter',sans-serif" font-size="12" font-weight="800">C</text></svg>`,
-  vivo:`<svg viewBox="0 0 24 24"><rect x="1" y="1" width="22" height="22" rx="6" fill="#1E1E1E"/><text x="12" y="16.5" text-anchor="middle" fill="#F5F7FA" font-family="'Montserrat','Inter',sans-serif" font-size="12" font-weight="800">V</text></svg>`,
-  tim:`<svg viewBox="0 0 24 24"><rect x="1" y="1" width="22" height="22" rx="6" fill="#1E1E1E"/><text x="12" y="15.5" text-anchor="middle" fill="#F5F7FA" font-family="'Montserrat','Inter',sans-serif" font-size="8" font-weight="800" letter-spacing="-0.5">TIM</text></svg>`,
   copel:`<svg viewBox="0 0 24 24"><rect x="1" y="1" width="22" height="22" rx="6" fill="#0B3D2E"/><path d="M14 4L6 13h4L9 22l8-11h-4l3-7z" fill="#00C853"/></svg>`,
   sanepar:`<svg viewBox="0 0 24 24"><rect x="1" y="1" width="22" height="22" rx="6" fill="#0B3D2E"/><text x="12" y="16.5" text-anchor="middle" fill="#F5F7FA" font-family="'Montserrat','Inter',sans-serif" font-size="12" font-weight="800">S</text></svg>`,
 };
@@ -1252,46 +1233,12 @@ function toggleCopelOutages(btn){
   btn.setAttribute('aria-expanded', isHidden ? 'true' : 'false');
 }
 
-async function runClientTelemetry(){
-  const telemetryTimeout = setTimeout(() => {
-    if ($('#telemetryIsp').textContent === 'Identificando operadora...') {
-      $('#telemetryIsp').textContent = 'Conexão detectada';
-      $('#telemetryPing').textContent = '⚡ Sinal ativo';
-    }
-  }, 8000);
-
-  try{
-    const connType = navigator.connection ? navigator.connection.effectiveType : '';
-    const pingStart = performance.now();
-    await fetch(API_TELEMETRY + '?ping=1', { method: 'HEAD', cache: 'no-store' });
-    const rtt = Math.round(performance.now() - pingStart);
-
-    const resp = await fetch(API_TELEMETRY, {
-      method: 'POST',
-      headers: {'Content-Type': 'application/json'},
-      body: JSON.stringify({ rttMs: rtt, effectiveType: connType })
-    });
-
-    if(resp.ok){
-      clearTimeout(telemetryTimeout);
-      const data = await resp.json();
-      const isp = data.isp || {};
-      const ispName = isp.ispName || (isp.operator ? `${isp.operator} (Rede Móvel)` : 'Banda Larga');
-      $('#telemetryIsp').textContent = ispName;
-      $('#telemetryPing').textContent = `⚡ Ping: ${rtt} ms ${connType ? '('+connType.toUpperCase()+')' : ''}`;
-      // Aqui havia `if (rtt > 200) { fetchData(); bootstrapRadar(); }`: o radar
-      // instantâneo só ligava em conexão LENTA (parecia economia, era bug) e o
-      // fetchData() era um refetch redundante do que já está no boot.
-    }
-  }catch(e){
-    clearTimeout(telemetryTimeout);
-    if ($('#telemetryIsp').textContent === 'Identificando operadora...') {
-      $('#telemetryIsp').textContent = 'Conexão detectada';
-      $('#telemetryPing').textContent = '⚡ Sinal ativo';
-    }
-    console.error("Telemetry error", e);
-  }
-}
+/* Telemetria do aparelho (operadora/ISP + ping) REMOVIDA em 22/09/2026 a pedido
+   do Dave: não tinha utilidade e poluía o topo da página. O /api/telemetry que
+   ela alimentava era um teste de provedor, não um serviço monitorado — o que o
+   monitor mede é a rede da Copel/Sanepar, não a do celular de quem visita.
+   A telemetria de USO (acessos/instalações/sessões, /api/telemetry/stats)
+   continua — é outra coisa. */
 
 /* Lembrete de desligamento programado da Copel (topo da página).
    Usa scheduledOutages do serviço Copel no /api/services. Só aparece quando
@@ -1928,23 +1875,9 @@ async function fetchData(){
     let resp=await fetch(API_SERVICES);
     if(!resp.ok)throw new Error(`HTTP ${resp.status}`);
     let data=await resp.json();
-    if(!data.services||data.services.length===0){
-      resp=await fetch(API_STATUS);
-      if(!resp.ok)throw new Error(`HTTP ${resp.status}`);
-      data=await resp.json();
-      const services=[];
-      for(const op of(data.operators||[])){
-        services.push({
-          name:op.operator,status:op.status,
-          timestamp:data.timestamp,
-          data:{connectivityResults:op.connectivity||[],bgp:op.bgp||null}
-        });
-      }
-      renderCards(services);
-      updateBanner(services);
-      renderScheduledReminder(services);
-      return;
-    }
+    // Havia aqui um fallback que buscava /api/status (operadoras) quando o
+    // /api/services vinha vazio. As operadoras de telefonia/ISP saíram em
+    // 22/09/2026: sem serviços, simplesmente não há cards para desenhar.
     const services=data.services||[];
     updateBanner(services);
     renderCards(services);
@@ -2042,7 +1975,6 @@ setInterval(updateClock,60000);
 // esperava o /api/services e o parse dele dentro da mesma função).
 fetchWeatherData();
 fetchData();
-runClientTelemetry();
 setInterval(() => { fetchData(); fetchWeatherData(); }, REFRESH_MS);
 
 // Weather & RainViewer Radar Map Logic
@@ -3253,6 +3185,26 @@ function copyPrompt(provider, text) {
         if (dismissed()) return;
         box.style.display = 'block';
         requestAnimationFrame(() => { box.style.opacity = '1'; box.style.transform = 'translateX(-50%) translateY(0)'; });
+        // O prompt é `position:fixed` no rodapé: cobria 155 px do que estivesse
+        // embaixo — na prática o card da Copel, que tem 2366 px de altura e quase
+        // sempre tem a base na tela (relatado em 22/09/2026). Ele existe pra ser
+        // um convite de UMA vez ("1x/30 dias", como diz o comentário acima), não
+        // pra ficar pendurado: sai assim que o usuário começa a rolar a página.
+        // O sino continua sendo o caminho pra ativar alertas depois.
+        const y0 = window.scrollY;
+        let jaSaiu = false;
+        const sair = (ev) => {
+          if (jaSaiu) return;
+          // Rolagem residual (restauração de posição no carregamento) não mata o convite.
+          if (ev && ev.type === 'scroll' && Math.abs(window.scrollY - y0) < 80) return;
+          jaSaiu = true;
+          window.removeEventListener('scroll', sair);
+          mark(false);
+          window.__miPushPopup.hide();
+        };
+        window.addEventListener('scroll', sair, { passive: true });
+        // Rede de segurança: sem isso ele só sairia se o usuário clicasse ou rolasse.
+        setTimeout(sair, 40000);
       }, 2500);
     },
     hide: () => {

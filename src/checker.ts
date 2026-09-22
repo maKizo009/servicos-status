@@ -36,30 +36,13 @@ export async function runAllChecks(
 	tracker: EventTracker,
 ): Promise<AllCheckData> {
 	const timestamp = Date.now();
+	// Operadoras de telefonia/ISP: REMOVIDAS em 22/09/2026 (pedido do Dave — os
+	// testes não tinham utilidade e o monitor não consegue medir a rede da
+	// operadora: ping em minhaclaro/meuvivo/meutim mede o site de autoatendimento,
+	// não a rede; o BGP só diz o que a operadora anuncia). Cada ciclo gastava 3
+	// alvos de conectividade + 3 consultas BGP por operadora. A lista fica vazia
+	// para os consumidores (API, alertas, banco) não mudarem de forma de uma vez.
 	const operatorResults: AllCheckData["operators"] = [];
-
-	for (const [opName, opCfg] of Object.entries(config.operators) as [
-		OperatorName,
-		{ asn: number },
-	][]) {
-		const connectivityResults = await Promise.all(
-			connectivityTargets.map((t) =>
-				checkConnectivity(t.host, t.label, config.connectivityTimeoutMs),
-			),
-		);
-
-		const bgpResult = await checkBgpPrefixes(
-			opCfg.asn,
-			opName,
-			config.bgpTimeoutMs,
-		);
-
-		operatorResults.push({
-			name: opName,
-			connectivityResults,
-			bgpResult,
-		});
-	}
 
 	const copelRes = config.municipio
 		? await checkCopel(

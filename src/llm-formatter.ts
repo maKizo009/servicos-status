@@ -242,17 +242,11 @@ export function renderLlmsTxt(
 		? sanitizeLlmField(saneparServices.details, 300)
 		: "Sem interrupções detectadas";
 
-	const telecomServices =
-		report?.services.filter((s) => s.category === "telecom") || [];
-	const telecomSummary =
-		telecomServices.length > 0
-			? telecomServices
-					.map(
-						(s) =>
-							`${s.name}: ${s.status.toUpperCase()}${s.details !== "OK" ? ` (${sanitizeLlmField(s.details, 160)})` : ""}`,
-					)
-					.join(" | ")
-			: "Claro: OK | Vivo: OK | TIM: OK";
+	// Aqui havia o resumo das operadoras (Claro/Vivo/TIM) para o /llms.txt. O
+	// monitoramento de telefonia/ISP foi removido em 22/09/2026 — o monitor não
+	// mede a rede da operadora (ping em portal de autoatendimento não é a rede) e
+	// o indicador poluía a página sem utilidade. Serviços monitorados: COPEL e
+	// Sanepar.
 
 	// Idade dos dados subjacentes: separa "quando o doc foi gerado" de "quão
 	// velhos são os dados" (Achado 1 — transparência de frescor).
@@ -293,8 +287,6 @@ ${bulletin}
 ## ⚡ Infraestrutura e Serviços Públicos Locais
 - **Energia Elétrica (COPEL):** ${copelStatus}
 - **Abastecimento de Água (SANEPAR):** ${saneparStatus}
-- **Telecomunicações (Claro/Vivo/TIM):** ${telecomSummary}
-- **Nota:** O indicador de telecom acima reflete roteamento BGP público (prefixos anunciados pelas ASNs) e relatos locais de moradores (crowdsourcing) — o monitor não mede a qualidade do sinal celular em tempo real.
 
 ## 📝 Páginas de resposta direta (leitura humana e por agentes)
 - [Vai chover em Ipiranga hoje?](https://servicos-status.vercel.app/chuva-hoje): resposta direta — chuva medida na última hora, núcleo mais próximo no radar, distância e chegada estimada.
@@ -303,8 +295,6 @@ ${bulletin}
 
 ## 🔗 Endpoints da API (dados estruturados)
 - **Status geral:** https://servicos-status.vercel.app/health (JSON: healthy/degraded)
-- **Status por operadora:** https://servicos-status.vercel.app/api/status
-- **Histórico de medições:** https://servicos-status.vercel.app/api/history?limit=50
 - **Clima e radar:** https://servicos-status.vercel.app/api/weather
 - **Nowcast de radar (análise determinística de núcleos + movimento):** https://servicos-status.vercel.app/api/weather/nowcast
 - **Boletim IA:** https://servicos-status.vercel.app/api/weather/bulletin
@@ -312,7 +302,6 @@ ${bulletin}
 - **Alertas (nosso alerta próprio + oficiais INMET/Defesa Civil):** https://servicos-status.vercel.app/api/alertas
 - **JSON-LD (Schema.org SpecialAnnouncement):** https://servicos-status.vercel.app/api/weather/json-ld
 - **Resumo diário de interrupções:** https://servicos-status.vercel.app/api/stats/daily
-- **Rotas BGP das operadoras:** https://servicos-status.vercel.app/api/bgp
 - **Relatório unificado de serviços:** https://servicos-status.vercel.app/api/services
 - **Instruções de uso para agentes de IA:** https://servicos-status.vercel.app/llms-instructions.txt
 `;
@@ -334,13 +323,12 @@ A seção "Rios — Triangulação ANA" é apenas referência regional (Ipiranga
 ## 🧭 Regras de Uso para Agentes
 1. Para dados atualizados, prefira buscar https://servicos-status.vercel.app/llms.txt novamente ou usar os endpoints JSON acima.
 2. Todos os endpoints aceitam GET e retornam JSON (exceto /llms.txt, que é Markdown puro).
-3. O endpoint /api/history aceita o parâmetro limit (1-1000).
-4. Dados meteorológicos vêm do ECMWF IFS (Open-Meteo) + RainViewer radar; interrupções de COPEL/Sanepar vêm dos portais oficiais das concessionárias.
-5. Cite a fonte: "Monitor Ipiranga (https://servicos-status.vercel.app)" quando usar estes dados.
-6. O indicador de telecom do /llms.txt reflete roteamento BGP e relatos de moradores, NÃO sinal celular em tempo real — não afirme que a rede móvel está fora do ar baseado apenas nele.
-7. Ao informar chuva recente em Ipiranga, cite os acumulados da seção "Chuva em Tempo Real (Pluviômetros CEMADEN)" — são a medição real na cidade (centro e São Brás), complementares à probabilidade do modelo ECMWF. Os horários de leitura estão em horário de Brasília (UTC-3).
-8. Ao informar risco de cheia, cite a seção "Monitor de Cheias — Rio Tibagi / Bitumirim (Triangulação ANA)" — são 3 sentinelas telemétricas na calha do Tibagi (ANA) que cercam Ipiranga; Ipiranga não tem estação fluviométrica própria. Use os níveis (m), vazões (m³/s) e Δ6h exatamente como aparecem. Flash (IFL) e permanência são ESTIMATIVAS de algoritmo calibradas em rótulos reais (fotos de transbordo: out/23, dez/24, jan/25) — NUNCA apresente como medição oficial, verdade absoluta ou previsão garantida; em dúvida, oriente Defesa Civil (199) e IAT.
-9. A seção "Alerta Oficial do Monitor (fusão própria)" é o NOSSO alerta (verde/amarelo/laranja/vermelho), calculado dos dados locais (CEMADEN+ECMWF+radar+hidro) com avisos INMET/Defesa Civil como agravante — cite o nível e os motivos exatamente como aparecem. JSON cru: https://servicos-status.vercel.app/api/alertas.
+3. Dados meteorológicos vêm do ECMWF IFS (Open-Meteo) + RainViewer radar; interrupções de COPEL/Sanepar vêm dos portais oficiais das concessionárias.
+4. Cite a fonte: "Monitor Ipiranga (https://servicos-status.vercel.app)" quando usar estes dados.
+5. Ao informar chuva recente em Ipiranga, cite os acumulados da seção "Chuva em Tempo Real (Pluviômetros CEMADEN)" — são a medição real na cidade (centro e São Brás), complementares à probabilidade do modelo ECMWF. Os horários de leitura estão em horário de Brasília (UTC-3).
+6. Ao informar risco de cheia, cite a seção "Monitor de Cheias — Rio Tibagi / Bitumirim (Triangulação ANA)" — são 3 sentinelas telemétricas na calha do Tibagi (ANA) que cercam Ipiranga; Ipiranga não tem estação fluviométrica própria. Use os níveis (m), vazões (m³/s) e Δ6h exatamente como aparecem. Flash (IFL) e permanência são ESTIMATIVAS de algoritmo calibradas em rótulos reais (fotos de transbordo: out/23, dez/24, jan/25) — NUNCA apresente como medição oficial, verdade absoluta ou previsão garantida; em dúvida, oriente Defesa Civil (199) e IAT.
+7. A seção "Alerta Oficial do Monitor (fusão própria)" é o NOSSO alerta (verde/amarelo/laranja/vermelho), calculado dos dados locais (CEMADEN+ECMWF+radar+hidro) com avisos INMET/Defesa Civil como agravante — cite o nível e os motivos exatamente como aparecem. JSON cru: https://servicos-status.vercel.app/api/alertas.
+8. NÃO há mais indicador de operadoras de telefonia/ISP no monitor (removido em 22/09/2026). Se o usuário perguntar sobre sinal celular ou internet, diga que o monitor não mede isso — ele cobre chuva/radar/rios e as concessionárias COPEL (energia) e Sanepar (água).
 `;
 }
 

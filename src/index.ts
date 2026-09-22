@@ -275,21 +275,31 @@ async function runChecks(): Promise<void> {
 }
 
 function handleHealth(): Response {
+	// ATENÇÃO: até 22/09/2026 este endpoint media o nível das OPERADORAS
+	// (checkResults). Com a remoção da telefonia/ISP esse mapa ficou sempre
+	// vazio e o /health responderia "healthy" para sempre — falha silenciosa
+	// para qualquer monitor de uptime apontado nele. Agora reflete os serviços
+	// monitorados de verdade (COPEL/Sanepar) pelo relatório unificado.
+	const services = lastUnifiedReport?.services ?? [];
 	const levelCounts = {
-		critical: [...checkResults.values()].filter((r) => r.status === "critical")
-			.length,
-		warn: [...checkResults.values()].filter((r) => r.status === "warn").length,
-		ok: [...checkResults.values()].filter((r) => r.status === "ok").length,
+		critical: services.filter((s) => s.status === "critical").length,
+		warn: services.filter((s) => s.status === "warn").length,
+		ok: services.filter((s) => s.status === "ok").length,
 	};
-	const healthy = levelCounts.critical === 0 && levelCounts.warn === 0;
+	// Sem relatório ainda (cold start) não é "saudável": é desconhecido.
+	const healthy =
+		services.length > 0 && levelCounts.critical === 0 && levelCounts.warn === 0;
 
 	return Response.json({
 		status: healthy ? "healthy" : "degraded",
-		level: currentLevel,
+		level: lastUnifiedReport?.overallStatus ?? currentLevel,
 		uptime: Math.floor((Date.now() - startTime) / 1000),
-		operatorCount: checkResults.size,
+		serviceCount: services.length,
+		services: services.map((s) => ({ name: s.name, status: s.status })),
 		levels: levelCounts,
-		lastCheck: lastResults.length > 0 ? lastResults[0].timestamp : null,
+		lastCheck:
+			lastUnifiedReport?.generatedAt ??
+			(lastResults.length > 0 ? lastResults[0].timestamp : null),
 		timestamp: Date.now(),
 	});
 }
