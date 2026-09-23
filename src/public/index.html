@@ -69,6 +69,14 @@
   --md-sys-color-surface-container-low:#F1F5F9;  /* Sidebar */
   --md-sys-color-surface-container:#FFFFFF;       /* Cards */
   --md-sys-color-surface-container-high:#E2E8F0; /* Headers internos / Badges */
+  /* === Movimento (M3) — curva por PAPEL, nao "ease" generico === */
+  --motion-emphasized:cubic-bezier(.05,.7,.1,1);  /* entradas: desacelera no fim */
+  --motion-standard:cubic-bezier(.2,0,0,1);       /* hover / troca de estado */
+  --motion-spring:cubic-bezier(.3,1.35,.5,1);     /* press: leve overshoot */
+  --dur-1:120ms;   /* press */
+  --dur-2:220ms;   /* hover, troca de cor */
+  --dur-3:420ms;   /* subida de card */
+  --dur-4:620ms;   /* superficie grande / cascata */
   --md-sys-color-surface-container-highest:#CBD5E1;
   --md-sys-color-on-surface:#0F172A;             /* Texto principal */
   --md-sys-color-on-surface-variant:#475569;     /* Texto secundário */
@@ -847,26 +855,80 @@ body{font-family:var(--font);background:var(--md-sys-color-surface);color:var(--
    (opacity:0, 8px abaixo) e nunca aparece. Sem fill mode, se a animacao nao
    rodar o card simplesmente aparece — o risco cai pro lado seguro. */
 @keyframes surfaceIn{
-  from{opacity:0;transform:translateY(8px)}
-  to{opacity:1;transform:translateY(0)}
+  from{opacity:0;transform:translateY(16px) scale(.985)}
+  55%{opacity:1}
+  to{opacity:1;transform:none}
 }
+/* O dot de nivel pisca quando o nivel MUDA (o JS poe .pop) — nunca em loop. */
+@keyframes dotPop{0%{transform:scale(.3);opacity:.25}55%{transform:scale(1.35)}100%{transform:scale(1);opacity:1}}
+/* Valor que troca de um ciclo pro outro entra deslizando (o JS poe .trocou). */
+@keyframes valIn{from{opacity:0;transform:translateY(-5px)}to{opacity:1;transform:none}}
+/* .entra e posto pelo JS quando o DADO chega. No load o card ainda e esqueleto:
+   animar ali animaria o vazio e o conteudo apareceria seco depois. */
+.entra{animation:surfaceIn var(--dur-4) var(--motion-emphasized) both}
+.band-dot.pop{animation:dotPop .64s var(--motion-spring)}
+.band-val.trocou{animation:valIn .38s var(--motion-emphasized)}
+
 .card,.bulletin-box,.nowcast-box,.cemaden-box,.kpi-card,.outage-card,.stats-kpi-card,
 .stats-table-wrapper,.banner,.scheduled-reminder{
-  transition:box-shadow .22s cubic-bezier(.2,0,0,1),transform .22s cubic-bezier(.2,0,0,1)
+  transition:box-shadow var(--dur-3) var(--motion-standard),transform var(--dur-3) var(--motion-spring)
 }
 /* Hierarquia: canvas < secao (nivel 1) < card dentro de container tonal
    (nivel 2) < hover (nivel 3). Sem isso tudo ficava no mesmo plano e lia flat. */
 .panel-card,.kpi-card,.outage-card,.banner,.scheduled-reminder{
   box-shadow:var(--md-elevation-2)
 }
+/* Hover em card NAO clicavel: sobe 3px e ganha elevacao (M3: nivel 1 -> 2).
+   A curva com overshoot e o que da peso ao movimento em vez de pulo seco. */
 .card:hover,.bulletin-box:hover,.nowcast-box:hover,.cemaden-box:hover,.kpi-card:hover,
 .outage-card:hover,.stats-kpi-card:hover,.stats-table-wrapper:hover{
-  box-shadow:var(--md-elevation-3);transform:translateY(-2px)
+  box-shadow:var(--md-elevation-3);transform:translateY(-3px)
 }
-.panel-card,.status-band,.banner,.scheduled-reminder,.stats-kpi-card,.stats-table-wrapper{
-  animation:surfaceIn .34s cubic-bezier(.2,0,0,1)
+/* O banner de takeover nasce sozinho quando o alerta sobe: entra deslizando. */
+.banner.alert-takeover{animation:surfaceIn var(--dur-4) var(--motion-emphasized)}
+.anim-in .card{animation:surfaceIn var(--dur-3) var(--motion-emphasized) both;animation-delay:calc(var(--i,0)*55ms)}
+
+/* Botoes e alvos clicaveis: state layer do M3. O ::before fica ABAIXO do texto
+   (::after ficaria por cima e escureceria o rotulo). */
+.btn-toggle-outages,.source-link-btn,.llm-btn,.banner-detail-item,.tab-btn,
+.radar-play-btn,.layer-btn,.theme-toggle-btn,.push-btn{
+  position:relative;
+  transition:background var(--dur-2) var(--motion-standard),
+             box-shadow var(--dur-2) var(--motion-standard),
+             color var(--dur-2) var(--motion-standard),
+             filter var(--dur-2) var(--motion-standard),
+             transform var(--dur-1) var(--motion-spring)
 }
-.anim-in .card{animation:surfaceIn .34s cubic-bezier(.2,0,0,1) both;animation-delay:calc(var(--i,0)*45ms)}
+.btn-toggle-outages::before,.source-link-btn::before,.llm-btn::before,
+.banner-detail-item::before,.tab-btn::before{
+  content:'';position:absolute;inset:0;border-radius:inherit;background:currentColor;
+  opacity:0;pointer-events:none;transition:opacity var(--dur-2) var(--motion-standard)
+}
+.btn-toggle-outages:hover::before,.source-link-btn:hover::before,.llm-btn:hover::before,
+.banner-detail-item:hover::before,.tab-btn:hover::before{opacity:.07}
+.btn-toggle-outages:active::before,.source-link-btn:active::before,.llm-btn:active::before,
+.banner-detail-item:active::before,.tab-btn:active::before{opacity:.13}
+.btn-toggle-outages:active,.source-link-btn:active,.llm-btn:active,.banner-detail-item:active,
+.tab-btn:active,.radar-play-btn:active{transform:scale(.965)}
+
+/* Expansor (<details>) abre deslizando em vez de pular. Chrome 131+; em
+   navegador sem suporte abre normal (nada quebra). */
+:root{interpolate-size:allow-keywords}
+details::details-content{
+  block-size:0;overflow:hidden;
+  transition:block-size var(--dur-3) var(--motion-emphasized),
+             content-visibility var(--dur-3) allow-discrete
+}
+details[open]::details-content{block-size:auto}
+
+/* reduced-motion: sem subida, sem press, sem cascata (a cor/opacidade fica) */
+@media (prefers-reduced-motion:reduce){
+  .card:hover,.bulletin-box:hover,.nowcast-box:hover,.cemaden-box:hover,.kpi-card:hover,
+  .outage-card:hover,.stats-kpi-card:hover,.stats-table-wrapper:hover,
+  .band-pill:hover,.band-pill:active,.tab-btn:active,.btn-toggle-outages:active,
+  .source-link-btn:active,.llm-btn:active,.banner-detail-item:active,.radar-play-btn:active{transform:none}
+  .entra,.banner.alert-takeover,.band-dot.pop,.band-val.trocou{animation:none}
+}
 
 /* ==========================================================================
    PAINEL A — faixa de status + grade proporcional de 12 colunas (23/09/2026)
@@ -887,13 +949,28 @@ body{font-family:var(--font);background:var(--md-sys-color-surface);color:var(--
   box-shadow:var(--md-elevation-2);padding:12px;margin-top:10px
 }
 .band-pill{
+  position:relative;
   display:flex;align-items:center;gap:10px;text-align:left;font-family:inherit;
   background:var(--md-sys-color-surface-container-low);border:none;border-radius:var(--md-shape-corner-medium);
   padding:10px 12px;cursor:pointer;color:var(--text);
-  transition:background .18s ease,box-shadow .18s ease,transform .18s ease
+  transition:background var(--dur-2) var(--motion-standard),
+             box-shadow var(--dur-3) var(--motion-standard),
+             transform var(--dur-1) var(--motion-spring)
 }
-.band-pill:hover{background:var(--md-sys-color-surface-container-high);box-shadow:var(--md-elevation-1)}
-.band-pill:active{transform:scale(.985)}
+/* State layer do M3: hover 6%, press 12%, sem escurecer o rotulo. */
+.band-pill::before{
+  content:'';position:absolute;inset:0;border-radius:inherit;background:currentColor;
+  opacity:0;pointer-events:none;transition:opacity var(--dur-2) var(--motion-standard)
+}
+.band-pill:hover{box-shadow:var(--md-elevation-2);transform:translateY(-2px)}
+.band-pill:hover::before{opacity:.06}
+.band-pill:active{transform:scale(.97)}
+.band-pill:active::before{opacity:.12}
+/* Fica AQUI (e nao no bloco de movimento) porque mesma especificidade resolve
+   por ordem: antes do .band-pill:hover, a regra perdia. */
+@media (prefers-reduced-motion:reduce){
+  .band-pill:hover,.band-pill:active{transform:none}
+}
 .band-pill:focus-visible{outline:2px solid var(--md-sys-color-primary);outline-offset:2px}
 .band-dot{width:9px;height:9px;border-radius:50%;flex:none;background:var(--md-sys-color-outline)}
 .band-dot.ok{background:var(--g6)}
@@ -2020,6 +2097,9 @@ async function fetchData(){
     renderScheduledReminder(services);
     updateFooter(data.generatedAt);
     saveSnapshot(services, data.generatedAt);
+    window._cargaPainel = window._cargaPainel || { servicos: false, clima: false };
+    window._cargaPainel.servicos = true;
+    entradaPainel();
     $('.ld').style.background='var(--g5)';
     $('#liveLabel').textContent='Ao vivo';
   }catch(e){showError(e.message)}
@@ -2334,6 +2414,9 @@ async function fetchWeatherData() {
     renderTopAlert(data);
     renderStatusBand();
     renderQuandoVisivel('#simeparBox', () => renderSimeparCard(data));
+    window._cargaPainel = window._cargaPainel || { servicos: false, clima: false };
+    window._cargaPainel.clima = true;
+    entradaPainel();
 
     if (data.radar?.radar?.past && data.radar.radar.past.length > 0) {
       const host = data.radar.host || 'https://tilecache.rainviewer.com';
@@ -2444,6 +2527,33 @@ function renderQuandoVisivel(seletor, fn) {
    (window.latestWeatherData + window.lastServicesSnapshot) — nada de segunda
    fonte de verdade. Cada pílula leva ao card do detalhe; só a de energia
    expande, porque o resumo por bairro não existe em nenhum card. */
+/* ---------------------------------------------------------------------------
+   Entrada fluida dos cards do painel. Roda UMA vez, quando o DADO chega — no
+   load os cards ainda sao esqueleto, entao animar ali animaria o vazio e o
+   conteudo apareceria seco depois.
+
+   O .entra SAI depois que a animacao termina: com fill-mode o transform final
+   fica aplicado pra sempre e o hover (subida de 3px) nunca aconteceria.
+   --------------------------------------------------------------------------- */
+function animarEntrada(el, atraso){
+  if (!el || !el.classList) return;
+  window._entrouPainel = window._entrouPainel || new Set();
+  if (window._entrouPainel.has(el)) return;
+  window._entrouPainel.add(el);
+  const dur = 620, at = atraso || 0;
+  el.style.animationDelay = at + 'ms';
+  el.classList.add('entra');
+  setTimeout(() => { el.classList.remove('entra'); el.style.animationDelay = ''; }, at + dur + 80);
+}
+// Cascata so depois que os DOIS primeiros carregamentos assentaram.
+function entradaPainel(){
+  window._cargaPainel = window._cargaPainel || { servicos: false, clima: false };
+  if (!window._cargaPainel.servicos || !window._cargaPainel.clima) return;
+  ['.status-band', '.radar-card', '.clima-card', '.situacao-card',
+   '.rios-card', '.prog-card', '.scheduled-reminder']
+    .forEach((sel, i) => animarEntrada(document.querySelector(sel), i * 70));
+}
+
 function renderStatusBand(){
   const svcs = window.lastServicesSnapshot || [];
   const w = window.latestWeatherData || {};
@@ -2451,11 +2561,28 @@ function renderStatusBand(){
   const sanepar = svcs.find(s => s.name === 'Sanepar');
   const dCopel = (copel && copel.data) || {};
 
+  // Anima SO quando o valor/nivel MUDA: o painel re-renderiza a cada 30s e
+  // reanimar sempre viraria pisca-pisca. O reflow forcado (void offsetWidth)
+  // reinicia a keyframe quando o mesmo elemento anima duas vezes seguidas.
   const pinta = (id, valor, nivel) => {
     const v = document.getElementById(id + 'Val');
-    if (v) v.innerHTML = valor;
+    if (v && v.innerHTML !== valor) {
+      v.innerHTML = valor;
+      v.classList.remove('trocou'); void v.offsetWidth; v.classList.add('trocou');
+      setTimeout(() => v.classList.remove('trocou'), 420);
+    }
     const d = document.getElementById(id + 'Dot');
-    if (d) d.className = 'band-dot' + (nivel && nivel !== 'info' ? ' ' + nivel : '');
+    if (d) {
+      const cls = 'band-dot' + (nivel && nivel !== 'info' ? ' ' + nivel : '');
+      if (d.className !== cls) {
+        const subiu = nivel && nivel !== 'info';
+        d.className = cls;
+        if (subiu) {
+          d.classList.remove('pop'); void d.offsetWidth; d.classList.add('pop');
+          setTimeout(() => d.classList.remove('pop'), 700);
+        }
+      }
+    }
     const p = document.getElementById(id);
     if (p) p.dataset.nivel = nivel || 'info';
   };
