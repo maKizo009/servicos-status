@@ -399,7 +399,8 @@ body{font-family:var(--font);background:var(--md-sys-color-surface);color:var(--
   height:36px;min-height:36px;padding:0 11px;flex:0 0 auto;
   background:rgba(255,255,255,.16);border:none;border-radius:var(--md-shape-corner-full);
   cursor:pointer;font-size:12px;font-weight:600;color:#fff;font-family:inherit;
-  transition:background .2s;backdrop-filter:blur(8px);margin-left:0;white-space:nowrap
+  transition:background .2s;backdrop-filter:blur(8px);margin-left:0;white-space:nowrap;
+  text-decoration:none
 }
 .push-btn svg,.admin-btn svg,.header-refresh-btn .ri{width:15px;height:15px;flex-shrink:0}
 .theme-toggle-btn{width:36px;padding:0;font-size:15px}
@@ -409,11 +410,6 @@ body{font-family:var(--font);background:var(--md-sys-color-surface);color:var(--
 .push-btn:active{transform:scale(.95)}
 .push-btn.on{background:rgba(0,146,63,.9)}
 .push-btn.denied{opacity:.55}
-.admin-btn{
-  display:inline-flex;align-items:center;height:40px;padding:0 14px;flex-shrink:0;text-decoration:none;
-  background:rgba(255,255,255,.16);border:none;border-radius:var(--md-shape-corner-full);
-  cursor:pointer;font-size:13px;font-weight:600;color:#fff;transition:background .2s;backdrop-filter:blur(8px);margin-left:8px
-}
 .admin-btn:hover{background:rgba(255,255,255,.28)}
 #mi-toast{
   position:fixed;left:50%;bottom:24px;transform:translateX(-50%) translateY(80px);z-index:9999;
@@ -603,10 +599,13 @@ body{font-family:var(--font);background:var(--md-sys-color-surface);color:var(--
   box-shadow:var(--shadow-crit);
   grid-column:1/-1
 }
-@media(min-width:768px){.card.critical{grid-column:span 2}}
-@media(min-width:1100px){.card.critical{grid-column:span 3}}
 
 /* === M3 Mobile refinements === */
+/* 5 controles em tela estreita: o icone de refresh (decorativo) sai antes que a
+   hora e o ponto de status, que sao informacao. */
+@media (max-width:400px){.header-actions .header-refresh-btn .ri{display:none}}
+/* Em 320px a pilula fica com 132px e o valor caia em 3 linhas, deixando a linha
+   do meio mais alta que as outras. Fonte um pouco menor = 2 linhas em todas. */
 @media (max-width: 520px){
   /* Nao cabe rotulo em 4 colunas iguais: fica so o icone. O aria-label/title
      continuam dizendo o que cada botao faz, e o relogio mantem a hora. */
@@ -648,7 +647,10 @@ body{font-family:var(--font);background:var(--md-sys-color-surface);color:var(--
 .card.warn{box-shadow:var(--shadow-warn)}
 
 .card-crit-bar{
-  height:4px;width:100%;background:linear-gradient(90deg,var(--r6),#EF4444);display:none
+  /* absolute e nao no fluxo: no fluxo empurrava o conteudo do card critico 4px
+     pra baixo e o titulo dele nao alinhava com o dos outros cards. */
+  position:absolute;top:0;left:0;right:0;height:4px;
+  background:linear-gradient(90deg,var(--r6),#EF4444);display:none
 }
 .card.critical .card-crit-bar{display:block}
 
@@ -1007,13 +1009,20 @@ details[open]::details-content{block-size:auto}
   .band-pill:hover,.band-pill:active{transform:none}
 }
 .band-pill:focus-visible{outline:2px solid var(--md-sys-color-primary);outline-offset:2px}
+/* margin-top 2px: o rotulo tem 12,6px, entao o ponto de 9px fica centrado NA
+   LINHA DO ROTULO (como nos cards). Com align-items:center o ponto seguia o
+   centro do bloco e, quando o valor quebrava em 2 linhas (RIOS), ele descia
+   9px em relacao aos outros pontos — grade torta aos olhos. */
 .band-dot{width:9px;height:9px;border-radius:50%;flex:none;background:var(--md-sys-color-outline)}
 .band-dot.ok{background:var(--g6)}
 .band-dot.warn{background:var(--a5)}
 .band-dot.crit{background:var(--r6)}
 .band-txt{display:flex;flex-direction:column;min-width:0}
 /* --text2 e nao --text3: no escuro o --text3 dava 4,12:1 em 10,5px (reprova AA). */
-.band-lbl{font-size:10.5px;font-weight:700;letter-spacing:.6px;text-transform:uppercase;color:var(--text2);line-height:1.2}
+/* O ponto vive DENTRO da linha do rotulo (como nos cards): assim ele alinha
+   sempre com o texto do rotulo, mesmo quando o valor quebra em 2 linhas. Antes
+   ele seguia o centro do bloco e no RIOS descia 9px em relacao aos outros. */
+.band-lbl{display:flex;align-items:center;gap:5px;font-size:10.5px;font-weight:700;letter-spacing:.6px;text-transform:uppercase;color:var(--text2);line-height:1.2}
 .band-val{font-size:14px;font-weight:700;font-variant-numeric:tabular-nums;line-height:1.3}
 .band-val small{font-size:11.5px;font-weight:500;color:var(--text2)}
 .band-pill[data-nivel="crit"]{background:var(--r1)}
@@ -1027,6 +1036,24 @@ details[open]::details-content{block-size:auto}
 /* :last-of-type e nao :last-child: o ultimo FILHO da faixa e o <div> do expand
    (escondido), entao :last-child nunca casava com a pilula. */
 .status-band .band-pill:last-of-type{grid-column:1/-1}
+/* Todas as linhas com a MESMA altura: a do meio tinha 69px (valor quebrado em
+   2 linhas) e as outras 50,8px, o que lia como grade torta. */
+@media (max-width:640px){.status-band .band-pill{min-height:70px}}
+/* Bloco de texto com altura fixa de 2 linhas SO no celular: e onde o valor do
+   RIOS quebra e o bloco dele ficaria 18px mais alto, jogando o rotulo dele pra
+   cima em relacao aos vizinhos (grade lida como torta mesmo com as linhas
+   iguais). Em tela larga o valor cabe em 1 linha e nao precisa. */
+@media (max-width:520px){.status-band .band-val{min-height:2.6em}}
+@media (max-width:344px){
+  /* Uma coluna so: abaixo de ~345px a pilula fica com menos de 140px e o valor
+     ("Atencao nao sai da calha") nao cabe em 2 linhas nem a 12px — a linha do
+     meio ficava 7px mais alta que as outras. De 345px pra cima as 2 colunas
+     continuam cabendo e as linhas ja igualam pelo min-height. */
+  .status-band{grid-template-columns:1fr}
+  .status-band .band-lbl{font-size:10px}
+  .status-band .band-val{font-size:12px}
+  .status-band .band-txt{gap:1px}
+}
 .band-expand{grid-column:1/-1;background:var(--md-sys-color-surface-container-low);border-radius:var(--md-shape-corner-medium);
   padding:10px 12px;font-size:12.5px;color:var(--text2);line-height:1.5}
 .band-expand table{width:100%;border-collapse:collapse}
@@ -1156,8 +1183,8 @@ details[open]::details-content{block-size:auto}
     <span id="pushBtnIcon" aria-hidden="true"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg></span>
     <span class="btn-lbl" id="pushBtnText">Alertas</span>
   </button>
-  <button class="push-btn" id="btnInstall" type="button" aria-label="Instalar o app" title="Instalar o Monitor Ipiranga no celular" style="display:none"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="margin-right:2px"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg> <span class="btn-lbl">Instalar</span></button>
-  <a class="admin-btn" id="btnAdmin" href="/admin" style="display:none" title="Painel Admin"><svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor" aria-hidden="true" style="margin-right:4px"><path d="M5 9.2h3V19H5zM10.6 5h2.8v14h-2.8zm5.6 8H19v6h-2.8z"/></svg> Admin</a>
+  <button class="push-btn" id="btnInstall" type="button" aria-label="Instalar o app" title="Instalar o Monitor Ipiranga no celular" style="display:none"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg> <span class="btn-lbl">Instalar</span></button>
+  <a class="admin-btn" id="btnAdmin" href="/admin" style="display:none" title="Painel Admin"><svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor" aria-hidden="true"><path d="M5 9.2h3V19H5zM10.6 5h2.8v14h-2.8zm5.6 8H19v6h-2.8z"/></svg> <span class="btn-lbl">Admin</span></a>
   <button class="header-refresh-btn" id="btnRefresh" type="button" aria-label="Atualizar dados do monitoramento">
     <svg class="ri" id="refreshIcon" viewBox="0 0 24 24"><path d="M17.65 6.35C16.2 4.9 14.21 4 12 4c-4.42 0-7.99 3.58-7.99 8s3.57 8 7.99 8c3.73 0 6.84-2.55 7.73-6h-2.08c-.82 2.33-3.04 4-5.65 4-3.31 0-6-2.69-6-6s2.69-6 6-6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z"/></svg>
     <span class="ht" id="headerTime" aria-live="polite">--:--</span>
@@ -1192,24 +1219,19 @@ details[open]::details-content{block-size:auto}
        detalhe — o link "Ver card ➔" órfão do banner antigo morre aqui. -->
   <div class="status-band" id="statusBand" role="status" aria-live="polite">
     <button class="band-pill" id="pillEnergia" type="button" aria-expanded="false" aria-controls="bandExpEnergia" data-expand="bandExpEnergia">
-      <span class="band-dot" id="pillEnergiaDot" aria-hidden="true"></span>
-      <span class="band-txt"><span class="band-lbl">Energia</span><span class="band-val" id="pillEnergiaVal">—</span></span>
+      <span class="band-txt"><span class="band-lbl"><span class="band-dot" id="pillEnergiaDot" aria-hidden="true"></span>Energia</span><span class="band-val" id="pillEnergiaVal">—</span></span>
     </button>
     <button class="band-pill" id="pillAgua" type="button" data-target='.card[data-name="Sanepar"]'>
-      <span class="band-dot" id="pillAguaDot" aria-hidden="true"></span>
-      <span class="band-txt"><span class="band-lbl">Água</span><span class="band-val" id="pillAguaVal">—</span></span>
+      <span class="band-txt"><span class="band-lbl"><span class="band-dot" id="pillAguaDot" aria-hidden="true"></span>Água</span><span class="band-val" id="pillAguaVal">—</span></span>
     </button>
     <button class="band-pill" id="pillRios" type="button" data-target=".rios-card">
-      <span class="band-dot" id="pillRiosDot" aria-hidden="true"></span>
-      <span class="band-txt"><span class="band-lbl">Rios (Ipiranga)</span><span class="band-val" id="pillRiosVal">—</span></span>
+      <span class="band-txt"><span class="band-lbl"><span class="band-dot" id="pillRiosDot" aria-hidden="true"></span>Rios (Ipiranga)</span><span class="band-val" id="pillRiosVal">—</span></span>
     </button>
     <button class="band-pill" id="pillChuva" type="button" data-target=".clima-card">
-      <span class="band-dot" id="pillChuvaDot" aria-hidden="true"></span>
-      <span class="band-txt"><span class="band-lbl">Chuva 24 h</span><span class="band-val" id="pillChuvaVal">—</span></span>
+      <span class="band-txt"><span class="band-lbl"><span class="band-dot" id="pillChuvaDot" aria-hidden="true"></span>Chuva 24 h</span><span class="band-val" id="pillChuvaVal">—</span></span>
     </button>
     <button class="band-pill" id="pillProg" type="button" data-target="#scheduledReminder">
-      <span class="band-dot" id="pillProgDot" aria-hidden="true"></span>
-      <span class="band-txt"><span class="band-lbl">Programados</span><span class="band-val" id="pillProgVal">—</span></span>
+      <span class="band-txt"><span class="band-lbl"><span class="band-dot" id="pillProgDot" aria-hidden="true"></span>Programados</span><span class="band-val" id="pillProgVal">—</span></span>
     </button>
     <div class="band-expand" id="bandExpEnergia" hidden></div>
   </div>
