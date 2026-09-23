@@ -997,7 +997,12 @@ details[open]::details-content{block-size:auto}
 .band-pill[data-nivel="warn"]{background:var(--a1)}
 .band-pill[data-nivel="warn"] .band-val{color:var(--md-sys-color-on-warning-container)}
 .band-pill[data-nivel="ok"] .band-val{color:var(--md-sys-color-on-success-container)}
-.band-stamp{font-size:11.5px;color:var(--text3);text-align:right;padding:0 4px;align-self:center}
+/* O selo "atualizado" saiu: ele repetia o relogio do topo (hora + ponto verde)
+   e o frescor ja esta no rodape. Sem ele a 5a pilula sobraria sozinha na
+   ultima linha do celular (grade de 2 colunas), entao ela ocupa a linha toda. */
+/* :last-of-type e nao :last-child: o ultimo FILHO da faixa e o <div> do expand
+   (escondido), entao :last-child nunca casava com a pilula. */
+.status-band .band-pill:last-of-type{grid-column:1/-1}
 .band-expand{grid-column:1/-1;background:var(--md-sys-color-surface-container-low);border-radius:var(--md-shape-corner-medium);
   padding:10px 12px;font-size:12.5px;color:var(--text2);line-height:1.5}
 .band-expand table{width:100%;border-collapse:collapse}
@@ -1093,8 +1098,11 @@ details[open]::details-content{block-size:auto}
   .panel-grid>#grid>.card[data-name="Copel"]{grid-column:1/9;grid-row:3/5}
   .panel-grid>#grid>.card[data-name="Sanepar"]{grid-column:9/13;grid-row:3;align-self:start}
   .panel-grid>.prog-card{grid-column:9/13;grid-row:4}
-  .status-band{grid-template-columns:repeat(5,auto) 1fr;align-items:center;gap:10px;padding:12px 14px}
-  .band-stamp{grid-column:auto;text-align:right;padding:0 4px 0 0}
+  /* 5 pilulas = 5 colunas iguais. A 6a coluna era do selo; sem ele as pilulas
+     voltam a ser coluna normal (mesma especificidade da regra do celular, que
+     tem :last-child — por isso o :last-child aqui tambem). */
+  .status-band{grid-template-columns:repeat(5,1fr);align-items:stretch;gap:10px;padding:12px 14px}
+  .status-band .band-pill:last-of-type{grid-column:auto}
 }
 
 /* Chuva JÁ detectada no radar: a linha muda de cor (sem borda, só papel tonal). */
@@ -1177,7 +1185,6 @@ details[open]::details-content{block-size:auto}
       <span class="band-dot" id="pillProgDot" aria-hidden="true"></span>
       <span class="band-txt"><span class="band-lbl">Programados</span><span class="band-val" id="pillProgVal">—</span></span>
     </button>
-    <span class="band-stamp" id="bandStamp">🟢 —</span>
     <div class="band-expand" id="bandExpEnergia" hidden></div>
   </div>
 
@@ -2664,14 +2671,6 @@ function renderStatusBand(){
   const badgeProg = document.getElementById('progBadge');
   if (badgeProg) badgeProg.textContent = prog.length > 1 ? `${prog.length} PROGRAMADOS` : 'PROGRAMADO';
 
-  // --- Selo de atualização ---
-  const selo = document.getElementById('bandStamp');
-  if (selo) {
-    const quando = w.updatedAt || (copel && copel.timestamp) || null;
-    selo.textContent = quando
-      ? '🟢 atualizado ' + new Date(quando).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })
-      : '🟢 —';
-  }
 }
 
 /* Pílulas: energia expande o resumo por bairro; as outras levam ao card. */
