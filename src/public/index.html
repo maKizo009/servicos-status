@@ -87,10 +87,11 @@
   --md-sys-color-on-error-container:#7F1D1D;
   /* on-container legivel (AA) para containers tonais semanticos */
   --md-sys-color-on-success-container:#14532D;
+  --md-sys-color-on-warning-container:#92400E;
   --md-sys-color-on-warn-container:#78350F;
-  --md-elevation-1:0 1px 2px 0 rgba(15,23,42,.20),0 1px 3px 1px rgba(15,23,42,.10);
-  --md-elevation-2:0 1px 2px 0 rgba(15,23,42,.22),0 2px 6px 2px rgba(15,23,42,.12);
-  --md-elevation-3:0 4px 8px 3px rgba(15,23,42,.12),0 1px 3px 0 rgba(15,23,42,.22);
+  --md-elevation-1:0 1px 2px 0 rgba(15,23,42,.30),0 1px 3px 1px rgba(15,23,42,.15);
+  --md-elevation-2:0 1px 2px 0 rgba(15,23,42,.30),0 2px 6px 2px rgba(15,23,42,.15);
+  --md-elevation-3:0 4px 8px 3px rgba(15,23,42,.15),0 1px 3px 0 rgba(15,23,42,.30);
   --md-shape-corner-xs:4px;--md-shape-corner-small:8px;--md-shape-corner-medium:12px;--md-shape-corner-large:16px;--md-shape-corner-xl:28px;--md-shape-corner-full:9999px;
 
   /* === Tokens legados (aliases para o M3 — nada quebra) === */
@@ -100,7 +101,7 @@
   --r6:#DC2626;--r5:#EF4444;--r1:#FEE2E2;--r0:#FEF2F2;
   --copel:#00923F;--sanepar:#003F87;
   --surface:var(--md-sys-color-surface-container);--text:var(--md-sys-color-on-surface);--text2:var(--md-sys-color-on-surface-variant);--text3:var(--md-sys-color-on-surface-muted);--border:var(--md-sys-color-outline-variant);
-  --radius:12px;--radius-sm:8px;--shadow:var(--md-elevation-1);--shadow-lg:var(--md-elevation-2);--shadow-crit:0 4px 10px -2px rgba(15,23,42,.18),0 2px 4px -1px rgba(15,23,42,.10);--shadow-warn:0 4px 14px -2px rgba(217,119,6,.18),0 2px 4px -1px rgba(217,119,6,.08);
+  --radius:12px;--radius-sm:8px;--shadow:var(--md-elevation-1);--shadow-lg:var(--md-elevation-2);--shadow-crit:0 4px 12px -2px rgba(15,23,42,.26),0 2px 5px -1px rgba(15,23,42,.16);--shadow-warn:0 4px 14px -2px rgba(217,119,6,.28),0 2px 6px -1px rgba(217,119,6,.16);
   --font:'Inter',system-ui,-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif
 }
 
@@ -134,6 +135,7 @@
     --md-sys-color-error-container:#7F1D1D;
     --md-sys-color-on-error-container:#FEE2E2;
     --md-sys-color-on-success-container:#DCFCE7;
+    --md-sys-color-on-warning-container:#FBBF24;
     --md-sys-color-on-warn-container:#FEF3C7;
     --md-elevation-1:0 1px 3px 0 rgba(0,0,0,.3),0 1px 2px -1px rgba(0,0,0,.3);
     --md-elevation-2:0 4px 6px -1px rgba(0,0,0,.35),0 2px 4px -2px rgba(0,0,0,.25);
@@ -169,6 +171,7 @@
   --md-sys-color-error-container:#7F1D1D;
   --md-sys-color-on-error-container:#FEE2E2;
   --md-sys-color-on-success-container:#DCFCE7;
+  --md-sys-color-on-warning-container:#FBBF24;
   --md-sys-color-on-warn-container:#FEF3C7;
   --md-elevation-1:0 1px 3px 0 rgba(0,0,0,.3),0 1px 2px -1px rgba(0,0,0,.3);
   --md-elevation-2:0 4px 6px -1px rgba(0,0,0,.35),0 2px 4px -2px rgba(0,0,0,.25);
@@ -206,7 +209,6 @@
 .weather-content-grid{
   display:grid;grid-template-columns:1fr;gap:0
 }
-@media(min-width:992px){.weather-content-grid{grid-template-columns:1fr 340px}}
 
 .radar-map-wrapper{
   position:relative;background:#090d16;height:380px;width:100%
@@ -282,7 +284,6 @@
 }
 .cemaden-head{display:flex;align-items:center;justify-content:space-between;color:var(--md-sys-color-on-surface)}
 .cemaden-row{background:var(--md-sys-color-surface-container-low);border-radius:var(--md-shape-corner-small);padding:10px 12px}
-.cemaden-row:first-child{background:transparent;padding:0}
 .cemaden-tag{font-size:12px;font-weight:600;letter-spacing:.4px;text-transform:uppercase;padding:3px 8px;border-radius:var(--md-shape-corner-small);background:var(--g1);color:var(--md-sys-color-on-success-container)}
 .cemaden-line1{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
 .cemaden-line2{display:flex;align-items:baseline;gap:6px;margin-top:4px}
@@ -414,7 +415,7 @@ body{font-family:var(--font);background:var(--md-sys-color-surface);color:var(--
 .ov-dot.critical{background:var(--r5)}
 @keyframes pulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.4;transform:scale(.85)}}
 @media (prefers-reduced-motion: reduce){
-  *,*::before,*::after{animation-duration:.01ms !important;animation-iteration-count:1 !important;scroll-behavior:auto !important}
+  *,*::before,*::after{animation-duration:.01ms !important;animation-iteration-count:1 !important;transition-duration:.01ms !important;scroll-behavior:auto !important}
 }
 :focus-visible{outline:3px solid var(--md-sys-color-primary);outline-offset:2px}
 .header :focus-visible,.radar-play-btn:focus-visible,.layer-btn:focus-visible,.theme-toggle-btn:focus-visible,.push-btn:focus-visible{outline-color:#A7F3D0}
@@ -550,7 +551,7 @@ body{font-family:var(--font);background:var(--md-sys-color-surface);color:var(--
 }
 
 .banner.critical .banner-detail-item{background:var(--md-sys-color-surface-container-lowest);color:var(--r6)}
-.banner.warn .banner-detail-item{background:var(--md-sys-color-surface-container-lowest);color:var(--a5)}
+.banner.warn .banner-detail-item{background:var(--md-sys-color-surface-container-lowest);color:var(--md-sys-color-on-warning-container)}
 
 /* Section Heading */
 .section-head{
@@ -827,6 +828,84 @@ body{font-family:var(--font);background:var(--md-sys-color-surface);color:var(--
   background:var(--g6);color:#fff;font-size:14px;font-weight:500;cursor:pointer;transition:all .2s
 }
 .error-state button:hover{filter:brightness(1.08)}
+/* Grade do radar: mapa em largura total e avisos lado a lado no desktop.
+   Antes era 1fr + uma coluna de 340px empilhando ate 6 cards: com dado real a
+   coluna chegava a ~1.900px contra um mapa fixo de 380px, abrindo um vao branco
+   de ~1.500px embaixo do mapa. Agora o mapa ocupa a linha inteira e os avisos
+   viram grade que se rearranja sozinha (card com display:none sai da conta). */
+@media(min-width:992px){
+  .weather-content-grid{grid-template-columns:1fr}
+  .radar-map-wrapper{height:560px}
+  .weather-sidebar{
+    display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));
+    gap:16px;align-items:start
+  }
+  .weather-sidebar>.bulletin-box{grid-column:span 2}
+  /* Rios e o card mais alto de todos (520px contra ~110px do nowcast) — ao lado
+     dos curtos ele abria um buraco de 400px. Em largura total + conteudo em 2
+     colunas ele cai pela metade, e o order joga ele pro fim da grade (visual)
+     sem mexer no HTML. Assim as linhas fecham cheias. */
+  .weather-sidebar>#hidroBox{grid-column:1/-1;order:99}
+  .weather-sidebar>#cemadenBox{grid-column:span 2}
+  .weather-sidebar>#simeparBox{grid-column:span 2}
+  #cemadenBox #cemadenContent{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:10px}
+  #hidroBox #hidroContent{columns:2;column-gap:28px}
+  #hidroBox #hidroContent>*{break-inside:avoid}
+}
+
+/* Avisos do topo (status + desligamento programado) lado a lado no desktop.
+   auto-fit: quando so um esta visivel ele volta a ocupar a linha inteira. */
+.top-notices{display:grid;grid-template-columns:1fr;gap:12px;margin-top:10px}
+.top-notices>*{margin-top:0}
+@media(min-width:992px){
+  .top-notices{grid-template-columns:repeat(auto-fit,minmax(420px,1fr));gap:16px;align-items:start}
+}
+
+/* Duo de estatisticas dentro do card (barra de impacto + faixas de duracao):
+   dois blocos curtos lado a lado em vez de dois blocos esticados. */
+.stat-duo{display:grid;grid-template-columns:1fr;gap:12px}
+.stat-duo>:only-child{grid-column:1/-1}
+@media(min-width:768px){
+  .stat-duo{grid-template-columns:1fr 1fr}
+  .stat-duo>.progress-container{justify-content:center}
+}
+
+/* ---------------------------------------------------------------------------
+   Movimento e elevacao das superficies (Material 3)
+   Os cards de aviso nao sao clicaveis, entao a "vida" vem de duas coisas:
+   (1) elevacao no hover — no M3 card elevado e nivel 1 e sobe para nivel 2 no
+       hover, independente de ser clicavel;
+   (2) entrada escalonada quando o conteudo chega (fade + subida curta).
+   A entrada roda UMA vez: o painel se re-renderiza a cada ciclo e reanimar
+   sempre viraria pisca-pisca (a classe .anim-in e posta/tirada pelo JS).
+   Tudo isso morre em prefers-reduced-motion (bloco mais acima).
+
+   ATENCAO: sem `animation-fill-mode:both` de proposito nos cards que o JS
+   liga/desliga (CEMADEN, Rios, lembrete, KPIs da aba de estatisticas). Com
+   `both`, o card que nasce display:none fica PRESO no keyframe inicial
+   (opacity:0, 8px abaixo) e nunca aparece. Sem fill mode, se a animacao nao
+   rodar o card simplesmente aparece — o risco cai pro lado seguro. */
+@keyframes surfaceIn{
+  from{opacity:0;transform:translateY(8px)}
+  to{opacity:1;transform:translateY(0)}
+}
+.card,.bulletin-box,.nowcast-box,.cemaden-box,.kpi-card,.outage-card,.stats-kpi-card,
+.stats-table-wrapper,.banner,.scheduled-reminder{
+  transition:box-shadow .22s cubic-bezier(.2,0,0,1),transform .22s cubic-bezier(.2,0,0,1)
+}
+/* Hierarquia: canvas < secao (nivel 1) < card dentro de container tonal
+   (nivel 2) < hover (nivel 3). Sem isso tudo ficava no mesmo plano e lia flat. */
+.weather-sidebar>*,.kpi-card,.outage-card,.banner,.scheduled-reminder{
+  box-shadow:var(--md-elevation-2)
+}
+.card:hover,.bulletin-box:hover,.nowcast-box:hover,.cemaden-box:hover,.kpi-card:hover,
+.outage-card:hover,.stats-kpi-card:hover,.stats-table-wrapper:hover{
+  box-shadow:var(--md-elevation-3);transform:translateY(-2px)
+}
+.weather-sidebar>*,.banner,.scheduled-reminder,.stats-kpi-card,.stats-table-wrapper{
+  animation:surfaceIn .34s cubic-bezier(.2,0,0,1)
+}
+.anim-in .card{animation:surfaceIn .34s cubic-bezier(.2,0,0,1) both;animation-delay:calc(var(--i,0)*45ms)}
 </style>
 </head>
 <body>
@@ -864,6 +943,8 @@ body{font-family:var(--font);background:var(--md-sys-color-surface);color:var(--
 
 <div class="container">
 
+  <div class="top-notices">
+
   <div id="banner" class="banner ok" role="status" aria-live="polite">
     <div class="banner-top-row">
       <div class="banner-icon-title">
@@ -893,6 +974,8 @@ body{font-family:var(--font);background:var(--md-sys-color-surface);color:var(--
     <div class="scheduled-reminder-list" id="scheduledReminderList"></div>
     <div class="scheduled-reminder-foot">Fonte: COPEL/ANEEL — corte programado, não é falta de energia emergencial.</div>
   </div>
+
+  </div><!-- /.top-notices -->
 
   <nav class="tabs-nav" aria-label="Navegação do Monitor">
     <button class="tab-btn active" id="tabStatusBtn" type="button">
@@ -1456,7 +1539,7 @@ function renderCards(services){
               : '✅ Sem interrupções ativas';
         const rainIcon = hasRainAlert ? '⚡' : (rainLevel === 'watch') ? '👁️' : (rainLevel === 'monitor') ? 'ℹ️' : ICON.ok;
         summaryBoxHtml=`<div class="summary-box ${(hasRainAlert||rainLevel==='watch') ? 'warn' : 'ok'}" style="flex-direction:column;align-items:flex-start;gap:8px;padding:16px;${(hasRainAlert||rainLevel==='watch') ? 'background:var(--a1);border-radius:12px;' : ''}">
-          <div style="display:flex;align-items:center;gap:10px;font-size:15px;font-weight:700;color:${(hasRainAlert||rainLevel==='watch') ? 'var(--a5)' : 'inherit'}">
+          <div style="display:flex;align-items:center;gap:10px;font-size:15px;font-weight:700;color:${(hasRainAlert||rainLevel==='watch') ? 'var(--md-sys-color-on-warning-container)' : 'inherit'}">
             ${rainIcon}
             <span>${rainTitle}</span>
           </div>
@@ -1560,7 +1643,7 @@ function renderCards(services){
         `;
       }
 
-      contentHtml=summaryBoxHtml + kpiGridHtml + progressBarHtml + faixasHtml + outagesListHtml;
+      contentHtml=summaryBoxHtml + kpiGridHtml + `<div class="stat-duo">${progressBarHtml}${faixasHtml}</div>` + outagesListHtml;
     }
 
     // O ramo de OPERADORAS (telecom) do renderizador saiu em 22/09/2026:
@@ -1602,6 +1685,15 @@ function renderCards(services){
   }
 
   grid.innerHTML=html;
+
+  // Entrada escalonada so na PRIMEIRA renderizacao. O painel re-renderiza a
+  // cada ciclo (30s) e reanimar os cards toda vez viraria pisca-pisca.
+  if(!grid.dataset.animIn){
+    Array.from(grid.children).forEach((c,i)=>c.style.setProperty('--i',i));
+    grid.classList.add('anim-in');
+    grid.dataset.animIn='1';
+    setTimeout(()=>grid.classList.remove('anim-in'),1800);
+  }
 }
 
 function showError(msg){
@@ -1876,7 +1968,7 @@ async function fetchStats(){
         <td><span class="badge-source ${srcBadge}">${esc(srcName)}</span></td>
         <td style="font-weight:700">${esc(item.bairro || 'Ipiranga')}</td>
         <td>${esc(item.title)} ${item.details ? `<br><small style="color:var(--text2)">${esc(item.details)}</small>` : ''}</td>
-        <td style="font-weight:800;color:${item.consumers > 0 ? 'var(--r6)' : 'var(--text3)'}">${item.consumers > 0 ? item.consumers.toLocaleString('pt-BR') + ' UCs' : '-'}</td>
+        <td style="font-weight:800;color:${item.consumers > 0 ? 'var(--md-sys-color-on-error-container)' : 'var(--text3)'}">${item.consumers > 0 ? item.consumers.toLocaleString('pt-BR') + ' UCs' : '-'}</td>
       </tr>`;
     }
 
@@ -2327,10 +2419,10 @@ function renderAlertaCard(data) {
   if (a.nivel === 'laranja' || a.nivel === 'vermelho') { box.style.display = 'none'; return; }
   box.style.display = 'flex';
   const cores = {
-    verde: ['var(--g1)', 'var(--g6)'],
-    amarelo: ['transparent', 'var(--a5)'],
-    laranja: ['var(--a1)', 'var(--a5)'],
-    vermelho: ['var(--r1)', 'var(--r6)'],
+    verde: ['var(--g1)', 'var(--md-sys-color-on-success-container)'],
+    amarelo: ['var(--a1)', 'var(--md-sys-color-on-warning-container)'],
+    laranja: ['var(--a1)', 'var(--md-sys-color-on-warning-container)'],
+    vermelho: ['var(--r1)', 'var(--md-sys-color-on-error-container)'],
   };
   const [bg, fg] = cores[a.nivel] || cores.verde;
   if (tag) {
@@ -2338,7 +2430,6 @@ function renderAlertaCard(data) {
     tag.style.background = bg;
     tag.style.color = fg;
     tag.style.fontWeight = (a.nivel === 'laranja' || a.nivel === 'vermelho') ? '800' : '600';
-    tag.style.border = a.nivel === 'amarelo' ? '1px solid var(--a5)' : 'none';
   }
   // Sem triplicar: a descrição do backend já embute "Motivos: X" — mostra cada
   // texto uma vez só.
@@ -2396,10 +2487,10 @@ function renderHidroCard(data) {
   // Flash manda na tag (transbordo em horas); permanência diz os dias fora.
   const flash = h.ifl || null;
   const nivelCores = {
-    verde: ['var(--g1)', 'var(--g6)'],
-    amarelo: ['var(--a1)', 'var(--a5)'],
-    laranja: ['var(--r1)', 'var(--r6)'],
-    vermelho: ['var(--r1)', 'var(--r6)'],
+    verde: ['var(--g1)', 'var(--md-sys-color-on-success-container)'],
+    amarelo: ['var(--a1)', 'var(--md-sys-color-on-warning-container)'],
+    laranja: ['var(--r1)', 'var(--md-sys-color-on-error-container)'],
+    vermelho: ['var(--r1)', 'var(--md-sys-color-on-error-container)'],
   };
   if (tag) {
     const pior = (flash && flash.nivel !== 'verde') ? flash : null;
@@ -2411,7 +2502,7 @@ function renderHidroCard(data) {
     } else if (h.riscoCheia === 'watch' || h.riscoEnxurrada === 'warn') {
       tag.textContent = 'Atenção';
       tag.style.background = 'var(--a1)';
-      tag.style.color = 'var(--a5)';
+      tag.style.color = 'var(--md-sys-color-on-warning-container)';
     } else {
       tag.textContent = 'Referência';
       tag.style.background = 'var(--md-sys-color-surface-container-high)';
@@ -2422,9 +2513,9 @@ function renderHidroCard(data) {
   const fmtV = (v) => v == null ? '—' : Math.round(v) + ' m³/s';
   const fmtDelta = (d) => d == null ? '' : ` <span style="opacity:.7">(${d>0?'+':''}${(d/100).toFixed(2).replace('.', ',')} m /6h)</span>`;
   const faixaBadge = (f) => {
-    if (f === 'critico') return ' <span class="bulletin-tag" style="background:var(--r1);color:var(--r6);font-weight:800">CRÍTICO</span>';
-    if (f === 'alerta') return ' <span class="bulletin-tag" style="background:var(--r1);color:var(--r6)">alerta</span>';
-    if (f === 'atencao') return ' <span class="bulletin-tag" style="background:var(--a1);color:var(--a5)">atenção</span>';
+    if (f === 'critico') return ' <span class="bulletin-tag" style="background:var(--r1);color:var(--md-sys-color-on-error-container);font-weight:800">CRÍTICO</span>';
+    if (f === 'alerta') return ' <span class="bulletin-tag" style="background:var(--r1);color:var(--md-sys-color-on-error-container)">alerta</span>';
+    if (f === 'atencao') return ' <span class="bulletin-tag" style="background:var(--a1);color:var(--md-sys-color-on-warning-container)">atenção</span>';
     return '';
   };
   const frasePerm = (p) => {
@@ -2439,10 +2530,15 @@ function renderHidroCard(data) {
     : '';
   // Previsão de saída da calha (v1) — "vai sair? quando?" com confiança
   const prev = h.previsao || null;
-  const prevCor = (v) => v === 'sim' ? 'var(--r6)' : v === 'nao' ? 'var(--g6)' : 'var(--a5)';
+  // Par container/on-container: no tema escuro --r6/--g6/--a5 sao pastel claro,
+  // e texto branco em cima deles ficava ilegivel (~1.6:1).
+  const prevCor = (v) => v === 'sim' ? ['var(--r1)', 'var(--md-sys-color-on-error-container)']
+    : v === 'nao' ? ['var(--g1)', 'var(--md-sys-color-on-success-container)']
+    : ['var(--a1)', 'var(--md-sys-color-on-warning-container)'];
   const prevBadge = (v) => {
     const txt = v === 'sim' ? 'SIM' : v === 'nao' ? 'NÃO' : 'INDEFINIDO';
-    return `<span style="background:${prevCor(v)};color:#fff;font-weight:800;padding:2px 8px;border-radius:6px;font-size:11px">${txt}</span>`;
+    const [bg, fg] = prevCor(v);
+    return `<span style="background:${bg};color:${fg};font-weight:800;padding:2px 8px;border-radius:6px;font-size:11px">${txt}</span>`;
   };
   const previsaoPanel = prev
     ? `<div style="border-radius:12px;padding:12px;margin:6px 0;background:var(--md-sys-color-surface-container-low)">
@@ -2478,7 +2574,7 @@ function renderHidroCard(data) {
       <div><strong>Flash (IFL v3.1)</strong> = chuva 1h/6h/24h em Ipiranga (0–1): &lt;0,3 verde · 0,3–0,5 amarelo · 0,5–0,8 laranja · ≥0,8 vermelho. <strong>Antecedente 72h</strong> (palco): ≥150 mm eleva a amarelo — no regime frontal (mai–ago) a barra cai pra ≥100 mm, porque o inverno arma o palco com pouca água. Antecedente sozinho nunca passa de amarelo: laranja/vermelho exigem chuva atual. <strong>Permanência</strong> = dias fora da caixa SE transbordar: 0,0107 × Uvaia − 5,7 (ajuste preliminar com 2 rótulos reais: OUT23 7d, DEZ24 3d). Doutrina sazonal: no verão convectivo só o local manda (JAN25: Uvaia em P50 com régua em 4 m); no inverno frontal o Uvaia carrega a severidade (2013>2014≈2015>2019>2017 pelo pico Uvaia).</div>
       <div style="margin-top:4px"><strong>Vai sair da calha? (v1)</strong> = regra por regime + vizinhança em 11 rótulos de campo. <em>Convectivo (set–abr)</em>: chuva local em DUAS estações do município — ≥2 dias com ≥40 mm nas duas dentro de 96 h → sai (chuva de bacia; 1 dia isolado não enche, assinatura JAN25). <em>Frontal (mai–ago)</em>: a chuva local fica cega (os invernos saíram com 6–21 mm/96 h) — decide o antecedente de 30 dias (≥250 mm) somado à carga de bacia (Uvaia ≥500 cm). <strong>Confiança</strong> = fração dos casos parecidos no histórico que saíram da calha, com teto pelo tamanho da amostra (n=1 nunca passa de 55%). <strong>Quando</strong> = janela medida nos rótulos convectivos (13–48 h depois do último dia pesado); no frontal não há janela em horas. Estimativa, não oficial.</div>
       <div style="margin-top:4px">Rótulos: OUT23 (29/10 18h, Uvaia ~739) · DEZ24 (09/12 13h, Uvaia ~339) · SET26 (13/09, saiu sem transbordar) · JAN25 (21/01, régua 4m sem sair) · jul/24 e set/24 (não saíram) · invernos 13/14/15/17/19 (todos saíram; 2013 o mais dramático). Faixas P90/P98 do ano hidrológico.</div>
-      <div style="margin-top:6px"><a href="/api/hidro" style="color:var(--g5)">Dados crus (JSON)</a> · <a href="https://github.com/maKizo009/servicos-status/issues" style="color:var(--g5)">Sugerir melhoria</a></div>
+      <div style="margin-top:6px"><a href="/api/hidro" style="color:var(--md-sys-color-primary)">Dados crus (JSON)</a> · <a href="https://github.com/maKizo009/servicos-status/issues" style="color:var(--md-sys-color-primary)">Sugerir melhoria</a></div>
     </div>
   </details>`;
   content.innerHTML = previsaoPanel + iflLine + motivos + rows + formula +
