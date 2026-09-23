@@ -141,9 +141,9 @@ export async function buildUnifiedReport(
 			.filter((t): t is number => t !== null && Number.isFinite(t));
 		if (tempos.length === 0) return "";
 		const horas = (Date.now() - Math.min(...tempos)) / 3_600_000;
-		if (horas < 1) return "a mais antiga há menos de 1 hora";
+		if (horas < 1) return "a mais antiga há <1h";
 		const h = Math.floor(horas);
-		return `a mais antiga há ${h} ${h === 1 ? "hora" : "horas"}`;
+		return `a mais antiga há ${h}h`;
 	};
 	const copelIdadeAntiga = idadeInterrupcaoMaisAntiga(interrupcoes);
 
@@ -192,15 +192,15 @@ export async function buildUnifiedReport(
 		details:
 			copelStatusConfirmed === "ok"
 				? emergenciasNaoConfirmadas.length > 0
-					? `${emergenciasNaoConfirmadas.length} solicitação(ões) não confirmada(s) — sem interrupção ativa`
+					? `${emergenciasNaoConfirmadas.length} ${emergenciasNaoConfirmadas.length === 1 ? "solicitação" : "solicitações"} não confirmadas — sem interrupção ativa`
 					: "Sem ocorrências"
 				: copelTotalConsumers > 0
-					? `${copelTotalConsumers} UCs sem energia em ${interrupcaoIds.size} ocorrência(s)` +
+					? `${copelTotalConsumers} UCs sem energia em ${interrupcaoIds.size} ${interrupcaoIds.size === 1 ? "ocorrência" : "ocorrências"}` +
 						(copelIdadeAntiga ? ` — ${copelIdadeAntiga}` : "") +
 						(emergenciasNaoConfirmadas.length > 0
-							? ` (+${emergenciasNaoConfirmadas.length} não confirmada(s))`
+							? ` (+${emergenciasNaoConfirmadas.length} não ${emergenciasNaoConfirmadas.length === 1 ? "confirmada" : "confirmadas"})`
 							: "")
-					: `${interrupcaoIds.size} ocorrência(s)`,
+					: `${interrupcaoIds.size} ${interrupcaoIds.size === 1 ? "ocorrência" : "ocorrências"}`,
 		timestamp: data.timestamp,
 		data: {
 			activeEvents: interrupcoes,

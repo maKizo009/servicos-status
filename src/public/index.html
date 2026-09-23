@@ -72,6 +72,8 @@
   --md-sys-color-surface-container-highest:#CBD5E1;
   --md-sys-color-on-surface:#0F172A;             /* Texto principal */
   --md-sys-color-on-surface-variant:#475569;     /* Texto secundário */
+  --md-sys-color-on-surface-muted:#546274;       /* Texto terciário (AA em superfícies tonais) */
+  --md-sys-color-on-critical-fill:#ffffff;       /* Texto sobre preenchimento crítico (--r6) */
   --md-sys-color-outline:#94A3B8;
   --md-sys-color-outline-variant:#E2E8F0;
   --md-sys-color-primary:#047857;
@@ -83,10 +85,13 @@
   --md-sys-color-error:#DC2626;
   --md-sys-color-error-container:#FEE2E2;
   --md-sys-color-on-error-container:#7F1D1D;
-  --md-elevation-1:0 1px 3px 0 rgba(15,23,42,.06),0 1px 2px -1px rgba(15,23,42,.06);
-  --md-elevation-2:0 4px 6px -1px rgba(15,23,42,.08),0 2px 4px -2px rgba(15,23,42,.05);
-  --md-elevation-3:0 10px 15px -3px rgba(15,23,42,.10),0 4px 6px -4px rgba(15,23,42,.05);
-  --md-shape-corner-small:8px;--md-shape-corner-medium:12px;--md-shape-corner-large:16px;--md-shape-corner-full:9999px;
+  /* on-container legivel (AA) para containers tonais semanticos */
+  --md-sys-color-on-success-container:#14532D;
+  --md-sys-color-on-warn-container:#78350F;
+  --md-elevation-1:0 1px 2px 0 rgba(15,23,42,.20),0 1px 3px 1px rgba(15,23,42,.10);
+  --md-elevation-2:0 1px 2px 0 rgba(15,23,42,.22),0 2px 6px 2px rgba(15,23,42,.12);
+  --md-elevation-3:0 4px 8px 3px rgba(15,23,42,.12),0 1px 3px 0 rgba(15,23,42,.22);
+  --md-shape-corner-xs:4px;--md-shape-corner-small:8px;--md-shape-corner-medium:12px;--md-shape-corner-large:16px;--md-shape-corner-xl:28px;--md-shape-corner-full:9999px;
 
   /* === Tokens legados (aliases para o M3 — nada quebra) === */
   --s900:#0F172A;--s800:#1E293B;--s700:#334155;--s600:#475569;--s500:#64748B;--s400:#94A3B8;--s300:#CBD5E1;--s200:#E2E8F0;--s100:#F1F5F9;--s50:#F8FAFC;
@@ -94,8 +99,8 @@
   --a5:#D97706;--a4:#F59E0B;--a1:#FEF3C7;--a0:#FFFBEB;
   --r6:#DC2626;--r5:#EF4444;--r1:#FEE2E2;--r0:#FEF2F2;
   --copel:#00923F;--sanepar:#003F87;
-  --surface:var(--md-sys-color-surface-container);--text:var(--md-sys-color-on-surface);--text2:var(--md-sys-color-on-surface-variant);--text3:var(--md-sys-color-outline);--border:var(--md-sys-color-outline-variant);
-  --radius:16px;--radius-sm:10px;--shadow:var(--md-elevation-1);--shadow-lg:var(--md-elevation-2);--shadow-crit:0 4px 14px -2px rgba(220,38,38,.20),0 2px 4px -1px rgba(220,38,38,.08);
+  --surface:var(--md-sys-color-surface-container);--text:var(--md-sys-color-on-surface);--text2:var(--md-sys-color-on-surface-variant);--text3:var(--md-sys-color-on-surface-muted);--border:var(--md-sys-color-outline-variant);
+  --radius:12px;--radius-sm:8px;--shadow:var(--md-elevation-1);--shadow-lg:var(--md-elevation-2);--shadow-crit:0 4px 10px -2px rgba(15,23,42,.18),0 2px 4px -1px rgba(15,23,42,.10);--shadow-warn:0 4px 14px -2px rgba(217,119,6,.18),0 2px 4px -1px rgba(217,119,6,.08);
   --font:'Inter',system-ui,-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif
 }
 
@@ -115,6 +120,8 @@
     --md-sys-color-surface-container-highest:#475569;
     --md-sys-color-on-surface:#F8FAFC;
     --md-sys-color-on-surface-variant:#CBD5E1;
+    --md-sys-color-on-surface-muted:#94A3B8;
+    --md-sys-color-on-critical-fill:#450A0A;
     --md-sys-color-outline:#94A3B8;
     --md-sys-color-outline-variant:rgba(255,255,255,.08);
     --md-sys-color-primary:#38BDF8;
@@ -126,6 +133,8 @@
     --md-sys-color-error:#F87171;
     --md-sys-color-error-container:#7F1D1D;
     --md-sys-color-on-error-container:#FEE2E2;
+    --md-sys-color-on-success-container:#DCFCE7;
+    --md-sys-color-on-warn-container:#FEF3C7;
     --md-elevation-1:0 1px 3px 0 rgba(0,0,0,.3),0 1px 2px -1px rgba(0,0,0,.3);
     --md-elevation-2:0 4px 6px -1px rgba(0,0,0,.35),0 2px 4px -2px rgba(0,0,0,.25);
     --md-elevation-3:0 10px 15px -3px rgba(0,0,0,.4),0 4px 6px -4px rgba(0,0,0,.3);
@@ -146,6 +155,8 @@
   --md-sys-color-surface-container-highest:#475569;
   --md-sys-color-on-surface:#F8FAFC;
   --md-sys-color-on-surface-variant:#CBD5E1;
+  --md-sys-color-on-surface-muted:#94A3B8;
+  --md-sys-color-on-critical-fill:#450A0A;
   --md-sys-color-outline:#94A3B8;
   --md-sys-color-outline-variant:rgba(255,255,255,.08);
   --md-sys-color-primary:#38BDF8;
@@ -157,6 +168,8 @@
   --md-sys-color-error:#F87171;
   --md-sys-color-error-container:#7F1D1D;
   --md-sys-color-on-error-container:#FEE2E2;
+  --md-sys-color-on-success-container:#DCFCE7;
+  --md-sys-color-on-warn-container:#FEF3C7;
   --md-elevation-1:0 1px 3px 0 rgba(0,0,0,.3),0 1px 2px -1px rgba(0,0,0,.3);
   --md-elevation-2:0 4px 6px -1px rgba(0,0,0,.35),0 2px 4px -2px rgba(0,0,0,.25);
   --md-elevation-3:0 10px 15px -3px rgba(0,0,0,.4),0 4px 6px -4px rgba(0,0,0,.3);
@@ -167,7 +180,7 @@
 }
 
 .weather-section{
-  margin-top:14px;background:var(--md-sys-color-surface-container);border-radius:var(--md-shape-corner-large);border:1px solid var(--md-sys-color-outline-variant);
+  margin-top:14px;background:var(--md-sys-color-surface-container);border-radius:var(--md-shape-corner-large);
   box-shadow:var(--md-elevation-1);overflow:hidden;display:flex;flex-direction:column
 }
 .weather-header{
@@ -176,7 +189,7 @@
 }
 .weather-title-group{display:flex;align-items:center;gap:12px}
 .weather-icon-box{
-  width:40px;height:40px;background:rgba(22,163,74,.1);border:1px solid rgba(22,163,74,.25);
+  width:40px;height:40px;background:rgba(22,163,74,.12);
   border-radius:var(--md-shape-corner-medium);display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0
 }
 .weather-title{font-size:16px;font-weight:600;letter-spacing:-.2px;color:var(--md-sys-color-on-secondary-container)}
@@ -185,11 +198,10 @@
   display:flex;align-items:center;gap:8px;flex-wrap:wrap
 }
 .weather-badge{
-  background:transparent;border:1px solid var(--md-sys-color-outline-variant);
-  padding:4px 10px;border-radius:var(--md-shape-corner-small);font-size:12px;font-weight:500;color:var(--md-sys-color-on-surface);
-  display:inline-flex;align-items:center;gap:5px;opacity:.95
+  background:var(--md-sys-color-surface-container-lowest);
+  padding:6px 12px;border-radius:var(--md-shape-corner-full);font-size:12px;font-weight:600;color:var(--md-sys-color-on-surface);
+  display:inline-flex;align-items:center;gap:6px
 }
-.weather-badge:hover{opacity:1}
 
 .weather-content-grid{
   display:grid;grid-template-columns:1fr;gap:0
@@ -203,8 +215,8 @@
 
 .radar-controls-overlay{
   position:absolute;bottom:16px;left:16px;right:16px;z-index:1000;
-  background:rgba(15,23,42,.78);backdrop-filter:blur(16px);
-  border:1px solid rgba(255,255,255,.12);border-radius:var(--md-shape-corner-medium);padding:10px 16px;
+  background:rgba(15,23,42,.88);backdrop-filter:blur(16px);
+  border-radius:var(--md-shape-corner-full);padding:10px 16px;
   display:flex;align-items:center;gap:14px;color:#fff;flex-wrap:wrap;
   box-shadow:0 8px 24px rgba(0,0,0,.25)
 }
@@ -221,11 +233,11 @@
 .radar-slider{flex:1;min-width:120px;accent-color:var(--g6);cursor:pointer}
 .map-layer-selector{
   position:absolute;top:14px;right:14px;z-index:600;display:flex;gap:6px;
-  background:rgba(15,23,42,.78);backdrop-filter:blur(12px);padding:4px;border-radius:var(--md-shape-corner-medium);
-  border:1px solid rgba(255,255,255,.12);box-shadow:0 4px 12px rgba(0,0,0,.2)
+  background:rgba(15,23,42,.88);backdrop-filter:blur(12px);padding:4px;border-radius:var(--md-shape-corner-full);
+  box-shadow:0 4px 12px rgba(0,0,0,.25)
 }
 .layer-btn{
-  background:transparent;border:none;color:#94a3b8;font-size:12px;font-weight:500;
+  background:transparent;border:none;color:#CBD5E1;font-size:12px;font-weight:500;
   padding:10px 12px;border-radius:var(--md-shape-corner-small);cursor:pointer;transition:all .2s ease;display:flex;align-items:center;gap:4px
 }
 .layer-btn:hover{color:#fff;background:rgba(255,255,255,.1)}
@@ -239,27 +251,24 @@
 .radar-time-text{font-size:12px;font-weight:600;font-variant-numeric:tabular-nums;color:#38BDF8;white-space:nowrap}
 
 .weather-sidebar{
-  background:var(--md-sys-color-surface-container-low);padding:20px;border-top:1px solid var(--md-sys-color-outline-variant);
+  background:var(--md-sys-color-surface-container-low);padding:20px;
   display:flex;flex-direction:column;gap:16px
 }
-@media(min-width:992px){
-  .weather-sidebar{border-top:none;border-left:1px solid var(--md-sys-color-outline-variant)}
-}
 .bulletin-box{
-  background:var(--surface);border:1px solid var(--md-sys-color-outline-variant);border-radius:var(--md-shape-corner-medium);padding:16px;
+  background:var(--surface);border-radius:var(--md-shape-corner-medium);padding:16px;
   display:flex;flex-direction:column;gap:10px;box-shadow:var(--md-elevation-1)
 }
 .bulletin-head{display:flex;align-items:center;justify-content:space-between}
 .bulletin-tag{
-  font-size:12px;font-weight:600;letter-spacing:.4px;text-transform:uppercase;padding:3px 8px;border-radius:6px;
-  background:var(--g1);color:var(--g6)
+  font-size:12px;font-weight:600;letter-spacing:.4px;text-transform:uppercase;padding:3px 8px;border-radius:var(--md-shape-corner-small);
+  background:var(--g1);color:var(--md-sys-color-on-success-container)
 }
 .bulletin-meta{display:flex;align-items:center;gap:8px;flex-wrap:wrap;justify-content:flex-end}
 /* Quando o boletim foi REALMENTE gerado. Sem isso o horário é opinião. */
 .bulletin-when{font-size:11px;color:var(--text2);font-variant-numeric:tabular-nums}
 .bulletin-when.stale{color:var(--md-sys-color-error);font-weight:600}
 .nowcast-box{
-  background:var(--md-sys-color-surface-container);border:1px solid var(--md-sys-color-outline-variant);
+  background:var(--md-sys-color-surface-container);
   border-radius:var(--md-shape-corner-medium);padding:16px;
   display:flex;flex-direction:column;gap:10px;color:var(--md-sys-color-on-surface);box-shadow:var(--md-elevation-1)
 }
@@ -267,14 +276,14 @@
 .nowcast-box .nowcast-head span{color:var(--md-sys-color-on-surface)}
 .nowcast-status-row{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
 .cemaden-box{
-  background:var(--md-sys-color-surface-container);border:1px solid var(--md-sys-color-outline-variant);
+  background:var(--md-sys-color-surface-container);
   border-radius:var(--md-shape-corner-medium);padding:12px;
   display:flex;flex-direction:column;gap:8px;color:var(--md-sys-color-on-surface);box-shadow:var(--md-elevation-1)
 }
 .cemaden-head{display:flex;align-items:center;justify-content:space-between;color:var(--md-sys-color-on-surface)}
-.cemaden-row{border-top:1px solid var(--md-sys-color-outline-variant);padding-top:10px;margin-top:6px}
-.cemaden-row:first-child{border-top:none;padding-top:0;margin-top:0}
-.cemaden-tag{font-size:12px;font-weight:600;letter-spacing:.4px;text-transform:uppercase;padding:2px 6px;border-radius:6px;background:var(--g1);color:var(--g6)}
+.cemaden-row{background:var(--md-sys-color-surface-container-low);border-radius:var(--md-shape-corner-small);padding:10px 12px}
+.cemaden-row:first-child{background:transparent;padding:0}
+.cemaden-tag{font-size:12px;font-weight:600;letter-spacing:.4px;text-transform:uppercase;padding:3px 8px;border-radius:var(--md-shape-corner-small);background:var(--g1);color:var(--md-sys-color-on-success-container)}
 .cemaden-line1{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
 .cemaden-line2{display:flex;align-items:baseline;gap:6px;margin-top:4px}
 .cemaden-24h{font-size:22px;font-weight:700;color:var(--md-sys-color-on-surface);font-variant-numeric:tabular-nums}
@@ -285,25 +294,34 @@
 .cemaden-row-stale .cemaden-24h{opacity:.55}
 .nowcast-intensity-badge{
   font-size:12px;font-weight:700;padding:4px 10px;border-radius:var(--md-shape-corner-full);text-transform:uppercase;
-  background:var(--g1);color:var(--g6);border:1px solid var(--g5)
+  background:var(--g1);color:var(--md-sys-color-on-success-container)
 }
-.nowcast-intensity-badge.int-light{background:var(--a1);color:var(--a5);border-color:var(--a4)}
-.nowcast-intensity-badge.int-moderate{background:var(--g1);color:var(--g6);border-color:var(--g5)}
-.nowcast-intensity-badge.int-heavy{background:var(--r1);color:var(--r6);border-color:var(--r5)}
-.nowcast-intensity-badge.int-extreme{background:var(--r1);color:var(--r6);border-color:var(--r6);font-weight:800}
+.nowcast-intensity-badge.int-light{background:var(--a1);color:var(--md-sys-color-on-warn-container)}
+.nowcast-intensity-badge.int-moderate{background:var(--g1);color:var(--md-sys-color-on-success-container)}
+.nowcast-intensity-badge.int-heavy{background:var(--r1);color:var(--md-sys-color-on-error-container)}
+.nowcast-intensity-badge.int-extreme{background:var(--r6);color:var(--md-sys-color-on-critical-fill);font-weight:800}
 .nowcast-movement{font-size:12px;font-weight:500;color:var(--md-sys-color-on-surface)}
 /* Seta de direção dos núcleos de chuva no mapa (discreta, sem fundo de marker padrão) */
 .cell-arrow-icon{background:transparent;border:none}
 .cell-arrow-icon svg{filter:drop-shadow(0 0 2px rgba(0,0,0,.55));transform-origin:center;transform-box:fill-box}
 .cell-arrow-trail{pointer-events:none;opacity:.55}
 .nowcast-meta{font-size:12px;color:var(--md-sys-color-on-surface-variant);line-height:1.5;font-weight:400}
-.nowcast-text{font-size:13px;color:var(--md-sys-color-on-surface-variant);line-height:1.6;margin:0;border-top:1px solid var(--md-sys-color-outline-variant);padding-top:10px;font-weight:400}
-.bulletin-text{font-size:13px;color:var(--text);line-height:1.6;font-weight:400}
+.nowcast-text{font-size:14px;color:var(--md-sys-color-on-surface-variant);line-height:1.6;margin:0;font-weight:400}
+.bulletin-text{font-size:14px;color:var(--text);line-height:1.6;font-weight:400}
 .bulletin-disclaimer{
   font-size:12px;color:var(--md-sys-color-on-surface-variant);line-height:1.5;font-weight:400;
-  border-top:1px solid var(--md-sys-color-outline-variant);padding-top:8px;margin-top:2px;
+  margin-top:2px;
   display:flex;gap:6px;align-items:flex-start
 }
+
+/* Controles do Leaflet: sem as linhas 1px do vendor, superficie tonal + blur
+   (mesmo tratamento dos overlays do radar). */
+.leaflet-control-zoom{border:none!important;border-radius:var(--md-shape-corner-medium)!important;overflow:hidden;box-shadow:0 4px 12px rgba(0,0,0,.25)!important}
+.leaflet-control-zoom a{background:rgba(15,23,42,.88)!important;color:#E2E8F0!important;border:none!important;backdrop-filter:blur(12px);width:34px!important;height:34px!important;line-height:34px!important}
+.leaflet-control-zoom a:hover{background:rgba(51,65,85,.95)!important;color:#fff!important}
+.leaflet-control-zoom a.leaflet-disabled{opacity:.4}
+.leaflet-control-attribution{background:rgba(15,23,42,.78)!important;color:#CBD5E1!important;border:none!important;border-radius:var(--md-shape-corner-small) 0 0 0!important;padding:2px 6px!important}
+.leaflet-control-attribution a{color:#38BDF8!important}
 
 .rain-tile {
   image-rendering: smooth;
@@ -311,15 +329,15 @@
 }
 
 .llm-banner-box{
-  background:var(--md-sys-color-surface-container);border:1px solid var(--md-sys-color-outline-variant);
+  background:var(--surface);
   border-radius:var(--md-shape-corner-medium);padding:16px;color:var(--md-sys-color-on-surface);
   display:flex;flex-direction:column;gap:10px;box-shadow:var(--md-elevation-1)
 }
 .llm-banner-box>div{color:var(--md-sys-color-on-surface)}
 .llm-banner-box>div[style]{color:var(--md-sys-color-on-surface-variant)}
 .llm-btn{
-  background:var(--g1);border:1px solid transparent;color:var(--g6);
-  padding:5px 12px;border-radius:var(--md-shape-corner-full);font-size:12px;font-weight:500;cursor:pointer;
+  background:var(--g1);color:var(--md-sys-color-on-success-container);border:none;
+  padding:8px 14px;border-radius:var(--md-shape-corner-full);font-size:12px;font-weight:600;cursor:pointer;
   transition:all .2s;display:inline-flex;align-items:center;gap:6px;width:fit-content;text-decoration:none
 }
 .llm-btn:hover{filter:brightness(.96);box-shadow:var(--md-elevation-1)}
@@ -341,19 +359,19 @@ body{font-family:var(--font);background:var(--md-sys-color-surface);color:var(--
 .header-brand-logo{
   width:38px;height:38px;background:rgba(11,61,46,.75);
   border-radius:var(--md-shape-corner-medium);display:flex;align-items:center;justify-content:center;flex-shrink:0;
-  border:1px solid rgba(0,200,83,.3);box-shadow:0 1px 3px rgba(0,0,0,.2)
+  box-shadow:0 1px 3px rgba(0,0,0,.2)
 }
 .header-brand-logo svg{width:26px;height:30px}
 .header-title{margin:0;font-size:18px;font-weight:700;letter-spacing:-.3px;line-height:1.2;font-family:'Montserrat',var(--font)}
 .header-title span{font-weight:700;color:#00C853;font-size:18px}
 .header-subtitle{font-size:12px;opacity:.85;font-weight:400;margin-top:2px}
 .header-refresh-btn{
-  display:flex;align-items:center;gap:8px;background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.2);
+  display:flex;align-items:center;gap:8px;background:rgba(255,255,255,.16);border:none;
   padding:10px 14px;border-radius:var(--md-shape-corner-medium);cursor:pointer;color:#fff;
   font-family:var(--font);font-size:13px;font-weight:500;transition:all .2s;user-select:none;
   backdrop-filter:blur(8px)
 }
-.header-refresh-btn:hover{background:rgba(255,255,255,.2);border-color:rgba(255,255,255,.35)}
+.header-refresh-btn:hover{background:rgba(255,255,255,.28)}
 .header-refresh-btn:active{transform:scale(.98)}
 .header-refresh-btn .ri{width:16px;height:16px;fill:#fff;flex-shrink:0;transition:transform .3s}
 .header-refresh-btn .ri.spinning{animation:spin .8s linear infinite}
@@ -361,26 +379,26 @@ body{font-family:var(--font);background:var(--md-sys-color-surface);color:var(--
 .header-refresh-btn .ht{font-variant-numeric:tabular-nums;opacity:.9}
 .theme-toggle-btn{
   display:flex;align-items:center;justify-content:center;width:44px;height:44px;flex-shrink:0;
-  background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.2);border-radius:var(--md-shape-corner-medium);
-  cursor:pointer;font-size:16px;transition:all .2s;backdrop-filter:blur(8px);margin-left:8px
+  background:rgba(255,255,255,.16);border:none;border-radius:var(--md-shape-corner-full);
+  cursor:pointer;font-size:16px;transition:background .2s;backdrop-filter:blur(8px);margin-left:8px
 }
-.theme-toggle-btn:hover{background:rgba(255,255,255,.2);border-color:rgba(255,255,255,.35)}
+.theme-toggle-btn:hover{background:rgba(255,255,255,.28)}
 .theme-toggle-btn:active{transform:scale(.95)}
 .push-btn{
   display:flex;align-items:center;gap:6px;min-height:44px;padding:0 14px;flex-shrink:0;
-  background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.2);border-radius:var(--md-shape-corner-full);
-  cursor:pointer;font-size:13px;font-weight:600;color:#fff;transition:all .2s;backdrop-filter:blur(8px);margin-left:8px;font-family:inherit
+  background:rgba(255,255,255,.16);border:none;border-radius:var(--md-shape-corner-full);
+  cursor:pointer;font-size:13px;font-weight:600;color:#fff;transition:background .2s;backdrop-filter:blur(8px);margin-left:8px;font-family:inherit
 }
-.push-btn:hover{background:rgba(255,255,255,.2);border-color:rgba(255,255,255,.35)}
+.push-btn:hover{background:rgba(255,255,255,.28)}
 .push-btn:active{transform:scale(.95)}
-.push-btn.on{background:rgba(0,146,63,.85);border-color:rgba(255,255,255,.35)}
+.push-btn.on{background:rgba(0,146,63,.9)}
 .push-btn.denied{opacity:.55}
 .admin-btn{
   display:inline-flex;align-items:center;height:40px;padding:0 14px;flex-shrink:0;text-decoration:none;
-  background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.2);border-radius:var(--md-shape-corner-full);
-  cursor:pointer;font-size:13px;font-weight:600;color:#fff;transition:all .2s;backdrop-filter:blur(8px);margin-left:8px
+  background:rgba(255,255,255,.16);border:none;border-radius:var(--md-shape-corner-full);
+  cursor:pointer;font-size:13px;font-weight:600;color:#fff;transition:background .2s;backdrop-filter:blur(8px);margin-left:8px
 }
-.admin-btn:hover{background:rgba(255,255,255,.2);border-color:rgba(255,255,255,.35)}
+.admin-btn:hover{background:rgba(255,255,255,.28)}
 #mi-toast{
   position:fixed;left:50%;bottom:24px;transform:translateX(-50%) translateY(80px);z-index:9999;
   max-width:min(92vw,480px);padding:12px 18px;border-radius:14px;font-size:13px;line-height:1.45;font-weight:500;
@@ -405,13 +423,13 @@ body{font-family:var(--font);background:var(--md-sys-color-surface);color:var(--
 
 /* Banner */
 .banner{
-  margin-top:10px;padding:10px 14px;border-radius:var(--md-shape-corner-medium);border:1px solid;
-  display:flex;flex-direction:column;gap:6px;box-shadow:var(--md-elevation-1);
-  transition:all .3s ease;width:100%;overflow:hidden
+  margin-top:10px;padding:14px 18px;border-radius:var(--md-shape-corner-large);
+  display:flex;flex-direction:column;gap:8px;
+  transition:background .3s ease;width:100%;overflow:hidden
 }
-.banner.ok{background:var(--g0);border-color:var(--g6)}
-.banner.warn{background:var(--a0);border-color:var(--a5)}
-.banner.critical{background:var(--r0);border-color:var(--r6)}
+.banner.ok{background:var(--g1)}
+.banner.warn{background:var(--a1)}
+.banner.critical{background:var(--r1)}
 /* Takeover do alerta meteorológico (laranja/vermelho): só o pulso do badge,
    com respeito a prefers-reduced-motion. */
 .banner.alert-takeover .banner-badge{animation:bannerPulse 1.6s ease-in-out infinite}
@@ -422,9 +440,9 @@ body{font-family:var(--font);background:var(--md-sys-color-surface);color:var(--
    Visual distinto do banner de emergência: âmbar/dourado (programado), sem
    animação de alerta crítico. */
 .scheduled-reminder{
-  margin-top:10px;padding:10px 14px;border-radius:var(--md-shape-corner-medium);
-  border:1px solid #d9a800;background:linear-gradient(135deg,#3a3100 0%,#2b2600 100%);
-  color:var(--text);display:flex;flex-direction:column;gap:6px;box-shadow:var(--md-elevation-1);
+  margin-top:10px;padding:14px 18px;border-radius:var(--md-shape-corner-large);
+  background:linear-gradient(135deg,#3a3100 0%,#2b2600 100%);
+  color:var(--text);display:flex;flex-direction:column;gap:8px;
   width:100%;overflow:hidden
 }
 [data-theme="light"] .scheduled-reminder{background:linear-gradient(135deg,#fff7d6 0%,#ffefb3 100%)}
@@ -449,11 +467,11 @@ body{font-family:var(--font);background:var(--md-sys-color-surface);color:var(--
 }
 .scheduled-reminder-item{
   display:flex;align-items:center;gap:10px;flex-wrap:wrap;
-  background:rgba(255,255,255,.04);border:1px solid rgba(217,168,0,.25);
-  border-radius:var(--md-shape-corner-medium);padding:8px 12px;
+  background:rgba(217,168,0,.12);
+  border-radius:var(--md-shape-corner-medium);padding:10px 12px;
   font-size:13px;line-height:1.45
 }
-[data-theme="light"] .scheduled-reminder-item{background:rgba(122,92,0,.06);border-color:rgba(122,92,0,.25)}
+[data-theme="light"] .scheduled-reminder-item{background:rgba(122,92,0,.10)}
 .scheduled-reminder-item strong{font-weight:600;color:#ffd54a}
 [data-theme="light"] .scheduled-reminder-item strong{color:#7a5c00}
 .scheduled-reminder-item .sr-chip{
@@ -463,6 +481,19 @@ body{font-family:var(--font);background:var(--md-sys-color-surface);color:var(--
 [data-theme="light"] .scheduled-reminder-item .sr-chip{background:rgba(122,92,0,.12);color:#7a5c00}
 .scheduled-reminder-foot{
   font-size:12px;color:var(--text3);line-height:1.4
+}
+
+/* O tema claro era aplicado só via [data-theme="light"] (toggle manual) — quem
+   usa o tema claro do SISTEMA ficava com o card oliva escuro, que pesava mais
+   que o próprio alerta crítico. Espelha as mesmas regras no media query. */
+@media (prefers-color-scheme: light){
+  :root:not([data-theme]) .scheduled-reminder{background:linear-gradient(135deg,#fff7d6 0%,#ffefb3 100%)}
+  :root:not([data-theme]) .scheduled-reminder-title{color:#7a5c00}
+  :root:not([data-theme]) .scheduled-reminder-item{background:rgba(122,92,0,.10)}
+  :root:not([data-theme]) .scheduled-reminder-item strong{color:#7a5c00}
+  :root:not([data-theme]) .scheduled-reminder-item .sr-chip{background:rgba(122,92,0,.12);color:#7a5c00}
+  :root:not([data-theme]) .scheduled-reminder-foot{color:#6b5200}
+  :root:not([data-theme]) .scheduled-reminder-badge{background:#b58900;color:#241c00}
 }
 
 .banner-top-row{
@@ -475,11 +506,8 @@ body{font-family:var(--font);background:var(--md-sys-color-surface);color:var(--
   width:34px;height:34px;border-radius:var(--md-shape-corner-medium);display:flex;align-items:center;justify-content:center;flex-shrink:0
 }
 .banner-icon svg{width:18px;height:18px}
-.banner.ok .banner-icon{background:var(--g1)}
 .banner.ok .banner-icon svg{fill:var(--g6)}
-.banner.warn .banner-icon{background:var(--a1)}
 .banner.warn .banner-icon svg{fill:var(--a5)}
-.banner.critical .banner-icon{background:var(--r1)}
 .banner.critical .banner-icon svg{fill:var(--r6)}
 
 .banner-title-group{display:flex;flex-direction:column;gap:1px;min-width:0;flex:1}
@@ -490,39 +518,39 @@ body{font-family:var(--font);background:var(--md-sys-color-surface);color:var(--
   padding:4px 12px;border-radius:var(--md-shape-corner-full);font-size:12px;font-weight:600;white-space:nowrap;
   text-transform:uppercase;letter-spacing:.3px;flex-shrink:0;margin-left:auto
 }
-.banner.ok .banner-badge{background:var(--g1);color:var(--g6)}
-.banner.warn .banner-badge{background:var(--a1);color:var(--a5)}
-.banner.critical .banner-badge{background:var(--r6);color:#fff}
+.banner.ok .banner-badge{background:var(--g6);color:#052E16}
+.banner.warn .banner-badge{background:var(--a5);color:#2B1A00}
+.banner.critical .banner-badge{background:var(--r6);color:var(--md-sys-color-on-critical-fill)}
 
 .banner-details-list{
-  display:flex;flex-direction:column;gap:8px;padding-top:10px;border-top:1px solid var(--border)
+  display:flex;flex-direction:column;gap:8px;padding-top:4px
 }
 
 /* Clickable Banner Detail Item (UX enhancement for scrolling directly to card) */
 .banner-detail-item{
-  font-size:12px;font-weight:500;display:inline-flex;align-items:center;gap:8px;
-  padding:8px 12px;border-radius:var(--md-shape-corner-medium);width:fit-content;line-height:1.4;
-  cursor:pointer;user-select:none;transition:all .2s ease
+  font-size:12px;font-weight:500;display:inline-flex;flex-wrap:wrap;align-items:center;gap:8px;
+  padding:10px 14px;border-radius:var(--md-shape-corner-medium);width:fit-content;max-width:100%;line-height:1.4;
+  cursor:pointer;user-select:none;transition:box-shadow .2s ease,transform .2s ease
 }
 .banner-detail-item:hover{
   transform:translateX(3px);box-shadow:var(--md-elevation-1)
 }
 .banner-detail-item:active{transform:scale(.98)}
 .banner-detail-item .banner-jump-tag{
-  font-size:12px;font-weight:600;padding:2px 7px;border-radius:6px;background:rgba(0,0,0,.06);margin-left:6px;text-transform:uppercase
+  font-size:12px;font-weight:700;padding:3px 9px;border-radius:var(--md-shape-corner-small);background:rgba(0,0,0,.07);color:var(--md-sys-color-on-surface-variant);margin-left:6px;text-transform:uppercase;flex-shrink:0;white-space:nowrap
 }
 .stale-bar{
   grid-column:1/-1;display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;
-  background:var(--a0);border:1px solid var(--a5);border-radius:var(--md-shape-corner-medium);
-  padding:10px 16px;font-size:13px;font-weight:500;color:var(--text)
+  background:var(--a1);border-radius:var(--md-shape-corner-medium);
+  padding:12px 16px;font-size:13px;font-weight:500;color:var(--text)
 }
 .stale-bar button{
   border:none;border-radius:var(--md-shape-corner-full);background:var(--g6);color:#052E16;
   font-weight:600;font-family:inherit;padding:8px 16px;min-height:36px;font-size:13px;cursor:pointer
 }
 
-.banner.critical .banner-detail-item{background:var(--r1);color:var(--r6);border:1px solid var(--r6)}
-.banner.warn .banner-detail-item{background:var(--a1);color:var(--a5);border:1px solid var(--a5)}
+.banner.critical .banner-detail-item{background:var(--md-sys-color-surface-container-lowest);color:var(--r6)}
+.banner.warn .banner-detail-item{background:var(--md-sys-color-surface-container-lowest);color:var(--a5)}
 
 /* Section Heading */
 .section-head{
@@ -539,10 +567,10 @@ body{font-family:var(--font);background:var(--md-sys-color-surface);color:var(--
 /* Card Base */
 .card{
   background:var(--surface);border-radius:var(--radius);box-shadow:var(--shadow);
-  display:flex;flex-direction:column;border:1px solid var(--border);overflow:hidden;
-  transition:all .2s ease;position:relative
+  display:flex;flex-direction:column;overflow:hidden;
+  transition:box-shadow .2s ease;position:relative
 }
-.card:hover{transform:translateY(-1px);box-shadow:var(--md-elevation-2)}
+.card:hover{box-shadow:var(--md-elevation-2)}
 
 /* Card Highlight Animation on Click from Banner */
 .card.card-highlight{
@@ -550,13 +578,13 @@ body{font-family:var(--font);background:var(--md-sys-color-surface);color:var(--
 }
 @keyframes cardPulse{
   0%{transform:scale(1);box-shadow:0 0 0 rgba(220,38,38,0)}
-  30%{transform:scale(1.005);box-shadow:0 10px 26px -8px rgba(220,38,38,.55);border-color:var(--r6)}
-  70%{transform:scale(1.005);box-shadow:0 10px 26px -8px rgba(220,38,38,.55);border-color:var(--r6)}
-  100%{transform:scale(1)}
+  30%{transform:scale(1.005);box-shadow:0 10px 26px -8px rgba(220,38,38,.55)}
+  70%{transform:scale(1.005);box-shadow:0 10px 26px -8px rgba(220,38,38,.55)}
+  100%{transform:scale(1);box-shadow:0 0 0 rgba(220,38,38,0)}
 }
 
 .card.critical{
-  border-color:var(--r6);box-shadow:var(--shadow-crit);
+  box-shadow:var(--shadow-crit);
   grid-column:1/-1
 }
 @media(min-width:768px){.card.critical{grid-column:span 2}}
@@ -575,15 +603,19 @@ body{font-family:var(--font);background:var(--md-sys-color-surface);color:var(--
   .map-layer-selector{top:8px;right:8px}
   .radar-controls-overlay{padding:8px 12px}
   .header{padding:10px 14px}
+  .banner,.scheduled-reminder{padding:12px 14px}
   .header-refresh-btn{padding:6px 10px}
   .container{padding:0 12px}
 }
 @media (max-width: 640px){
   .stats-table-wrapper{overflow-x:auto}
   .stats-table-wrapper table{white-space:nowrap}
+  /* Abas: em tela estreita o pill unico cortava o rotulo longo — deixa quebrar */
+  .tabs-nav{display:flex;flex-wrap:wrap;width:100%;border-radius:var(--md-shape-corner-large)}
+  .tab-btn{flex:1 1 auto;justify-content:center;font-size:12px;padding:10px 12px}
 }
 
-.card.warn{border-color:var(--a5)}
+.card.warn{box-shadow:var(--shadow-warn)}
 
 .card-crit-bar{
   height:4px;width:100%;background:linear-gradient(90deg,var(--r6),#EF4444);display:none
@@ -611,35 +643,31 @@ body{font-family:var(--font);background:var(--md-sys-color-surface);color:var(--
 .card-sub{font-size:12px;color:var(--text3);font-weight:400;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 
 .card-cb{
-  font-size:11px;font-weight:500;text-transform:uppercase;letter-spacing:.3px;
-  padding:2px 8px;border-radius:6px;display:inline-block;flex-shrink:0
+  font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.3px;
+  padding:3px 8px;border-radius:var(--md-shape-corner-small);display:inline-block;flex-shrink:0
 }
-.card-cb.utility{background:rgba(0,146,63,.08);color:var(--copel)}
+.card-cb.utility{background:rgba(0,146,63,.10);color:var(--md-sys-color-on-secondary-container)}
 
 .card-status-badge{
   font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:.3px;
   padding:4px 12px;border-radius:var(--md-shape-corner-full);white-space:nowrap;display:inline-flex;align-items:center;gap:6px;
   flex-shrink:0;margin-left:auto
 }
-.card-status-badge.ok{background:var(--g1);color:var(--g6)}
-.card-status-badge.warn{background:var(--a1);color:var(--a5)}
-.card-status-badge.critical{background:var(--r6);color:#fff}
-/* No dark o --r6 é claro (#F87171) — texto precisa ser vinho escuro p/ WCAG AA */
-:root[data-theme="dark"] .card-status-badge.critical,
-:root[data-theme="dark"] .banner.critical .banner-badge,
-:root[data-theme="dark"] .consumers-count{color:#7F1D1D}
+.card-status-badge.ok{background:var(--g1);color:var(--md-sys-color-on-success-container)}
+.card-status-badge.warn{background:var(--a1);color:var(--md-sys-color-on-warn-container)}
+.card-status-badge.critical{background:var(--r6);color:var(--md-sys-color-on-critical-fill)}
 
-.card-body{display:flex;flex-direction:column;gap:14px;font-size:13px;color:var(--text2);flex:1}
+.card-body{display:flex;flex-direction:column;gap:14px;font-size:14px;line-height:1.5;color:var(--text2);flex:1}
 
 /* KPI Summary Cards for Copel Stats */
 .kpi-grid{
   display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px;margin-bottom:4px
 }
 .kpi-card{
-  background:var(--md-sys-color-surface-container-low);border:1px solid var(--md-sys-color-outline-variant);border-radius:var(--md-shape-corner-medium);padding:12px 14px;
+  background:var(--md-sys-color-surface-container-low);border-radius:var(--md-shape-corner-medium);padding:14px 16px;
   display:flex;flex-direction:column;gap:4px
 }
-.kpi-card.crit{background:var(--r0);border-color:var(--r6)}
+.kpi-card.crit{background:var(--r1)}
 .kpi-label{font-size:12px;font-weight:500;color:var(--text3);text-transform:uppercase;letter-spacing:.4px}
 .kpi-value{font-size:20px;font-weight:700;color:var(--text);line-height:1.2}
 .kpi-card.crit .kpi-value{color:var(--r6)}
@@ -647,7 +675,7 @@ body{font-family:var(--font);background:var(--md-sys-color-surface);color:var(--
 
 /* Progress Bar */
 .progress-container{
-  display:flex;flex-direction:column;gap:6px;background:var(--md-sys-color-surface-container-low);padding:12px 16px;border-radius:var(--md-shape-corner-medium);border:1px solid var(--md-sys-color-outline-variant)
+  display:flex;flex-direction:column;gap:8px;background:var(--md-sys-color-surface-container-low);padding:14px 16px;border-radius:var(--md-shape-corner-medium)
 }
 .progress-header{display:flex;justify-content:space-between;font-size:12px;font-weight:500;color:var(--text)}
 .progress-bar-bg{height:8px;width:100%;background:var(--md-sys-color-surface-container-high);border-radius:8px;overflow:hidden}
@@ -655,48 +683,48 @@ body{font-family:var(--font);background:var(--md-sys-color-surface);color:var(--
 
 /* Summary Box */
 .summary-box{
-  padding:12px 16px;border-radius:var(--md-shape-corner-medium);font-size:13px;font-weight:400;display:flex;align-items:center;gap:10px
+  padding:14px 16px;border-radius:var(--md-shape-corner-medium);font-size:14px;font-weight:400;display:flex;align-items:center;gap:10px
 }
-.summary-box.ok{background:var(--g0);color:var(--g6);border:1px solid var(--g6)}
-.summary-box.warn{background:var(--a0);color:var(--a5);border:1px solid var(--a5)}
-.summary-box.critical{background:var(--r0);color:var(--r6);border:1px solid var(--r6);font-size:14px;font-weight:600}
+.summary-box.ok{background:var(--g1);color:var(--md-sys-color-on-success-container)}
+.summary-box.warn{background:var(--a1);color:var(--md-sys-color-on-warn-container)}
+.summary-box.critical{background:var(--r1);color:var(--md-sys-color-on-error-container);font-size:14px;font-weight:600}
 .summary-box svg{width:18px;height:18px;flex-shrink:0}
 
 /* Copel Outages Accordion Toggle */
 .btn-toggle-outages{
-  width:100%;border:1px solid var(--md-sys-color-outline-variant);background:var(--md-sys-color-surface-container-low);
-  border-radius:var(--md-shape-corner-medium);padding:12px 14px;font-size:12px;font-weight:600;
+  width:100%;border:none;background:var(--md-sys-color-surface-container-high);
+  border-radius:var(--md-shape-corner-medium);padding:14px 16px;font-size:12px;font-weight:600;
   color:var(--text);display:flex;align-items:center;justify-content:space-between;
   cursor:pointer;transition:all .2s ease;margin-top:8px;user-select:none
 }
-.btn-toggle-outages:hover{background:var(--md-sys-color-surface-container-high);border-color:var(--md-sys-color-outline)}
+.btn-toggle-outages:hover{background:var(--md-sys-color-surface-container-highest)}
 .btn-toggle-outages:active{transform:scale(.99)}
 .btn-toggle-icon{font-size:11px;transition:transform .2s ease;color:var(--text2)}
 
 .outages-container{
-  display:flex;flex-direction:column;gap:10px;margin-top:8px;transition:all .3s ease
+  display:flex;flex-direction:column;gap:12px;margin-top:10px;transition:gap .3s ease
 }
 
 .outage-card{
-  background:var(--surface);border:1px solid rgba(220,38,38,.30);
-  border-radius:var(--md-shape-corner-medium);padding:12px 16px;display:flex;flex-direction:column;gap:8px;
+  background:var(--md-sys-color-surface-container-low);
+  border-radius:var(--md-shape-corner-medium);padding:14px 16px;display:flex;flex-direction:column;gap:8px;
   box-shadow:var(--md-elevation-1);font-size:13px
 }
 .outage-head{display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap}
 .outage-location{font-size:14px;font-weight:600;color:var(--text);display:flex;align-items:center;gap:6px}
 .outage-location svg{width:16px;height:16px;fill:var(--r6)}
 .outage-badge-tag{
-  font-size:11px;font-weight:500;padding:3px 8px;border-radius:4px;background:var(--r1);color:var(--r6);text-transform:uppercase
+  font-size:11px;font-weight:600;padding:3px 8px;border-radius:var(--md-shape-corner-small);background:var(--r1);color:var(--md-sys-color-on-error-container);text-transform:uppercase
 }
-.outage-badge-tag.prog{background:var(--a1);color:var(--a5)}
-.outage-badge-tag.sem-equipe{background:var(--a1);color:var(--a5)}
+.outage-badge-tag.prog{background:var(--a1);color:var(--md-sys-color-on-warn-container)}
+.outage-badge-tag.sem-equipe{background:var(--a1);color:var(--md-sys-color-on-warn-container)}
 
 .outage-sem-equipe-alert{
-  background:var(--a0);color:var(--a5);border:1px solid var(--a5);
-  border-radius:8px;padding:8px 12px;font-size:12px;font-weight:500;
+  background:var(--a1);color:var(--md-sys-color-on-warn-container);
+  border-radius:var(--md-shape-corner-small);padding:10px 12px;font-size:12px;font-weight:500;
   display:flex;align-items:center;gap:6px;line-height:1.4
 }
-.outage-card.sem-equipe{border-left-color:var(--a5)}
+.outage-card.sem-equipe{background:var(--a0)}
 
 .outage-meta-grid{
   display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:8px;font-size:12px;color:var(--text2);margin-top:2px
@@ -706,15 +734,15 @@ body{font-family:var(--font);background:var(--md-sys-color-surface);color:var(--
 .outage-meta-item svg{width:14px;height:14px;fill:var(--text2)}
 
 .consumers-count{
-  display:inline-flex;align-items:center;gap:4px;background:var(--r6);color:#fff;
+  display:inline-flex;align-items:center;gap:4px;background:var(--r6);color:var(--md-sys-color-on-critical-fill);
   font-weight:600;font-size:12px;padding:3px 10px;border-radius:var(--md-shape-corner-full);width:fit-content
 }
 
 /* Telecom Specific Layout */
-.status-tag{font-weight:600;padding:2px 8px;border-radius:4px;font-size:11px}
-.status-tag.ok{background:var(--g1);color:var(--g6)}
-.status-tag.warn-tag{background:var(--a1);color:var(--a5)}
-.status-tag.fail{background:var(--r1);color:var(--r6)}
+.status-tag{font-weight:600;padding:3px 8px;border-radius:var(--md-shape-corner-small);font-size:11px}
+.status-tag.ok{background:var(--g1);color:var(--md-sys-color-on-success-container)}
+.status-tag.warn-tag{background:var(--a1);color:var(--md-sys-color-on-warn-container)}
+.status-tag.fail{background:var(--r1);color:var(--md-sys-color-on-error-container)}
 
 
 
@@ -723,31 +751,32 @@ body{font-family:var(--font);background:var(--md-sys-color-surface);color:var(--
 
 
 .card-foot{
-  font-size:12px;color:var(--text3);padding:12px 20px;border-top:1px solid var(--border);
+  font-size:12px;color:var(--text2);padding:14px 20px;
   display:flex;justify-content:space-between;align-items:center;background:var(--md-sys-color-surface-container-low);margin-top:auto
 }
 
 /* Source Link Button */
 .source-link-btn{
-  font-size:12px;font-weight:500;color:var(--text);text-decoration:none;
-  background:var(--md-sys-color-surface-container-high);padding:5px 12px;border-radius:var(--md-shape-corner-medium);
-  display:inline-flex;align-items:center;gap:6px;transition:all .2s ease;
-  border:1px solid var(--md-sys-color-outline-variant);line-height:1
+  font-size:12px;font-weight:600;color:var(--text);text-decoration:none;
+  background:var(--md-sys-color-surface-container-high);padding:9px 14px;border-radius:var(--md-shape-corner-full);
+  display:inline-flex;align-items:center;gap:6px;transition:background .2s ease;
+  line-height:1
 }
-.source-link-btn:hover{background:var(--g1);color:var(--g6);border-color:var(--g5)}
+.source-link-btn:hover{background:var(--md-sys-color-secondary-container);color:var(--md-sys-color-on-secondary-container)}
 
 /* Tabs Navigation */
 .tabs-nav{
-  display:flex;gap:8px;margin-top:14px;border-bottom:1px solid var(--md-sys-color-outline-variant);padding-bottom:0
+  display:inline-flex;gap:4px;margin-top:16px;padding:4px;width:fit-content;max-width:100%;overflow-x:auto;
+  background:var(--md-sys-color-surface-container-low);border-radius:var(--md-shape-corner-full)
 }
 .tab-btn{
-  padding:8px 14px;border:none;background:none;font-family:var(--font);
-  font-size:13px;font-weight:500;color:var(--text2);cursor:pointer;
-  border-bottom:2px solid transparent;margin-bottom:-1px;transition:all .2s ease;
-  display:flex;align-items:center;gap:6px;border-radius:8px 8px 0 0
+  padding:10px 16px;border:none;background:none;font-family:var(--font);
+  font-size:13px;font-weight:600;color:var(--text2);cursor:pointer;
+  transition:background .2s ease,color .2s ease;white-space:nowrap;
+  display:flex;align-items:center;gap:8px;border-radius:var(--md-shape-corner-full)
 }
 .tab-btn.active{
-  color:var(--text);border-bottom-color:var(--g6);background:var(--g1);font-weight:600
+  color:var(--md-sys-color-on-secondary-container);background:var(--md-sys-color-secondary-container)
 }
 .tab-btn:hover:not(.active){color:var(--text);background:var(--md-sys-color-surface-container-high)}
 
@@ -755,31 +784,31 @@ body{font-family:var(--font);background:var(--md-sys-color-surface);color:var(--
 .stats-container{display:flex;flex-direction:column;gap:20px;padding:20px 0}
 .stats-kpi-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:16px}
 .stats-kpi-card{
-  background:var(--surface);border:1px solid var(--md-sys-color-outline-variant);border-radius:var(--radius);
-  padding:18px;display:flex;flex-direction:column;gap:8px;box-shadow:var(--shadow)
+  background:var(--surface);border-radius:var(--radius);
+  padding:20px;display:flex;flex-direction:column;gap:8px;box-shadow:var(--shadow)
 }
 .stats-kpi-card h2{font-size:12px;font-weight:500;color:var(--text2);text-transform:uppercase;letter-spacing:.4px;display:flex;align-items:center;gap:8px;margin:0}
 .stats-kpi-val{font-size:28px;font-weight:700;color:var(--text);line-height:1}
 .stats-kpi-sub{font-size:12px;color:var(--text2);font-weight:400}
 
 .stats-table-wrapper{
-  background:var(--surface);border:1px solid var(--md-sys-color-outline-variant);border-radius:var(--radius);
+  background:var(--surface);border-radius:var(--radius);
   overflow:hidden;box-shadow:var(--shadow)
 }
-.stats-table-head{padding:14px 20px;background:var(--md-sys-color-surface-container-low);border-bottom:1px solid var(--md-sys-color-outline-variant);font-size:15px;font-weight:600;color:var(--text);display:flex;align-items:center;justify-content:space-between}
+.stats-table-head{padding:16px 20px;background:var(--md-sys-color-surface-container-low);font-size:15px;font-weight:600;color:var(--text);display:flex;align-items:center;justify-content:space-between}
 .stats-table{width:100%;border-collapse:collapse;text-align:left;font-size:13px}
-.stats-table th{background:var(--md-sys-color-surface-container-high);padding:10px 16px;font-weight:600;font-size:12px;color:var(--text2);border-bottom:1px solid var(--md-sys-color-outline-variant)}
-.stats-table td{padding:12px 16px;border-bottom:1px solid var(--md-sys-color-outline-variant);color:var(--text);vertical-align:middle}
-.stats-table tr:last-child td{border-bottom:none}
-.stats-table tr:hover td{background:var(--md-sys-color-surface-container-low)}
+.stats-table th{background:var(--md-sys-color-surface-container-high);padding:12px 16px;font-weight:600;font-size:12px;color:var(--text2);letter-spacing:.3px;text-transform:uppercase}
+.stats-table td{padding:13px 16px;color:var(--text);vertical-align:middle}
+.stats-table tbody tr:nth-child(even) td{background:color-mix(in srgb,var(--md-sys-color-surface-container-low) 55%,transparent)}
+.stats-table tr:hover td{background:var(--md-sys-color-surface-container-high)}
 
-.badge-source{font-size:11px;font-weight:600;padding:3px 8px;border-radius:6px;text-transform:uppercase;display:inline-block}
-.badge-source.copel{background:rgba(0,146,63,.1);color:var(--copel)}
+.badge-source{font-size:11px;font-weight:600;padding:3px 8px;border-radius:var(--md-shape-corner-small);text-transform:uppercase;display:inline-block}
+.badge-source.copel{background:rgba(0,146,63,.1);color:var(--md-sys-color-on-secondary-container)}
 .badge-source.sanepar{background:rgba(0,63,135,.1);color:var(--sanepar)}
 
 /* Footer */
 .footer{
-  text-align:center;padding:24px;font-size:13px;color:var(--text3);border-top:1px solid var(--border);margin-top:auto;background:var(--surface)
+  text-align:center;padding:28px 24px;font-size:13px;color:var(--text2);margin-top:24px;background:var(--md-sys-color-surface-container-low)
 }
 .footer .li{display:inline-flex;align-items:center;gap:8px;margin-bottom:6px;font-weight:500;color:var(--text2)}
 .footer .ld{width:8px;height:8px;border-radius:50%;background:var(--g5)}
@@ -814,7 +843,7 @@ body{font-family:var(--font);background:var(--md-sys-color-surface);color:var(--
     </div>
     <div>
       <h1 class="header-title">Ipiranga <span>Monitor</span></h1>
-      <div class="header-subtitle">Status em tempo real dos serviços essenciais · Ipiranga/PR</div>
+      <div class="header-subtitle">Serviços essenciais de Ipiranga/PR em tempo real</div>
     </div>
   </div>
   <button class="push-btn" id="btnPush" type="button" aria-label="Ativar alertas no celular" title="Receber alertas de tempestade, energia e água no celular" style="display:none">
@@ -862,7 +891,7 @@ body{font-family:var(--font);background:var(--md-sys-color-surface);color:var(--
       <span class="scheduled-reminder-badge">PROGRAMADO</span>
     </div>
     <div class="scheduled-reminder-list" id="scheduledReminderList"></div>
-    <div class="scheduled-reminder-foot">Fonte: COPEL/ANEEL. Desligamento agendado pela concessionária; não é falta de energia emergencial.</div>
+    <div class="scheduled-reminder-foot">Fonte: COPEL/ANEEL — corte programado, não é falta de energia emergencial.</div>
   </div>
 
   <nav class="tabs-nav" aria-label="Navegação do Monitor">
@@ -885,7 +914,7 @@ body{font-family:var(--font);background:var(--md-sys-color-surface);color:var(--
           <div class="weather-icon-box" aria-hidden="true"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M17.5 19H9a7 7 0 1 1 6.71-9h1.79a4.5 4.5 0 1 1 0 9Z"/><path d="m13 15-3 5h4l-2 4" stroke-width="2"/></svg></div>
           <div>
             <div class="weather-title">Radar de Chuva & Clima · Ipiranga e Região</div>
-            <div class="weather-sub">Previsão e monitoramento com radar RainViewer e limites municipais do IBGE</div>
+            <div class="weather-sub">Radar, previsão e limites do município</div>
           </div>
         </div>
         <div class="weather-metrics-bar">
@@ -912,7 +941,7 @@ body{font-family:var(--font);background:var(--md-sys-color-surface);color:var(--
         </div>
 
         <div class="weather-sidebar">
-          <div class="cemaden-box" id="alertaBox" style="display:none;border-width:2px">
+          <div class="cemaden-box" id="alertaBox" style="display:none">
             <div class="cemaden-head">
               <span style="font-size:13px;font-weight:600;color:var(--text);display:flex;align-items:center;gap:6px"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg> Alerta do Monitor</span>
               <span class="bulletin-tag" id="alertaNivelTag">—</span>
@@ -925,13 +954,13 @@ body{font-family:var(--font);background:var(--md-sys-color-surface);color:var(--
               <span style="font-size:13px;font-weight:600;color:var(--text)">Boletim IA do Radar</span>
               <span class="bulletin-meta">
                 <span class="bulletin-when" id="bulletinWhen"></span>
-                <span class="bulletin-tag" id="bulletinSourceTag">análise de IA</span>
+                <span class="bulletin-tag" id="bulletinSourceTag">IA</span>
               </span>
             </div>
             <p class="bulletin-text" id="bulletinText">Carregando análise descritiva da situação climatológica de Ipiranga...</p>
             <div class="bulletin-disclaimer">
               <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;margin-top:2px"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
-              <span>Este boletim é gerado por IA e pode conter erros. Em caso de dúvidas, consulte as imagens de radar e os dados oficiais acima.</span>
+              <span>Gerado por IA — pode conter erros. Confira no radar e nas fontes oficiais.</span>
             </div>
           </div>
 
@@ -1065,7 +1094,7 @@ body{font-family:var(--font);background:var(--md-sys-color-surface);color:var(--
     <a href="/como-ler-radar" class="llm-btn">Como ler o radar</a>
   </nav>
   <details class="footer-llm" style="margin:6px 0 2px;font-size:12px;color:var(--text3);text-align:left;max-width:560px;margin-left:auto;margin-right:auto">
-    <summary style="cursor:pointer;font-weight:500">Dados para assistentes de IA</summary>
+    <summary style="cursor:pointer;font-weight:500">Para assistentes de IA</summary>
     <div style="display:flex;gap:8px;margin-top:8px;flex-wrap:wrap;justify-content:center">
       <a href="/llms.txt" target="_blank" class="llm-btn">/llms.txt</a>
       <a href="/llms-full.txt" target="_blank" class="llm-btn">/llms-full.txt</a>
@@ -1074,7 +1103,7 @@ body{font-family:var(--font);background:var(--md-sys-color-surface);color:var(--
       <button type="button" class="llm-btn llm-ask" onclick="askAI('claude')">Claude</button>
       <button type="button" class="llm-btn llm-ask" onclick="askAI('gemini')">Gemini</button>
     </div>
-    <div style="font-size:12px;opacity:.75;margin-top:8px;line-height:1.4;text-align:center">Claude e Gemini abrem o chat com o prompt copiado na área de transferência: é só colar e enviar. ChatGPT já preenche automaticamente.</div>
+    <div style="font-size:12px;opacity:.75;margin-top:8px;line-height:1.4;text-align:center">ChatGPT abre já preenchido. Claude e Gemini usam o prompt copiado.</div>
   </details>
   <div class="credit">Desenvolvido por <strong>Lucas Modesto</strong></div>
 </footer>
@@ -1090,7 +1119,7 @@ const OFFICIAL_URLS={
 };
 
 const BRANDS={
-  Copel:{label:'COPEL',cls:'copel',cat:'utility',desc:'Energia Elétrica (Copel ANEEL)'},
+  Copel:{label:'COPEL',cls:'copel',cat:'utility',desc:'Energia elétrica'},
   Sanepar:{label:'Sanepar',cls:'sanepar',cat:'utility',desc:'Abastecimento de Água'}
 };
 
@@ -1159,10 +1188,19 @@ function formatCopelDuracao(faixa){
 /* Previsão de retorno CONSISTENTE (correção 2026-08-12): antes mostrava
    "Sem previsão ainda (Estimativa: ate_1h)" — contradição. Agora:
    previsão concreta > estimativa da faixa > "Sem previsão". */
+/* A Copel devolve "2026-09-23 15:00:00" cru — data ISO com segundos nao diz
+   nada pro morador. Vira "hoje 15:00" / "23/09 15:00". */
+function fmtPrevisao(v){
+  const m=String(v||'').match(/^(\d{4})-(\d{2})-(\d{2})[T ](\d{2}):(\d{2})/);
+  if(!m)return v;
+  const hh=`${m[4]}:${m[5]}`;
+  const mesmoDia=new Date().toISOString().slice(0,10)===`${m[1]}-${m[2]}-${m[3]}`;
+  return mesmoDia?`hoje ${hh}`:`${m[3]}/${m[2]} ${hh}`;
+}
 function formatCopelPrevisao(ev){
-  if(ev.previsaoRestabelecimento)return ev.previsaoRestabelecimento;
+  if(ev.previsaoRestabelecimento)return fmtPrevisao(ev.previsaoRestabelecimento);
   const dur=formatCopelDuracao(ev.faixaDuracao);
-  if(dur)return `Estimativa: ${dur}`;
+  if(dur)return dur;
   return 'Sem previsão';
 }
 function updateClock(){
@@ -1236,7 +1274,7 @@ function renderScheduledReminder(services){
     chips.push(`<span class="sr-chip">🕒 Início: ${esc(formatCopelStart(ev.dataInicio))}</span>`);
     chips.push(`<span class="sr-chip">⏱️ ${esc(previsao)}</span>`);
     if(ev.qtdConsumidores>0){
-      chips.push(`<span class="sr-chip">⚡ ${ev.qtdConsumidores} consumidor(es)</span>`);
+      chips.push(`<span class="sr-chip">⚡ ${ev.qtdConsumidores} ${ev.qtdConsumidores===1?'consumidor':'consumidores'}</span>`);
     }
     html+=`<div class="scheduled-reminder-item">${chips.join('')}</div>`;
   }
@@ -1264,7 +1302,7 @@ function updateBanner(services){
   if(criticalSvcs.length>0){
     bn.classList.add('critical');
     t.textContent='Ocorrências Críticas Detectadas!';
-    s.textContent=`Serviço com interrupção ou instabilidade ativa em Ipiranga/PR:`;
+    s.textContent=`Interrupção ativa em Ipiranga/PR`;
     badge.textContent=`${criticalSvcs.length} CRÍTICO`;
     dot.className='ov-dot critical';
     iconEl.innerHTML=ICON.error;
@@ -1359,7 +1397,7 @@ function renderCards(services){
               <div class="kpi-sub">Unidades afetadas</div>
             </div>
             <div class="kpi-card">
-              <div class="kpi-label">Total UCs do Município</div>
+              <div class="kpi-label">UCs no município</div>
               <div class="kpi-value">${cityTotalConsumers!=null?cityTotalConsumers.toLocaleString('pt-BR'):'—'}</div>
               <div class="kpi-sub">Ipiranga / PR</div>
             </div>
@@ -1372,8 +1410,8 @@ function renderCards(services){
 
           progressBarHtml=`<div class="progress-container">
             <div class="progress-header">
-              <span>Nível de Impacto no Município</span>
-              <span style="color:var(--r6)">${pctAffected!=null?`${pctAffected}% sem energia (${totalConsumers} de ${cityTotalConsumers.toLocaleString('pt-BR')} UCs)`:`${totalConsumers} UCs sem energia`}</span>
+              <span>Impacto no município</span>
+              <span style="color:var(--md-sys-color-on-error-container)">${pctAffected!=null?`${pctAffected}% sem energia`:`${totalConsumers} UCs sem energia`}</span>
             </div>
             <div class="progress-bar-bg">
               <div class="progress-bar-fill" style="transform: scaleX(${Math.min(Math.max((pctAffected||0)/100, 0.02), 1)})"></div>
@@ -1385,19 +1423,19 @@ function renderCards(services){
           const faixas=svc.data?.faixasDuracao || {};
           const FAIXA_ORDEM=['ate_1h','1h_3h','3h_6h','6h_12h','12h_24h','24h_48h','mais_48h'];
           const faixasRows=FAIXA_ORDEM.filter(f=>(faixas[f]||0)>0).map(f=>
-            `<div style="display:flex;justify-content:space-between;align-items:center;padding:5px 0;border-bottom:1px solid var(--md-sys-color-outline-variant);font-size:13px">`+
+            `<div style="display:flex;justify-content:space-between;align-items:center;padding:5px 0;font-size:13px">`+
             `<span>⏱️ ${esc(formatCopelDuracao(f))}</span>`+
             `<strong>${faixas[f].toLocaleString('pt-BR')} UCs</strong></div>`
           ).join('');
           const faixasExtra=Object.keys(faixas).filter(f=>!FAIXA_ORDEM.includes(f)&&(faixas[f]||0)>0).map(f=>
-            `<div style="display:flex;justify-content:space-between;align-items:center;padding:5px 0;border-bottom:1px solid var(--md-sys-color-outline-variant);font-size:13px">`+
+            `<div style="display:flex;justify-content:space-between;align-items:center;padding:5px 0;font-size:13px">`+
             `<span>⏱️ ${esc(f)}</span><strong>${faixas[f].toLocaleString('pt-BR')} UCs</strong></div>`
           ).join('');
           if(faixasRows||faixasExtra){
-            faixasHtml=`<div style="margin-top:10px;border:1px solid var(--md-sys-color-outline-variant);border-radius:10px;padding:10px 12px">`+
+            faixasHtml=`<div style="margin-top:10px;background:var(--md-sys-color-surface-container-low);border-radius:12px;padding:12px 14px">`+
               `<div style="font-size:13px;font-weight:700;margin-bottom:4px">Detalhamento por duração</div>`+
               faixasRows+faixasExtra+
-              `<div style="font-size:11px;opacity:.7;margin-top:6px">Fonte: Copel/ANEEL — mesmas faixas do mapa oficial</div></div>`;
+              `<div style="font-size:11px;opacity:.7;margin-top:6px">Fonte: Copel/ANEEL</div></div>`;
           }
         }
       }else{
@@ -1417,7 +1455,7 @@ function renderCards(services){
               ? 'ℹ️ Monitoramento: Atividade de radar distante (COPEL)'
               : '✅ Sem interrupções ativas';
         const rainIcon = hasRainAlert ? '⚡' : (rainLevel === 'watch') ? '👁️' : (rainLevel === 'monitor') ? 'ℹ️' : ICON.ok;
-        summaryBoxHtml=`<div class="summary-box ${(hasRainAlert||rainLevel==='watch') ? 'warn' : 'ok'}" style="flex-direction:column;align-items:flex-start;gap:8px;padding:16px;${(hasRainAlert||rainLevel==='watch') ? 'background:var(--a0);border:1px solid var(--a5);border-radius:10px;' : ''}">
+        summaryBoxHtml=`<div class="summary-box ${(hasRainAlert||rainLevel==='watch') ? 'warn' : 'ok'}" style="flex-direction:column;align-items:flex-start;gap:8px;padding:16px;${(hasRainAlert||rainLevel==='watch') ? 'background:var(--a1);border-radius:12px;' : ''}">
           <div style="display:flex;align-items:center;gap:10px;font-size:15px;font-weight:700;color:${(hasRainAlert||rainLevel==='watch') ? 'var(--a5)' : 'inherit'}">
             ${rainIcon}
             <span>${rainTitle}</span>
@@ -1426,8 +1464,8 @@ function renderCards(services){
             ${window.latestWeatherData?.regionalRainAlert || 'Chuva foi detectada no radar RainViewer na região dos Campos Gerais. Raios e ventos podem afetar a rede elétrica da COPEL em Ipiranga nas próximas horas.'}
           </div>` : ''}
           <div style="font-size:13px;color:var(--text2);font-weight:500;display:flex;flex-direction:column;gap:4px;padding-left:30px">
-            <div>🕒 <strong>Última verificação:</strong> ${lastCheckRel}</div>
-            <div>🔄 <strong>Próxima checagem automática:</strong> em ~${nextCheckSec}s</div>
+            <div>🕒 <strong>Verificado:</strong> ${lastCheckRel}</div>
+            <div>🔄 <strong>Nova checagem:</strong> em ~${nextCheckSec}s</div>
           </div>
         </div>`;
       }
@@ -1448,7 +1486,7 @@ function renderCards(services){
 
             let statusEquipeHtml='';
             if(isSemEquipe || ev.statusEquipe==='Preparação'){
-              statusEquipeHtml=`⏳ Preparação (${ev.equipeId || 'SEM_EQUIPE'})`;
+              statusEquipeHtml=`⏳ Preparação`;
             }else{
               statusEquipeHtml=`🟢 ${ev.statusEquipe || 'Em atendimento'}`;
             }
@@ -1456,7 +1494,7 @@ function renderCards(services){
             let semEquipeWarningHtml='';
             if(isSemEquipe && !isProg){
               semEquipeWarningHtml=`<div class="outage-sem-equipe-alert">
-                ⚠️ Sem equipes despachadas: a Copel ainda não designou atendimento para esta ocorrência
+                ⚠️ Sem equipe despachada pela Copel
               </div>`;
             }
 
@@ -1486,7 +1524,7 @@ function renderCards(services){
                 </div>
                 ${consumers>0 ? `
                   <div class="outage-meta-item">
-                    <span class="consumers-count">⚡ ${consumers} consumidor(es) afetado(s)</span>
+                    <span class="consumers-count">⚡ ${consumers} ${consumers===1?'consumidor afetado':'consumidores afetados'}</span>
                   </div>
                 `:''}
               </div>
@@ -1554,7 +1592,7 @@ function renderCards(services){
 
         <div class="card-foot">
           <div style="display:flex;flex-direction:column;gap:2px">
-            <span>Horário do teste: ${fmtTime(svc.timestamp)}</span>
+            <span>Leitura: ${fmtTime(svc.timestamp)}</span>
             <span style="font-size:12px;opacity:.85">${relativeTime(svc.timestamp)}</span>
           </div>
           ${sourceBtnHtml}
@@ -2055,7 +2093,7 @@ async function fetchWeatherData() {
       const bEl = document.getElementById('bulletinText');
       const sEl = document.getElementById('bulletinSourceTag');
       if(bEl) bEl.textContent = bulletinText.replace(/\*\*/g, '');
-      const src = (data.bulletin?.source || data.nowcastBulletin?.source) === 'openrouter' ? 'análise de IA' : 'análise de IA (local)';
+      const src = (data.bulletin?.source || data.nowcastBulletin?.source) === 'openrouter' ? 'IA' : 'IA local';
       if(sEl) sEl.textContent = src;
     }
     // Quando o texto foi REALMENTE gerado. Sem isso o boletim pode estar congelado
@@ -2269,7 +2307,7 @@ function applyStormTakeover(a) {
     const srList = document.getElementById('scheduledReminderList');
     const sr = document.getElementById('scheduledReminder');
     if (srList && srList.innerHTML.trim()) {
-      copelLinha = `<div style="margin-top:6px;border-top:1px solid var(--md-sys-color-outline-variant);padding-top:6px">⚡ Desligamento programado (Copel): ${srList.innerHTML}</div>`;
+      copelLinha = `<div style="margin-top:8px">⚡ Desligamento programado (Copel): ${srList.innerHTML}</div>`;
       if (sr) sr.style.display = 'none';
     }
     detailsEl.innerHTML = `<div class="banner-detail-item" onclick="document.getElementById('hidroBox').scrollIntoView({behavior:'smooth',block:'center'})" role="button" tabindex="0" title="Ver rios">{MOTIVOS}${oficiais}${copelLinha}<span class="banner-jump-tag">Ver rios ➔</span></div>`.replace('{MOTIVOS}', motivos);
@@ -2324,7 +2362,7 @@ function renderAlertaCard(data) {
   content.innerHTML = (titulo ? `<div style="font-weight:600;color:var(--text)">${esc(titulo)}</div>` : '') +
     (desc ? `<div style="margin-top:4px">${esc(desc)}</div>` : '') +
     (motivos ? `<div style="margin-top:6px">${motivos}</div>` : '') +
-    (oficiais ? `<div style="margin-top:6px;border-top:1px solid var(--md-sys-color-outline-variant);padding-top:6px">${oficiais}</div>` : '');
+    (oficiais ? `<div style="margin-top:8px">${oficiais}</div>` : '');
 }
 
 function renderSimeparCard(data) {
@@ -2397,7 +2435,7 @@ function renderHidroCard(data) {
     return 'Atenção: rio subindo, acompanhe.';
   };
   const iflLine = (h.ifl && h.ifl.nivel !== 'verde')
-    ? `<div style="border:1px dashed var(--a4);border-radius:10px;padding:8px 10px;margin:6px 0;font-size:12.5px;color:var(--text)">⚡ <strong>Flash local (IFL ${esc(String(h.ifl.score).replace('.', ','))} · ${esc(h.ifl.nivel.toUpperCase())})</strong> — ${esc(h.ifl.motivos.join('; '))}</div>`
+    ? `<div style="background:var(--a1);border-radius:12px;padding:10px 12px;margin:6px 0;font-size:12.5px;color:var(--text)">⚡ <strong>Flash local (IFL ${esc(String(h.ifl.score).replace('.', ','))} · ${esc(h.ifl.nivel.toUpperCase())})</strong> — ${esc(h.ifl.motivos.join('; '))}</div>`
     : '';
   // Previsão de saída da calha (v1) — "vai sair? quando?" com confiança
   const prev = h.previsao || null;
@@ -2407,7 +2445,7 @@ function renderHidroCard(data) {
     return `<span style="background:${prevCor(v)};color:#fff;font-weight:800;padding:2px 8px;border-radius:6px;font-size:11px">${txt}</span>`;
   };
   const previsaoPanel = prev
-    ? `<div style="border:1px solid var(--md-sys-color-outline-variant);border-radius:10px;padding:10px;margin:6px 0;background:var(--md-sys-color-surface-container-low)">
+    ? `<div style="border-radius:12px;padding:12px;margin:6px 0;background:var(--md-sys-color-surface-container-low)">
         <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:6px">
           <strong style="color:var(--text)">🌊 Vai sair da calha?</strong>
           ${prevBadge(prev.vaiSair)}
@@ -2418,7 +2456,7 @@ function renderHidroCard(data) {
           <div style="margin-top:4px;font-size:12.5px">${esc(prev.regra)}</div>
           <div style="margin-top:4px;font-size:11.5px;opacity:.75">${prev.motivos.map((m) => esc(m)).join(' · ')}</div>
           <div style="margin-top:4px;font-size:11px;opacity:.6">${esc(prev.fonte)}</div>
-          ${prev.jev ? `<div style="margin-top:6px;padding-top:6px;border-top:1px dashed var(--md-sys-color-outline-variant);font-size:11.5px">
+          ${prev.jev ? `<div style="margin-top:8px;padding-top:0;font-size:11.5px">
             <strong>Segunda opinião (modelo de decisão):</strong> ${prev.jev.vaiSair === 'sim' ? 'sai da calha' : prev.jev.vaiSair === 'nao' ? 'não sai da calha' : 'indefinido'}${prev.jev.probVaiSair != null ? ` · probabilidade ${Math.round(prev.jev.probVaiSair * 100)}%` : ''}${prev.jev.confianca != null ? ` · confiança própria ${Math.round(prev.jev.confianca * 100)}%` : ''}${prev.jev.transborda !== 'indefinido' ? ` · se sair, cheia grande: ${prev.jev.transborda === 'sim' ? 'sim' : 'não'}` : ''}
           </div>` : ''}
         </div>
@@ -2429,7 +2467,7 @@ function renderHidroCard(data) {
     : '';
   const rows = h.estacoes.map((e) => {
     const nome = esc(e.nome.split(' (')[0]);
-    return `<div style="border-top:1px solid var(--md-sys-color-outline-variant);padding-top:8px;margin-top:8px">
+    return `<div style="margin-top:10px">
       <div style="font-weight:600;color:var(--text)">${nome} <span style="font-weight:400;opacity:.7">· ${esc(e.codigo)}</span>${faixaBadge(e.faixa)}</div>
       <div>Nível ${fmtM(e.nivelCm)}${fmtDelta(e.delta6hCm)} · Vazão ${fmtV(e.vazaoM3s)}</div>
     </div>`;
@@ -2444,7 +2482,7 @@ function renderHidroCard(data) {
     </div>
   </details>`;
   content.innerHTML = previsaoPanel + iflLine + motivos + rows + formula +
-    `<div style="border:1px solid var(--r5);border-radius:10px;padding:10px;margin-top:10px;font-size:11.5px;line-height:1.5;color:var(--text)">⚠️ <strong>Estimativa de algoritmo, não medição oficial.</strong> O Bitumirim não tem régua. Não prevê o futuro e não substitui a Defesa Civil (199) nem o IAT.</div>` +
+    `<div style="background:var(--r1);border-radius:12px;padding:12px;margin-top:10px;font-size:12px;line-height:1.5;color:var(--md-sys-color-on-error-container)">⚠️ <strong>Estimativa de algoritmo, não medição oficial.</strong> O Bitumirim não tem régua. Não prevê o futuro e não substitui a Defesa Civil (199) nem o IAT.</div>` +
     `<div style="font-size:11.5px;opacity:.6;margin-top:8px">Atualizado: ${h.atualizadoEm ? new Date(h.atualizadoEm).toLocaleString('pt-BR') : '—'}</div>`;
 }
 
@@ -3034,7 +3072,7 @@ function copyPrompt(provider, text) {
     .catch(() => {});
 })();
 </script>
-<div id="pushPrompt" style="display:none;position:fixed;left:50%;transform:translateX(-50%) translateY(24px);bottom:18px;z-index:9998;width:min(92vw,440px);background:var(--md-sys-color-surface-container-high);border:1px solid var(--md-sys-color-outline-variant);border-radius:16px;box-shadow:0 12px 32px rgba(0,0,0,.3);padding:16px;opacity:0;transition:opacity .25s ease,transform .25s ease" role="dialog" aria-label="Ativar alertas de chuva">
+<div id="pushPrompt" style="display:none;position:fixed;left:50%;transform:translateX(-50%) translateY(24px);bottom:18px;z-index:9998;width:min(92vw,440px);background:var(--md-sys-color-surface-container-high);border-radius:16px;box-shadow:0 12px 32px rgba(0,0,0,.3);padding:16px;opacity:0;transition:opacity .25s ease,transform .25s ease" role="dialog" aria-label="Ativar alertas de chuva">
   <div style="display:flex;gap:12px;align-items:flex-start">
     <div style="font-size:26px;line-height:1">🔔</div>
     <div style="flex:1">
@@ -3042,7 +3080,7 @@ function copyPrompt(provider, text) {
       <div style="font-size:12.5px;color:var(--text2);line-height:1.5;margin-top:4px">O Monitor avisa quando chuva forte vem pra Ipiranga — antes de você ver na janela. Só toca em alerta laranja ou vermelho, sem spam.</div>
       <div style="display:flex;gap:8px;margin-top:12px">
         <button id="pushPromptYes" type="button" style="flex:1;padding:10px;border:none;border-radius:10px;background:var(--g5);color:#fff;font-weight:700;font-size:13.5px">Ativar alertas</button>
-        <button id="pushPromptNo" type="button" style="padding:10px 14px;border:1px solid var(--md-sys-color-outline-variant);border-radius:10px;background:transparent;color:var(--text2);font-size:13px">Agora não</button>
+        <button id="pushPromptNo" type="button" style="padding:10px 14px;border:none;border-radius:9999px;background:var(--md-sys-color-surface-container);color:var(--text2);font-size:13px">Agora não</button>
       </div>
     </div>
   </div>
