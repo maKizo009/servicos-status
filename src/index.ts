@@ -43,7 +43,6 @@ import {
 	SIGMA_RAIO_CIDADE_KM,
 	type SigmaResultado,
 } from "./sigma-feed.js";
-import { fetchSimeparRadar } from "./simepar-radar.js";
 import { EventTracker } from "./state.js";
 import {
 	sendCopelAlert,
@@ -229,18 +228,16 @@ export async function syncWeatherCycle(): Promise<WeatherState> {
 	// Só estações FRESCAS: pluviômetro parado não pode virar "sem chuva" aqui.
 	const maxAcc = (f: (e: (typeof cemaden.estacoes)[number]) => number | null) =>
 		maxAcumuladoFresco(cemaden.estacoes, f);
-	const [hidro, simeparRadar] = await Promise.all([
-		fetchHidroTriangulacao({
-			p1h: maxAcc((e) => e.acc1hr),
-			p6h: maxAcc((e) => e.acc6hr),
-			p24h: maxAcc((e) => e.acc24hr),
-			p72h: maxAcc((e) => e.acc72hr),
-		}),
-		// Mosaico Simepar (display): só um HEAD barato para carimbar frescor.
-		// Nunca quebra o ciclo — se falhar, o card usa a imagem direta.
-		// Em paralelo com a hidro: são independentes e em série somavam latência.
-		fetchSimeparRadar(),
-	]);
+	// Radar é fonte única (RainViewer, tiles georreferenciados) para todos os
+	// leitores: o mosaico JPEG do Simepar saiu em 23/09/2026 — vinha "assado"
+	// (mapa + rótulos + radar no mesmo pixel) e, com o radar de Teixeira Soares
+	// desativado, sobrava só Cascavel a ~400 km = feixe alto e resolução grossa.
+	const hidro = await fetchHidroTriangulacao({
+		p1h: maxAcc((e) => e.acc1hr),
+		p6h: maxAcc((e) => e.acc6hr),
+		p24h: maxAcc((e) => e.acc24hr),
+		p72h: maxAcc((e) => e.acc72hr),
+	});
 
 	// Boletim da tabela legada (weather_bulletins, formato "NIM texto" que não
 	// é mais gravado): só é usado se FRESCO (<60 min), senão a Camada B
@@ -267,7 +264,6 @@ export async function syncWeatherCycle(): Promise<WeatherState> {
 		bulletin: freshLegacyBulletin,
 		cemaden,
 		hidro,
-		simeparRadar,
 		updatedAt: Date.now(),
 	};
 

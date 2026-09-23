@@ -163,16 +163,6 @@ function renderHidroSection(weather: WeatherState | null): string {
 	return `## 🌊 Rios — Triangulação ANA (referência regional)\n- ${sanitizeLlmField(hidro.resumoRisco, 900)}\n${linhas}\n- **Fonte:** ANA Hidro (telemetria horária) — 3 sentinelas na calha do Tibagi que cercam Ipiranga; Ipiranga não possui estação fluviométrica própria. Atualizado em: ${atualizado}${prevTxt}${iflTxt}\n- **Rótulos de transbordo do Bitumirim (fotos + memória + Uvaia horária ANA):** OUT23 transbordou 29/10 18h com Uvaia ~739 (7 dias fora, pico 1189) · DEZ24 transbordou 09/12 13h com Uvaia ~339 (3 dias fora, pico 815) · JAN25 NÃO transbordou com Uvaia ~180 (régua 4m no máximo, 143 mm/dia em São Braz) · invernos 13/14/15/17/19 todos saíram (2013 o mais dramático; severidade segue o pico Uvaia 1033/995/986/921/659). Doutrina sazonal v3.1: verão convectivo = só chuva local manda; inverno frontal (mai–ago) = Uvaia carrega a severidade + antecedente 72h (≥100 mm) arma o palco. Uvaia NÃO prevê transbordo sozinha. Foz a montante de Mauá: descarga da usina NÃO causa remanso em Ipiranga.\n`;
 }
 
-/** Seção Simepar — mosaico oficial de radares (display, com timestamp na imagem). */
-function renderSimeparSection(weather: WeatherState | null): string {
-	const s = weather?.simeparRadar;
-	if (!s) return "";
-	const frescor = s.atualizadoEm
-		? new Date(s.atualizadoEm).toISOString()
-		: "desconhecido";
-	return `## 🛰️ Mosaico de Radares SIMEPAR (imagem oficial)\n- Imagem: ${s.imageUrl} (JPEG 980x672, timestamp de Brasília impresso na imagem, legenda Fraco/Moderado/Forte)\n- Frescor verificado: ${frescor} | ${sanitizeLlmField(s.aviso, 300)}\n- Fonte/página: ${s.paginaFonte}\n`;
-}
-
 /** Seção Alerta Unificado — nosso alerta próprio (fusão local + oficiais). */
 function renderAlertaSection(weather: WeatherState | null): string {
 	const a = weather?.alertaUnificado;
@@ -279,7 +269,6 @@ export function renderLlmsTxt(
 ${renderNowcastSection(weather)}
 ${renderCemadenSection(weather)}
 ${renderHidroSection(weather)}
-${renderSimeparSection(weather)}
 ${renderAlertaSection(weather)}
 ## 🤖 Boletim (${bulletinSource})
 ${bulletin}
