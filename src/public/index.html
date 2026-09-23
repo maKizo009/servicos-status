@@ -75,7 +75,7 @@
   --motion-spring:cubic-bezier(.3,1.35,.5,1);     /* press: leve overshoot */
   --dur-1:120ms;   /* press */
   --dur-2:220ms;   /* hover, troca de cor */
-  --dur-3:420ms;   /* subida de card */
+  --dur-3:320ms;   /* subida de card */
   --dur-4:620ms;   /* superficie grande / cascata */
   --md-sys-color-surface-container-highest:#CBD5E1;
   --md-sys-color-on-surface:#0F172A;             /* Texto principal */
@@ -100,6 +100,9 @@
   --md-elevation-1:0 1px 2px 0 rgba(15,23,42,.30),0 1px 3px 1px rgba(15,23,42,.15);
   --md-elevation-2:0 1px 2px 0 rgba(15,23,42,.30),0 2px 6px 2px rgba(15,23,42,.15);
   --md-elevation-3:0 4px 8px 3px rgba(15,23,42,.15),0 1px 3px 0 rgba(15,23,42,.30);
+  /* Sombra do hover: mais espalhada e mais suave que a 3 — le como "levantou",
+     nao como "ganhou um contorno". */
+  --md-elevation-lift:0 12px 24px -8px rgba(15,23,42,.22),0 6px 12px -6px rgba(15,23,42,.16);
   --md-shape-corner-xs:4px;--md-shape-corner-small:8px;--md-shape-corner-medium:12px;--md-shape-corner-large:16px;--md-shape-corner-xl:28px;--md-shape-corner-full:9999px;
 
   /* === Tokens legados (aliases para o M3 — nada quebra) === */
@@ -148,6 +151,7 @@
     --md-elevation-1:0 1px 3px 0 rgba(0,0,0,.3),0 1px 2px -1px rgba(0,0,0,.3);
     --md-elevation-2:0 4px 6px -1px rgba(0,0,0,.35),0 2px 4px -2px rgba(0,0,0,.25);
     --md-elevation-3:0 10px 15px -3px rgba(0,0,0,.4),0 4px 6px -4px rgba(0,0,0,.3);
+  --md-elevation-lift:0 14px 28px -10px rgba(0,0,0,.62),0 6px 14px -6px rgba(0,0,0,.5);
     --copel:#4ADE80;--sanepar:#38BDF8;
     --s900:#F8FAFC;--s800:#F1F5F9;--s700:#E2E8F0;--s600:#CBD5E1;--s500:#94A3B8;--s400:#64748B;--s300:#475569;--s200:#334155;--s100:#1E293B;--s50:#0F172A;
     --g6:#4ADE80;--g5:#16A34A;--g1:rgba(34,197,94,.18);--g0:rgba(6,78,59,.3);
@@ -184,6 +188,7 @@
   --md-elevation-1:0 1px 3px 0 rgba(0,0,0,.3),0 1px 2px -1px rgba(0,0,0,.3);
   --md-elevation-2:0 4px 6px -1px rgba(0,0,0,.35),0 2px 4px -2px rgba(0,0,0,.25);
   --md-elevation-3:0 10px 15px -3px rgba(0,0,0,.4),0 4px 6px -4px rgba(0,0,0,.3);
+  --md-elevation-lift:0 14px 28px -10px rgba(0,0,0,.62),0 6px 14px -6px rgba(0,0,0,.5);
   --s900:#F8FAFC;--s800:#F1F5F9;--s700:#E2E8F0;--s600:#CBD5E1;--s500:#94A3B8;--s400:#64748B;--s300:#475569;--s200:#334155;--s100:#1E293B;--s50:#0F172A;
   --g6:#4ADE80;--g5:#16A34A;--g1:rgba(34,197,94,.18);--g0:rgba(6,78,59,.3);
   --a5:#FBBF24;--a4:#F59E0B;--a1:rgba(245,158,11,.18);--a0:rgba(120,53,15,.3);
@@ -882,7 +887,7 @@ body{font-family:var(--font);background:var(--md-sys-color-surface);color:var(--
    A curva com overshoot e o que da peso ao movimento em vez de pulo seco. */
 .card:hover,.bulletin-box:hover,.nowcast-box:hover,.cemaden-box:hover,.kpi-card:hover,
 .outage-card:hover,.stats-kpi-card:hover,.stats-table-wrapper:hover{
-  box-shadow:var(--md-elevation-3);transform:translateY(-3px)
+  box-shadow:var(--md-elevation-lift);transform:translateY(-6px)
 }
 /* O banner de takeover nasce sozinho quando o alerta sobe: entra deslizando. */
 .banner.alert-takeover{animation:surfaceIn var(--dur-4) var(--motion-emphasized)}
@@ -909,7 +914,13 @@ body{font-family:var(--font);background:var(--md-sys-color-surface);color:var(--
 .btn-toggle-outages:active::before,.source-link-btn:active::before,.llm-btn:active::before,
 .banner-detail-item:active::before,.tab-btn:active::before{opacity:.13}
 .btn-toggle-outages:active,.source-link-btn:active,.llm-btn:active,.banner-detail-item:active,
-.tab-btn:active,.radar-play-btn:active{transform:scale(.965)}
+.tab-btn:active,.radar-play-btn:active{transform:scale(.965);transition-duration:var(--dur-1)}
+/* Mesmo "levantar" dos cards, na escala de um botao. O .radar-play-btn fica
+   fora: ele ja tem scale proprio e por cima do mapa ficaria tremendo. */
+.btn-toggle-outages:hover,.source-link-btn:hover,.llm-btn:hover,.banner-detail-item:hover,
+.tab-btn:hover,.layer-btn:hover,.theme-toggle-btn:hover,.push-btn:hover{
+  transform:translateY(-2px);box-shadow:var(--md-elevation-2)
+}
 
 /* Expansor (<details>) abre deslizando em vez de pular. Chrome 131+; em
    navegador sem suporte abre normal (nada quebra). */
@@ -962,7 +973,7 @@ details[open]::details-content{block-size:auto}
   content:'';position:absolute;inset:0;border-radius:inherit;background:currentColor;
   opacity:0;pointer-events:none;transition:opacity var(--dur-2) var(--motion-standard)
 }
-.band-pill:hover{box-shadow:var(--md-elevation-2);transform:translateY(-2px)}
+.band-pill:hover{box-shadow:var(--md-elevation-lift);transform:translateY(-3px)}
 .band-pill:hover::before{opacity:.06}
 .band-pill:active{transform:scale(.97)}
 .band-pill:active::before{opacity:.12}
@@ -1001,7 +1012,7 @@ details[open]::details-content{block-size:auto}
   background:var(--md-sys-color-surface-container);border-radius:var(--md-shape-corner-large);
   box-shadow:var(--md-elevation-2);overflow:hidden;display:flex;flex-direction:column;padding:0
 }
-.panel-card:hover{box-shadow:var(--md-elevation-3)}
+.panel-card:hover{box-shadow:var(--md-elevation-lift)}
 .panel-head{display:flex;align-items:center;gap:10px;padding:14px 16px 10px;flex-wrap:wrap}
 .panel-head-txt{display:flex;flex-direction:column;min-width:0}
 .panel-title{font-size:13px;font-weight:700;color:var(--text)}
@@ -1068,8 +1079,8 @@ details[open]::details-content{block-size:auto}
 /* Serviços: os cards do #grid entram direto na grade do painel. */
 .panel-grid .card{border-radius:var(--md-shape-corner-large)}
 .panel-grid .card:not(.critical){background:var(--md-sys-color-surface-container);box-shadow:var(--md-elevation-2)}
-.panel-grid .card:not(.critical):hover{box-shadow:var(--md-elevation-3)}
-.panel-grid .card.critical:hover{box-shadow:var(--md-elevation-3),var(--shadow-crit)}
+.panel-grid .card:not(.critical):hover{box-shadow:var(--md-elevation-lift)}
+.panel-grid .card.critical:hover{box-shadow:var(--md-elevation-lift),var(--shadow-crit)}
 
 @media(min-width:992px){
   .panel-grid{grid-template-columns:repeat(12,1fr);gap:16px}
@@ -1082,7 +1093,6 @@ details[open]::details-content{block-size:auto}
   .panel-grid>#grid>.card[data-name="Copel"]{grid-column:1/9;grid-row:3/5}
   .panel-grid>#grid>.card[data-name="Sanepar"]{grid-column:9/13;grid-row:3;align-self:start}
   .panel-grid>.prog-card{grid-column:9/13;grid-row:4}
-  .panel-grid>.simepar-card{grid-column:1/-1}
   .status-band{grid-template-columns:repeat(5,auto) 1fr;align-items:center;gap:10px;padding:12px 14px}
   .band-stamp{grid-column:auto;text-align:right;padding:0 4px 0 0}
 }
@@ -1280,14 +1290,6 @@ details[open]::details-content{block-size:auto}
     <div class="scheduled-reminder-list" id="scheduledReminderList"></div>
     <div class="scheduled-reminder-foot">Fonte: COPEL/ANEEL — corte programado, não é falta de energia emergencial.</div>
   </div>
-          <div class="cemaden-box panel-card simepar-card" id="simeparBox" style="display:none">
-            <div class="cemaden-head">
-              <span style="font-size:13px;font-weight:600;color:var(--text);display:flex;align-items:center;gap:6px"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20"/><path d="M2 12h20"/></svg> Mosaico de Radares · Simepar</span>
-              <span class="bulletin-tag">Fonte: Simepar</span>
-            </div>
-            <img id="simeparImg" alt="Mosaico de radares do Simepar" loading="lazy" style="width:100%;border-radius:8px;display:block" />
-            <div id="simeparCap" style="font-size:11px;opacity:.75;line-height:1.5;margin-top:6px"></div>
-          </div>
     </div>
   </div>
 
@@ -2413,7 +2415,6 @@ async function fetchWeatherData() {
     renderAlertaCard(data);
     renderTopAlert(data);
     renderStatusBand();
-    renderQuandoVisivel('#simeparBox', () => renderSimeparCard(data));
     window._cargaPainel = window._cargaPainel || { servicos: false, clima: false };
     window._cargaPainel.clima = true;
     entradaPainel();
@@ -2837,23 +2838,6 @@ function renderAlertaCard(data) {
     (desc ? `<div style="margin-top:4px">${esc(desc)}</div>` : '') +
     (motivos ? `<div style="margin-top:6px">${motivos}</div>` : '') +
     (oficiais ? `<div style="margin-top:8px">${oficiais}</div>` : '');
-}
-
-function renderSimeparCard(data) {
-  const box = document.getElementById('simeparBox');
-  const img = document.getElementById('simeparImg');
-  const cap = document.getElementById('simeparCap');
-  if (!box || !img) return;
-  const s = data?.simeparRadar;
-  const url = (s && s.imageUrl) || 'https://lb01.simepar.br/riak/pgw-radar/product1.jpeg';
-  box.style.display = 'flex';
-  if (img.getAttribute('src') !== url) img.setAttribute('src', url);
-  img.onerror = () => { box.style.display = 'none'; };
-  if (cap) {
-    const quando = s?.atualizadoEm ? new Date(s.atualizadoEm).toLocaleString('pt-BR') : 'horário impresso na imagem';
-    const aviso = s?.teixeiraSoaresOffline ? ' Radar de Teixeira Soares fora do ar — mosaico é só Cascavel (~400 km).' : '';
-    cap.textContent = `Imagem oficial (timestamp de Brasília na foto). Verificado: ${quando}.${aviso}`;
-  }
 }
 
 function renderHidroCard(data) {
