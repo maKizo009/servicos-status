@@ -1,0 +1,272 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Proposta A — Painel</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+/* Tokens = os MESMOS do Monitor Ipiranga (tema claro). Paleta intocada. */
+:root{
+  --primary:#047857; --surface:#F8FAFC; --sc:#FFFFFF; --sc-low:#F1F5F9; --sc-high:#E2E8F0;
+  --on-surface:#0F172A; --on-surface-variant:#475569; --muted:#546274;
+  --outline:#94A3B8; --outline-variant:#E2E8F0;
+  --on-secondary-container:#14532D; --on-error-container:#7F1D1D; --on-warning-container:#92400E;
+  --g6:#16A34A; --g1:#DCFCE7; --a5:#D97706; --a1:#FEF3C7; --r6:#DC2626; --r1:#FEE2E2;
+  --e1:0 1px 2px 0 rgba(15,23,42,.30),0 1px 3px 1px rgba(15,23,42,.15);
+  --e2:0 1px 2px 0 rgba(15,23,42,.30),0 2px 6px 2px rgba(15,23,42,.15);
+  --e3:0 4px 8px 3px rgba(15,23,42,.15),0 1px 3px 0 rgba(15,23,42,.30);
+  --r-sm:8px; --r-md:12px; --r-lg:16px; --r-full:9999px;
+  --font:'Inter',system-ui,-apple-system,'Segoe UI',Roboto,sans-serif;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:var(--font);background:var(--surface);color:var(--on-surface);-webkit-font-smoothing:antialiased;line-height:1.5}
+.wrap{max-width:1200px;margin:0 auto;padding:0 20px 40px}
+header{background:linear-gradient(135deg,#065F46,#047857);color:#fff;padding:14px 0;margin-bottom:18px}
+header .wrap{display:flex;align-items:center;gap:12px;padding-bottom:0}
+.logo{width:38px;height:38px;border-radius:var(--r-md);background:rgba(255,255,255,.16);display:grid;place-items:center;font-weight:800}
+h1{font-size:17px;font-weight:700;letter-spacing:-.2px}
+.sub{font-size:12.5px;opacity:.85}
+.hright{margin-left:auto;display:flex;align-items:center;gap:8px;font-size:12.5px;opacity:.92}
+
+.grid{display:grid;grid-template-columns:repeat(12,1fr);gap:16px}
+.c4{grid-column:span 4} .c8{grid-column:span 8}
+.stack{display:flex;flex-direction:column;gap:16px}
+
+.card{background:var(--sc);border-radius:var(--r-lg);box-shadow:var(--e2);padding:16px;transition:box-shadow .22s ease,transform .22s ease}
+.card:hover{box-shadow:var(--e3);transform:translateY(-2px)}
+.chead{display:flex;align-items:center;gap:8px;margin-bottom:12px}
+.ctitle{font-size:13px;font-weight:700;letter-spacing:.2px}
+.chead .right{margin-left:auto;font-size:11.5px;color:var(--muted)}
+
+/* faixa de status */
+.band{background:var(--sc);border-radius:var(--r-lg);box-shadow:var(--e2);padding:14px 16px;display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:16px}
+.pill{display:flex;align-items:center;gap:10px;background:var(--sc-low);border-radius:var(--r-md);padding:9px 14px;cursor:pointer;transition:background .18s ease,box-shadow .18s ease}
+.pill:hover{background:var(--sc-high);box-shadow:var(--e1)}
+.pill .dot{width:9px;height:9px;border-radius:50%;flex:none}
+.dot.ok{background:var(--g6)} .dot.warn{background:var(--a5)} .dot.crit{background:var(--r6)} .dot.info{background:var(--outline)}
+.pill .lbl{font-size:10.5px;font-weight:700;letter-spacing:.6px;text-transform:uppercase;color:var(--muted);line-height:1.2}
+.pill .val{font-size:14px;font-weight:700;line-height:1.25;font-variant-numeric:tabular-nums}
+.pill .val small{font-weight:500;color:var(--on-surface-variant);font-size:12px}
+.pill.crit{background:var(--r1)} .pill.crit .val{color:var(--on-error-container)}
+.pill.warn{background:var(--a1)} .pill.warn .val{color:var(--on-warning-container)}
+.stamp{margin-left:auto;font-size:12px;color:var(--muted)}
+.expand{flex-basis:100%;display:none;padding-top:8px;font-size:12.5px;color:var(--on-surface-variant)}
+.expand.on{display:block}
+.expand table{width:100%;border-collapse:collapse;font-size:12.5px}
+.expand td{padding:4px 0}
+.expand td:last-child{text-align:right;font-weight:600;color:var(--on-surface);white-space:nowrap}
+
+/* mapa */
+.map{position:relative;height:372px;overflow:hidden;background:#0d1410}
+.map .tiles{position:absolute;inset:0;background:url(../assets/mapa-satelite-ipiranga.jpg) center/cover;filter:saturate(.85) brightness(.82)}
+.map .echo{position:absolute;left:58%;top:6%;width:34%;height:42%;background:
+  radial-gradient(closest-side,rgba(239,68,68,.85),rgba(245,158,11,.55) 45%,rgba(34,197,94,.28) 70%,transparent 100%);filter:blur(2px)}
+.map .echo2{position:absolute;left:8%;top:58%;width:16%;height:22%;background:
+  radial-gradient(closest-side,rgba(245,158,11,.6),rgba(34,197,94,.25) 65%,transparent 100%);filter:blur(2px)}
+.map .legend{position:absolute;left:12px;bottom:58px;display:flex;gap:8px;background:rgba(9,13,22,.72);padding:6px 9px;border-radius:8px;backdrop-filter:blur(6px)}
+.map .legend i{display:flex;align-items:center;gap:4px;font-size:10.5px;font-style:normal;color:#CBD5E1;font-weight:600}
+.map .legend s{width:9px;height:9px;border-radius:2px;text-decoration:none;display:inline-block}
+.map .poly{position:absolute;left:44%;top:52%;width:13%;height:22%;border:2px solid #22d3ee;background:rgba(34,211,238,.16);border-radius:5px;box-shadow:0 0 0 1px rgba(8,145,178,.35)}
+.map .overlay{position:absolute;left:12px;top:12px;display:flex;gap:6px}
+.chip{background:rgba(9,13,22,.78);color:#CBD5E1;font-size:11.5px;font-weight:600;padding:7px 11px;border-radius:var(--r-sm);backdrop-filter:blur(6px)}
+.chip.on{background:var(--g6);color:#052E16}
+.map .bottom{position:absolute;left:12px;right:12px;bottom:12px;background:rgba(9,13,22,.72);border-radius:var(--r-sm);padding:8px 12px;display:flex;align-items:center;gap:10px;color:#CBD5E1;font-size:11.5px;backdrop-filter:blur(6px)}
+.map .play{width:26px;height:26px;border-radius:50%;background:var(--g6);color:#052E16;display:grid;place-items:center;font-size:10px}
+.track{flex:1;height:4px;border-radius:2px;background:rgba(255,255,255,.18);position:relative}
+.track i{position:absolute;inset:0 auto 0 0;width:100%;background:var(--g6);border-radius:2px}
+
+.stat{display:flex;align-items:baseline;justify-content:space-between;padding:9px 0;border-bottom:1px solid var(--outline-variant)}
+.stat:last-child{border-bottom:none}
+.stat .k{font-size:12.5px;color:var(--on-surface-variant)}
+.stat .v{font-size:17px;font-weight:700;font-variant-numeric:tabular-nums}
+.stat .v small{font-size:12px;font-weight:500;color:var(--on-surface-variant)}
+.big{font-size:30px;font-weight:800;letter-spacing:-1px;font-variant-numeric:tabular-nums;line-height:1.1}
+.big small{font-size:13px;font-weight:600;letter-spacing:0;color:var(--on-surface-variant)}
+.bar{height:7px;border-radius:4px;background:var(--sc-high);overflow:hidden;margin:6px 0 6px}
+.bar i{display:block;height:100%;width:4.8%;background:var(--r6);border-radius:4px}
+.occ{display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:var(--r-sm);background:var(--sc-low);margin-bottom:6px}
+.occ .b{font-size:12.5px;font-weight:600}
+.occ .m{font-size:11.5px;color:var(--muted)}
+.occ .n{margin-left:auto;font-size:13px;font-weight:700;font-variant-numeric:tabular-nums}
+.tag{font-size:10.5px;font-weight:700;letter-spacing:.4px;text-transform:uppercase;padding:3px 8px;border-radius:var(--r-sm);background:var(--sc-high);color:var(--on-surface-variant);white-space:nowrap}
+.tag.crit{background:var(--r1);color:var(--on-error-container)}
+.tag.warn{background:var(--a1);color:var(--on-warning-container)}
+.tag.ok{background:var(--g1);color:var(--on-success-container)}
+.prose{font-size:13.5px;line-height:1.62}
+.prose strong{font-weight:700}
+.note{font-size:11.5px;color:var(--muted);line-height:1.5}
+details{margin-top:10px}
+summary{cursor:pointer;font-size:12px;font-weight:600;color:var(--primary)}
+footer{margin-top:22px;font-size:11.5px;color:var(--muted);line-height:1.6;text-align:center}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="wrap">
+    <div class="logo">IM</div>
+    <div>
+      <h1>Ipiranga Monitor</h1>
+      <div class="sub">Serviços essenciais de Ipiranga/PR em tempo real</div>
+    </div>
+    <div class="hright">🌤️ 19°C · Encoberto · <strong>17:21</strong></div>
+  </div>
+</header>
+
+<div class="wrap">
+
+  <!-- ============ FAIXA DE STATUS (substitui banner + lembrete + alerta) ============ -->
+  <div class="band">
+    <div class="pill crit" onclick="document.getElementById('x1').classList.toggle('on')">
+      <span class="dot crit"></span>
+      <span><span class="lbl">Energia</span><br><span class="val">288 UCs <small>sem luz</small></span></span>
+    </div>
+    <div class="pill ok">
+      <span class="dot ok"></span>
+      <span><span class="lbl">Água</span><br><span class="val">Normal</span></span>
+    </div>
+    <div class="pill warn">
+      <span class="dot warn"></span>
+      <span><span class="lbl">Rios (Ipiranga)</span><br><span class="val">Atenção <small>não sai da calha</small></span></span>
+    </div>
+    <div class="pill warn">
+      <span class="dot warn"></span>
+      <span><span class="lbl">Chuva 24 h</span><br><span class="val">2,8 mm <small>nada agora</small></span></span>
+    </div>
+    <div class="pill" onclick="document.getElementById('x2').classList.toggle('on')">
+      <span class="dot info"></span>
+      <span><span class="lbl">Programados</span><br><span class="val">3 cortes <small>desde 11:21</small></span></span>
+    </div>
+    <span class="stamp">🟢 atualizado 17:21</span>
+
+    <div class="expand" id="x1">
+      <table>
+        <tr><td>3 interrupções ativas · a mais antiga há 40 h · 14 solicitações não confirmadas</td><td>33 UCs</td></tr>
+        <tr><td>Bairros: Descalvado (3 ocorrências)</td><td>6.017 UCs no município</td></tr>
+      </table>
+    </div>
+    <div class="expand" id="x2">
+      <table>
+        <tr><td>Avençal — 11:21 · duração prevista 3 a 6 h</td><td>164 UCs</td></tr>
+        <tr><td>Avençal — 11:21 · duração prevista 3 a 6 h</td><td>84 UCs</td></tr>
+        <tr><td>Rural — 11:21 · duração prevista 3 a 6 h</td><td>7 UCs</td></tr>
+        <tr><td colspan="2" style="font-weight:400;color:var(--muted);font-size:11.5px;padding-top:6px">Corte programado pela Copel — não é falta de energia emergencial.</td></tr>
+      </table>
+    </div>
+  </div>
+
+  <div class="grid">
+
+    <!-- ============ MAPA (8) + CLIMA (4) ============ -->
+    <div class="card c8" style="padding:0;overflow:hidden">
+      <div style="display:flex;align-items:center;gap:10px;padding:14px 16px">
+        <div>
+          <div class="ctitle">Radar de chuva e clima</div>
+          <div style="font-size:11.5px;color:var(--muted)">Ipiranga e região · contorno = limite do município</div>
+        </div>
+        <span class="tag ok" style="margin-left:auto">ao vivo</span>
+      </div>
+      <div class="map">
+        <div class="tiles"></div>
+        <div class="echo"></div>
+        <div class="echo2"></div>
+        <div class="poly"></div>
+        <div class="legend"><i><s style="background:#22C55E"></s>fraco</i><i><s style="background:#F59E0B"></s>moderado</i><i><s style="background:#EF4444"></s>severo</i><i><s style="background:#7C2D12"></s>extremo</i></div>
+        <div class="overlay"><span class="chip">Mapa</span><span class="chip on">Satélite</span><span class="chip">Tela cheia</span></div>
+        <div class="bottom"><span class="play">▶</span><span class="track"><i></i></span><span>frame 17:10</span></div>
+      </div>
+    </div>
+
+    <div class="card c4">
+      <div class="chead"><span class="ctitle">Clima agora</span><span class="right">INMET</span></div>
+      <div class="stat"><span class="k">Temperatura</span><span class="v">19<small> °C</small></span></div>
+      <div class="stat"><span class="k">Condição</span><span class="v" style="font-size:14px">Encoberto</span></div>
+      <div class="stat"><span class="k">Chance de chuva (6 h)</span><span class="v">45<small> %</small></span></div>
+      <div class="stat"><span class="k">Vento</span><span class="v">8<small> km/h</small></span></div>
+      <div class="stat"><span class="k">Chuva medida 24 h</span><span class="v">2,8<small> mm</small></span></div>
+      <div class="stat"><span class="k">Umidade</span><span class="v">78<small> %</small></span></div>
+      <div class="stat"><span class="k">Radar — núcleo mais forte</span><span class="v">48<small> dBZ</small></span></div>
+      <div class="note" style="margin-top:10px">Núcleo severo a 540 km (SP), passando de lado. Movimento no radar não confiável neste momento.</div>
+    </div>
+
+    <!-- ============ TEXTO (8) + RIOS (4) ============ -->
+    <div class="card c8">
+      <div class="chead">
+        <span class="ctitle">O que está acontecendo</span>
+        <span class="tag warn" style="margin-left:auto">atenção</span>
+      </div>
+      <p class="prose">
+        <strong>Sem chuva medida em Ipiranga</strong> neste momento e nenhuma chuva por perto.
+        O temporal mais relevante está em Osasco/SP, a 422 km, e passa de lado. Uma área de chuva
+        moderada na região de São Paulo (525 km) segue se afastando. O modelo aponta
+        <strong>45% de chance de chuva</strong> com céu encoberto nas próximas 6 h. Os
+        <strong>rios seguem em atenção</strong>.
+      </p>
+      <details>
+        <summary>Como este texto é gerado</summary>
+        <p class="note" style="margin-top:6px">Análise descritiva automática a partir do radar, do CEMADEN e da previsão. Pode conter erros — confira no radar e nas fontes oficiais.</p>
+      </details>
+    </div>
+
+    <div class="card c4">
+      <div class="chead"><span class="ctitle">Rios — sai da calha em Ipiranga?</span><span class="tag warn" style="margin-left:auto">atenção</span></div>
+      <div style="display:flex;align-items:baseline;gap:8px;margin-bottom:10px;flex-wrap:wrap">
+        <span style="font-size:11px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;color:var(--muted)">Vai sair da calha?</span>
+        <span class="tag ok" style="font-size:11.5px;padding:4px 10px">Não</span>
+        <span style="font-size:12px;color:var(--muted)">70% de confiança</span>
+      </div>
+      <div class="occ"><span><span class="b">Uvaia</span><br><span class="m">7,61 m · 465 m³/s</span></span><span class="tag warn" style="margin-left:auto">alerta</span></div>
+      <div class="occ"><span><span class="b">Cebolão</span><br><span class="m">4,73 m · 1.907 m³/s</span></span><span class="tag crit" style="margin-left:auto">crítico</span></div>
+      <div class="occ" style="margin-bottom:0"><span><span class="b">Jataizinho</span><br><span class="m">4,64 m · 2.295 m³/s</span></span><span class="tag crit" style="margin-left:auto">crítico</span></div>
+      <p class="note" style="margin-top:10px">3 sentinelas no rio Tibagi, de 100 a 200 km a jusante — referência regional, não é medição no rio daqui.</p>
+    </div>
+
+    <!-- ============ ENERGIA (8) + [ÁGUA / PROGRAMADOS] (4) ============ -->
+    <div class="card c8">
+      <div class="chead">
+        <span class="ctitle">Energia · Copel</span>
+        <span class="tag crit" style="margin-left:auto">crítico</span>
+      </div>
+      <div style="display:flex;gap:26px;align-items:flex-end;margin-bottom:10px;flex-wrap:wrap">
+        <div><div class="big">288<small> UCs</small></div><div class="note">sem energia agora</div></div>
+        <div><div class="big" style="font-size:20px">4,8<small>%</small></div><div class="note">da rede do município</div></div>
+        <div><div><div class="big" style="font-size:20px">40<small> h</small></div><div class="note">sem luz desde o início</div></div></div>
+        <div style="margin-left:auto;text-align:right"><div class="big" style="font-size:20px">3</div><div class="note">interrupções ativas</div></div>
+      </div>
+      <div class="bar"><i></i></div>
+      <div class="note" style="margin-bottom:12px">288 de 6.017 unidades consumidoras · +14 solicitações não confirmadas</div>
+      <div class="occ"><span class="b">Descalvado</span><span class="tag crit">interrupção</span><span class="m">3 ocorrências · 13:04, 13:41 e 14:02 · sem equipe</span><span class="n">33 UCs</span></div>
+      <div class="occ" style="margin-bottom:0"><span class="b">Avençal + Rural</span><span class="tag">programado</span><span class="m">11:21 · 3 cortes</span><span class="n">255 UCs</span></div>
+      <details>
+        <summary>Ver as 6 ocorrências (3 ativas + 3 programadas)</summary>
+        <p class="note" style="margin-top:6px">Lista completa com bairro, início, previsão de retorno e equipe despachada. Fonte: Copel/ANEEL.</p>
+      </details>
+    </div>
+
+    <div class="stack c4">
+      <div class="card">
+        <div class="chead"><span class="ctitle">Água · Sanepar</span><span class="tag ok" style="margin-left:auto">normal</span></div>
+        <div class="big" style="font-size:20px;color:var(--on-success-container)">Sem interrupções</div>
+        <p class="note" style="margin-top:6px">Abastecimento normal. Verificado às 17:21.</p>
+      </div>
+      <div class="card">
+        <div class="chead"><span class="ctitle">Cortes programados</span><span class="tag" style="margin-left:auto">3</span></div>
+        <div class="occ"><span class="b">Avençal</span><span class="m">11:21 · 3–6 h</span><span class="n">164</span></div>
+        <div class="occ"><span class="b">Avençal</span><span class="m">11:21 · 3–6 h</span><span class="n">84</span></div>
+        <div class="occ" style="margin-bottom:0"><span class="b">Rural</span><span class="m">11:21 · 3–6 h</span><span class="n">7</span></div>
+        <p class="note" style="margin-top:10px">Corte programado pela Copel — não é falta de energia emergencial.</p>
+      </div>
+    </div>
+
+  </div>
+
+  <footer>
+    Estimativas de chuva, rios e enxurrada <strong>não são dados oficiais</strong> — em emergência ligue 199 (Defesa Civil).
+    Fontes: Copel/ANEEL · Sanepar · INMET · CEMADEN · ANA.
+  </footer>
+</div>
+</body>
+</html>

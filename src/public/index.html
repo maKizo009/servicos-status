@@ -206,10 +206,6 @@
   display:inline-flex;align-items:center;gap:6px
 }
 
-.weather-content-grid{
-  display:grid;grid-template-columns:1fr;gap:0
-}
-
 .radar-map-wrapper{
   position:relative;background:#090d16;height:380px;width:100%
 }
@@ -252,10 +248,6 @@
 
 .radar-time-text{font-size:12px;font-weight:600;font-variant-numeric:tabular-nums;color:#38BDF8;white-space:nowrap}
 
-.weather-sidebar{
-  background:var(--md-sys-color-surface-container-low);padding:20px;
-  display:flex;flex-direction:column;gap:16px
-}
 .bulletin-box{
   background:var(--surface);border-radius:var(--md-shape-corner-medium);padding:16px;
   display:flex;flex-direction:column;gap:10px;box-shadow:var(--md-elevation-1)
@@ -828,38 +820,7 @@ body{font-family:var(--font);background:var(--md-sys-color-surface);color:var(--
   background:var(--g6);color:#fff;font-size:14px;font-weight:500;cursor:pointer;transition:all .2s
 }
 .error-state button:hover{filter:brightness(1.08)}
-/* Grade do radar: mapa em largura total e avisos lado a lado no desktop.
-   Antes era 1fr + uma coluna de 340px empilhando ate 6 cards: com dado real a
-   coluna chegava a ~1.900px contra um mapa fixo de 380px, abrindo um vao branco
-   de ~1.500px embaixo do mapa. Agora o mapa ocupa a linha inteira e os avisos
-   viram grade que se rearranja sozinha (card com display:none sai da conta). */
-@media(min-width:992px){
-  .weather-content-grid{grid-template-columns:1fr}
-  .radar-map-wrapper{height:560px}
-  .weather-sidebar{
-    display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));
-    gap:16px;align-items:start
-  }
-  .weather-sidebar>.bulletin-box{grid-column:span 2}
-  /* Rios e o card mais alto de todos (520px contra ~110px do nowcast) — ao lado
-     dos curtos ele abria um buraco de 400px. Em largura total + conteudo em 2
-     colunas ele cai pela metade, e o order joga ele pro fim da grade (visual)
-     sem mexer no HTML. Assim as linhas fecham cheias. */
-  .weather-sidebar>#hidroBox{grid-column:1/-1;order:99}
-  .weather-sidebar>#cemadenBox{grid-column:span 2}
-  .weather-sidebar>#simeparBox{grid-column:span 2}
-  #cemadenBox #cemadenContent{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:10px}
-  #hidroBox #hidroContent{columns:2;column-gap:28px}
-  #hidroBox #hidroContent>*{break-inside:avoid}
-}
 
-/* Avisos do topo (status + desligamento programado) lado a lado no desktop.
-   auto-fit: quando so um esta visivel ele volta a ocupar a linha inteira. */
-.top-notices{display:grid;grid-template-columns:1fr;gap:12px;margin-top:10px}
-.top-notices>*{margin-top:0}
-@media(min-width:992px){
-  .top-notices{grid-template-columns:repeat(auto-fit,minmax(420px,1fr));gap:16px;align-items:start}
-}
 
 /* Duo de estatisticas dentro do card (barra de impacto + faixas de duracao):
    dois blocos curtos lado a lado em vez de dois blocos esticados. */
@@ -895,17 +856,163 @@ body{font-family:var(--font);background:var(--md-sys-color-surface);color:var(--
 }
 /* Hierarquia: canvas < secao (nivel 1) < card dentro de container tonal
    (nivel 2) < hover (nivel 3). Sem isso tudo ficava no mesmo plano e lia flat. */
-.weather-sidebar>*,.kpi-card,.outage-card,.banner,.scheduled-reminder{
+.panel-card,.kpi-card,.outage-card,.banner,.scheduled-reminder{
   box-shadow:var(--md-elevation-2)
 }
 .card:hover,.bulletin-box:hover,.nowcast-box:hover,.cemaden-box:hover,.kpi-card:hover,
 .outage-card:hover,.stats-kpi-card:hover,.stats-table-wrapper:hover{
   box-shadow:var(--md-elevation-3);transform:translateY(-2px)
 }
-.weather-sidebar>*,.banner,.scheduled-reminder,.stats-kpi-card,.stats-table-wrapper{
+.panel-card,.status-band,.banner,.scheduled-reminder,.stats-kpi-card,.stats-table-wrapper{
   animation:surfaceIn .34s cubic-bezier(.2,0,0,1)
 }
 .anim-in .card{animation:surfaceIn .34s cubic-bezier(.2,0,0,1) both;animation-delay:calc(var(--i,0)*45ms)}
+
+/* ==========================================================================
+   PAINEL A — faixa de status + grade proporcional de 12 colunas (23/09/2026)
+   Substitui o banner de status + o lembrete de programado empilhados no topo
+   (dois cards gigantes) e os 6 avisos soltos da sidebar. Estrutura:
+     [radar 8][clima 4] · [situação 8][rios 4] · [energia 8][água+programados 4]
+   ========================================================================== */
+
+/* O banner do topo vira SÓ o takeover de alerta meteorológico (laranja/
+   vermelho). No estado normal quem resume tudo é a faixa de status. */
+.banner{display:none}
+.banner.alert-takeover{display:flex}
+
+/* ---------- faixa de status ---------- */
+.status-band{
+  display:grid;grid-template-columns:1fr 1fr;gap:8px;align-items:stretch;
+  background:var(--md-sys-color-surface-container);border-radius:var(--md-shape-corner-large);
+  box-shadow:var(--md-elevation-2);padding:12px;margin-top:10px
+}
+.band-pill{
+  display:flex;align-items:center;gap:10px;text-align:left;font-family:inherit;
+  background:var(--md-sys-color-surface-container-low);border:none;border-radius:var(--md-shape-corner-medium);
+  padding:10px 12px;cursor:pointer;color:var(--text);
+  transition:background .18s ease,box-shadow .18s ease,transform .18s ease
+}
+.band-pill:hover{background:var(--md-sys-color-surface-container-high);box-shadow:var(--md-elevation-1)}
+.band-pill:active{transform:scale(.985)}
+.band-pill:focus-visible{outline:2px solid var(--md-sys-color-primary);outline-offset:2px}
+.band-dot{width:9px;height:9px;border-radius:50%;flex:none;background:var(--md-sys-color-outline)}
+.band-dot.ok{background:var(--g6)}
+.band-dot.warn{background:var(--a5)}
+.band-dot.crit{background:var(--r6)}
+.band-txt{display:flex;flex-direction:column;min-width:0}
+/* --text2 e nao --text3: no escuro o --text3 dava 4,12:1 em 10,5px (reprova AA). */
+.band-lbl{font-size:10.5px;font-weight:700;letter-spacing:.6px;text-transform:uppercase;color:var(--text2);line-height:1.2}
+.band-val{font-size:14px;font-weight:700;font-variant-numeric:tabular-nums;line-height:1.3}
+.band-val small{font-size:11.5px;font-weight:500;color:var(--text2)}
+.band-pill[data-nivel="crit"]{background:var(--r1)}
+.band-pill[data-nivel="crit"] .band-val{color:var(--md-sys-color-on-error-container)}
+.band-pill[data-nivel="warn"]{background:var(--a1)}
+.band-pill[data-nivel="warn"] .band-val{color:var(--md-sys-color-on-warning-container)}
+.band-pill[data-nivel="ok"] .band-val{color:var(--md-sys-color-on-success-container)}
+.band-stamp{font-size:11.5px;color:var(--text3);text-align:right;padding:0 4px;align-self:center}
+.band-expand{grid-column:1/-1;background:var(--md-sys-color-surface-container-low);border-radius:var(--md-shape-corner-medium);
+  padding:10px 12px;font-size:12.5px;color:var(--text2);line-height:1.5}
+.band-expand table{width:100%;border-collapse:collapse}
+.band-expand td{padding:3px 0;vertical-align:top}
+.band-expand td:last-child{text-align:right;font-weight:700;color:var(--text);white-space:nowrap;font-variant-numeric:tabular-nums}
+.band-nota{font-size:11px;color:var(--text3);display:block;margin-top:6px}
+
+/* ---------- grade do painel ---------- */
+.panel-grid{display:grid;grid-template-columns:1fr;gap:14px;margin-top:14px;padding-bottom:24px}
+.panel-grid #grid{grid-template-columns:1fr;gap:14px;padding-bottom:0}
+.panel-card{
+  background:var(--md-sys-color-surface-container);border-radius:var(--md-shape-corner-large);
+  box-shadow:var(--md-elevation-2);overflow:hidden;display:flex;flex-direction:column;padding:0
+}
+.panel-card:hover{box-shadow:var(--md-elevation-3)}
+.panel-head{display:flex;align-items:center;gap:10px;padding:14px 16px 10px;flex-wrap:wrap}
+.panel-head-txt{display:flex;flex-direction:column;min-width:0}
+.panel-title{font-size:13px;font-weight:700;color:var(--text)}
+.panel-sub{font-size:11.5px;color:var(--text2);margin-top:1px}
+.panel-meta{margin-left:auto;font-size:11.5px;color:var(--text3)}
+.panel-tag{margin-left:auto;font-size:10.5px;font-weight:700;letter-spacing:.4px;text-transform:uppercase;
+  padding:3px 8px;border-radius:var(--md-shape-corner-small);background:var(--md-sys-color-surface-container-high);color:var(--text2)}
+.panel-tag.ok{background:var(--g1);color:var(--md-sys-color-on-success-container)}
+.panel-subhead{font-size:11px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;color:var(--text3);margin-bottom:4px}
+.panel-foot-note{font-size:11px;color:var(--text3);line-height:1.5;margin-top:4px}
+.panel-details{margin:10px 16px 14px;font-size:12px;color:var(--text2)}
+.panel-details summary{cursor:pointer;font-weight:600;color:var(--md-sys-color-primary);font-size:12px}
+.panel-details p{margin-top:6px;line-height:1.55}
+
+/* Dentro do card não existe card: sub-blocos perdem fundo, sombra e padding lateral. */
+.panel-card .cemaden-box,.panel-card .nowcast-box,.panel-card .bulletin-box{
+  background:none;box-shadow:none;border-radius:0;padding:8px 16px 14px;gap:8px
+}
+.panel-card .cemaden-head{display:none}
+.panel-card .radar-map-wrapper{border-radius:0}
+/* 540px = altura que casa com o card de clima (8 col x 4 col fecham a linha
+   sem vazio). Leaflet fica com altura definida — nada de flex, que exigiria
+   invalidateSize depois do stretch da grade. */
+@media(min-width:992px){.panel-card .radar-map-wrapper{height:540px}}
+
+/* Clima: os badges viram linhas label/valor (mesma info, sem chip solto). */
+.panel-card .weather-metrics-bar{display:flex;flex-direction:column;gap:0;padding:0 16px;width:100%}
+.panel-card .weather-badge{
+  display:flex;align-items:baseline;justify-content:space-between;gap:10px;width:100%;
+  background:none;border-radius:0;padding:11px 0;font-size:13px;font-weight:400;color:var(--text)
+}
+.weather-badge .k{font-size:12.5px;color:var(--text2)}
+.weather-badge .v{font-size:16px;font-weight:700;font-variant-numeric:tabular-nums;color:var(--text)}
+.weather-badge .v small{font-size:11.5px;font-weight:500;color:var(--text2)}
+
+/* Situação: alerta inline + boletim no MESMO card. */
+.panel-card #alertaBox{background:var(--md-sys-color-surface-container-low);border-radius:var(--md-shape-corner-medium);margin:0 16px 10px;padding:12px}
+.panel-card #alertaContent{font-size:13px;color:var(--text);line-height:1.6}
+.panel-card .bulletin-text{margin:0;padding:0 16px;font-size:13.5px;line-height:1.62;color:var(--text)}
+.panel-card .bulletin-meta-line{display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:8px 16px 0}
+.panel-card .bulletin-when{font-size:11px;color:var(--text3);font-variant-numeric:tabular-nums}
+
+/* Rios: linhas compactas (o texto longo vai todo pro "como é calculado"). */
+.panel-card #hidroContent{font-size:12.5px;color:var(--text2);line-height:1.55}
+.panel-card #hidroContent .rio-verdict{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:10px}
+.panel-card #hidroContent .rio-row{display:flex;align-items:center;gap:8px;padding:8px 10px;border-radius:var(--md-shape-corner-small);
+  background:var(--md-sys-color-surface-container-low);margin-bottom:6px}
+.panel-card #hidroContent .rio-row:last-of-type{margin-bottom:0}
+.panel-card #hidroContent .rio-nome{font-weight:600;color:var(--text);font-size:12.5px}
+.panel-card #hidroContent .rio-meta{font-size:11.5px;color:var(--text3)}
+.panel-card #hidroContent .rio-tag{margin-left:auto}
+.panel-card #hidroContent details{margin-top:10px;font-size:12px;color:var(--text2)}
+.panel-card #hidroContent details summary{cursor:pointer;font-weight:600;color:var(--md-sys-color-primary);font-size:12px}
+.panel-card #hidroContent .rio-nota{font-size:11.5px;color:var(--text3);line-height:1.5;margin-top:8px}
+
+/* Programados: card normal do painel (o âmbar fica só no ícone). */
+.panel-card.scheduled-reminder{background:var(--md-sys-color-surface-container);color:var(--text)}
+.panel-card.scheduled-reminder .scheduled-reminder-head{padding:14px 16px 6px}
+.panel-card.scheduled-reminder .scheduled-reminder-title{color:var(--text);font-size:13px;font-weight:700}
+.panel-card.scheduled-reminder .scheduled-reminder-list{padding:0 16px;gap:6px}
+.panel-card.scheduled-reminder .scheduled-reminder-foot{padding:8px 16px 14px;font-size:11px;color:var(--text3);line-height:1.5}
+.sr-chip{font-size:11.5px;color:var(--text2)}
+
+/* Serviços: os cards do #grid entram direto na grade do painel. */
+.panel-grid .card{border-radius:var(--md-shape-corner-large)}
+.panel-grid .card:not(.critical){background:var(--md-sys-color-surface-container);box-shadow:var(--md-elevation-2)}
+.panel-grid .card:not(.critical):hover{box-shadow:var(--md-elevation-3)}
+.panel-grid .card.critical:hover{box-shadow:var(--md-elevation-3),var(--shadow-crit)}
+
+@media(min-width:992px){
+  .panel-grid{grid-template-columns:repeat(12,1fr);gap:16px}
+  .panel-grid>#grid{display:contents}
+  .panel-grid>.radar-card{grid-column:1/9;grid-row:1}
+  .panel-grid>.clima-card{grid-column:9/13;grid-row:1}
+  .panel-grid>.situacao-card{grid-column:1/9;grid-row:2}
+  .panel-grid>.rios-card{grid-column:9/13;grid-row:2}
+  /* data-name e não .critical: com a Copel OK os dois cards cairiam no mesmo lugar. */
+  .panel-grid>#grid>.card[data-name="Copel"]{grid-column:1/9;grid-row:3/5}
+  .panel-grid>#grid>.card[data-name="Sanepar"]{grid-column:9/13;grid-row:3;align-self:start}
+  .panel-grid>.prog-card{grid-column:9/13;grid-row:4}
+  .panel-grid>.simepar-card{grid-column:1/-1}
+  .status-band{grid-template-columns:repeat(5,auto) 1fr;align-items:center;gap:10px;padding:12px 14px}
+  .band-stamp{grid-column:auto;text-align:right;padding:0 4px 0 0}
+}
+
+/* Chuva JÁ detectada no radar: a linha muda de cor (sem borda, só papel tonal). */
+.panel-card .weather-badge[data-alerta]{background:var(--r1);border-radius:var(--md-shape-corner-small);padding:9px 10px;margin:2px 0}
+.panel-card .weather-badge[data-alerta] .k,.panel-card .weather-badge[data-alerta] .v{color:var(--md-sys-color-on-error-container)}
 </style>
 </head>
 <body>
@@ -943,8 +1050,6 @@ body{font-family:var(--font);background:var(--md-sys-color-surface);color:var(--
 
 <div class="container">
 
-  <div class="top-notices">
-
   <div id="banner" class="banner ok" role="status" aria-live="polite">
     <div class="banner-top-row">
       <div class="banner-icon-title">
@@ -961,21 +1066,33 @@ body{font-family:var(--font);background:var(--md-sys-color-surface);color:var(--
     <div class="banner-details-list" id="bannerDetails"></div>
   </div>
 
-  <!-- Lembrete de desligamentos programados (COPEL) — no topo da página.
-       Aparece só quando há ocorrências programadas ativas no município.
-       Dados: scheduledOutages do /api/services (derivado de eh_programada
-       na API mapa_poligonos_data da Copel). -->
-  <div id="scheduledReminder" class="scheduled-reminder" style="display:none" role="note" aria-live="polite">
-    <div class="scheduled-reminder-head">
-      <span class="scheduled-reminder-icon" aria-hidden="true"><svg viewBox="0 0 24 24" width="16" height="16" fill="#1a1500"><path d="M11 15H6l7-14v8h5l-7 14v-8z"/></svg></span>
-      <span class="scheduled-reminder-title">Desligamento Programado da Copel</span>
-      <span class="scheduled-reminder-badge">PROGRAMADO</span>
-    </div>
-    <div class="scheduled-reminder-list" id="scheduledReminderList"></div>
-    <div class="scheduled-reminder-foot">Fonte: COPEL/ANEEL — corte programado, não é falta de energia emergencial.</div>
+  <!-- FAIXA DE STATUS: resumo de tudo em uma linha, no lugar do banner de
+       status + lembrete de programado empilhados. Cada pílula leva ao card do
+       detalhe — o link "Ver card ➔" órfão do banner antigo morre aqui. -->
+  <div class="status-band" id="statusBand" role="status" aria-live="polite">
+    <button class="band-pill" id="pillEnergia" type="button" aria-expanded="false" aria-controls="bandExpEnergia" data-expand="bandExpEnergia">
+      <span class="band-dot" id="pillEnergiaDot" aria-hidden="true"></span>
+      <span class="band-txt"><span class="band-lbl">Energia</span><span class="band-val" id="pillEnergiaVal">—</span></span>
+    </button>
+    <button class="band-pill" id="pillAgua" type="button" data-target='.card[data-name="Sanepar"]'>
+      <span class="band-dot" id="pillAguaDot" aria-hidden="true"></span>
+      <span class="band-txt"><span class="band-lbl">Água</span><span class="band-val" id="pillAguaVal">—</span></span>
+    </button>
+    <button class="band-pill" id="pillRios" type="button" data-target=".rios-card">
+      <span class="band-dot" id="pillRiosDot" aria-hidden="true"></span>
+      <span class="band-txt"><span class="band-lbl">Rios (Ipiranga)</span><span class="band-val" id="pillRiosVal">—</span></span>
+    </button>
+    <button class="band-pill" id="pillChuva" type="button" data-target=".clima-card">
+      <span class="band-dot" id="pillChuvaDot" aria-hidden="true"></span>
+      <span class="band-txt"><span class="band-lbl">Chuva 24 h</span><span class="band-val" id="pillChuvaVal">—</span></span>
+    </button>
+    <button class="band-pill" id="pillProg" type="button" data-target="#scheduledReminder">
+      <span class="band-dot" id="pillProgDot" aria-hidden="true"></span>
+      <span class="band-txt"><span class="band-lbl">Programados</span><span class="band-val" id="pillProgVal">—</span></span>
+    </button>
+    <span class="band-stamp" id="bandStamp">🟢 —</span>
+    <div class="band-expand" id="bandExpEnergia" hidden></div>
   </div>
-
-  </div><!-- /.top-notices -->
 
   <nav class="tabs-nav" aria-label="Navegação do Monitor">
     <button class="tab-btn active" id="tabStatusBtn" type="button">
@@ -988,27 +1105,18 @@ body{font-family:var(--font);background:var(--md-sys-color-surface);color:var(--
     </button>
   </nav>
 
-  <!-- TAB 1: STATUS AO VIVO -->
   <div id="statusView">
-    <!-- WEATHER & RAINVIEWER RADAR SECTION -->
-    <div class="weather-section">
-      <div class="weather-header">
-        <div class="weather-title-group">
-          <div class="weather-icon-box" aria-hidden="true"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M17.5 19H9a7 7 0 1 1 6.71-9h1.79a4.5 4.5 0 1 1 0 9Z"/><path d="m13 15-3 5h4l-2 4" stroke-width="2"/></svg></div>
-          <div>
-            <div class="weather-title">Radar de Chuva & Clima · Ipiranga e Região</div>
-            <div class="weather-sub">Radar, previsão e limites do município</div>
-          </div>
-        </div>
-        <div class="weather-metrics-bar">
-          <div class="weather-badge" id="wxTempBadge">🌡️ --°C</div>
-          <div class="weather-badge" id="wxCondBadge">🌤️ Carregando...</div>
-          <div class="weather-badge" id="wxRainBadge">🌧️ --% Chuva</div>
-          <div class="weather-badge" id="wxWindBadge">💨 -- km/h</div>
-        </div>
-      </div>
+    <div class="panel-grid">
 
-      <div class="weather-content-grid">
+      <!-- 1) RADAR (8 colunas no desktop) -->
+      <div class="card panel-card radar-card">
+        <div class="panel-head">
+          <span class="panel-head-txt">
+            <span class="panel-title">Radar de chuva e clima</span>
+            <span class="panel-sub">Ipiranga e região · contorno = limite do município</span>
+          </span>
+          <span class="panel-tag ok">ao vivo</span>
+        </div>
         <div class="radar-map-wrapper">
           <div class="map-layer-selector">
             <button type="button" class="layer-btn" id="layerStreetBtn"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polygon points="1 6 1 22 8 18 16 22 23 18 23 2 16 6 8 2 1 6"/><line x1="8" y1="2" x2="8" y2="18"/><line x1="16" y1="6" x2="16" y2="22"/></svg> Mapa</button>
@@ -1022,67 +1130,80 @@ body{font-family:var(--font);background:var(--md-sys-color-surface);color:var(--
             <span class="radar-time-text" id="radarTimeLabel">Ao vivo</span>
           </div>
         </div>
+      </div>
 
-        <div class="weather-sidebar">
-          <div class="cemaden-box" id="alertaBox" style="display:none">
-            <div class="cemaden-head">
-              <span style="font-size:13px;font-weight:600;color:var(--text);display:flex;align-items:center;gap:6px"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg> Alerta do Monitor</span>
-              <span class="bulletin-tag" id="alertaNivelTag">—</span>
-            </div>
-            <div id="alertaContent" style="font-size:12px;color:var(--text2);line-height:1.6"></div>
+      <!-- 2) CLIMA AGORA (4 colunas): clima + chuva medida + nowcast no mesmo card -->
+      <div class="card panel-card clima-card">
+        <div class="panel-head">
+          <span class="panel-title">Clima agora</span>
+          <span class="panel-meta">INMET</span>
+        </div>
+        <div class="weather-metrics-bar">
+          <div class="weather-badge" id="wxTempBadge">🌡️ --°C</div>
+          <div class="weather-badge" id="wxCondBadge">🌤️ Carregando...</div>
+          <div class="weather-badge" id="wxRainBadge">🌧️ --% Chuva</div>
+          <div class="weather-badge" id="wxWindBadge">💨 -- km/h</div>
+        </div>
+        <div class="cemaden-box" id="cemadenBox" style="display:none">
+          <div class="panel-subhead">Chuva medida · CEMADEN</div>
+          <div id="cemadenContent">Carregando leituras dos pluviômetros de Ipiranga...</div>
+          <div class="panel-foot-note">Acumulado das últimas 24 h (janela móvel) · fonte pública CEMADEN</div>
+        </div>
+        <div class="nowcast-box" id="nowcastBox" style="display:none">
+          <div class="panel-subhead">Nowcast do radar</div>
+          <div class="nowcast-status-row">
+            <span class="nowcast-intensity-badge" id="nowcastIntensityBadge">—</span>
+            <span class="nowcast-movement" id="nowcastMovement">—</span>
           </div>
+          <div class="nowcast-meta" id="nowcastMeta"></div>
+        </div>
+      </div>
 
-          <div class="bulletin-box">
-            <div class="bulletin-head">
-              <span style="font-size:13px;font-weight:600;color:var(--text)">Boletim IA do Radar</span>
-              <span class="bulletin-meta">
-                <span class="bulletin-when" id="bulletinWhen"></span>
-                <span class="bulletin-tag" id="bulletinSourceTag">IA</span>
-              </span>
-            </div>
-            <p class="bulletin-text" id="bulletinText">Carregando análise descritiva da situação climatológica de Ipiranga...</p>
-            <div class="bulletin-disclaimer">
-              <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;margin-top:2px"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
-              <span>Gerado por IA — pode conter erros. Confira no radar e nas fontes oficiais.</span>
-            </div>
-          </div>
+      <!-- 3) SITUAÇÃO (8 colunas): alerta + boletim IA fundidos em UM card -->
+      <div class="card panel-card situacao-card">
+        <div class="panel-head">
+          <span class="panel-title">O que está acontecendo</span>
+          <span class="bulletin-tag" id="alertaNivelTag">—</span>
+        </div>
+        <div class="cemaden-box" id="alertaBox" style="display:none">
+          <div id="alertaContent" class="alerta-inline"></div>
+        </div>
+        <p class="bulletin-text" id="bulletinText">Carregando análise descritiva da situação climatológica de Ipiranga...</p>
+        <div class="bulletin-meta-line">
+          <span class="bulletin-when" id="bulletinWhen"></span>
+          <span class="bulletin-tag" id="bulletinSourceTag">IA</span>
+        </div>
+        <details class="panel-details">
+          <summary>Como este texto é gerado</summary>
+          <p>Análise descritiva automática a partir do radar, do CEMADEN e da previsão do tempo. Pode conter erros — confira no radar e nas fontes oficiais.</p>
+        </details>
+      </div>
 
-          <div class="nowcast-box" id="nowcastBox" style="display:none">
-            <div class="nowcast-head">
-              <span style="font-size:13px;font-weight:600;color:var(--text)">Nowcast Radar</span>
-            </div>
-            <div class="nowcast-status-row">
-              <span class="nowcast-intensity-badge" id="nowcastIntensityBadge">—</span>
-              <span class="nowcast-movement" id="nowcastMovement">—</span>
-            </div>
-            <div class="nowcast-meta" id="nowcastMeta"></div>
-          </div>
+      <!-- 4) RIOS (4 colunas) -->
+      <div class="card panel-card rios-card">
+        <div class="panel-head">
+          <span class="panel-title">Rios</span>
+          <span class="bulletin-tag" id="hidroStatusTag">Estimativa</span>
+        </div>
+        <div class="cemaden-box" id="hidroBox" style="display:none">
+          <div id="hidroContent"></div>
+        </div>
+      </div>
 
-          <div class="cemaden-box" id="cemadenBox" style="display:none">
-            <div class="cemaden-head">
-              <span style="font-size:13px;font-weight:600;color:var(--text)">Chuva em Tempo Real · CEMADEN</span>
-              <span class="bulletin-tag">Fonte: Cemaden</span>
-            </div>
-            <div id="cemadenContent" style="font-size:12px;color:var(--text2);line-height:1.5">
-              Carregando leituras dos pluviômetros de Ipiranga...
-            </div>
-            <div style="font-size:12px;opacity:.8">
-              Acumulado das últimas 24h (janela móvel) · Fonte pública CEMADEN
-            </div>
-          </div>
-
-          <div class="cemaden-box" id="hidroBox" style="display:none">
-            <div class="cemaden-head">
-              <span style="font-size:13px;font-weight:600;color:var(--text);display:flex;align-items:center;gap:6px"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 6c.6.5 1.2 1 2.5 1C7 7 7 5 9.5 5c2.6 0 2.4 2 5 2 2.5 0 2.5-2 5-2 1.3 0 1.9.5 2.5 1"/><path d="M2 12c.6.5 1.2 1 2.5 1 2.5 0 2.5-2 5-2 2.6 0 2.4 2 5 2 2.5 0 2.5-2 5-2 1.3 0 1.9.5 2.5 1"/><path d="M2 18c.6.5 1.2 1 2.5 1 2.5 0 2.5-2 5-2 2.6 0 2.4 2 5 2 2.5 0 2.5-2 5-2 1.3 0 1.9.5 2.5 1"/></svg> Rios — Triangulação ANA</span>
-              <span class="bulletin-tag" id="hidroStatusTag">Estimativa</span>
-            </div>
-            <div id="hidroContent" style="font-size:12px;color:var(--text2);line-height:1.6"></div>
-            <div style="font-size:11px;opacity:.75;line-height:1.5">
-              Estimativa por triangulação (3 sentinelas no Tibagi). Ipiranga não tem estação fluviométrica própria — valores são referência regional, não medição no Bitumirim.
-            </div>
-          </div>
-
-          <div class="cemaden-box" id="simeparBox" style="display:none">
+      <!-- 5) SERVIÇOS: Copel (8 col) + Sanepar (4 col) + programados — o
+           #grid vira display:contents no desktop, então os cards entram
+           direto nesta grade. -->
+      <section class="grid" id="grid" aria-label="Status dos serviços"></section>
+  <div id="scheduledReminder" class="scheduled-reminder panel-card prog-card" style="display:none" role="note" aria-live="polite">
+    <div class="scheduled-reminder-head">
+      <span class="scheduled-reminder-icon" aria-hidden="true"><svg viewBox="0 0 24 24" width="16" height="16" fill="#1a1500"><path d="M11 15H6l7-14v8h5l-7 14v-8z"/></svg></span>
+      <span class="scheduled-reminder-title">Cortes programados</span>
+      <span class="scheduled-reminder-badge" id="progBadge">PROGRAMADO</span>
+    </div>
+    <div class="scheduled-reminder-list" id="scheduledReminderList"></div>
+    <div class="scheduled-reminder-foot">Fonte: COPEL/ANEEL — corte programado, não é falta de energia emergencial.</div>
+  </div>
+          <div class="cemaden-box panel-card simepar-card" id="simeparBox" style="display:none">
             <div class="cemaden-head">
               <span style="font-size:13px;font-weight:600;color:var(--text);display:flex;align-items:center;gap:6px"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20"/><path d="M2 12h20"/></svg> Mosaico de Radares · Simepar</span>
               <span class="bulletin-tag">Fonte: Simepar</span>
@@ -1090,19 +1211,7 @@ body{font-family:var(--font);background:var(--md-sys-color-surface);color:var(--
             <img id="simeparImg" alt="Mosaico de radares do Simepar" loading="lazy" style="width:100%;border-radius:8px;display:block" />
             <div id="simeparCap" style="font-size:11px;opacity:.75;line-height:1.5;margin-top:6px"></div>
           </div>
-
-        </div>
-      </div>
     </div>
-
-    <div class="section-head">
-      <div class="section-title">
-        <svg viewBox="0 0 24 24"><path d="M4 6h16v2H4zm0 5h16v2H4zm0 5h16v2H4z"/></svg>
-        Painel dos Serviços
-      </div>
-    </div>
-
-    <section class="grid" id="grid" aria-label="Status dos serviços"></section>
   </div>
 
   <!-- TAB 2: ESTATÍSTICAS DIÁRIAS -->
@@ -1368,6 +1477,7 @@ function renderScheduledReminder(services){
 function updateBanner(services){
   const bn=$('#banner'),t=$('#bannerTitle'),s=$('#bannerSub'),badge=$('#bannerBadge'),dot=$('#headerDot'),detailsEl=$('#bannerDetails'),iconEl=$('#bannerIcon');
   window.lastServicesSnapshot = services;
+  renderStatusBand();
   // Takeover do temporal manda: o ciclo dos serviços NÃO pode apagar o alerta
   // (era a corrida — Copel tomava o topo e a tempestade sumia). Reaplica.
   if (window.lastStormAlert && window.lastStormAlert.hot && typeof applyStormTakeover === 'function') {
@@ -1631,11 +1741,18 @@ function renderCards(services){
         }
 
         const utilKey='util-'+name;
-        const utilClosed=window._outagesClosed && window._outagesClosed.has(utilKey);
+        // Painel A: lista de ocorrências aberta esticava o card da Copel para
+        // ~1.450px e abria um vão gigante ao lado. Fecha na PRIMEIRA renderização
+        // (só quando passa de 3); depois disso manda a escolha do usuário — por
+        // isso o Set _outagesAuto, separado do _outagesClosed.
+        if(!window._outagesAuto) window._outagesAuto = new Set();
+        const autoFechou = !window._outagesAuto.has(utilKey) && activeEvents.length > 3;
+        window._outagesAuto.add(utilKey);
+        const utilClosed = (window._outagesClosed && window._outagesClosed.has(utilKey)) || autoFechou;
         outagesListHtml=`
           <button class="btn-toggle-outages" onclick="toggleCopelOutages(this)" aria-expanded="${utilClosed?'false':'true'}" type="button" data-svc="${utilKey}">
-            <span>⚡ <strong>Ocorrências Detalhadas (${activeEvents.length})</strong></span>
-            <span><span class="btn-toggle-icon">${utilClosed?'▶':'▼'}</span> Ocultar/Expandir</span>
+            <span>⚡ <strong>${activeEvents.length} ocorrências — bairros, horários e equipe</strong></span>
+            <span><span class="btn-toggle-icon">${utilClosed?'▶':'▼'}</span> Ver</span>
           </button>
           <div class="outages-container" style="display:${utilClosed?'none':'flex'}">
             ${itemsHtml}
@@ -1643,6 +1760,8 @@ function renderCards(services){
         `;
       }
 
+      // Faixas de duração ficam VISÍVEIS ao lado da barra de impacto: além de
+      // serem informação real, fecham a altura do card com o vizinho de 4 colunas.
       contentHtml=summaryBoxHtml + kpiGridHtml + `<div class="stat-duo">${progressBarHtml}${faixasHtml}</div>` + outagesListHtml;
     }
 
@@ -2154,20 +2273,20 @@ async function fetchWeatherData() {
       const cEl = document.getElementById('wxCondBadge');
       const rEl = document.getElementById('wxRainBadge');
       const wEl = document.getElementById('wxWindBadge');
-      if(tEl) tEl.textContent = `🌡️ ${data.tempC}°C`;
-      if(cEl) cEl.textContent = `🌤️ ${rotuloCondicao(data)}`;
-      if(rEl) rEl.textContent = `🌧️ ${data.rainProbabilityPct ?? 0}% Chuva`;
-      if(wEl) wEl.textContent = `💨 ${data.windKmh ?? 0} km/h`;
+      // Painel A: os badges viram linhas label/valor (mesma info, sem chip solto).
+      if(tEl) tEl.innerHTML = `<span class="k">Temperatura</span><span class="v">${data.tempC}<small> °C</small></span>`;
+      if(cEl) cEl.innerHTML = `<span class="k">Condição</span><span class="v" style="font-size:14px">${esc(rotuloCondicao(data))}</span>`;
+      if(rEl) rEl.innerHTML = `<span class="k">Chance de chuva (6 h)</span><span class="v">${data.rainProbabilityPct ?? 0}<small> %</small></span>`;
+      if(wEl) wEl.innerHTML = `<span class="k">Vento</span><span class="v">${data.windKmh ?? 0}<small> km/h</small></span>`;
 
       // Highlight Regional Radar Alert if active rain is detected in Campos Gerais
       if (data.hasRegionalRain) {
         if(rEl) {
-          rEl.style.background = 'rgba(220, 38, 38, 0.25)';
-          rEl.style.borderColor = '#ef4444';
           // Radar (chuva JÁ detectada) ao lado da probabilidade do modelo no mesmo
           // parêntese dava 'Chuva na Região (0%)' — leitura contraditória. Agora o
-          // número diz de onde vem (mesma convenção do badge de condição).
-          rEl.textContent = `⚡ Radar: chuva na região · previsão ${data.rainProbabilityPct ?? 0}%`;
+          // rótulo diz de onde vem, e a cor sai do CSS (data-alerta).
+          rEl.dataset.alerta = '1';
+          rEl.innerHTML = `<span class="k">Chuva na região (radar)</span><span class="v">⚡ previsão ${data.rainProbabilityPct ?? 0}<small> %</small></span>`;
         }
       }
 
@@ -2213,6 +2332,7 @@ async function fetchWeatherData() {
     renderQuandoVisivel('#hidroBox', () => renderHidroCard(data));
     renderAlertaCard(data);
     renderTopAlert(data);
+    renderStatusBand();
     renderQuandoVisivel('#simeparBox', () => renderSimeparCard(data));
 
     if (data.radar?.radar?.past && data.radar.radar.past.length > 0) {
@@ -2317,6 +2437,142 @@ function renderQuandoVisivel(seletor, fn) {
   io.observe(el);
   setTimeout(executar, 6000);
 }
+
+
+/* ===== FAIXA DE STATUS (Painel A) =====
+   Resumo de tudo em uma linha, lido dos MESMOS dados que alimentam os cards
+   (window.latestWeatherData + window.lastServicesSnapshot) — nada de segunda
+   fonte de verdade. Cada pílula leva ao card do detalhe; só a de energia
+   expande, porque o resumo por bairro não existe em nenhum card. */
+function renderStatusBand(){
+  const svcs = window.lastServicesSnapshot || [];
+  const w = window.latestWeatherData || {};
+  const copel = svcs.find(s => s.name === 'Copel');
+  const sanepar = svcs.find(s => s.name === 'Sanepar');
+  const dCopel = (copel && copel.data) || {};
+
+  const pinta = (id, valor, nivel) => {
+    const v = document.getElementById(id + 'Val');
+    if (v) v.innerHTML = valor;
+    const d = document.getElementById(id + 'Dot');
+    if (d) d.className = 'band-dot' + (nivel && nivel !== 'info' ? ' ' + nivel : '');
+    const p = document.getElementById(id);
+    if (p) p.dataset.nivel = nivel || 'info';
+  };
+
+  // --- Energia: o número que importa é UC sem luz ---
+  const ativos = dCopel.activeEvents || [];
+  const ucs = dCopel.totalConsumers || 0;
+  const cidade = dCopel.cityTotalConsumers ?? null;
+  const pct = dCopel.pctAffected ?? null;
+  if (copel && copel.status === 'critical' && ucs > 0) {
+    pinta('pillEnergia', `${ucs.toLocaleString('pt-BR')} <small>UCs sem luz</small>`, 'crit');
+  } else if (copel && copel.status === 'warn') {
+    pinta('pillEnergia', 'Atenção', 'warn');
+  } else if (copel) {
+    pinta('pillEnergia', 'Normal', 'ok');
+  }
+  const exp = document.getElementById('bandExpEnergia');
+  if (exp) {
+    if (ativos.length) {
+      const porBairro = {};
+      let semEquipe = 0;
+      for (const ev of ativos) {
+        const b = ev.bairro || 'Ipiranga';
+        porBairro[b] = (porBairro[b] || 0) + (ev.qtdConsumidores || 0);
+        if (ev.equipeId === 'SEM_EQUIPE') semEquipe += 1;
+      }
+      const linhas = Object.entries(porBairro).sort((a, b) => b[1] - a[1])
+        .map(([b, n]) => `<tr><td>${esc(b)}</td><td>${n.toLocaleString('pt-BR')} UCs</td></tr>`).join('');
+      exp.innerHTML = `<table>${linhas}</table><span class="band-nota">` +
+        `${ativos.length} ocorrência${ativos.length > 1 ? 's' : ''} ativa${ativos.length > 1 ? 's' : ''}` +
+        (cidade ? ` · ${ucs.toLocaleString('pt-BR')} de ${cidade.toLocaleString('pt-BR')} UCs do município` : '') +
+        (pct != null ? ` (${pct}%)` : '') +
+        (semEquipe ? ` · ${semEquipe} sem equipe despachada` : '') + '</span>';
+    } else {
+      exp.innerHTML = '<span class="band-nota">Sem interrupção ativa registrada pela Copel agora.</span>';
+    }
+  }
+
+  // --- Água ---
+  if (sanepar) {
+    const st = sanepar.status;
+    pinta('pillAgua', st === 'critical' ? 'Interrompida' : st === 'warn' ? 'Atenção' : 'Normal',
+      st === 'critical' ? 'crit' : st === 'warn' ? 'warn' : 'ok');
+  }
+
+  // --- Rios (o veredito que importa: sai ou não sai da calha) ---
+  const h = w.hidro;
+  if (h && h.estacoes && h.estacoes.length) {
+    const iflNivel = (h.ifl && h.ifl.nivel) || 'verde';
+    const emAlerta = iflNivel !== 'verde' || h.riscoCheia === 'watch' || h.riscoEnxurrada === 'warn';
+    const nivel = (iflNivel === 'laranja' || iflNivel === 'vermelho') ? 'crit' : (emAlerta ? 'warn' : 'ok');
+    const prev = h.previsao || null;
+    const sub = prev
+      ? (prev.vaiSair === 'nao' ? 'não sai da calha' : prev.vaiSair === 'sim' ? 'pode sair da calha' : 'indefinido')
+      : '';
+    pinta('pillRios', `${emAlerta ? 'Atenção' : 'Normal'}${sub ? ` <small>${esc(sub)}</small>` : ''}`, nivel);
+  }
+
+  // --- Chuva 24 h (maior acumulado entre as estações do município) ---
+  const est = (w.cemaden && w.cemaden.estacoes) || [];
+  if (est.length) {
+    const maior = est.reduce((a, b) => ((b.acc24hr || 0) > (a.acc24hr || 0) ? b : a));
+    const agora = est.reduce((t, e) => t + (e.acc1hr || 0), 0);
+    const mm = String(maior.acc24hr ?? 0).replace('.', ',');
+    pinta('pillChuva', `${mm} <small>mm · ${agora > 0 ? 'chovendo agora' : 'nada agora'}</small>`, agora > 0 ? 'warn' : 'info');
+  }
+
+  // --- Cortes programados ---
+  const prog = (dCopel.scheduledOutages || []).filter(ev => ev.ehProgramada);
+  if (prog.length) {
+    const inicios = prog.map(ev => ev.dataInicio).filter(Boolean).sort();
+    const m = inicios.length ? String(inicios[0]).match(/(\d{2}):(\d{2})/) : null;
+    const hora = m ? `${m[1]}:${m[2]}` : '';
+    pinta('pillProg', `${prog.length} ${prog.length === 1 ? 'corte' : 'cortes'}${hora ? ` <small>desde ${esc(hora)}</small>` : ''}`, 'warn');
+  } else {
+    pinta('pillProg', 'Nenhum', 'ok');
+  }
+  const badgeProg = document.getElementById('progBadge');
+  if (badgeProg) badgeProg.textContent = prog.length > 1 ? `${prog.length} PROGRAMADOS` : 'PROGRAMADO';
+
+  // --- Selo de atualização ---
+  const selo = document.getElementById('bandStamp');
+  if (selo) {
+    const quando = w.updatedAt || (copel && copel.timestamp) || null;
+    selo.textContent = quando
+      ? '🟢 atualizado ' + new Date(quando).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })
+      : '🟢 —';
+  }
+}
+
+/* Pílulas: energia expande o resumo por bairro; as outras levam ao card. */
+(function ligarPilulas(){
+  const ligar = () => {
+    document.querySelectorAll('.band-pill').forEach((p) => {
+      p.addEventListener('click', () => {
+        const exp = p.dataset.expand;
+        if (exp) {
+          const el = document.getElementById(exp);
+          if (el) {
+            const aberto = !el.hasAttribute('hidden');
+            el.toggleAttribute('hidden', aberto);
+            p.setAttribute('aria-expanded', String(!aberto));
+          }
+          return;
+        }
+        const sel = p.dataset.target;
+        const alvo = sel ? document.querySelector(sel) : null;
+        if (!alvo) return;
+        alvo.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        alvo.classList.add('card-highlight');
+        setTimeout(() => alvo.classList.remove('card-highlight'), 2000);
+      });
+    });
+  };
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', ligar);
+  else ligar();
+})();
 
 function renderCemadenCard(data) {
   const box = document.getElementById('cemadenBox');
@@ -2540,22 +2796,14 @@ function renderHidroCard(data) {
     const [bg, fg] = prevCor(v);
     return `<span style="background:${bg};color:${fg};font-weight:800;padding:2px 8px;border-radius:6px;font-size:11px">${txt}</span>`;
   };
-  const previsaoPanel = prev
-    ? `<div style="border-radius:12px;padding:12px;margin:6px 0;background:var(--md-sys-color-surface-container-low)">
-        <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:6px">
-          <strong style="color:var(--text)">🌊 Vai sair da calha?</strong>
-          ${prevBadge(prev.vaiSair)}
-          <span style="font-size:12px;opacity:.85">confiança ${prev.confianca}% (${esc(prev.faixa)})</span>
-        </div>
-        <div style="font-size:13px;color:var(--text);line-height:1.6">
-          ${prev.quandoHoras ? `<div>Se sair: <strong>~${prev.quandoHoras.provavel}h</strong> <span style="opacity:.8">(faixa ${prev.quandoHoras.min}–${prev.quandoHoras.max}h)</span></div>` : ''}
-          <div style="margin-top:4px;font-size:12.5px">${esc(prev.regra)}</div>
-          <div style="margin-top:4px;font-size:11.5px;opacity:.75">${prev.motivos.map((m) => esc(m)).join(' · ')}</div>
-          <div style="margin-top:4px;font-size:11px;opacity:.6">${esc(prev.fonte)}</div>
-          ${prev.jev ? `<div style="margin-top:8px;padding-top:0;font-size:11.5px">
-            <strong>Segunda opinião (modelo de decisão):</strong> ${prev.jev.vaiSair === 'sim' ? 'sai da calha' : prev.jev.vaiSair === 'nao' ? 'não sai da calha' : 'indefinido'}${prev.jev.probVaiSair != null ? ` · probabilidade ${Math.round(prev.jev.probVaiSair * 100)}%` : ''}${prev.jev.confianca != null ? ` · confiança própria ${Math.round(prev.jev.confianca * 100)}%` : ''}${prev.jev.transborda !== 'indefinido' ? ` · se sair, cheia grande: ${prev.jev.transborda === 'sim' ? 'sim' : 'não'}` : ''}
-          </div>` : ''}
-        </div>
+  // Painel A: o card mostra o VEREDITO + as estações em linhas compactas.
+  // O texto longo (regra, motivos, fórmula, doutrina) vai todo pro
+  // "como é calculado" — antes eram ~1.250 caracteres abertos na tela.
+  const veredito = prev
+    ? `<div class="rio-verdict">
+        <span style="font-size:11px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;color:var(--text3)">Vai sair da calha?</span>
+        ${prevBadge(prev.vaiSair)}
+        <span class="rio-meta">${prev.confianca}% de confiança</span>
       </div>`
     : '';
   const motivos = (h.ifl && h.ifl.motivos && h.ifl.motivos.length)
@@ -2563,23 +2811,33 @@ function renderHidroCard(data) {
     : '';
   const rows = h.estacoes.map((e) => {
     const nome = esc(e.nome.split(' (')[0]);
-    return `<div style="margin-top:10px">
-      <div style="font-weight:600;color:var(--text)">${nome} <span style="font-weight:400;opacity:.7">· ${esc(e.codigo)}</span>${faixaBadge(e.faixa)}</div>
-      <div>Nível ${fmtM(e.nivelCm)}${fmtDelta(e.delta6hCm)} · Vazão ${fmtV(e.vazaoM3s)}</div>
+    const tag = faixaBadge(e.faixa) || ' <span class="bulletin-tag" style="background:var(--md-sys-color-surface-container-high);color:var(--text2)">normal</span>';
+    return `<div class="rio-row">
+      <span><span class="rio-nome">${nome}</span><br><span class="rio-meta">${fmtM(e.nivelCm)} · ${fmtV(e.vazaoM3s)}${fmtDelta(e.delta6hCm)}</span></span>
+      <span class="rio-tag">${tag}</span>
     </div>`;
   }).join('');
-  const formula = `<details style="margin-top:8px;font-size:12px;color:var(--text2)">
-    <summary style="cursor:pointer;font-weight:600;color:var(--text)">∑ Como é calculado (fórmula aberta)</summary>
-    <div style="margin-top:6px;line-height:1.6">
+  const formula = `<div style="margin-top:8px;line-height:1.6">
       <div><strong>Flash (IFL v3.1)</strong> = chuva 1h/6h/24h em Ipiranga (0–1): &lt;0,3 verde · 0,3–0,5 amarelo · 0,5–0,8 laranja · ≥0,8 vermelho. <strong>Antecedente 72h</strong> (palco): ≥150 mm eleva a amarelo — no regime frontal (mai–ago) a barra cai pra ≥100 mm, porque o inverno arma o palco com pouca água. Antecedente sozinho nunca passa de amarelo: laranja/vermelho exigem chuva atual. <strong>Permanência</strong> = dias fora da caixa SE transbordar: 0,0107 × Uvaia − 5,7 (ajuste preliminar com 2 rótulos reais: OUT23 7d, DEZ24 3d). Doutrina sazonal: no verão convectivo só o local manda (JAN25: Uvaia em P50 com régua em 4 m); no inverno frontal o Uvaia carrega a severidade (2013>2014≈2015>2019>2017 pelo pico Uvaia).</div>
       <div style="margin-top:4px"><strong>Vai sair da calha? (v1)</strong> = regra por regime + vizinhança em 11 rótulos de campo. <em>Convectivo (set–abr)</em>: chuva local em DUAS estações do município — ≥2 dias com ≥40 mm nas duas dentro de 96 h → sai (chuva de bacia; 1 dia isolado não enche, assinatura JAN25). <em>Frontal (mai–ago)</em>: a chuva local fica cega (os invernos saíram com 6–21 mm/96 h) — decide o antecedente de 30 dias (≥250 mm) somado à carga de bacia (Uvaia ≥500 cm). <strong>Confiança</strong> = fração dos casos parecidos no histórico que saíram da calha, com teto pelo tamanho da amostra (n=1 nunca passa de 55%). <strong>Quando</strong> = janela medida nos rótulos convectivos (13–48 h depois do último dia pesado); no frontal não há janela em horas. Estimativa, não oficial.</div>
       <div style="margin-top:4px">Rótulos: OUT23 (29/10 18h, Uvaia ~739) · DEZ24 (09/12 13h, Uvaia ~339) · SET26 (13/09, saiu sem transbordar) · JAN25 (21/01, régua 4m sem sair) · jul/24 e set/24 (não saíram) · invernos 13/14/15/17/19 (todos saíram; 2013 o mais dramático). Faixas P90/P98 do ano hidrológico.</div>
       <div style="margin-top:6px"><a href="/api/hidro" style="color:var(--md-sys-color-primary)">Dados crus (JSON)</a> · <a href="https://github.com/maKizo009/servicos-status/issues" style="color:var(--md-sys-color-primary)">Sugerir melhoria</a></div>
-    </div>
-  </details>`;
-  content.innerHTML = previsaoPanel + iflLine + motivos + rows + formula +
-    `<div style="background:var(--r1);border-radius:12px;padding:12px;margin-top:10px;font-size:12px;line-height:1.5;color:var(--md-sys-color-on-error-container)">⚠️ <strong>Estimativa de algoritmo, não medição oficial.</strong> O Bitumirim não tem régua. Não prevê o futuro e não substitui a Defesa Civil (199) nem o IAT.</div>` +
-    `<div style="font-size:11.5px;opacity:.6;margin-top:8px">Atualizado: ${h.atualizadoEm ? new Date(h.atualizadoEm).toLocaleString('pt-BR') : '—'}</div>`;
+    </div>`;
+  content.innerHTML = veredito + rows +
+    `<details>
+      <summary>Como é calculado</summary>
+      <div style="margin-top:6px;line-height:1.6">
+        ${prev ? `<div><strong>Regra:</strong> ${esc(prev.regra)}</div>
+        <div style="margin-top:4px"><strong>Motivos:</strong> ${prev.motivos.map((m) => esc(m)).join(' · ')}</div>
+        ${prev.jev ? `<div style="margin-top:4px"><strong>Segunda opinião (modelo de decisão):</strong> ${prev.jev.vaiSair === 'sim' ? 'sai da calha' : prev.jev.vaiSair === 'nao' ? 'não sai da calha' : 'indefinido'}${prev.jev.probVaiSair != null ? ` · probabilidade ${Math.round(prev.jev.probVaiSair * 100)}%` : ''}${prev.jev.confianca != null ? ` · confiança própria ${Math.round(prev.jev.confianca * 100)}%` : ''}${prev.jev.transborda !== 'indefinido' ? ` · se sair, cheia grande: ${prev.jev.transborda === 'sim' ? 'sim' : 'não'}` : ''}</div>` : ''}
+        <div style="margin-top:4px;font-size:11px;opacity:.75">Fonte: ${esc(prev.fonte)}</div>` : ''}
+        ${iflLine}
+        ${motivos}
+        ${formula}
+        <div class="rio-nota">⚠️ <strong>Estimativa de algoritmo, não medição oficial.</strong> O Bitumirim não tem régua. Não prevê o futuro e não substitui a Defesa Civil (199) nem o IAT.
+        ${h.atualizadoEm ? `Atualizado: ${new Date(h.atualizadoEm).toLocaleString('pt-BR')}.` : ''}</div>
+      </div>
+    </details>`;
 }
 
 function renderNowcastCard(data) {

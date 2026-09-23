@@ -1,0 +1,231 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Proposta B — Boletim</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+/* Mesma paleta do Monitor Ipiranga. Stance diferente: menos blocos, maiores. */
+:root{
+  --primary:#047857; --surface:#F8FAFC; --sc:#FFFFFF; --sc-low:#F1F5F9; --sc-high:#E2E8F0;
+  --on-surface:#0F172A; --on-surface-variant:#475569; --muted:#546274;
+  --outline:#94A3B8; --outline-variant:#E2E8F0;
+  --on-secondary-container:#14532D; --on-error-container:#7F1D1D; --on-warning-container:#92400E;
+  --g6:#16A34A; --g1:#DCFCE7; --a5:#D97706; --a1:#FEF3C7; --r6:#DC2626; --r1:#FEE2E2;
+  --e1:0 1px 2px 0 rgba(15,23,42,.30),0 1px 3px 1px rgba(15,23,42,.15);
+  --e2:0 1px 2px 0 rgba(15,23,42,.30),0 2px 6px 2px rgba(15,23,42,.15);
+  --e3:0 4px 8px 3px rgba(15,23,42,.15),0 1px 3px 0 rgba(15,23,42,.30);
+  --r-sm:8px; --r-md:12px; --r-lg:16px;
+  --font:'Inter',system-ui,-apple-system,'Segoe UI',Roboto,sans-serif;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:var(--font);background:var(--surface);color:var(--on-surface);-webkit-font-smoothing:antialiased;line-height:1.5}
+.wrap{max-width:1200px;margin:0 auto;padding:0 20px 40px}
+header{background:linear-gradient(135deg,#065F46,#047857);color:#fff;padding:14px 0;margin-bottom:18px}
+header .wrap{display:flex;align-items:center;gap:12px;padding-bottom:0}
+.logo{width:38px;height:38px;border-radius:var(--r-md);background:rgba(255,255,255,.16);display:grid;place-items:center;font-weight:800}
+h1{font-size:17px;font-weight:700}
+.sub{font-size:12.5px;opacity:.85}
+.hright{margin-left:auto;font-size:12.5px;opacity:.92}
+
+.lead{background:var(--sc);border-radius:var(--r-lg);box-shadow:var(--e2);padding:20px 22px;margin-bottom:16px}
+.lead h2{font-size:20px;font-weight:800;letter-spacing:-.4px;line-height:1.35;margin-bottom:12px}
+.lead h2 em{font-style:normal;color:var(--on-error-container)}
+.inline{display:flex;flex-wrap:wrap;gap:20px;font-size:13px;color:var(--on-surface-variant);align-items:center}
+.inline span{display:flex;align-items:center;gap:7px}
+.dot{width:8px;height:8px;border-radius:50%;flex:none}
+.dot.ok{background:var(--g6)} .dot.warn{background:var(--a5)} .dot.crit{background:var(--r6)} .dot.info{background:var(--outline)}
+.inline b{color:var(--on-surface);font-weight:700;font-variant-numeric:tabular-nums}
+
+.grid{display:grid;grid-template-columns:repeat(12,1fr);gap:16px}
+.c8{grid-column:span 8} .c4{grid-column:span 4}
+.stack{display:flex;flex-direction:column;gap:16px}
+.card{background:var(--sc);border-radius:var(--r-lg);box-shadow:var(--e2);padding:18px;transition:box-shadow .22s ease,transform .22s ease}
+.card:hover{box-shadow:var(--e3);transform:translateY(-2px)}
+.ctitle{font-size:12px;font-weight:700;letter-spacing:.7px;text-transform:uppercase;color:var(--muted);margin-bottom:12px}
+
+.mapcard{background:var(--sc);border-radius:var(--r-lg);box-shadow:var(--e2);overflow:hidden;margin-bottom:16px}
+.map{position:relative;height:372px;background:#0d1410}
+.map .tiles{position:absolute;inset:0;background:url(../assets/mapa-satelite-ipiranga.jpg) center/cover;filter:saturate(.85) brightness(.82)}
+.map .echo{position:absolute;left:58%;top:6%;width:34%;height:42%;background:
+  radial-gradient(closest-side,rgba(239,68,68,.85),rgba(245,158,11,.55) 45%,rgba(34,197,94,.28) 70%,transparent 100%);filter:blur(2px)}
+.map .echo2{position:absolute;left:8%;top:58%;width:16%;height:22%;background:
+  radial-gradient(closest-side,rgba(245,158,11,.6),rgba(34,197,94,.25) 65%,transparent 100%);filter:blur(2px)}
+.map .legend{position:absolute;left:12px;bottom:58px;display:flex;gap:8px;background:rgba(9,13,22,.72);padding:6px 9px;border-radius:8px;backdrop-filter:blur(6px)}
+.map .legend i{display:flex;align-items:center;gap:4px;font-size:10.5px;font-style:normal;color:#CBD5E1;font-weight:600}
+.map .legend s{width:9px;height:9px;border-radius:2px;text-decoration:none;display:inline-block}
+.map .poly{position:absolute;left:44%;top:52%;width:13%;height:22%;border:2px solid #22d3ee;background:rgba(34,211,238,.16);border-radius:5px}
+.map .overlay{position:absolute;left:12px;top:12px;display:flex;gap:6px}
+.chip{background:rgba(9,13,22,.78);color:#CBD5E1;font-size:11.5px;font-weight:600;padding:7px 11px;border-radius:var(--r-sm)}
+.chip.on{background:var(--g6);color:#052E16}
+.map .bottom{position:absolute;left:12px;right:12px;bottom:12px;background:rgba(9,13,22,.72);border-radius:var(--r-sm);padding:8px 12px;display:flex;align-items:center;gap:10px;color:#CBD5E1;font-size:11.5px}
+.map .play{width:26px;height:26px;border-radius:50%;background:var(--g6);color:#052E16;display:grid;place-items:center;font-size:10px}
+.track{flex:1;height:4px;border-radius:2px;background:rgba(255,255,255,.18);position:relative}
+.track i{position:absolute;inset:0 auto 0 0;width:100%;background:var(--g6);border-radius:2px}
+.mapcap{display:flex;flex-wrap:wrap;gap:22px;padding:14px 18px;font-size:12.5px;color:var(--on-surface-variant)}
+.mapcap span{display:flex;align-items:center;gap:7px}
+.mapcap b{color:var(--on-surface);font-weight:700;font-variant-numeric:tabular-nums}
+
+.prose{font-size:14px;line-height:1.68}
+.prose + .prose{margin-top:10px}
+.prose strong{font-weight:700}
+.note{font-size:11.5px;color:var(--muted);line-height:1.55}
+.stat{display:flex;align-items:baseline;justify-content:space-between;padding:10px 0;border-bottom:1px solid var(--outline-variant)}
+.stat:last-child{border-bottom:none}
+.stat .k{font-size:12.5px;color:var(--on-surface-variant)}
+.stat .v{font-size:17px;font-weight:700;font-variant-numeric:tabular-nums}
+.stat .v small{font-size:12px;font-weight:500;color:var(--on-surface-variant)}
+table.rows{width:100%;border-collapse:collapse;font-size:13px}
+table.rows th{text-align:left;font-size:10.5px;font-weight:700;letter-spacing:.6px;text-transform:uppercase;color:var(--muted);padding:0 0 8px}
+table.rows th:last-child,table.rows td:last-child{text-align:right}
+table.rows td{padding:9px 0;border-top:1px solid var(--outline-variant)}
+table.rows td:first-child{font-weight:600}
+.rioline{display:flex;align-items:center;gap:8px;padding:8px 0;border-bottom:1px solid var(--outline-variant);font-size:13px}
+.rioline:last-of-type{border-bottom:none}
+.rioline .b{font-weight:600}
+.rioline .m{color:var(--muted);font-size:11.5px}
+.tag{font-size:10.5px;font-weight:700;letter-spacing:.4px;text-transform:uppercase;padding:3px 8px;border-radius:var(--r-sm);background:var(--sc-high);color:var(--on-surface-variant);white-space:nowrap}
+.tag.crit{background:var(--r1);color:var(--on-error-container)}
+.tag.warn{background:var(--a1);color:var(--on-warning-container)}
+.tag.ok{background:var(--g1);color:var(--on-success-container)}
+details{margin-top:12px}
+summary{cursor:pointer;font-size:12px;font-weight:600;color:var(--primary)}
+footer{margin-top:24px;font-size:11.5px;color:var(--muted);line-height:1.6;text-align:center}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="wrap">
+    <div class="logo">IM</div>
+    <div>
+      <h1>Ipiranga Monitor</h1>
+      <div class="sub">Serviços essenciais de Ipiranga/PR em tempo real</div>
+    </div>
+    <div class="hright">🌤️ 19°C · Encoberto · <strong>17:21</strong></div>
+  </div>
+</header>
+
+<div class="wrap">
+
+  <!-- ============ MANCHETE: uma frase + status em linha ============ -->
+  <div class="lead">
+    <h2>Falta de luz atinge <em>288 unidades</em> em 3 interrupções — a mais antiga há 40 h — com os rios em atenção e sem chuva relevante agora.</h2>
+    <div class="inline">
+      <span><i class="dot crit"></i> Energia <b>crítico</b></span>
+      <span><i class="dot ok"></i> Água <b>normal</b></span>
+      <span><i class="dot warn"></i> Rios <b>atenção</b></span>
+      <span><i class="dot warn"></i> Chuva 24 h <b>2,8 mm</b></span>
+      <span><i class="dot info"></i> Programados <b>3</b></span>
+      <span style="margin-left:auto;color:var(--muted)">🟢 atualizado 17:21</span>
+    </div>
+  </div>
+
+  <!-- ============ MAPA HERÓI com legenda embutida ============ -->
+  <div class="mapcard">
+    <div style="display:flex;align-items:center;gap:10px;padding:14px 18px">
+      <div style="font-size:13px;font-weight:700">Radar de chuva e clima</div>
+      <div style="font-size:11.5px;color:var(--muted)">Ipiranga e região · contorno = limite do município</div>
+      <span class="tag ok" style="margin-left:auto">ao vivo</span>
+    </div>
+    <div class="map">
+      <div class="tiles"></div>
+      <div class="echo"></div>
+      <div class="echo2"></div>
+      <div class="poly"></div>
+      <div class="legend"><i><s style="background:#22C55E"></s>fraco</i><i><s style="background:#F59E0B"></s>moderado</i><i><s style="background:#EF4444"></s>severo</i><i><s style="background:#7C2D12"></s>extremo</i></div>
+      <div class="overlay"><span class="chip">Mapa</span><span class="chip on">Satélite</span><span class="chip">Tela cheia</span></div>
+      <div class="bottom"><span class="play">▶</span><span class="track"><i></i></span><span>frame 17:10</span></div>
+    </div>
+    <div class="mapcap">
+      <span>Núcleo mais forte <b>48 dBZ</b></span>
+      <span>Temporal mais próximo <b>540 km</b> — passa de lado</span>
+      <span>Nada de chuva sobre o município</span>
+    </div>
+  </div>
+
+  <div class="grid">
+
+    <!-- ============ TEXTO + TABELA (8) ============ -->
+    <div class="c8">
+      <div class="card" style="margin-bottom:16px">
+        <div class="ctitle">O que está acontecendo</div>
+        <p class="prose">
+          <strong>Não há chuva medida em Ipiranga agora</strong> e nenhuma chuva por perto. O temporal
+          mais relevante está em Osasco/SP, a 422 km, e passa de lado, longe da cidade. Uma área de
+          chuva moderada na região de São Paulo (525 km) segue se afastando.
+        </p>
+        <p class="prose">
+          O modelo aponta <strong>45% de chance de chuva</strong> com céu encoberto nas próximas 6 horas.
+          Os <strong>rios seguem em atenção</strong>: pela triangulação do Tibagi, o Uvaia está em alerta
+          (7,61 m) e duas estações a jusante em nível crítico. A previsão é de que
+          <strong>não saia da calha</strong>, com 70% de confiança.
+        </p>
+        <details>
+          <summary>Como isso é calculado</summary>
+          <p class="note" style="margin-top:8px">
+            Texto gerado a partir do radar, do CEMADEN e da previsão do tempo. Os níveis de rio vêm de
+            3 sentinelas no Tibagi, de 100 a 200 km a jusante (Ipiranga não tem estação própria) e são
+            referência regional, não medição oficial no rio daqui. Pode conter erros.
+          </p>
+        </details>
+      </div>
+
+      <div class="card">
+        <div class="ctitle">Energia · Copel — 6 ocorrências (3 ativas + 3 programadas)</div>
+        <table class="rows">
+          <tr><th>Bairro</th><th>Situação</th><th>Início</th><th>UCs</th></tr>
+          <tr><td>Descalvado</td><td><span class="tag crit">interrupção</span></td><td>13:04</td><td>19</td></tr>
+          <tr><td>Descalvado</td><td><span class="tag crit">interrupção</span></td><td>13:41</td><td>12</td></tr>
+          <tr><td>Descalvado</td><td><span class="tag crit">interrupção</span></td><td>14:02</td><td>2</td></tr>
+          <tr><td>Avençal</td><td><span class="tag">programado</span></td><td>11:21</td><td>164</td></tr>
+          <tr><td>Avençal</td><td><span class="tag">programado</span></td><td>11:21</td><td>84</td></tr>
+          <tr><td>Rural</td><td><span class="tag">programado</span></td><td>11:21</td><td>7</td></tr>
+        </table>
+        <p class="note" style="margin-top:12px">
+          Total: 288 de 6.017 unidades consumidoras do município (4,8%). As 3 interrupções ativas estão
+          sem equipe despachada. Fonte: Copel/ANEEL.
+        </p>
+      </div>
+    </div>
+
+    <!-- ============ NÚMEROS + RIOS + ÁGUA (4) ============ -->
+    <div class="stack c4">
+      <div class="card">
+        <div class="ctitle">Números de agora</div>
+        <div class="stat"><span class="k">UCs sem energia</span><span class="v">288<small> / 6.017</small></span></div>
+        <div class="stat"><span class="k">Rede afetada</span><span class="v">4,8<small> %</small></span></div>
+        <div class="stat"><span class="k">Ocorrências ativas</span><span class="v">3</span></div>
+        <div class="stat"><span class="k">Mais antiga</span><span class="v">40<small> h</small></span></div>
+        <div class="stat"><span class="k">Chuva 24 h</span><span class="v">2,8<small> mm</small></span></div>
+        <div class="stat"><span class="k">Temperatura</span><span class="v">19<small> °C</small></span></div>
+        <div class="stat"><span class="k">Vento</span><span class="v">8<small> km/h</small></span></div>
+        <div class="stat"><span class="k">Água (Sanepar)</span><span class="v" style="font-size:14px;color:var(--on-success-container)">Sem interrupções</span></div>
+      </div>
+
+      <div class="card">
+        <div class="ctitle">Rios — sai da calha em Ipiranga?</div>
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:6px">
+          <span class="tag ok" style="font-size:12px;padding:5px 12px">Não</span>
+          <span style="font-size:12px;color:var(--muted)">70% de confiança</span>
+        </div>
+        <div class="rioline"><span><span class="b">Uvaia</span> <span class="m">7,61 m · 465 m³/s</span></span><span class="tag warn" style="margin-left:auto">alerta</span></div>
+        <div class="rioline"><span><span class="b">Cebolão</span> <span class="m">4,73 m · 1.907 m³/s</span></span><span class="tag crit" style="margin-left:auto">crítico</span></div>
+        <div class="rioline"><span><span class="b">Jataizinho</span> <span class="m">4,64 m · 2.295 m³/s</span></span><span class="tag crit" style="margin-left:auto">crítico</span></div>
+        <p class="note" style="margin-top:10px">3 sentinelas no Tibagi, a jusante — referência regional, não medição no rio daqui.</p>
+      </div>
+
+    </div>
+
+  </div>
+
+  <footer>
+    Estimativas de chuva, rios e enxurrada <strong>não são dados oficiais</strong> — em emergência ligue 199 (Defesa Civil).
+    Fontes: Copel/ANEEL · Sanepar · INMET · CEMADEN · ANA.
+  </footer>
+</div>
+</body>
+</html>
