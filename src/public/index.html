@@ -1752,8 +1752,58 @@ html.trocando-tema, html.trocando-tema *{transition:none !important}
 /* Chips de resposta direta do rodapé: mesma regra de toque de 44 px. */
 .footer-faq nav .llm-btn{min-height:44px;padding:10px 16px}
 
+/* ======================================================================
+   AVISOS NO CELULAR — ligar/desligar o CANAL de aviso, não uma caixa de
+   notificações. Um sino no topo do app promete uma LISTA ("clico e vejo as
+   notificações"); o que existe aqui é uma preferência: avisar no celular
+   quando a chuva ou o rio mudarem de estado. Os alertas em si continuam SÓ
+   nos painéis (radar, rios, serviços) — esta linha não lista nada e não
+   repete nenhum aviso. Então: rótulo + switch (padrão de preferência),
+   nunca ícone solto no cabeçalho.
+   ====================================================================== */
+.aviso-row{
+  display:flex;align-items:center;gap:12px;margin-top:14px;padding-top:14px;
+  border-top:1px solid var(--md-sys-color-outline-variant)
+}
+.aviso-ico{
+  width:38px;height:38px;flex:none;border-radius:50%;display:flex;align-items:center;justify-content:center;
+  background:var(--md-sys-color-surface-container);color:var(--brand)
+}
+.aviso-ico svg{width:20px;height:20px}
+.aviso-row[data-estado="on"] .aviso-ico{background:var(--md-sys-color-primary-container);color:var(--md-sys-color-on-primary-container)}
+.aviso-row[data-estado="denied"] .aviso-ico{background:var(--st-warn-c);color:var(--st-warn-on-c)}
+.aviso-txt{flex:1 1 auto;min-width:0}
+.aviso-lbl{display:block;font-size:14.5px;font-weight:600;line-height:1.25}
+.aviso-desc{display:block;font-size:12.5px;line-height:1.35;color:var(--text2)}
+.aviso-hint{display:none;font-size:12.5px;line-height:1.35;color:var(--st-warn);margin-top:3px}
+.aviso-row[data-estado="denied"] .aviso-hint{display:block}
+/* Switch Material: trilho + bolinha, 44 px de alvo (mesmo padrão de toque do
+   resto da página). O estado vem no aria-checked e é espelhado em
+   data-estado na linha, que pinta o ícone. */
+.sw{
+  width:56px;height:44px;min-width:56px;flex:none;border:none;padding:0;cursor:pointer;
+  background:transparent;display:flex;align-items:center;justify-content:center;border-radius:999px
+}
+.sw-trilho{
+  position:relative;display:block;width:44px;height:26px;border-radius:999px;
+  background:var(--md-sys-color-surface-container-highest);border:1px solid var(--md-sys-color-outline-variant);
+  transition:background var(--dur-1) linear,border-color var(--dur-1) linear
+}
+.sw-bola{
+  position:absolute;top:2px;left:2px;width:20px;height:20px;border-radius:50%;
+  background:var(--md-sys-color-outline);
+  transition:transform var(--dur-1) var(--motion-spring),background var(--dur-1) linear
+}
+.sw[aria-checked="true"] .sw-trilho{background:var(--md-sys-color-primary);border-color:var(--md-sys-color-primary)}
+.sw[aria-checked="true"] .sw-bola{transform:translateX(18px);background:var(--md-sys-color-on-primary)}
+.aviso-row[data-estado="denied"] .sw{opacity:.55}
+@media (min-width:992px){
+  .aviso-row{grid-column:1 / -1;grid-row:4}
+}
+
 @media (prefers-reduced-motion:reduce){
   .hero-tile:hover,.hero-tile:active{transform:none}
+  .sw-trilho,.sw-bola{transition:none}
 }
 
 </style>
@@ -1772,16 +1822,11 @@ html.trocando-tema, html.trocando-tema *{transition:none !important}
     <h1 class="header-title">Ipiranga <span>Monitor</span></h1>
   </div>
   <div class="header-actions">
-    <!-- Três ações do MESMO tamanho (44 px, círculo) e o MESMO tom (superfície
-         do card): nenhuma delas é pílula larga preenchida. O relógio isolado
-         saiu — o horário vive só no carimbo do card de status. -->
+    <!-- Duas ações do MESMO tamanho (44 px, círculo) e do MESMO tom (superfície
+         do card): tema e "mais". O relógio isolado saiu — o horário vive só no
+         carimbo do card de status. -->
     <button class="hbtn" id="btnThemeToggle" type="button" aria-label="Alternar tema" title="Alternar tema">
       <span id="themeToggleIcon" class="ms s22" aria-hidden="true">dark_mode</span>
-    </button>
-    <button class="hbtn" id="btnPush" type="button" data-state="off" aria-label="Alertas desativados" title="Receber alertas de chuva, energia e água no celular" style="display:none">
-      <span id="pushBtnIcon" aria-hidden="true"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg></span>
-      <span class="sr-only" id="pushBtnText">Alertas desativados</span>
-      <span class="hbtn-dot" id="pushDot" aria-hidden="true" hidden></span>
     </button>
     <!-- Tudo que não é a ação principal vive aqui: atualizar, instalar, admin. -->
     <div class="hmenu">
@@ -1857,6 +1902,25 @@ html.trocando-tema, html.trocando-tema *{transition:none !important}
     <div class="hero-stamp">
       <span class="hero-dot" id="heroDot" aria-hidden="true"></span>
       <span id="heroStamp">Verificando a atualização…</span>
+    </div>
+    <!-- AVISOS NO CELULAR — ligar/desligar o CANAL, não abrir uma lista. Os
+         alertas continuam só nos painéis (radar, rios, serviços); esta linha
+         não repete nenhum aviso, só decide se você recebe um toque no celular
+         quando o estado resumido aqui em cima mudar. Aparece só quando o push
+         está configurado (o JS tira o `hidden`). -->
+    <div class="aviso-row" id="avisoRow" data-estado="off" hidden>
+      <span class="aviso-ico" id="pushBtnIcon" aria-hidden="true"></span>
+      <span class="aviso-txt">
+        <span class="aviso-lbl">Avisos no celular</span>
+        <span class="aviso-desc">Avisar quando a chuva ou o rio mudarem de estado.</span>
+        <span class="aviso-hint" id="avisoHint">Bloqueados pelo navegador. Libere em Permissões do site e recarregue a página.</span>
+      </span>
+      <button class="sw" id="btnPush" type="button" role="switch" aria-checked="false"
+              data-state="off" aria-label="Avisos no celular: desativados"
+              title="Avisar no celular quando a chuva ou o rio mudarem de estado">
+        <span class="sw-trilho" aria-hidden="true"><span class="sw-bola"></span></span>
+        <span class="sr-only" id="pushBtnText">Avisos desativados</span>
+      </button>
     </div>
   </section>
 
@@ -3913,6 +3977,7 @@ function copyPrompt(provider, text) {
   const btn = document.getElementById('btnPush');
   const iconEl = document.getElementById('pushBtnIcon');
   const textEl = document.getElementById('pushBtnText');
+  const avisoRow = document.getElementById('avisoRow');
   let swReg = null;
   let vapidKey = null;
 
@@ -3951,23 +4016,26 @@ function copyPrompt(provider, text) {
 
   function setState(state) {
     if (!btn) return;
-    const dot = document.getElementById('pushDot');
     btn.classList.remove('on', 'denied');
     btn.dataset.state = state;
-    /* O sino é um botão REDONDO igual aos outros dois do topo: o estado vai no
-       fundo tonal (verde = ativado) + ponto de 8 px no canto — não numa pílula
-       larga preenchida. Quem não vê a cor tem o aria-label dizendo o estado. */
-    const rotulos = { on: 'Alertas ativados', off: 'Alertas desativados', denied: 'Notificações bloqueadas' };
+    /* O controle agora é um SWITCH rotulado ("Avisos no celular"), não um sino:
+       o estado é a posição da bolinha — `aria-checked` para quem usa leitor de
+       tela, e a cor do trilho/ícone para quem só olha. Nada de ponto de 8 px
+       sem legenda. */
+    const rotulos = { on: 'Avisos ativados neste aparelho', off: 'Avisos desativados', denied: 'Notificações bloqueadas' };
     const texto = rotulos[state] || rotulos.off;
     if (state === 'on') { btn.classList.add('on'); iconEl.innerHTML = BELL_SVG.on; }
     else if (state === 'denied') { btn.classList.add('denied'); iconEl.innerHTML = BELL_SVG.denied; }
     else if (state === 'off') { iconEl.innerHTML = BELL_SVG.off; }
-    btn.setAttribute('aria-label', texto);
-    btn.title = state === 'on' ? 'Alertas ativados — toque para desativar'
-      : state === 'denied' ? 'Notificações bloqueadas neste navegador'
-      : 'Ativar alertas de chuva, energia e água no celular';
+    btn.setAttribute('aria-checked', state === 'on' ? 'true' : 'false');
+    if (avisoRow) avisoRow.dataset.estado = state;
+    btn.setAttribute('aria-label', state === 'denied'
+      ? 'Avisos no celular: bloqueados pelo navegador'
+      : 'Avisos no celular');
+    btn.title = state === 'on' ? 'Avisos ativados — toque para desativar'
+      : state === 'denied' ? 'Bloqueados no navegador. Libere em Permissões do site e recarregue'
+      : 'Toque para receber um aviso quando a chuva ou o rio mudarem de estado';
     if (textEl) textEl.textContent = texto;
-    if (dot) dot.hidden = state !== 'on';
   }
 
   async function refreshState() {
@@ -4036,6 +4104,10 @@ function copyPrompt(provider, text) {
       if (!status || !status.configured || !status.vapidPublicKey) return;
       vapidKey = status.vapidPublicKey;
       btn.style.display = 'flex';
+      /* O switch vive numa linha do card de estado: ela só aparece quando o
+         push está configurado (senão o usuário veria um switch que não faz
+         nada). */
+      if (avisoRow) avisoRow.hidden = false;
       // Registra o SW mesmo com notificação negada — a instalação do PWA
       // não depende da permissão (o registro separado no load já cobre,
       // mas aqui garante o swReg pra subscribe).
