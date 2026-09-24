@@ -1338,8 +1338,409 @@ html.map-fs{overflow:hidden}
 
 @media (prefers-reduced-motion:reduce){
   .detail{transition:none}
-  .icon-btn:active,.band-refresh:active{transform:none}
+  .icon-btn:active{transform:none}
 }
+
+/* ==========================================================================
+   REFINAMENTO v2 (24/09/2026) — uma palavra de estado, um fato por vez.
+
+   Regras no FIM do stylesheet de propósito: override com a mesma especificidade
+   resolve por ORDEM neste arquivo (pitfall que já custou tempo aqui).
+   ========================================================================== */
+
+/* ---------- tokens que faltavam ---------- */
+:root{
+  --tile:#F4F9F1;            /* superfície de tile (dentro do card) */
+  --st-emerg-c:#93000A;      /* Emergência = vermelho ESCURO, o 4º estado */
+  --st-emerg-on-c:#FFDAD5;
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme]){--tile:#212922}
+}
+:root[data-theme="dark"]{--tile:#212922}
+:root[data-theme="light"]{--tile:#F4F9F1}
+
+/* Só para leitor de tela: conteúdo que precisa existir no HTML (SEO/LLMs) sem
+   ocupar a tela. */
+.sr-only{
+  position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;
+  clip:rect(0 0 0 0);white-space:nowrap;border:0
+}
+
+/* ---------- troca de tema sem cor presa ---------- */
+/* O Chrome não interpola bem propriedade de cor que sai de var() de tema: a
+   transição FICA PRESA no valor do tema anterior (medido 24/09/2026 — tile
+   claro no modo escuro, aba inativa ilegível). O JS liga esta classe enquanto
+   troca os tokens: movimento continua, cor não trava. */
+html.trocando-tema, html.trocando-tema *{transition:none !important}
+
+/* ---------- raios: card 24, tile 16, chip 999 ---------- */
+.panel-card,.hero-card,.card,.servicos-card{border-radius:24px}
+.hero-tile,.svc-ico,.wx-box,.rio-bloco,.fact,.band-expand{border-radius:16px}
+.chip-estado{border-radius:999px}
+
+/* ---------- foco visível: 2 px na cor primária, sem depender de cor ---------- */
+:focus-visible{outline:2px solid var(--md-sys-color-primary);outline-offset:2px}
+
+/* ======================================================================
+   CHIP DE ESTADO — a MESMA palavra (e a mesma cor) em qualquer lugar:
+   Normal · Atenção · Alerta · Emergência. Sentence case, peso 700.
+   ====================================================================== */
+.chip-estado{
+  display:inline-flex;align-items:center;gap:6px;padding:4px 12px;
+  font-size:12.5px;font-weight:700;line-height:1.5;white-space:nowrap;
+  background:var(--md-sys-color-surface-container-high);color:var(--text2);
+  border-radius:999px
+}
+.chip-estado[data-nivel="ok"]{background:var(--st-ok-c);color:var(--st-ok-on-c)}
+.chip-estado[data-nivel="warn"]{background:var(--st-warn-c);color:var(--st-warn-on-c)}
+.chip-estado[data-nivel="crit"]{background:var(--st-crit-c);color:var(--st-crit-on-c)}
+.chip-estado[data-nivel="emerg"]{background:var(--st-emerg-c);color:var(--st-emerg-on-c)}
+.chip-estado[data-nivel="info"]{background:var(--md-sys-color-surface-container-high);color:var(--text2)}
+
+/* ======================================================================
+   CABEÇALHO — uma barra só, sticky, no fundo da página. Três ações do
+   MESMO tamanho (44 px, círculo) e do MESMO tom. Sem relógio.
+   ====================================================================== */
+.header{
+  position:sticky;top:0;z-index:70;background:var(--md-sys-color-surface);
+  padding:10px 20px;flex-wrap:nowrap;row-gap:0;gap:10px
+}
+.header-left{min-width:0}
+.header-title{
+  font-size:18px;line-height:1.2;white-space:nowrap;overflow:hidden;text-overflow:ellipsis
+}
+.header-actions{gap:6px}
+.hbtn{
+  position:relative;width:44px;height:44px;min-width:44px;padding:0;border-radius:50%;
+  background:var(--md-sys-color-surface-container);color:var(--text)
+}
+.hbtn:hover{background:var(--md-sys-color-surface-container-high);color:var(--text)}
+.hbtn.primary{background:var(--md-sys-color-surface-container);color:var(--text);padding:0}
+.hbtn.on{background:var(--md-sys-color-primary-container);color:var(--md-sys-color-on-primary-container)}
+.hbtn.denied{opacity:.55}
+.hbtn .ms{font-size:22px}
+.hbtn-dot{
+  position:absolute;top:7px;right:7px;width:8px;height:8px;border-radius:50%;
+  background:var(--md-sys-color-primary);box-shadow:0 0 0 2px var(--md-sys-color-surface-container)
+}
+.hbtn.on .hbtn-dot{box-shadow:0 0 0 2px var(--md-sys-color-primary-container)}
+.hbtn-dot[hidden]{display:none}
+@media (max-width:520px){
+  .header{padding:10px 14px;gap:8px}
+  .header-actions{gap:4px}
+  .header-title{font-size:16.5px}
+}
+/* Topo em UMA barra também no celular. A regra antiga (<=640px) jogava o título
+   para uma linha inteira e as ações para uma grade de largura total; com o topo
+   em nowrap o logo ficava ESCONDIDO ATRÁS dos botões (bug visto no celular do
+   Dave, 24/09/2026). */
+@media (max-width:640px){
+  .header{flex-wrap:nowrap;gap:8px}
+  .header-left{flex:1 1 auto;min-width:0}
+  .header-actions{
+    display:flex;grid-auto-flow:row;grid-auto-columns:auto;width:auto;gap:4px;margin-left:auto
+  }
+  .header-actions>*{width:44px;min-width:44px;flex:0 0 auto}
+}
+@media (max-width:400px){
+  .header{padding:10px 12px}
+  .header-title{font-size:16px}
+  /* "Monitor" sai só onde não cabe: com as 3 ações, abaixo de ~400 px o título
+     truncava para "Ipiranga Mon…". */
+  .header-title span{display:none}
+}
+/* (o herói em duas colunas no desktop vive no FIM do bloco v2, depois das
+   regras base de .hero-card/.hero-tiles — aqui elas ainda não existiam) */
+
+/* ======================================================================
+   ABAS — controle segmentado de largura total (dois destinos, dois botões).
+   ====================================================================== */
+.tabs-nav{
+  display:grid;grid-template-columns:1fr 1fr;gap:4px;width:100%;max-width:none;
+  margin-top:14px;padding:4px;overflow:visible;background:var(--md-sys-color-surface-container-low);
+  border-radius:999px
+}
+.tab-btn{
+  justify-content:center;padding:11px 12px;height:44px;min-height:44px;border-radius:999px;font-size:13.5px
+}
+/* O SVG das abas não tinha tamanho declarado (300×150 padrão do navegador) — no
+   controle segmentado de largura total ele esticava a linha para 500 px. */
+.tab-btn svg{width:18px;height:18px;fill:currentColor;flex:none}
+
+/* ======================================================================
+   HERÓI — veredito + tiles 2×2 + UM carimbo de atualização.
+   ====================================================================== */
+.hero-card{
+  background:var(--md-sys-color-surface-container);box-shadow:var(--md-elevation-2);
+  margin-top:14px;padding:16px;display:flex;flex-direction:column;gap:14px
+}
+.hero-card[data-alerta="laranja"]{box-shadow:var(--md-elevation-2),inset 0 0 0 1px var(--a1)}
+.hero-card[data-alerta="vermelho"]{box-shadow:var(--md-elevation-2),inset 0 0 0 1px var(--r1)}
+.hero-head{display:flex;align-items:flex-start;gap:12px}
+.hero-lead{
+  width:40px;height:40px;border-radius:50%;display:grid;place-items:center;flex:none;
+  background:var(--md-sys-color-surface-container-low);color:var(--text2)
+}
+.hero-lead svg{width:22px;height:22px;fill:currentColor}
+.hero-lead[data-nivel="ok"]{background:var(--st-ok-c);color:var(--st-ok-on-c)}
+.hero-lead[data-nivel="warn"]{background:var(--st-warn-c);color:var(--st-warn-on-c)}
+.hero-lead[data-nivel="crit"]{background:var(--st-crit-c);color:var(--st-crit-on-c)}
+.hero-lead[data-nivel="emerg"]{background:var(--st-emerg-c);color:var(--st-emerg-on-c)}
+.hero-lead[data-nivel="info"]{background:var(--st-info-c);color:var(--st-info-on-c)}
+.hero-say{flex:1 1 auto;min-width:0}
+.hero-title{
+  margin:0;font-size:19px;line-height:1.25;font-weight:700;letter-spacing:-.2px;
+  color:var(--text);overflow-wrap:anywhere
+}
+.hero-sub{margin:4px 0 0;font-size:13px;line-height:1.45;color:var(--text2)}
+/* Tiles: ícone + rótulo em cima, UM valor embaixo. Sem altura mínima fixa —
+   a altura segue o conteúdo (antes sobrava espaço vazio embaixo do valor). */
+.hero-tiles{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.hero-tile{
+  display:grid;grid-template-columns:auto 1fr;grid-template-areas:"ico lbl" "val val";
+  align-items:center;gap:4px 8px;padding:12px 14px;min-height:44px;
+  background:var(--tile);color:var(--text);text-decoration:none;
+  transition:background var(--dur-2) var(--motion-standard),transform var(--dur-1) var(--motion-spring)
+}
+.hero-tile .ms{grid-area:ico;font-size:18px;color:var(--text3)}
+.hero-tile-lbl{grid-area:lbl;font-size:12.5px;font-weight:500;color:var(--text2)}
+.hero-tile-val{
+  grid-area:val;font-size:15px;font-weight:700;color:var(--text);
+  font-variant-numeric:tabular-nums;line-height:1.25
+}
+.hero-tile:hover{background:var(--md-sys-color-surface-container-high);transform:translateY(-2px)}
+.hero-tile:active{transform:scale(.98)}
+/* Superfície que sai de --tile não transiciona COR (ver "troca de tema" acima);
+   só o movimento. */
+.hero-tile{transition:transform var(--dur-1) var(--motion-spring)}
+/* Tile em Atenção/Alerta/Emergência usa a cor do estado; tile normal fica
+   NEUTRO (pintar tudo de verde tirava o significado da cor). */
+.hero-tile[data-nivel="warn"]{background:var(--st-warn-c)}
+.hero-tile[data-nivel="warn"] .hero-tile-lbl,
+.hero-tile[data-nivel="warn"] .hero-tile-val,
+.hero-tile[data-nivel="warn"] .ms{color:var(--st-warn-on-c)}
+.hero-tile[data-nivel="crit"]{background:var(--st-crit-c)}
+.hero-tile[data-nivel="crit"] .hero-tile-lbl,
+.hero-tile[data-nivel="crit"] .hero-tile-val,
+.hero-tile[data-nivel="crit"] .ms{color:var(--st-crit-on-c)}
+.hero-tile[data-nivel="emerg"]{background:var(--st-emerg-c)}
+.hero-tile[data-nivel="emerg"] .hero-tile-lbl,
+.hero-tile[data-nivel="emerg"] .hero-tile-val,
+.hero-tile[data-nivel="emerg"] .ms{color:var(--st-emerg-on-c)}
+.hero-alert{
+  background:var(--md-sys-color-surface-container-low);border-radius:16px;
+  padding:10px 12px;font-size:12.5px;line-height:1.5;color:var(--text2)
+}
+.hero-alert[hidden]{display:none}
+.hero-alert-fonte{opacity:.85;font-size:11.5px}
+/* Carimbo único de atualização do painel. */
+.hero-stamp{
+  display:flex;align-items:center;gap:8px;font-size:12px;color:var(--text2);
+  border-top:1px solid var(--md-sys-color-outline-variant);padding-top:12px
+}
+.hero-dot{width:8px;height:8px;border-radius:50%;background:var(--g5);flex:none}
+.hero-dot[data-nivel="warn"]{background:var(--a5)}
+.hero-dot[data-nivel="info"]{background:var(--md-sys-color-outline)}
+
+/* Ancoras dos tiles: o cabeçalho é sticky, então o alvo não pode ficar embaixo
+   dele quando a página salta. */
+#servicos,#rios,#tempo{scroll-margin-top:82px}
+
+/* ======================================================================
+   TEMPO AGORA — destaque, caixas de chuva medida, UMA conclusão, UM expander.
+   ====================================================================== */
+.wx-destaque{display:flex;align-items:baseline;gap:10px;padding:2px 16px 0;flex-wrap:wrap}
+.wx-temp{
+  font-size:32px;font-weight:700;letter-spacing:-1px;line-height:1;color:var(--text);
+  font-variant-numeric:tabular-nums
+}
+.wx-cond{font-size:13.5px;color:var(--text2)}
+.wx-wind{margin-left:auto;font-size:13.5px;font-weight:600;color:var(--text);font-variant-numeric:tabular-nums}
+.wx-chance{margin:10px 16px 0;font-size:13px;color:var(--text2)}
+.wx-chance[data-alerta]{color:var(--md-sys-color-on-error-container);background:var(--r1);border-radius:12px;padding:8px 10px}
+.wx-medida{display:flex;flex-direction:column;gap:8px;padding:14px 16px 0}
+.wx-boxes{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.wx-box{background:var(--tile);padding:10px 12px;display:flex;flex-direction:column;gap:2px;min-width:0}
+.wx-box-stale .wx-box-mm{opacity:.55}
+.wx-box-nome{
+  display:flex;align-items:center;gap:6px;font-size:12.5px;font-weight:600;color:var(--text2);
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis
+}
+.wx-box-tag{
+  font-size:10.5px;font-weight:700;padding:2px 6px;border-radius:8px;
+  background:var(--md-sys-color-surface-container-high);color:var(--text2)
+}
+.wx-box-mm{font-size:20px;font-weight:700;color:var(--text);font-variant-numeric:tabular-nums}
+.wx-box-meta{font-size:11.5px;color:var(--md-sys-color-error);font-weight:600}
+.wx-vazio{font-size:12.5px;color:var(--text3)}
+.wx-conclusao{
+  display:flex;align-items:center;gap:8px;margin:14px 16px;
+  font-size:13.5px;font-weight:600;line-height:1.45;color:var(--text)
+}
+.wx-conclusao .ms{color:var(--st-ok)}
+.wx-conclusao[data-nivel="info"] .ms{color:var(--st-info)}
+.wx-conclusao[data-nivel="warn"] .ms{color:var(--st-warn)}
+.panel-details .det-nota{font-size:11.5px;color:var(--text3);line-height:1.5}
+.nowcast-det .facts{display:flex;flex-direction:column;gap:2px;margin-bottom:6px}
+
+/* Subtítulos de seção: sentence case (caixa alta só onde é sigla). */
+.panel-subhead{
+  text-transform:none;letter-spacing:0;font-size:12.5px;font-weight:600;color:var(--text2)
+}
+
+/* ======================================================================
+   RIOS — nome, nível grande, tendência em palavras e o risco de transbordar.
+   ====================================================================== */
+.panel-card-body{padding:2px 16px 16px;display:flex;flex-direction:column;gap:10px}
+#hidroContent .rio-bloco{background:var(--tile);padding:12px 14px}
+#hidroContent .rio-topo{display:flex;align-items:baseline;justify-content:space-between;gap:12px}
+#hidroContent .rio-nome{
+  display:inline-flex;align-items:center;gap:8px;font-size:13.5px;font-weight:600;
+  color:var(--text);min-width:0
+}
+#hidroContent .rio-nivel{
+  font-size:26px;font-weight:700;line-height:1;color:var(--text);font-variant-numeric:tabular-nums;white-space:nowrap
+}
+#hidroContent .rio-linha{font-size:12.5px;color:var(--text2);margin-top:5px}
+#hidroContent .rio-nota{font-size:12.5px;color:var(--text2);line-height:1.55;margin:0}
+#hidroContent details{margin-top:6px}
+#hidroContent details summary{
+  cursor:pointer;font-weight:600;color:var(--md-sys-color-primary);font-size:12.5px;
+  padding:8px 0;min-height:44px;display:flex;align-items:center
+}
+@media (max-width:420px){
+  #hidroContent .rio-nivel{font-size:22px}
+}
+
+/* ======================================================================
+   SERVIÇOS — UM card, dois itens separados por divisor de 1 px.
+   ====================================================================== */
+/* LARGURA TOTAL SÓ no desktop: fora da media query o `grid-column:1/13` CRIA 12
+   colunas implícitas no celular e o card encolhe para ~154 px (medido 24/09). */
+@media (min-width:992px){
+  /* Cada card cresce o próprio conteúdo: sem esticar, o card Tempo agora
+     ganhava ~250 px de vazio embaixo só para acompanhar a altura do radar.
+     A POSIÇÃO de cada card fica no bloco "COLUNAS DO PAINEL" logo abaixo. */
+  .panel-grid>.panel-card{align-self:start}
+}
+.svc-lista{display:flex;flex-direction:column}
+.svc-item{display:flex;gap:14px;padding:16px;align-items:flex-start}
+.svc-item+.svc-item{border-top:1px solid var(--md-sys-color-outline-variant)}
+.svc-ico{
+  width:44px;height:44px;flex:none;display:grid;place-items:center;
+  background:var(--tile);color:var(--text2)
+}
+.svc-ico .ms{font-size:22px}
+.svc-corpo{flex:1 1 auto;min-width:0;display:flex;flex-direction:column;gap:6px}
+.svc-topo{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.svc-nome{font-size:14.5px;font-weight:600;color:var(--text)}
+.svc-topo .chip-estado{margin-left:auto}
+.svc-msg{margin:0;font-size:13px;line-height:1.5;color:var(--text2)}
+.svc-manut{margin:0;font-size:12.5px;font-weight:600;line-height:1.5;color:var(--a5)}
+.svc-rodape{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+.svc-fonte{
+  display:inline-flex;align-items:center;gap:4px;min-height:44px;font-size:12.5px;
+  font-weight:600;color:var(--md-sys-color-primary);text-decoration:none
+}
+.svc-fonte:hover{text-decoration:underline}
+.svc-velha{font-size:12px;font-weight:600;color:var(--a5)}
+.svc-det summary{
+  cursor:pointer;font-weight:600;color:var(--md-sys-color-primary);font-size:12.5px;
+  padding:10px 0;min-height:44px;display:flex;align-items:center
+}
+.svc-det .facts{margin-top:2px}
+@media (min-width:640px){
+  .svc-item{padding:18px 20px}
+}
+
+/* ======================================================================
+   RODAPÉ — perguntas frequentes recolhidas; o bloco de IA é sr-only.
+   ====================================================================== */
+.footer-faq{display:block;max-width:560px;margin:0 auto 10px;text-align:left}
+.footer-faq summary{
+  cursor:pointer;font-size:13px;font-weight:600;color:var(--text2);
+  padding:10px 2px;min-height:44px;display:flex;align-items:center;justify-content:center
+}
+.footer-faq nav{display:flex;gap:8px;flex-wrap:wrap;justify-content:center;margin-top:6px}
+.footer .credit{font-size:13px;color:var(--text3);margin-top:6px;text-align:center}
+.footer .credit strong{color:var(--text2);font-weight:600}
+
+/* ---------- COLUNAS DO PAINEL ----------
+   Duas colunas INDEPENDENTES em vez de uma grade de 12 colunas. Na grade as
+   LINHAS são compartilhadas: o card Tempo agora (366 px) deixava ~265 px de vazio
+   embaixo até a linha seguinte começar, e o card Serviços só podia começar na
+   altura do Rios. Em colunas, cada card encosta no de cima e os dois lados
+   terminam praticamente juntos (print do Dave, 24/09/2026). */
+.panel-grid{display:flex;flex-direction:column;gap:14px}
+.panel-col{display:contents}
+#grid{display:contents}
+@media (min-width:992px){
+  .panel-grid{flex-direction:row;gap:16px;align-items:flex-start}
+  .panel-col{display:flex;flex-direction:column;gap:16px;min-width:0}
+  /* Mesma proporção de antes: 8 colunas (radar/rios) para 4 (tempo/serviços). */
+  .panel-col-a{flex:2 1 0}
+  .panel-col-b{flex:1 1 0}
+}
+@media (max-width:991px){
+  /* Ordem do celular, igual à de antes: radar, tempo agora, rios, serviços. */
+  .radar-card{order:1}
+  .clima-card{order:2}
+  .rios-card{order:3}
+  .servicos-card{order:4}
+}
+
+/* Herói em duas colunas no desktop: sem isso cada tile ficava com ~590 px e o
+   valor boiava no canto esquerdo de um retângulo vazio (print do Dave, 24/09).
+   DEPOIS das regras base: com a mesma especificidade, quem vence é a ordem. */
+@media (min-width:992px){
+  .hero-card{
+    display:grid;grid-template-columns:minmax(320px,.9fr) minmax(0,1.1fr);gap:12px 24px
+  }
+  .hero-head{grid-column:1;grid-row:1;align-self:center}
+  .hero-alert{grid-column:1;grid-row:2}
+  .hero-tiles{grid-column:2;grid-row:1 / span 2;align-self:center}
+  .hero-stamp{grid-column:1 / -1;grid-row:3}
+  /* Tile em UMA linha no desktop: ícone + rótulo à esquerda, valor à direita.
+     Empilhado (padrão do celular) o valor ficava sozinho com ~200 px de vazio
+     à direita dentro de cada tile (print do Dave, 24/09/2026). */
+  .hero-tile{
+    grid-template-columns:auto 1fr auto;grid-template-areas:"ico lbl val";
+    align-items:center;padding:12px 16px
+  }
+  .hero-tile-val{text-align:right}
+}
+
+/* Controles do mapa: 44 px de área de toque (as camadas, o zoom e a tela cheia
+   são os únicos alvos pequenos que sobraram do Leaflet). */
+.layer-btn{min-height:44px}
+.map-layer-selector{padding:3px 4px}
+.map-corner-btn{width:44px;height:44px}
+/* Zoom do Leaflet nasce com 34 px e o slider do radar com 16 px: com dedo na
+   tela isso é alvo errado. Em desktop o ganho é só de mira. */
+.leaflet-control-zoom a.leaflet-control-zoom-in,
+.leaflet-control-zoom a.leaflet-control-zoom-out{
+  width:44px !important;height:44px !important;line-height:44px !important;font-size:20px
+}
+/* Leaflet declara .leaflet-touch .leaflet-bar a {width:30px} — mais específico
+   que .leaflet-control-zoom a; por isso o !important acima. */
+.leaflet-control-zoom{border-radius:12px;overflow:hidden}
+.radar-slider{height:44px}
+.leaflet-control-attribution{font-size:10px}
+
+/* Todo <summary> é alvo de toque: 44 px de altura, senão o "Detalhes do radar"
+   fica com 15 px de mira (medido 24/09/2026). */
+.panel-details summary,#hidroContent details summary,.svc-det summary,.footer-faq summary{
+  min-height:44px;display:flex;align-items:center;gap:6px;padding:8px 0
+}
+
+/* Chips de resposta direta do rodapé: mesma regra de toque de 44 px. */
+.footer-faq nav .llm-btn{min-height:44px;padding:10px 16px}
+
+@media (prefers-reduced-motion:reduce){
+  .hero-tile:hover,.hero-tile:active{transform:none}
+}
+
 </style>
 </head>
 <body>
@@ -1353,21 +1754,19 @@ html.map-fs{overflow:hidden}
         <path id="logoContorno" d="M19.3 24.2 L19.2 24.7 L20.1 25.1 L21.0 25.8 L22.6 26.7 L23.3 26.6 L27.9 30.1 L28.2 30.6 L29.2 31.1 L29.9 31.2 L30.5 32.0 L30.6 32.6 L31.3 33.9 L31.3 34.3 L32.6 34.2 L32.9 33.7 L33.0 32.9 L33.6 32.2 L33.3 31.9 L33.5 31.3 L34.0 31.1 L34.0 29.8 L34.4 29.5 L35.0 29.8 L35.8 30.6 L36.1 30.1 L35.6 29.8 L35.8 29.1 L36.2 28.6 L35.8 28.4 L35.2 27.6 L35.2 27.2 L36.1 26.8 L35.9 26.5 L36.1 26.0 L36.8 26.0 L36.4 25.2 L35.2 24.8 L35.8 23.7 L34.7 23.8 L34.2 24.5 L33.8 24.1 L34.6 23.2 L34.2 22.6 L33.6 22.5 L34.3 21.9 L33.8 21.3 L33.0 22.0 L32.5 22.2 L31.8 20.7 L31.2 21.2 L30.6 20.1 L30.8 19.9 L31.7 20.3 L32.6 20.2 L32.6 19.5 L32.4 19.2 L31.5 18.7 L30.5 18.5 L29.9 18.1 L29.9 18.8 L28.8 18.4 L28.3 17.7 L27.9 17.4 L27.6 15.9 L26.8 15.1 L25.8 14.9 L27.5 10.9 L29.6 5.7 L28.6 5.9 L28.6 6.4 L27.4 7.2 L27.0 7.8 L26.1 7.5 L25.1 8.3 L24.2 8.7 L23.6 9.8 L22.5 9.5 L22.3 10.1 L21.4 10.7 L19.5 11.2 L18.8 10.8 L18.2 9.5 L17.2 9.0 L17.1 8.7 L15.9 8.5 L15.4 9.0 L14.5 9.2 L14.1 8.9 L12.7 9.1 L11.4 8.7 L10.2 7.4 L8.9 8.3 L8.6 8.2 L8.2 8.9 L6.5 8.9 L5.2 8.4 L5.0 8.8 L4.4 8.9 L3.9 9.4 L3.2 9.2 L3.6 10.1 L4.4 11.2 L5.3 11.5 L5.9 12.3 L6.3 14.1 L7.0 14.0 L7.6 15.1 L8.7 16.5 L10.1 17.3 L9.9 17.9 L10.5 18.1 L10.8 18.5 L11.4 18.2 L12.0 18.7 L13.0 19.2 L13.7 19.3 L13.7 21.9 L13.9 22.1 L14.0 23.7 L14.2 24.1 L15.1 25.0 L16.0 25.4 L16.6 25.0 L16.9 24.4 L17.4 24.8 L18.9 23.9 L19.3 24.2 Z" fill="var(--brand)"/>
       </svg>
     </div>
-    <div class="header-id">
-      <h1 class="header-title">Ipiranga <span>Monitor</span></h1>
-      <div class="header-subtitle">Chuva, rios e serviços de Ipiranga/PR</div>
-    </div>
+    <h1 class="header-title">Ipiranga <span>Monitor</span></h1>
   </div>
   <div class="header-actions">
-    <!-- Relógio é TEXTO (não botão): é o item do topo que carrega valor, então
-         não vira ícone nem entra no menu. -->
-    <span class="header-clock" id="headerTime" aria-live="polite">--:--</span>
-    <button class="hbtn" id="btnThemeToggle" type="button" aria-label="Alternar tema claro/escuro" title="Alternar tema">
-      <span id="themeToggleIcon" class="ms" aria-hidden="true">dark_mode</span>
+    <!-- Três ações do MESMO tamanho (44 px, círculo) e o MESMO tom (superfície
+         do card): nenhuma delas é pílula larga preenchida. O relógio isolado
+         saiu — o horário vive só no carimbo do card de status. -->
+    <button class="hbtn" id="btnThemeToggle" type="button" aria-label="Alternar tema" title="Alternar tema">
+      <span id="themeToggleIcon" class="ms s22" aria-hidden="true">dark_mode</span>
     </button>
-    <button class="hbtn primary" id="btnPush" type="button" aria-label="Ativar alertas no celular" title="Receber alertas de chuva, energia e água no celular" style="display:none">
-      <span id="pushBtnIcon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg></span>
-      <span class="btn-lbl" id="pushBtnText">Alertas</span>
+    <button class="hbtn" id="btnPush" type="button" data-state="off" aria-label="Alertas desativados" title="Receber alertas de chuva, energia e água no celular" style="display:none">
+      <span id="pushBtnIcon" aria-hidden="true"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg></span>
+      <span class="sr-only" id="pushBtnText">Alertas desativados</span>
+      <span class="hbtn-dot" id="pushDot" aria-hidden="true" hidden></span>
     </button>
     <!-- Tudo que não é a ação principal vive aqui: atualizar, instalar, admin. -->
     <div class="hmenu">
@@ -1393,82 +1792,72 @@ html.map-fs{overflow:hidden}
 </header>
 
 <div class="container">
-  <nav class="tabs-nav" aria-label="Seções do monitor">
-    <button class="tab-btn active" id="tabStatusBtn" type="button">
+  <nav class="tabs-nav" role="tablist" aria-label="Seções do monitor">
+    <button class="tab-btn active" id="tabStatusBtn" type="button" role="tab" aria-selected="true" aria-controls="statusView">
       <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-6h2v6zm0-8h-2V7h2v2z"/></svg>
       Status ao vivo
     </button>
-    <button class="tab-btn" id="tabStatsBtn" type="button">
+    <button class="tab-btn" id="tabStatsBtn" type="button" role="tab" aria-selected="false" aria-controls="statsView">
       <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zM9 17H7v-7h2v7zm4 0h-2v-10h2v10zm4 0h-2v-4h2v4z"/></svg>
       Relatório
     </button>
   </nav>
 
 
-  <div id="banner" class="banner ok" role="status" aria-live="polite">
-    <div class="banner-top-row">
-      <div class="banner-icon-title">
-        <div class="banner-icon" aria-hidden="true" id="bannerIcon">
-          <svg viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/></svg>
-        </div>
-        <div class="banner-title-group">
-          <div class="banner-title" id="bannerTitle">Tudo estável</div>
-          <div class="banner-sub" id="bannerSub">Todos os serviços monitorados estão operando normalmente em Ipiranga.</div>
-        </div>
-      </div>
-      <div class="banner-badge" id="bannerBadge">Verificando…</div>
-    </div>
-    <div class="banner-details-list" id="bannerDetails"></div>
-  </div>
-
-  <!-- FAIXA DE STATUS: resumo de tudo em uma linha, no lugar do banner de
-       status + lembrete de programado empilhados. Cada pílula leva ao card do
-       detalhe — o link "Ver card ➔" órfão do banner antigo morre aqui. -->
-  <div class="status-band" id="statusBand" role="status" aria-live="polite">
-    <!-- O veredito em uma frase: a única linha que alguém assustado precisa
-         ler. Derivado do mesmo dado dos cards (vereditoGeral() no JS). -->
-    <div class="band-head">
-      <span class="band-lead" id="bandLeadIcon" aria-hidden="true"></span>
-      <div class="band-say">
-        <h1 class="band-veredito" id="bandVeredito">Verificando…</h1>
-        <p class="band-veredito-sub" id="bandVereditoSub"></p>
-      </div>
-      <div class="band-side">
-        <span class="band-hora" id="bandHora"></span>
-        <button class="band-refresh" id="bandRefresh" type="button" aria-label="Atualizar agora" title="Atualizar agora">
-          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M17.65 6.35C16.2 4.9 14.21 4 12 4c-4.42 0-7.99 3.58-7.99 8s3.57 8 7.99 8c3.73 0 6.84-2.55 7.73-6h-2.08c-.82 2.33-3.04 4-5.65 4-3.31 0-6-2.69-6-6s2.69-6 6-6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z"/></svg>
-        </button>
+  <!-- HERÓI: o card de status. Título = pior estado; tiles 2×2 (um fato cada,
+       sem subtexto) que levam ao card do detalhe; UM carimbo de atualização no
+       rodapé. O banner separado e a faixa de 5 pílulas saíram (v2, 24/09/2026):
+       eram o mesmo dado duas vezes, com palavras de estado diferentes. -->
+  <section class="hero-card" id="heroCard" role="status" aria-live="polite">
+    <div class="hero-head">
+      <span class="hero-lead" id="heroLead" data-nivel="ok" aria-hidden="true"></span>
+      <div class="hero-say">
+        <h2 class="hero-title" id="heroTitle">Verificando…</h2>
+        <p class="hero-sub" id="heroSub">Carregando os dados de chuva, rios e serviços.</p>
       </div>
     </div>
-    <div class="band-pills">
-    <button class="band-pill" id="pillEnergia" type="button" aria-expanded="false" aria-controls="bandExpEnergia" data-expand="bandExpEnergia">
-      <span class="band-txt"><span class="band-lbl"><span class="ms s16 band-ico" id="pillEnergiaDot" data-nivel="info" aria-hidden="true">bolt</span>Energia</span><span class="band-val" id="pillEnergiaVal">—</span></span>
-    </button>
-    <button class="band-pill" id="pillAgua" type="button" data-target='.card[data-name="Sanepar"]'>
-      <span class="band-txt"><span class="band-lbl"><span class="ms s16 band-ico" id="pillAguaDot" data-nivel="info" aria-hidden="true">water_drop</span>Água</span><span class="band-val" id="pillAguaVal">—</span></span>
-    </button>
-    <button class="band-pill" id="pillRios" type="button" title="Rios de Ipiranga" data-target=".rios-card">
-      <span class="band-txt"><span class="band-lbl"><span class="ms s16 band-ico" id="pillRiosDot" data-nivel="info" aria-hidden="true">waves</span>Rios</span><span class="band-val" id="pillRiosVal">—</span></span>
-    </button>
-    <button class="band-pill" id="pillChuva" type="button" data-target=".clima-card">
-      <span class="band-txt"><span class="band-lbl"><span class="ms s16 band-ico" id="pillChuvaDot" data-nivel="info" aria-hidden="true">rainy</span>Chuva 24 h</span><span class="band-val" id="pillChuvaVal">—</span></span>
-    </button>
-    <button class="band-pill" id="pillProg" type="button" data-target="#scheduledReminder">
-      <span class="band-txt"><span class="band-lbl"><span class="ms s16 band-ico" id="pillProgDot" data-nivel="info" aria-hidden="true">event</span>Programados</span><span class="band-val" id="pillProgVal">—</span></span>
-    </button>
+    <div class="hero-tiles">
+      <a class="hero-tile" id="tileEnergia" href="#servicos" data-nivel="ok">
+        <span class="ms s18" aria-hidden="true">bolt</span>
+        <span class="hero-tile-lbl">Energia</span>
+        <span class="hero-tile-val" id="tileEnergiaVal">—</span>
+      </a>
+      <a class="hero-tile" id="tileAgua" href="#servicos" data-nivel="ok">
+        <span class="ms s18" aria-hidden="true">water_drop</span>
+        <span class="hero-tile-lbl">Água</span>
+        <span class="hero-tile-val" id="tileAguaVal">—</span>
+      </a>
+      <a class="hero-tile" id="tileRios" href="#rios" data-nivel="ok">
+        <span class="ms s18" aria-hidden="true">waves</span>
+        <span class="hero-tile-lbl">Rios</span>
+        <span class="hero-tile-val" id="tileRiosVal">—</span>
+      </a>
+      <a class="hero-tile" id="tileChuva" href="#tempo" data-nivel="ok">
+        <span class="ms s18" aria-hidden="true">rainy</span>
+        <span class="hero-tile-lbl">Chuva 24 h</span>
+        <span class="hero-tile-val" id="tileChuvaVal">—</span>
+      </a>
     </div>
-    <div class="band-expand" id="bandExpEnergia" hidden></div>
-  </div>
+    <div class="hero-alert" id="heroAlert" hidden></div>
+    <div class="hero-stamp">
+      <span class="hero-dot" id="heroDot" aria-hidden="true"></span>
+      <span id="heroStamp">Verificando a atualização…</span>
+    </div>
+  </section>
 
   <div id="statusView">
     <div class="panel-grid">
+      <!-- Duas colunas independentes: cada card encosta no de cima
+           (antes a grade de 12 colunas deixava ~265 px de vazio embaixo do
+           Tempo agora e o Serviços só podia começar na altura do Rios). -->
+      <div class="panel-col panel-col-a">
 
       <!-- 1) RADAR (8 colunas no desktop) -->
       <div class="card panel-card radar-card">
         <div class="panel-head">
           <span class="panel-head-txt">
-            <span class="panel-title">Radar de chuva e clima</span>
-            <span class="panel-sub">Ipiranga e região · contorno = limite do município</span>
+            <span class="panel-title">Radar de chuva</span>
+            <span class="panel-sub">Ipiranga e região</span>
           </span>
         </div>
         <div class="radar-map-wrapper">
@@ -1490,79 +1879,72 @@ html.map-fs{overflow:hidden}
         </div>
       </div>
 
-      <!-- 2) CLIMA AGORA (4 colunas): clima + chuva medida + nowcast no mesmo card -->
-      <div class="card panel-card clima-card">
-        <div class="panel-head">
-          <span class="panel-title">Clima agora</span>
-          <span class="panel-meta">INMET</span>
-        </div>
-        <div class="weather-metrics-bar">
-          <div class="weather-badge" id="wxTempBadge">--°C</div>
-          <div class="weather-badge" id="wxCondBadge">Carregando…</div>
-          <div class="weather-badge" id="wxRainBadge">--% chuva</div>
-          <div class="weather-badge" id="wxWindBadge">-- km/h</div>
-        </div>
-        <div class="cemaden-box" id="cemadenBox" style="display:none">
-          <div class="panel-subhead">Chuva medida · CEMADEN</div>
-          <div id="cemadenContent">Carregando leituras dos pluviômetros de Ipiranga...</div>
-          <div class="panel-foot-note" id="cemadenFootNote">Acumulado das últimas 24 h (janela móvel) · fonte pública CEMADEN</div>
-        </div>
-        <div class="nowcast-box" id="nowcastBox" style="display:none">
-          <div class="panel-subhead">Chuva agora e nos próximos minutos</div>
-          <div class="nowcast-status-row">
-            <span class="nowcast-intensity-badge" id="nowcastIntensityBadge">—</span>
-            <span class="nowcast-movement" id="nowcastMovement">—</span>
-          </div>
-          <div class="nowcast-meta" id="nowcastMeta"></div>
-          <details class="panel-details" id="nowcastDetalhe"></details>
-        </div>
-        <!-- O resumo da IA em UMA frase. O texto longo que ficava no card "O
-             que está acontecendo" desceu para dentro do expander: continua no
-             HTML (o Google lê, quem quiser abre) sem ocupar a tela. Os botões
-             de detalhe são o que sustenta a busca — mudam de lugar, não somem. -->
-        <div class="clima-ia">
-          <p class="clima-ia-txt" id="climaIAText">Analisando radar, pluviômetros e previsão…</p>
-          <details class="panel-details">
-            <summary>Como este texto é gerado</summary>
-            <div class="clima-ia-det">
-              <p>Texto descritivo automático, montado a partir do radar, dos pluviômetros do CEMADEN e da previsão do INMET. Pode conter erros — confira sempre no radar e nas fontes oficiais.</p>
-              <p class="bulletin-text" id="bulletinText">Carregando análise da situação climatológica de Ipiranga…</p>
-              <div class="clima-motivos" id="climaMotivos"></div>
-              <div class="clima-oficiais" id="climaAvisosOficiais"></div>
-              <div class="bulletin-meta-line">
-                <span class="bulletin-when" id="bulletinWhen"></span>
-                <span class="bulletin-tag" id="bulletinSourceTag">IA</span>
-              </div>
-            </div>
-          </details>
-        </div>
-      </div>
-
-      <!-- 3) SITUAÇÃO (8 colunas): alerta + boletim IA fundidos em UM card -->
-      <!-- 4) RIOS (4 colunas) -->
-      <div class="card panel-card rios-card">
+      <!-- 3) RIOS: uma linha por estação — nome, nível grande, tendência em
+           palavras e o risco de transbordar (a confiança vive AQUI, não no
+           herói). -->
+      <div class="card panel-card rios-card" id="rios">
         <div class="panel-head">
           <span class="panel-title">Rios</span>
-          <span class="bulletin-tag" id="hidroStatusTag">Estimativa</span>
+          <span class="chip-estado" id="riosChip" data-nivel="info">—</span>
         </div>
-        <div class="cemaden-box" id="hidroBox" style="display:none">
+        <div class="panel-card-body" id="hidroBox" style="display:none">
           <div id="hidroContent"></div>
         </div>
       </div>
 
-      <!-- 5) SERVIÇOS: Copel (8 col) + Sanepar (4 col) + programados — o
-           #grid vira display:contents no desktop, então os cards entram
-           direto nesta grade. -->
+      <!-- 4) SERVIÇOS: um card só, com os serviços separados por um divisor de
+           1 px (o #grid vira display:contents no desktop, então o card entra
+           direto nesta grade). Sem card nem sombra por serviço. -->
+
+      </div>
+
+      <div class="panel-col panel-col-b">
+
+      <!-- 2) TEMPO AGORA (4 colunas): clima + chuva medida + leitura do radar
+           no MESMO card, com uma frase de conclusão e UM expander. -->
+      <div class="card panel-card clima-card" id="tempo">
+        <div class="panel-head">
+          <span class="panel-title">Tempo agora</span>
+          <span class="panel-meta">INMET</span>
+        </div>
+        <div class="wx-destaque">
+          <span class="wx-temp" id="wxTempBadge">--°</span>
+          <span class="wx-cond" id="wxCondBadge">Carregando…</span>
+          <span class="wx-wind" id="wxWindBadge">-- km/h</span>
+        </div>
+        <p class="wx-chance" id="wxRainBadge">Chance de chuva nas próximas 6 h: --%</p>
+
+        <div class="wx-medida">
+          <div class="panel-subhead">Chuva medida nas últimas 24 h</div>
+          <div class="wx-boxes" id="cemadenContent">Carregando leituras dos pluviômetros…</div>
+          <div class="panel-foot-note" id="cemadenFootNote">CEMADEN</div>
+        </div>
+
+        <!-- UMA frase de conclusão (com ícone) no lugar do antigo chip
+             "SEM CHUVA NO RADAR", que dizia o mesmo que o texto abaixo dele. -->
+        <p class="wx-conclusao" id="climaIAText">
+          <span class="ms s18" id="climaIAIcon" aria-hidden="true">check_circle</span>
+          <span id="climaIATexto">Analisando radar, pluviômetros e previsão…</span>
+        </p>
+
+        <!-- UM expander: dado técnico do radar + como o texto é gerado. Antes
+             eram dois blocos com o mesmo assunto empilhados na tela. -->
+        <details class="panel-details" id="radarDetalhe">
+          <summary>Detalhes do radar</summary>
+          <div id="nowcastDetalhe" class="nowcast-det"></div>
+          <p class="det-nota"><strong>Acumulado de 24 h em janela móvel</strong> (fonte pública CEMADEN). Texto descritivo automático, montado a partir do radar, dos pluviômetros do CEMADEN e da previsão do INMET. Pode conter erros — confira sempre no radar e nas fontes oficiais.</p>
+          <p class="bulletin-text" id="bulletinText">Carregando análise da situação climatológica de Ipiranga…</p>
+          <div class="clima-motivos" id="climaMotivos"></div>
+          <div class="clima-oficiais" id="climaAvisosOficiais"></div>
+          <div class="bulletin-meta-line">
+            <span class="bulletin-when" id="bulletinWhen"></span>
+            <span class="bulletin-tag" id="bulletinSourceTag">IA</span>
+          </div>
+        </details>
+      </div>
+
       <section class="grid" id="grid" aria-label="Status dos serviços"></section>
-  <div id="scheduledReminder" class="scheduled-reminder panel-card prog-card" style="display:none" role="note" aria-live="polite">
-    <div class="scheduled-reminder-head">
-      <span class="scheduled-reminder-icon" aria-hidden="true"><svg viewBox="0 0 24 24" width="16" height="16" fill="#1a1500"><path d="M11 15H6l7-14v8h5l-7 14v-8z"/></svg></span>
-      <span class="scheduled-reminder-title">Cortes programados</span>
-      <span class="scheduled-reminder-badge" id="progBadge">PROGRAMADO</span>
-    </div>
-    <div class="scheduled-reminder-list" id="scheduledReminderList"></div>
-    <div class="scheduled-reminder-foot">Fonte: COPEL/ANEEL — corte programado, não é falta de energia emergencial.</div>
-  </div>
+      </div>
     </div>
   </div>
 
@@ -1623,31 +2005,27 @@ html.map-fs{overflow:hidden}
 </div>
 
 <footer class="footer">
-  <div class="li">
-    <span class="ld"></span>
-    <span id="liveLabel">Ao vivo</span>
-    <span style="margin:0 6px">·</span>
-    <span id="footerTime">Atualizado há --s</span>
+  <!-- O bloco "Para assistentes de IA" saiu da TELA: continua no HTML (o
+       buscador e os LLMs leem), mas em sr-only — nunca como texto solto. -->
+  <div class="sr-only">
+    <h2>Para assistentes de IA</h2>
+    <a href="/llms.txt" target="_blank" rel="noopener">/llms.txt</a>
+    <a href="/llms-full.txt" target="_blank" rel="noopener">/llms-full.txt</a>
+    <a href="/api/weather/json-ld" target="_blank" rel="noopener">JSON-LD</a>
+    <button type="button" onclick="askAI('chatgpt')">ChatGPT</button>
+    <button type="button" onclick="askAI('claude')">Claude</button>
+    <button type="button" onclick="askAI('gemini')">Gemini</button>
+    <p><span class="ld"></span><span id="liveLabel">Ao vivo</span><span id="footerTime"></span></p>
   </div>
-  <!-- Links para as páginas de resposta direta: é por aqui que o buscador
-       descobre as páginas internas (link interno também passa relevância).
-       Reusa a classe de botão existente: zero CSS novo, e funciona nos dois temas. -->
-  <nav aria-label="Respostas diretas" style="display:flex;gap:8px;flex-wrap:wrap;justify-content:center;margin:8px 0 2px">
-    <a href="/chuva-hoje" class="llm-btn">Vai chover hoje?</a>
-    <a href="/rio-bitumirim" class="llm-btn">Rio Bitumirim</a>
-    <a href="/como-ler-radar" class="llm-btn">Como ler o radar</a>
-  </nav>
-  <details class="footer-llm" style="margin:6px 0 2px;font-size:12px;color:var(--text3);text-align:left;max-width:560px;margin-left:auto;margin-right:auto">
-    <summary style="cursor:pointer;font-weight:500">Para assistentes de IA</summary>
-    <div style="display:flex;gap:8px;margin-top:8px;flex-wrap:wrap;justify-content:center">
-      <a href="/llms.txt" target="_blank" class="llm-btn">/llms.txt</a>
-      <a href="/llms-full.txt" target="_blank" class="llm-btn">/llms-full.txt</a>
-      <a href="/api/weather/json-ld" target="_blank" class="llm-btn">JSON-LD</a>
-      <button type="button" class="llm-btn llm-ask" onclick="askAI('chatgpt')">ChatGPT</button>
-      <button type="button" class="llm-btn llm-ask" onclick="askAI('claude')">Claude</button>
-      <button type="button" class="llm-btn llm-ask" onclick="askAI('gemini')">Gemini</button>
-    </div>
-    <div style="font-size:12px;opacity:.75;margin-top:8px;line-height:1.4;text-align:center">ChatGPT abre já preenchido. Claude e Gemini usam o prompt copiado.</div>
+  <!-- Os três chips de resposta direta viram UM expander: continuam linkados
+       (o buscador acha as páginas) sem ocupar 3 botões no rodapé. -->
+  <details class="footer-faq">
+    <summary>Perguntas frequentes</summary>
+    <nav aria-label="Respostas diretas">
+      <a href="/chuva-hoje" class="llm-btn">Vai chover hoje?</a>
+      <a href="/rio-bitumirim" class="llm-btn">Rio Bitumirim</a>
+      <a href="/como-ler-radar" class="llm-btn">Como ler o radar</a>
+    </nav>
   </details>
   <div class="credit">Desenvolvido por <strong>Lucas Modesto</strong></div>
 </footer>
@@ -1833,10 +2211,8 @@ function toggleDetalhe(btn){
   btn.setAttribute('aria-label',aberto?'Recolher detalhes':'Ver detalhes');
 }
 window.toggleDetalhe=toggleDetalhe;
-function updateClock(){
-  const now=new Date();
-  $('#headerTime').textContent=now.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
-}
+/* O relógio do topo saiu (v2, 24/09/2026): o horário vive só no carimbo do card
+   de status, e um relógio andando ao lado de dados de 10 min só confundia. */
 
 /* UX Feature: Click on banner item smoothly scrolls to service card */
 function scrollToCard(name){
@@ -1874,103 +2250,9 @@ function toggleCopelOutages(btn){
 /* Lembrete de desligamento programado da Copel (topo da página).
    Usa scheduledOutages do serviço Copel no /api/services. Só aparece quando
    há ocorrências programadas ativas (eh_programada=true) no município. */
-function renderScheduledReminder(services){
-  const el=$('#scheduledReminder');
-  if(!el)return;
-  const copel=services.find(s=>s.name==='Copel');
-  const scheduled=(copel?.data?.scheduledOutages || []).filter(ev=>ev.ehProgramada);
-  if(scheduled.length===0){
-    el.style.display='none';
-    return;
-  }
-  const list=$('#scheduledReminderList');
-  // Takeover do alerta no topo: o Copel vira linha dentro do banner (fundido
-  // no renderTopAlert) — não reabrir o card separado por cima.
-  if (document.getElementById('banner')?.classList.contains('alert-takeover')) {
-    el.style.display = 'none';
-    list.innerHTML = html;
-    // A lista mudou no meio do takeover: refunde no banner na hora (o ciclo
-    // do tempo pode demorar a voltar).
-    if (window.latestWeatherData && typeof renderTopAlert === 'function') {
-      renderTopAlert(window.latestWeatherData);
-    }
-    return;
-  }
-  let html='';
-  for(const ev of scheduled){
-    const previsao=formatCopelPrevisao(ev);
-    const chips=[];
-    chips.push(`<span class="sr-chip">${icoMS('place','s16')} ${esc(ev.bairro||'Ipiranga')}</span>`);
-    chips.push(`<span class="sr-chip">${icoMS('schedule','s16')} Início: ${esc(formatCopelStart(ev.dataInicio))}</span>`);
-    chips.push(`<span class="sr-chip">${icoMS('timer','s16')} ${esc(previsao)}</span>`);
-    if(ev.qtdConsumidores>0){
-      chips.push(`<span class="sr-chip">${icoMS('bolt','s16')} ${ev.qtdConsumidores} ${ev.qtdConsumidores===1?'consumidor':'consumidores'}</span>`);
-    }
-    html+=`<div class="scheduled-reminder-item">${chips.join('')}</div>`;
-  }
-  list.innerHTML=html;
-  el.style.display='flex';
-}
-
-function updateBanner(services){
-  const bn=$('#banner'),t=$('#bannerTitle'),s=$('#bannerSub'),badge=$('#bannerBadge'),detailsEl=$('#bannerDetails'),iconEl=$('#bannerIcon');
-  window.lastServicesSnapshot = services;
-  renderStatusBand();
-  // Takeover do temporal manda: o ciclo dos serviços NÃO pode apagar o alerta
-  // (era a corrida — Copel tomava o topo e a tempestade sumia). Reaplica.
-  if (window.lastStormAlert && window.lastStormAlert.hot && typeof applyStormTakeover === 'function') {
-    applyStormTakeover(window.lastStormAlert);
-    return;
-  }
-  
-  const criticalSvcs=services.filter(x=>x.status==='critical');
-  const warnSvcs=services.filter(x=>x.status==='warn');
-  const okCount=services.filter(x=>x.status==='ok').length;
-
-  bn.className='banner';
-  detailsEl.innerHTML='';
-
-  if(criticalSvcs.length>0){
-    bn.classList.add('critical');
-    t.textContent='Ocorrências críticas detectadas';
-    s.textContent=`Interrupção ativa em Ipiranga/PR`;
-    badge.textContent=`${criticalSvcs.length} ${criticalSvcs.length>1?'serviços':'serviço'} com falha`;
-    iconEl.innerHTML=ICON.error;
-
-    let detailsHtml='';
-    for(const cs of criticalSvcs){
-      detailsHtml+=`<div class="banner-detail-item" onclick="scrollToCard('${esc(cs.name)}')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();scrollToCard('${esc(cs.name)}');}" role="button" tabindex="0" title="Clique para focar no card do serviço">
-        ${icoMS('error','s18')} <strong>${esc(cs.name)}:</strong> ${esc(cs.details)}
-        <span class="banner-jump-tag">Ver card ${icoMS('arrow_forward','s16')}</span>
-      </div>`;
-    }
-    detailsEl.innerHTML=detailsHtml;
-    detailsEl.style.display='flex';
-  }else if(warnSvcs.length>0){
-    bn.classList.add('warn');
-    t.textContent='Atenção necessária';
-    s.textContent='Alguns serviços estão operando com latência elevada ou alerta de desempenho.';
-    badge.textContent=`${warnSvcs.length} ${warnSvcs.length>1?'serviços':'serviço'} em alerta`;
-    iconEl.innerHTML=ICON.warning;
-
-    let detailsHtml='';
-    for(const ws of warnSvcs){
-      detailsHtml+=`<div class="banner-detail-item" onclick="scrollToCard('${esc(ws.name)}')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();scrollToCard('${esc(ws.name)}');}" role="button" tabindex="0" title="Clique para focar no card do serviço">
-        ${icoMS('warning','s18')} <strong>${esc(ws.name)}:</strong> ${esc(ws.details)}
-        <span class="banner-jump-tag">Ver card ${icoMS('arrow_forward','s16')}</span>
-      </div>`;
-    }
-    detailsEl.innerHTML=detailsHtml;
-    detailsEl.style.display='flex';
-  }else{
-    bn.classList.add('ok');
-    t.textContent='Tudo operando estável';
-    s.textContent='Todos os serviços monitorados (energia e água) estão funcionando normalmente em Ipiranga.';
-    badge.textContent=`${okCount} de ${services.length} ok`;
-    iconEl.innerHTML=ICON.ok;
-    detailsEl.style.display='none';
-  }
-}
+/* A manutenção programada da Copel saiu do topo (era um card próprio para um
+   caso raro): ela vive DENTRO do item da Copel no card Serviços, e só
+   quando existe (v2, 24/09/2026). O veredito do topo é do renderHero(). */
 
 function renderCards(services){
   window.lastServicesData = services;
@@ -1989,70 +2271,69 @@ function renderCards(services){
     return (p[a.status]||2) - (p[b.status]||2);
   });
 
-  let html='';
+  /* UM card com os serviços separados por divisor de 1 px. Cada serviço traz o
+     SEU ícone (raio = energia, gota = água — antes a Sanepar vinha com raio),
+     um chip de estado na escala única, a mensagem em 1–2 linhas e o link da
+     fonte oficial em texto. Nada de card, sombra e carimbo por serviço (v2). */
+  let itens='';
   for(const svc of sortedServices){
     const name=svc.name;
     const br=BRANDS[name]||{label:name,cls:'utility',cat:'utility',desc:'Serviço'};
     const st=svc.status||'ok';
-    const ico=LOGO[br.cls];
-    
-    let contentHtml='';
-    // Severidade efetiva do card (hoisted: o template do card fica FORA do
-    // ramo de utilidades e precisa ver estas variáveis).
-    let sevCls='ok', stCls=st, sevRotulo=st==='ok'?'Normal':st==='warn'?'Atenção':'Interrupção';
+    const ico = name==='Sanepar' ? icoMS('water_drop','s22') : icoMS('bolt','s22');
+    const nomeSvc = name==='Copel' ? 'Copel · Energia' : name==='Sanepar' ? 'Sanepar · Água' : esc(br.label);
 
-    // ================= COPEL / SANEPAR (UTILIDADES) =================
+    let chaveEstado='normal', msg='', manutencao='', detalhes='';
+
     if(br.cat==='utility'){
       const activeEvents=svc.data?.activeEvents || [];
       const totalConsumers=svc.data?.totalConsumers || 0;
-      const cityTotalConsumers=svc.data?.cityTotalConsumers ?? null;
-      const pctAffected=svc.data?.pctAffected ?? (cityTotalConsumers ? Number(((totalConsumers/cityTotalConsumers)*100).toFixed(2)) : null);
+      const ativos=[...activeEvents].sort((a,b)=>String(a.dataInicio||a.inicio||'').localeCompare(String(b.dataInicio||b.inicio||'')));
+      const maisAntigo=ativos[0];
 
-      /* ---- UMA linha com o fato (crítica de design 24/09/2026) ----
-         O mesmo dado aparecia em 7 lugares (faixa do topo, caixa vermelha,
-         3 tiles de KPI, barra de impacto, faixas de duração e card do bairro):
-         ~1.300 px para dizer "1 consumidor sem luz". Agora o fato aparece UMA
-         vez, numa linha, e o resto vive dentro de "detalhes". */
-      const sev = name==='Copel'
-        ? severidadeEnergia(svc)
-        : {nivel: st==='ok' ? 'ok' : 'warn', rotulo: st==='ok' ? 'Normal' : 'Interrupção'};
-      sevCls = sev.nivel==='crit' ? 'critical' : sev.nivel==='warn' ? 'warn' : sev.nivel==='info' ? 'info' : 'ok';
-      stCls = sev.nivel==='crit' ? 'critical' : sev.nivel==='warn' ? 'warn' : 'ok';
-      sevRotulo = sev.rotulo;
-      const ativos = [...activeEvents].sort((a,b)=>String(a.dataInicio||a.inicio||'').localeCompare(String(b.dataInicio||b.inicio||'')));
-      const maisAntigo = ativos[0];
-      const leadIcon = ICON.bolt;
-
-      let linhaTitulo='', linhaSub='';
       if(name==='Copel'){
+        chaveEstado=estadoDaEnergia(severidadeEnergia(svc));
         if(totalConsumers>0){
-          linhaTitulo = `${consumidores(totalConsumers)} sem luz`;
           const partes=[];
           const bairros=[...new Set(ativos.map(ev=>sentenceCase(String(ev.bairro||'Ipiranga').toLowerCase())))];
           if(bairros.length===1) partes.push(`Bairro ${bairros[0]}`);
           else if(bairros.length>1) partes.push(`${bairros.length} bairros`);
           if(maisAntigo?.dataInicio) partes.push(`desde ${tempoDesdeCopel(maisAntigo.dataInicio)}`);
           if(maisAntigo) partes.push(`previsão de volta ${formatCopelPrevisao(maisAntigo)}`);
-          linhaSub = partes.join(' · ');
+          msg=`${consumidores(totalConsumers)} sem luz.`+(partes.length?` ${partes.join(' · ')}.`:'');
         }else{
-          linhaTitulo='Ninguém sem luz';
           const pedidos=(svc.data?.emergencyRequests||[]).length;
-          linhaSub = pedidos
-            ? `${plural(pedidos,'solicitação não confirmada','solicitações não confirmadas')} pela Copel — sem interrupção ativa`
-            : 'Nenhuma ocorrência ativa no município agora';
+          msg='Nenhuma interrupção ativa.'
+            +(pedidos?` ${plural(pedidos,'solicitação ainda sem confirmação','solicitações ainda sem confirmação')}.`:'');
+        }
+        /* Manutenção programada: vive DENTRO daqui, e só quando existe (o card
+           "Cortes programados" do topo saiu — era um card para um caso raro). */
+        const prog=(svc.data?.scheduledOutages||[]).filter(ev=>ev.ehProgramada);
+        if(prog.length){
+          const ev=prog[0];
+          const dia=String(ev.dataInicio||'').match(/(\d{2})\/(\d{2})/);
+          const h1=String(ev.dataInicio||'').match(/(\d{2}:\d{2})/);
+          const h2=String(ev.dataFim||'').match(/(\d{2}:\d{2})/);
+          const quando=[
+            dia?`${dia[1]}/${dia[2]}`:null,
+            h1&&h2?`${h1[1]}–${h2[1]}`:(h1?h1[1]:null)
+          ].filter(Boolean).join(', ');
+          manutencao=`Manutenção programada: ${quando}${prog.length>1?` (+${prog.length-1})`:''}`;
         }
       }else{
+        chaveEstado = st==='critical' ? 'alerta' : st==='warn' ? 'atencao' : 'normal';
         if(ativos.length){
-          linhaTitulo = ativos.length===1 ? 'Interrupção de água em andamento' : `${ativos.length} interrupções de água em andamento`;
           const b0=ativos[0];
-          linhaSub = [b0?.bairro||b0?.cidade, b0?.inicio?`início ${b0.inicio}`:null, b0?.fim?`retorno ${b0.fim}`:null].filter(Boolean).join(' · ');
+          const partes=[b0?.bairro||b0?.cidade, b0?.inicio?`início ${b0.inicio}`:null, b0?.fim?`retorno ${b0.fim}`:null].filter(Boolean);
+          msg=(ativos.length===1?'Interrupção de água em andamento.':`${ativos.length} interrupções de água em andamento.`)
+            +(partes.length?` ${partes.join(' · ')}.`:'');
         }else{
-          linhaTitulo='Sem interrupções';
-          linhaSub='Abastecimento normal em Ipiranga';
+          msg='Abastecimento normal em Ipiranga.';
         }
       }
 
-      /* ---- detalhes: só o que sobra, atrás do expansor ---- */
+      /* Detalhes: só o que sobra (bairro por bairro, duração), atrás de um
+         <details> nativo — sem botão de expansor. */
       const blocos=[];
       if(ativos.length){
         blocos.push(ativos.map(ev=>{
@@ -2077,6 +2358,8 @@ function renderCards(services){
       }
 
       if(name==='Copel' && totalConsumers>0){
+        const cityTotalConsumers=svc.data?.cityTotalConsumers ?? null;
+        const pctAffected=svc.data?.pctAffected ?? (cityTotalConsumers ? Number(((totalConsumers/cityTotalConsumers)*100).toFixed(2)) : null);
         const pctTxt = pctAffected!=null ? `${num(pctAffected,2)}%` : '—';
         blocos.push(`<div class="fact-linha"><span>Rede afetada</span><strong>${pctTxt} das UCs do município</strong></div>`);
         if(cityTotalConsumers!=null){
@@ -2094,68 +2377,61 @@ function renderCards(services){
         }
       }
 
-      const detalhesHtml = blocos.length
-        ? `<div class="detail" id="detalhe-${br.cls}"><div><div class="facts">${blocos.join('')}
-             <div class="facts-fonte">Fonte: ${name==='Copel'?'COPEL/ANEEL':'SANEPAR'}</div>
-           </div></div></div>`
-        : '';
-      const bodyHtml = `<div class="row">
-          <span class="lead ${sevCls}" aria-hidden="true">${leadIcon}</span>
-          <div class="txt">
-            <div class="t">${esc(linhaTitulo)}</div>
-            <div class="s">${esc(linhaSub)}</div>
-          </div>
-          ${detalhesHtml?`<div class="end"><button class="icon-btn expand" type="button" aria-expanded="false" aria-controls="detalhe-${br.cls}" aria-label="Ver detalhes" onclick="toggleDetalhe(this)">${ICON.expand}</button></div>`:''}
-        </div>
-        ${detalhesHtml}`;
-      contentHtml = bodyHtml;
+      if(blocos.length){
+        detalhes=`<details class="svc-det"><summary>Ver detalhes</summary>
+          <div class="facts">${blocos.join('')}
+            <div class="facts-fonte">Fonte: ${name==='Copel'?'COPEL/ANEEL':'SANEPAR'}</div>
+          </div></details>`;
+      }
     }
 
-    // O ramo de OPERADORAS (telecom) do renderizador saiu em 22/09/2026:
-    // nao ha mais servico com category 'telecom' (so COPEL e Sanepar).
-
     const officialUrl = OFFICIAL_URLS[name] || null;
-    const sourceBtnHtml = officialUrl ? `<a href="${esc(officialUrl)}" target="_blank" rel="noopener noreferrer" class="source-link-btn" title="Verificar no site oficial">Fonte oficial ${icoMS('open_in_new','s16')}</a>` : '';
+    const fonteHtml = officialUrl
+      ? `<a class="svc-fonte" href="${esc(officialUrl)}" target="_blank" rel="noopener noreferrer">Fonte oficial ${icoMS('open_in_new','s16')}</a>`
+      : '';
+    /* Carimbo por serviço SÓ quando a fonte está velha (>15 min), em âmbar:
+       fora isso ele repetia o horário que o herói já mostra. */
+    const tSvc = paraData(svc.timestamp);
+    const minSvc = tSvc ? Math.round((Date.now()-tSvc.getTime())/60000) : null;
+    const fonteVelha = (minSvc!=null && minSvc>15)
+      ? `<span class="svc-velha">Fonte atualizada às ${fmtTime(tSvc.getTime())}</span>` : '';
+    const nivel = ESTADOS[chaveEstado].nivel;
 
-    html+=`<div class="card ${stCls}" data-name="${esc(name)}">
-      <div class="card-inner">
-        <div class="card-head">
-          <div class="card-head-left">
-            <div class="card-icon ${br.cls}">${ico}</div>
-            <div class="card-name-group">
-              <div class="card-name">${esc(br.label)}</div>
-              <div class="card-sub">${esc(br.desc)}</div>
-            </div>
-          </div>
-          <div class="card-status-badge ${sevCls}">${esc(sevRotulo)}</div>
+    itens+=`<div class="svc-item" data-name="${esc(name)}" data-nivel="${nivel}">
+      <span class="svc-ico" aria-hidden="true">${ico}</span>
+      <div class="svc-corpo">
+        <div class="svc-topo">
+          <span class="svc-nome">${esc(nomeSvc)}</span>
+          <span class="chip-estado" data-nivel="${nivel}">${esc(ESTADOS[chaveEstado].rotulo)}</span>
         </div>
-
-        <div class="card-body">${contentHtml}</div>
-
-        <div class="card-foot">
-          <span>Atualizado às ${fmtTime(svc.timestamp)} · ${relativeTime(svc.timestamp)}</span>
-          ${sourceBtnHtml}
-        </div>
+        <p class="svc-msg">${esc(msg)}</p>
+        ${manutencao?`<p class="svc-manut">${esc(manutencao)}</p>`:''}
+        <div class="svc-rodape">${fonteHtml}${fonteVelha}</div>
+        ${detalhes}
       </div>
     </div>`;
   }
 
-  grid.innerHTML=html;
+  grid.innerHTML=`<div class="card servicos-card" id="servicos">
+    <div class="panel-head"><span class="panel-title">Serviços</span></div>
+    <div class="svc-lista">${itens}</div>
+  </div>`;
 
-  // Entrada escalonada so na PRIMEIRA renderizacao. O painel re-renderiza a
-  // cada ciclo (30s) e reanimar os cards toda vez viraria pisca-pisca.
+  // Entrada escalonada so na PRIMEIRA renderizacao (o painel re-renderiza a
+  // cada ciclo e reanimar sempre viraria pisca-pisca).
   if(!grid.dataset.animIn){
-    Array.from(grid.children).forEach((c,i)=>c.style.setProperty('--i',i));
-    grid.classList.add('anim-in');
+    const alvo=grid.querySelector('.card');
+    if(alvo){alvo.style.setProperty('--i',0);grid.classList.add('anim-in');}
     grid.dataset.animIn='1';
     setTimeout(()=>grid.classList.remove('anim-in'),1800);
   }
 }
-
 function showError(msg){
   const snap=loadSnapshot();
   if(snap){
-    updateBanner(snap.services);
+    window.lastServicesSnapshot = snap.services;
+    window.lastServicesAt = snap.generatedAt;
+    renderHero();
     renderCards(snap.services);
     showStaleNotice(snap.generatedAt);
   }else{
@@ -2349,9 +2625,10 @@ async function fetchData(){
     // /api/services vinha vazio. As operadoras de telefonia/ISP saíram em
     // 22/09/2026: sem serviços, simplesmente não há cards para desenhar.
     const services=data.services||[];
-    updateBanner(services);
     renderCards(services);
-    renderScheduledReminder(services);
+    window.lastServicesSnapshot = services;
+    window.lastServicesAt = data.generatedAt || Date.now();
+    renderHero();
     updateFooter(data.generatedAt);
     saveSnapshot(services, data.generatedAt);
     window._cargaPainel = window._cargaPainel || { servicos: false, clima: false };
@@ -2449,20 +2726,15 @@ document.getElementById('btnRefresh').addEventListener('click',fetchData);
   document.addEventListener('click',(e)=>{ if(!pop.hidden && !pop.contains(e.target)) fecha(); });
   document.addEventListener('keydown',(e)=>{ if(e.key==='Escape') fecha(); });
 })();
-document.getElementById('bandRefresh')?.addEventListener('click',(ev)=>{
-  const b=ev.currentTarget;
-  b.classList.add('spinning');
-  fetchData();
-  setTimeout(()=>b.classList.remove('spinning'),900);
-});
+/* O botão de refresh circular da faixa saiu (v2, 24/09/2026): quem atualiza é o
+   ciclo de 60 s, o gesto de puxar a tela no celular e "Atualizar agora" no menu
+   do topo — um terceiro caminho só poluía o cabeçalho do card. */
 document.getElementById('tabStatusBtn').addEventListener('click', () => switchTab('status'));
 document.getElementById('tabStatsBtn').addEventListener('click', () => switchTab('stats'));
 window.switchTab = switchTab;
 window.scrollToCard = scrollToCard;
 window.toggleCopelOutages = toggleCopelOutages;
 
-updateClock();
-setInterval(updateClock,60000);
 // Clima e status são independentes: disparar juntos tira ~900 ms do caminho
 // crítico (medido 22/09/2026 em 3G: o /api/weather só saía aos 1490 ms porque
 // esperava o /api/services e o parse dele dentro da mesma função).
@@ -2644,26 +2916,22 @@ async function fetchWeatherData() {
       const cEl = document.getElementById('wxCondBadge');
       const rEl = document.getElementById('wxRainBadge');
       const wEl = document.getElementById('wxWindBadge');
-      // Painel A: os badges viram linhas label/valor (mesma info, sem chip solto).
-      if(tEl) tEl.innerHTML = `<span class="k">Temperatura</span><span class="v">${data.tempC}<small> °C</small></span>`;
-      if(cEl) cEl.innerHTML = `<span class="k">Condição</span><span class="v" style="font-size:14px">${esc(rotuloCondicao(data))}</span>`;
-      if(rEl) rEl.innerHTML = `<span class="k">Chance de chuva (6 h)</span><span class="v">${data.rainProbabilityPct ?? 0}<small> %</small></span>`;
-      if(wEl) wEl.innerHTML = `<span class="k">Vento</span><span class="v">${data.windKmh ?? 0}<small> km/h</small></span>`;
-
-      // Highlight Regional Radar Alert if active rain is detected in Campos Gerais
-      if (data.hasRegionalRain) {
-        if(rEl) {
-          // Radar (chuva JÁ detectada) ao lado da probabilidade do modelo no mesmo
-          // parêntese dava 'Chuva na Região (0%)' — leitura contraditória. Agora o
-          // rótulo diz de onde vem, e a cor sai do CSS (data-alerta).
-          rEl.dataset.alerta = '1';
-          rEl.innerHTML = `<span class="k">Chuva na região (radar)</span><span class="v">${icoMS('thunderstorm','s18')} previsão ${data.rainProbabilityPct ?? 0}<small> %</small></span>`;
-        }
+      /* Linha de destaque: temperatura grande, condição ao lado, vento à
+         direita; a chance de chuva em uma linha própria logo abaixo. */
+      if(tEl) tEl.textContent = `${data.tempC ?? '--'}°`;
+      if(cEl) cEl.textContent = rotuloCondicao(data);
+      if(wEl) wEl.textContent = `${data.windKmh ?? 0} km/h`;
+      if(rEl) {
+        const pct = data.rainProbabilityPct ?? 0;
+        rEl.textContent = data.hasRegionalRain
+          ? `Chuva na região (radar) · previsão de ${pct}% nas próximas 6 h`
+          : `Chance de chuva nas próximas 6 h: ${pct}%`;
+        rEl.dataset.alerta = data.hasRegionalRain ? '1' : '';
+        if(!data.hasRegionalRain) delete rEl.dataset.alerta;
       }
 
       if (window.lastServicesData) {
         renderCards(window.lastServicesData);
-        renderScheduledReminder(window.lastServicesData);
       }
     }
 
@@ -2699,12 +2967,11 @@ async function fetchWeatherData() {
     }
 
     renderNowcastCard(data);
-    renderQuandoVisivel('#cemadenBox', () => renderCemadenCard(data));
-    renderQuandoVisivel('#hidroBox', () => renderHidroCard(data));
+    renderCemadenCard(data);
+    renderHidroCard(data);
     renderClimaIA();
-  renderAlertaCard(data);
+    renderAlertaCard(data);
     renderTopAlert(data);
-    renderStatusBand();
     window._cargaPainel = window._cargaPainel || { servicos: false, clima: false };
     window._cargaPainel.clima = true;
     entradaPainel();
@@ -2840,80 +3107,231 @@ function animarEntrada(el, atraso){
 function entradaPainel(){
   window._cargaPainel = window._cargaPainel || { servicos: false, clima: false };
   if (!window._cargaPainel.servicos || !window._cargaPainel.clima) return;
-  ['.status-band', '.radar-card', '.clima-card',
-   '.rios-card', '.prog-card', '.scheduled-reminder']
+  ['.hero-card', '.radar-card', '.clima-card',
+   '.rios-card', '.servicos-card']
     .forEach((sel, i) => animarEntrada(document.querySelector(sel), i * 70));
 }
 
 /* ===================================================================
-   O VEREDITO EM UMA FRASE (crítica de design 24/09/2026)
+   ESCALA ÚNICA DE ESTADO (v2, 24/09/2026)
 
-   O topo tinha 5 tiles e nenhuma frase. Quem chega assustado num temporal
-   precisa ler UMA linha — e ela não pode afirmar chuva que ninguém mediu
-   (era o defeito do alerta: título dizia "previsão de chuva" com 0% e o
-   amarelo vinha dos rios). Aqui a frase é derivada do MESMO dado que
-   alimenta os cards, com as palavras do morador.
+   Quatro palavras, uma cor cada, e a MESMA palavra no herói, no tile e no
+   card de detalhe. Antes o mesmo rio era "Atenção" no topo e "alerta" no
+   card — duas palavras para o mesmo fato. Não existe quinta opção: valor que
+   não é um dos quatro não é estado.
    =================================================================== */
+const ESTADOS = {
+  normal:     { rotulo: 'Normal',     nivel: 'ok' },
+  atencao:    { rotulo: 'Atenção',    nivel: 'warn' },
+  alerta:     { rotulo: 'Alerta',     nivel: 'crit' },
+  emergencia: { rotulo: 'Emergência', nivel: 'emerg' },
+};
+const ORDEM_ESTADO = ['normal', 'atencao', 'alerta', 'emergencia'];
+function piorEstado(a, b) {
+  return ORDEM_ESTADO.indexOf(b) > ORDEM_ESTADO.indexOf(a) ? b : a;
+}
+/* Faixa da estação (alerta/atencao/critico do backend) → palavra da escala. */
+function estadoDaFaixa(f) {
+  if (f === 'critico') return 'emergencia';
+  if (f === 'alerta') return 'alerta';
+  if (f === 'atencao') return 'atencao';
+  return 'normal';
+}
+/* Severidade da energia (severidadeEnergia) → palavra da escala. */
+function estadoDaEnergia(sev) {
+  if (!sev || sev.nivel === 'ok' || sev.nivel === 'info') return 'normal';
+  if (sev.nivel === 'crit') return 'alerta';
+  return 'atencao';
+}
+/* O estado do RIO é UM só e sai de TODAS as fontes que falam de rio (faixa da
+   estação do Uvaia, flash local e risco de cheia/enxurrada). É esta função que
+   o herói, o tile e o card Rios usam — é o que garante a mesma palavra. */
+function estadoRio() {
+  const w = window.latestWeatherData || {};
+  const h = w.hidro || {};
+  const estacoes = (h.estacoes || []).filter((e) => !/^(Cebolão|Jataizinho)/.test(String(e.nome || '')));
+  let chave = 'normal';
+  estacoes.forEach((e) => { chave = piorEstado(chave, estadoDaFaixa(e.faixa)); });
+  const ifl = (h.ifl && h.ifl.nivel) || 'verde';
+  chave = piorEstado(chave, ifl === 'vermelho' ? 'emergencia' : ifl === 'laranja' ? 'alerta' : ifl === 'amarelo' ? 'atencao' : 'normal');
+  if (h.riscoCheia === 'watch' || h.riscoEnxurrada === 'warn') chave = piorEstado(chave, 'atencao');
+  const uvaia = estacoes.find((e) => /uvaia/i.test(String(e.nome || ''))) || estacoes[0] || null;
+  return {
+    chave,
+    rotulo: ESTADOS[chave].rotulo,
+    nivel: ESTADOS[chave].nivel,
+    estacao: uvaia ? String(uvaia.nome).split(' (')[0] : 'Uvaia',
+    estacoes,
+  };
+}
+/* Vai sair da calha? em uma palavra (a confiança de apoio vive no card Rios). */
+function riscoTransbordo() {
+  const h = (window.latestWeatherData || {}).hidro || {};
+  const p = h.previsao;
+  if (!p || !p.vaiSair || p.vaiSair === 'indefinido') return { palavra: 'indefinido', confianca: null };
+  return { palavra: p.vaiSair === 'sim' ? 'alto' : 'baixo', confianca: p.confianca != null ? num(p.confianca, 0) : null };
+}
+/* Chuva medida: a fonte ÚNICA das frases de chuva (herói e card Tempo agora). */
+function chuvaMedida() {
+  const w = window.latestWeatherData || {};
+  const est = (w.cemaden && w.cemaden.estacoes) || [];
+  const agora = est.reduce((t, e) => t + (Number(e.acc1hr) || 0), 0);
+  return {
+    agora,
+    em24h: est.length ? Math.max.apply(null, est.map((e) => Number(e.acc24hr) || 0)) : 0,
+    perto: w.alertLevel === 'alert' || w.alertLevel === 'watch',
+  };
+}
+
+/* O veredito em uma frase: título = PIOR estado, nas palavras do morador.
+   Derivado do mesmo dado dos cards e do MESMO estado do rio que o tile e o
+   card Rios mostram. */
 function vereditoGeral(){
   const svcs=window.lastServicesSnapshot||[];
   const w=window.latestWeatherData||{};
-  const h=w.hidro||{};
-  const est=(w.cemaden&&w.cemaden.estacoes)||[];
   const copel=svcs.find(s=>s.name==='Copel');
   const sev=severidadeEnergia(copel||{});
-
-  const chuvaAgora=est.reduce((t,e)=>t+(Number(e.acc1hr)||0),0);
-  const chuva24=est.length?Math.max.apply(null,est.map(e=>Number(e.acc24hr)||0)):0;
-  const nivelRadar=w.alertLevel||'none';
-  const chuvaPerto=nivelRadar==='alert'||nivelRadar==='watch';
-  const rioAlerta=!!((h.ifl&&h.ifl.nivel&&h.ifl.nivel!=='verde')||h.riscoCheia==='watch'||h.riscoEnxurrada==='warn');
+  const chuva=chuvaMedida();
+  const rio=estadoRio();
+  const risco=riscoTransbordo();
   const semLuz=(copel&&copel.data&&copel.data.totalConsumers)||0;
-  const prev=h.previsao||null;
+  /* "Sem chuva agora nem prevista" + o risco de transbordar: é a frase de
+     abertura quando não há nada acontecendo. Aparece UMA vez aqui e UMA vez no
+     card Tempo agora (antes o mesmo fato aparecia seis vezes na tela). */
+  const base = chuva.agora <= 0 && !chuva.perto
+    ? `Sem chuva agora nem prevista. Risco de transbordar: ${risco.palavra}.`
+    : '';
 
-  if(chuvaAgora>0){
+  if(chuva.agora>0){
     return {nivel:'warn',frase:'Chovendo em Ipiranga agora',
-      sub:`${num(chuvaAgora,1)} mm na última hora · ${num(chuva24,1)} mm nas últimas 24 h.`};
+      sub:`${num(chuva.agora,1)} mm na última hora · ${num(chuva.em24h,1)} mm nas últimas 24 h.`};
   }
-  if(chuvaPerto){
+  if(chuva.perto){
     const km=w.nearestThreatKm!=null?` a ~${num(w.nearestThreatKm,0)} km`:'';
     return {nivel:'warn',frase:'Chuva forte se aproximando',
       sub:`Núcleo de chuva forte${km} da cidade, vindo para a região.`};
   }
-  if(rioAlerta){
-    return {nivel:'warn',frase:'Rios em atenção, sem chuva prevista',
-      sub: prev&&prev.vaiSair==='nao'
-        ? `Nada de chuva medido nem previsto agora. Vai sair da calha? Não, com ${num(prev.confianca,0)}% de confiança.`
-        : 'Nada de chuva medido nem previsto agora — o nível dos rios segue em observação.'};
+  if(rio.chave!=='normal'){
+    return {nivel:rio.nivel,frase:`Rio ${rio.estacao} em ${rio.rotulo.toLowerCase()}`,
+      sub:`Sem chuva agora nem prevista. Risco de transbordar: ${risco.palavra}.`};
   }
   if(semLuz>0){
-    return {nivel:sev.nivel==='ok'?'info':sev.nivel,
+    const en=estadoDaEnergia(sev);
+    return {nivel:en==='alerta'?'crit':en==='atencao'?'warn':'info',
       frase:`${consumidores(semLuz)} sem luz`,
       sub:'Ocorrência ativa da COPEL no município; o restante está normal.'};
   }
-  return {nivel:'ok',frase:'Tudo tranquilo em Ipiranga',
-    sub:'Sem chuva medida, rios na faixa normal e serviços operando.'};
+  return {nivel:'ok',frase:'Tudo normal em Ipiranga',sub:base};
 }
 
-/* A frase do card do clima: UMA só, sem jargão, sem núcleo a 400 km. É o que
-   substituiu o card "O que está acontecendo", que dizia o mesmo em 6 linhas
-   (pedido do Dave, 24/09/2026). */
+/* O herói: título, tiles 2×2 (um fato cada) e UM carimbo de atualização.
+   Substitui o banner + a faixa de cinco pílulas (v2, 24/09/2026). */
+function renderHero(){
+  const svcs = window.lastServicesSnapshot || [];
+  const w = window.latestWeatherData || {};
+  const copel = svcs.find(s => s.name === 'Copel');
+  const sanepar = svcs.find(s => s.name === 'Sanepar');
+  const dCopel = (copel && copel.data) || {};
+  const chuva = chuvaMedida();
+  const rio = estadoRio();
+
+  const estadoEnergia = estadoDaEnergia(severidadeEnergia(copel || {}));
+  const ucs = dCopel.totalConsumers || 0;
+  const estadoAgua = !sanepar ? 'normal'
+    : sanepar.status === 'critical' ? 'alerta' : sanepar.status === 'warn' ? 'atencao' : 'normal';
+  const estadoChuva = chuva.agora > 0 ? 'atencao' : 'normal';
+
+  /* Tile: rótulo em sentence case, UM valor, e a cor do estado SÓ quando o
+     estado não é normal (tile normal é neutro — verde em tudo não informa). */
+  const pinta = (id, valor, chave) => {
+    const el = document.getElementById(id);
+    if (!el) return;
+    if (el.textContent !== valor) el.textContent = valor;
+    /* O nível vai no VALOR (para o teste de contraste) e no TILE (é o tile que
+       pinta o fundo na cor do estado — CSS .hero-tile[data-nivel]). */
+    el.dataset.nivel = ESTADOS[chave].nivel;
+    const tile = el.closest('.hero-tile');
+    if (tile) tile.dataset.nivel = ESTADOS[chave].nivel;
+  };
+  /* A tile mostra a PALAVRA de estado (igual ao chip do card de serviço); a
+     contagem de quem está sem luz vive na mensagem do card Serviços, onde cabe
+     explicar. Antes o tile dizia "1 sem luz" e o chip dizia "Normal" — duas
+     leituras do mesmo fato. */
+  pinta('tileEnergiaVal', ESTADOS[estadoEnergia].rotulo, estadoEnergia);
+  pinta('tileAguaVal', ESTADOS[estadoAgua].rotulo, estadoAgua);
+  pinta('tileRiosVal', rio.rotulo, rio.chave);
+  pinta('tileChuvaVal', `${String(chuva.em24h).replace('.', ',')} mm`, estadoChuva);
+
+  const v = vereditoGeral();
+  const tEl = document.getElementById('heroTitle');
+  const sEl = document.getElementById('heroSub');
+  const lead = document.getElementById('heroLead');
+  if (tEl && tEl.textContent !== v.frase) tEl.textContent = v.frase;
+  if (sEl && sEl.textContent !== v.sub) sEl.textContent = v.sub;
+  if (lead) {
+    lead.dataset.nivel = v.nivel;
+    const icone = (v.nivel === 'crit' || v.nivel === 'emerg') ? ICON.error
+      : v.nivel === 'warn' ? ICON.warning : v.nivel === 'info' ? ICON.info : ICON.ok;
+    if (lead.dataset.ico !== v.nivel) { lead.innerHTML = icone; lead.dataset.ico = v.nivel; }
+  }
+
+  /* Carimbo único de atualização. Passou de 15 min, o dado é velho e o carimbo
+     diz isso em âmbar. Sem botão de refresh: "Atualizar agora" vive no menu do
+     topo e o gesto de puxar a tela recarrega no celular. */
+  const ts = Math.max(Number(w.updatedAt) || 0, Number(window.lastServicesAt) || 0) || Date.now();
+  const min = Math.max(0, Math.round((Date.now() - ts) / 60000));
+  const velho = min > 15;
+  const stamp = document.getElementById('heroStamp');
+  const dot = document.getElementById('heroDot');
+  if (stamp) stamp.textContent = velho
+    ? `Dados desatualizados (há ${min >= 60 ? Math.round(min / 60) + ' h' : min + ' min'})`
+    : `Atualizado às ${fmtTime(ts)} · ${relativeTime(ts)}`;
+  if (dot) dot.dataset.nivel = velho ? 'warn' : 'ok';
+
+  /* Takeover do temporal: o alerta oficial assume o título (a frase "Chuva
+     forte se aproximando" já é o veredito quando não há alerta laranja). */
+  const a = window.lastStormAlert;
+  const alertBox = document.getElementById('heroAlert');
+  const card = document.getElementById('heroCard');
+  if (a && a.hot) {
+    if (tEl) tEl.textContent = a.titulo || 'Alerta meteorológico';
+    if (sEl) sEl.textContent = a.descricao || '';
+    if (lead) {
+      lead.dataset.nivel = a.nivel === 'vermelho' ? 'emerg' : 'crit';
+      lead.dataset.ico = '';
+      lead.innerHTML = a.nivel === 'vermelho' ? ICON.error : ICON.warning;
+    }
+    if (card) card.dataset.alerta = a.nivel;
+    if (alertBox) {
+      const motivos = (a.motivos || []).map((m) => `<div>• ${esc(m)}</div>`).join('');
+      const oficiais = (a.avisosOficiais || []).slice(0, 2).map((o) =>
+        `<div class="hero-alert-fonte">${esc(o.fonte)}: ${esc(o.titulo)}</div>`).join('');
+      alertBox.innerHTML = `${motivos}${oficiais}`;
+      alertBox.hidden = !(motivos || oficiais);
+    }
+  } else {
+    if (card) card.removeAttribute('data-alerta');
+    if (alertBox) { alertBox.hidden = true; alertBox.innerHTML = ''; }
+  }
+}
+window.renderHero = renderHero;
+
+/* A frase do card Tempo agora: UMA, com ícone, no lugar do chip "SEM CHUVA NO
+   RADAR" e do texto que dizia o mesmo logo abaixo. O ícone muda com o caso —
+   check quando não há nada, chuva/trovoada quando há. */
 function renderClimaIA(){
-  const el=document.getElementById('climaIAText');
+  const el=document.getElementById('climaIATexto');
+  const ico=document.getElementById('climaIAIcon');
   if(!el)return;
   const w=window.latestWeatherData||{};
-  const est=(w.cemaden&&w.cemaden.estacoes)||[];
-  const chuvaAgora=est.reduce((t,e)=>t+(Number(e.acc1hr)||0),0);
-  const perto=(w.alertLevel==='alert'||w.alertLevel==='watch');
+  const chuva=chuvaMedida();
   const raio=(w.nowcast&&w.nowcast.nearestThreatKm!=null)?Math.round(w.nowcast.nearestThreatKm):null;
   const hf=(w.hourlyForecast||[]).filter(h=>h&&h.time);
   const iChuva=hf.findIndex(h=>Number(h.rainProbabilityPct)>=50);
   const mmPrev=iChuva>=0?hf.slice(iChuva,iChuva+6).reduce((t,h)=>t+(Number(h.precipitationMm)||0),0):0;
-  /* Uma frase, e cada slot do card diz uma coisa NOVA. Nada de repetir o chip
-     do radar nem os badges: o que o card ainda não diz é a HORA da chuva e o
-     volume esperado — é isso que entra aqui (crítica 24/09/2026). */
-  let t;
-  if(chuvaAgora>0) t=`Chovendo em Ipiranga: ${num(chuvaAgora,1)} mm na última hora.`;
-  else if(perto&&raio!=null) t=`Chuva forte a ~${raio} km, vindo para a região.`;
+  let t,icone='check_circle',nivel='ok';
+  if(chuva.agora>0){t=`Chovendo em Ipiranga: ${num(chuva.agora,1)} mm na última hora.`;icone='rainy';nivel='info';}
+  else if(chuva.perto&&raio!=null){t=`Chuva forte a ~${raio} km, vindo para a região.`;icone='thunderstorm';nivel='warn';}
   else if(iChuva>=0){
     // 00:00 vira "meia-noite": ninguém fala "a partir das 0h".
     const h0=parseInt(String(hf[iChuva].time).slice(0,2),10);
@@ -2921,285 +3339,67 @@ function renderClimaIA(){
     t=mmPrev>=0.5
       ? `Chuva a partir ${quando}, com ~${num(mmPrev,1)} mm previstos.`
       : `Chuva a partir ${quando}, sem volume relevante previsto.`;
+    icone='rainy';nivel='info';
   }
-  else t='Nada de chuva nas próximas horas.';
+  else t='Sem chuva no radar nem nas próximas horas.';
   el.textContent=t;
+  if(ico)ico.textContent=icone;
+  const p=document.getElementById('climaIAText');
+  if(p)p.dataset.nivel=nivel;
 }
-
-/* Pinta o veredito. Com o takeover de temporal ativo o banner do topo já é a
-   voz da página — aí o veredito sai de cena em vez de repetir. */
-function renderVeredito(){
-  const el=document.getElementById('bandVeredito');
-  if(!el)return;
-  const subEl=document.getElementById('bandVereditoSub');
-  const horaEl=document.getElementById('bandHora');
-  const bn=document.getElementById('banner');
-  const takeover=!!(bn&&bn.classList.contains('alert-takeover'));
-  const v=vereditoGeral();
-  el.hidden=takeover;
-  if(subEl)subEl.hidden=takeover;
-  if(!takeover){
-    if(el.textContent!==v.frase)el.textContent=v.frase;
-    el.dataset.nivel=v.nivel;
-    if(subEl&&subEl.textContent!==v.sub)subEl.textContent=v.sub;
-  }
-  const lead=document.getElementById('bandLeadIcon');
-  if(lead){
-    lead.dataset.nivel=v.nivel;
-    const icone=v.nivel==='crit'?ICON.error:v.nivel==='warn'?ICON.warning:v.nivel==='info'?ICON.info:ICON.ok;
-    if(lead.dataset.ico!==v.nivel){lead.innerHTML=icone;lead.dataset.ico=v.nivel;}
-  }
-  if(horaEl){
-    const ts=Number(window.latestWeatherData?.updatedAt)||window._ultimoServicos||Date.now();
-    horaEl.textContent=`Atualizado às ${fmtTime(ts)} · ${relativeTime(ts)}`;
-  }
-}
-
-function renderStatusBand(){
-  const svcs = window.lastServicesSnapshot || [];
-  const w = window.latestWeatherData || {};
-  const copel = svcs.find(s => s.name === 'Copel');
-  const sanepar = svcs.find(s => s.name === 'Sanepar');
-  const dCopel = (copel && copel.data) || {};
-
-  // Anima SO quando o valor/nivel MUDA: o painel re-renderiza a cada 30s e
-  // reanimar sempre viraria pisca-pisca. O reflow forcado (void offsetWidth)
-  // reinicia a keyframe quando o mesmo elemento anima duas vezes seguidas.
-  const pinta = (id, valor, nivel) => {
-    const v = document.getElementById(id + 'Val');
-    if (v && v.innerHTML !== valor) {
-      v.innerHTML = valor;
-      v.classList.remove('trocou'); void v.offsetWidth; v.classList.add('trocou');
-      setTimeout(() => v.classList.remove('trocou'), 420);
-    }
-    const d = document.getElementById(id + 'Dot');
-    if (d) {
-      // O ícone carrega classe FIXA (.ms) — o estado vai em data-nivel, não em
-      // className (antes era um ponto colorido; a crítica pediu ícone, um
-      // estilo só, e sobrescrever className apagaria a fonte do ícone).
-      const novo = nivel && nivel !== 'info' ? nivel : 'info';
-      if (d.dataset.nivel !== novo) {
-        d.dataset.nivel = novo;
-        if (novo !== 'info') {
-          d.classList.remove('pop'); void d.offsetWidth; d.classList.add('pop');
-          setTimeout(() => d.classList.remove('pop'), 700);
-        }
-      }
-    }
-    const p = document.getElementById(id);
-    if (p) p.dataset.nivel = nivel || 'info';
-  };
-
-  // --- Energia: severidade por LIMIAR (não pelo status cru do backend) ---
-  // "Crítico" para 1 UC de 6.017 (0,02%) acendia vermelho para tudo e a cor
-  // parava de significar algo. Ver severidadeEnergia().
-  const ativos = dCopel.activeEvents || [];
-  const ucs = dCopel.totalConsumers || 0;
-  const cidade = dCopel.cityTotalConsumers ?? null;
-  const pct = dCopel.pctAffected ?? null;
-  const sev = severidadeEnergia(copel || {});
-  if (copel) {
-    pinta('pillEnergia', ucs > 0 ? `${ucs.toLocaleString('pt-BR')} <small>sem luz</small>` : 'Ninguém <small>sem luz</small>', sev.nivel);
-  }
-  const exp = document.getElementById('bandExpEnergia');
-  if (exp) {
-    if (ativos.length) {
-      const porBairro = {};
-      let semEquipe = 0;
-      for (const ev of ativos) {
-        const b = ev.bairro || 'Ipiranga';
-        porBairro[b] = (porBairro[b] || 0) + (ev.qtdConsumidores || 0);
-        if (ev.equipeId === 'SEM_EQUIPE') semEquipe += 1;
-      }
-      const linhas = Object.entries(porBairro).sort((a, b) => b[1] - a[1])
-        .map(([b, n]) => `<tr><td>${esc(b)}</td><td>${n.toLocaleString('pt-BR')} UCs</td></tr>`).join('');
-      exp.innerHTML = `<table>${linhas}</table><span class="band-nota">` +
-        `${ativos.length} ocorrência${ativos.length > 1 ? 's' : ''} ativa${ativos.length > 1 ? 's' : ''}` +
-        (cidade ? ` · ${ucs.toLocaleString('pt-BR')} de ${cidade.toLocaleString('pt-BR')} UCs do município` : '') +
-        (pct != null ? ` (${num(pct,2)}%)` : '') +
-        (semEquipe ? ` · ${semEquipe} sem equipe despachada` : '') + '</span>';
-    } else {
-      exp.innerHTML = '<span class="band-nota">Sem interrupção ativa registrada pela Copel agora.</span>';
-    }
-  }
-
-  // --- Água ---
-  if (sanepar) {
-    const st = sanepar.status;
-    // Interrupção de água é ruim, mas vermelho fica reservado ao que atinge
-    // a cidade inteira (limiar de energia). Água entra como atenção.
-    pinta('pillAgua', st === 'critical' ? 'Interrupção' : st === 'warn' ? 'Atenção' : 'Normal',
-      st === 'ok' ? 'ok' : 'warn');
-  }
-
-  // --- Rios (o veredito que importa: sai ou não sai da calha) ---
-  const h = w.hidro;
-  if (h && h.estacoes && h.estacoes.length) {
-    const iflNivel = (h.ifl && h.ifl.nivel) || 'verde';
-    const emAlerta = iflNivel !== 'verde' || h.riscoCheia === 'watch' || h.riscoEnxurrada === 'warn';
-    const nivel = (iflNivel === 'laranja' || iflNivel === 'vermelho') ? 'crit' : (emAlerta ? 'warn' : 'ok');
-    const prev = h.previsao || null;
-    const sub = prev
-      ? (prev.vaiSair === 'nao' ? 'não sai da calha' : prev.vaiSair === 'sim' ? 'pode sair da calha' : 'indefinido')
-      : '';
-    pinta('pillRios', `${emAlerta ? 'Atenção' : 'Normal'}${sub ? ` <small>${esc(sub)}</small>` : ''}`, nivel);
-  }
-
-  // --- Chuva 24 h (maior acumulado entre as estações do município) ---
-  const est = (w.cemaden && w.cemaden.estacoes) || [];
-  if (est.length) {
-    const maior = est.reduce((a, b) => ((b.acc24hr || 0) > (a.acc24hr || 0) ? b : a));
-    const agora = est.reduce((t, e) => t + (e.acc1hr || 0), 0);
-    const mm = String(maior.acc24hr ?? 0).replace('.', ',');
-    pinta('pillChuva', `${mm} <small>mm · ${agora > 0 ? 'chovendo agora' : 'nada agora'}</small>`, agora > 0 ? 'warn' : 'info');
-  }
-
-  // --- Cortes programados ---
-  const prog = (dCopel.scheduledOutages || []).filter(ev => ev.ehProgramada);
-  if (prog.length) {
-    const inicios = prog.map(ev => ev.dataInicio).filter(Boolean).sort();
-    const m = inicios.length ? String(inicios[0]).match(/(\d{2}):(\d{2})/) : null;
-    const hora = m ? `${m[1]}:${m[2]}` : '';
-    pinta('pillProg', `${prog.length} ${prog.length === 1 ? 'corte' : 'cortes'}${hora ? ` <small>desde ${esc(hora)}</small>` : ''}`, 'warn');
-  } else {
-    pinta('pillProg', 'Nenhum', 'ok');
-  }
-  const badgeProg = document.getElementById('progBadge');
-  if (badgeProg) badgeProg.textContent = prog.length > 1 ? `${prog.length} programados` : 'Programado';
-
-  renderVeredito();
-}
-
-/* Pílulas: energia expande o resumo por bairro; as outras levam ao card. */
-(function ligarPilulas(){
-  const ligar = () => {
-    document.querySelectorAll('.band-pill').forEach((p) => {
-      p.addEventListener('click', () => {
-        const exp = p.dataset.expand;
-        if (exp) {
-          const el = document.getElementById(exp);
-          if (el) {
-            const aberto = !el.hasAttribute('hidden');
-            el.toggleAttribute('hidden', aberto);
-            p.setAttribute('aria-expanded', String(!aberto));
-          }
-          return;
-        }
-        const sel = p.dataset.target;
-        const alvo = sel ? document.querySelector(sel) : null;
-        if (!alvo) return;
-        alvo.scrollIntoView({ behavior: 'smooth', block: 'center' });
-        alvo.classList.add('card-highlight');
-        setTimeout(() => alvo.classList.remove('card-highlight'), 2000);
-      });
-    });
-  };
-  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', ligar);
-  else ligar();
-})();
 
 function renderCemadenCard(data) {
-  const box = document.getElementById('cemadenBox');
   const content = document.getElementById('cemadenContent');
-  if (!box || !content) return;
+  if (!content) return;
 
   const c = data?.cemaden;
   if (!c || !c.estacoes || !c.estacoes.length) {
-    box.style.display = 'none';
+    content.innerHTML = '<span class="wx-vazio">Sem leitura de pluviômetro agora.</span>';
     return;
   }
-  box.style.display = 'flex';
 
+  /* UMA caixa por estação, lado a lado (gap de 10 px de verdade: antes as
+     leituras vinham coladas). Nome em cima, o acumulado grande embaixo. */
   const fmt = (v) => (v == null || Number.isNaN(v) ? '—' : num(v, 1) + ' mm');
-  // "23/09/26 21:10" → "23/09 às 21:10". Sem "(Brasília)": o site inteiro está
-  // em horário local e o parêntese só poluía (crítica de design 24/09/2026).
-  const hora = (h) => esc(h || '—').replace(/(\d{2})\/(\d{2})\/\d{2} (\d{2}:\d{2})/, '$1/$2 às $3');
-
-  const rows = c.estacoes.map((e) => {
-    // Estação parada = acumulado congelado: marca explícita, nunca "0 mm" limpo.
-    const stale = e.stale
-      ? ' <span class="cemaden-stale">sem leitura recente' +
-        (e.frescorMin != null ? ' (' + e.frescorMin + ' min)' : '') + '</span>'
-      : '';
-    // O card já é de Ipiranga: "Ipiranga (Centro)" vira "Centro" (o nome do
-    // município repetido em cada linha era ruído — crítica 24/09/2026).
+  content.innerHTML = c.estacoes.map((e) => {
+    // O card já é de Ipiranga: "Ipiranga (Centro)" vira "Centro".
     const nomeCurto = String(e.nome || '')
       .replace(/^Ipiranga\s*\(([^)]+)\)\s*$/i, '$1')
       .replace(/^Ipiranga\s+/i, '')
       .trim() || String(e.nome || '');
     const cidadeChip = (e.cidade && !/^ipiranga$/i.test(String(e.cidade).trim()))
-      ? ' <span class="cemaden-tag">' + esc(e.cidade) + '</span>' : '';
-    return '<div class="cemaden-row' + (e.stale ? ' cemaden-row-stale' : '') + '">' +
-      '<div class="cemaden-line1"><strong>' + esc(nomeCurto) + '</strong>' + cidadeChip + '</div>' +
-      '<div class="cemaden-line2"><span class="cemaden-24h">' + fmt(e.acc24hr) + '</span> <span class="cemaden-24h-label">em 24 h</span></div>' +
-      (stale || e.leituraPropria ? '<div class="cemaden-meta">' + stale + '</div>' : '') +
-      '</div>';
+      ? `<span class="wx-box-tag">${esc(e.cidade)}</span>` : '';
+    // Estação parada = acumulado congelado: marca explícita, nunca "0 mm" limpo.
+    const stale = e.stale
+      ? `<div class="wx-box-meta">sem leitura recente${e.frescorMin != null ? ` (${e.frescorMin} min)` : ''}</div>`
+      : '';
+    return `<div class="wx-box${e.stale ? ' wx-box-stale' : ''}">
+      <div class="wx-box-nome">${esc(nomeCurto)}${cidadeChip}</div>
+      <div class="wx-box-mm">${fmt(e.acc24hr)}</div>
+      ${stale}
+    </div>`;
   }).join('');
-  content.innerHTML = rows;
-  // "Leitura" repetia o mesmo horário em toda linha e ainda competia com o
-  // "Verificado" da coluna de serviços. Fica uma vez, no rodapé do card.
+
+  /* Legenda: fonte + hora da LEITURA (a hora do radar mora no jogador do radar
+     e no expander — antes os dois horários brigavam na mesma tela). */
   const notas = document.getElementById('cemadenFootNote');
   if (notas) {
     const ult = c.estacoes.map((e) => e.dataHoraUltimoValor).filter(Boolean).sort().pop();
-    notas.textContent = 'Acumulado das últimas 24 h (janela móvel) · fonte pública CEMADEN' +
-      (ult ? ' · leitura mais recente ' + String(hora(ult)).replace(/<[^>]*>/g, '') : '');
+    const hh = ult ? String(ult).match(/(\d{2}:\d{2})/) : null;
+    notas.textContent = 'CEMADEN' + (hh ? ` · leitura das ${hh[1]}` : '');
   }
 }
-
 function renderTopAlert(data) {
-  // O alerta unificado (chuva CEMADEN + avisos oficiais) assume o banner do
-  // topo quando laranja/vermelho; senão devolve o status dos serviços.
-  const bn = document.getElementById('banner');
-  if (!bn) return;
+  /* O alerta unificado (chuva CEMADEN + avisos oficiais) assume o TÍTULO do
+     herói quando é laranja/vermelho; fora disso o herói segue com o veredito
+     dos dados. Não existe mais um card de alerta separado (v2, 24/09/2026): o
+     morador lia o mesmo fato duas vezes, em dois lugares, com duas palavras. */
   const a = data?.alertaUnificado;
   const hot = !!(a && (a.nivel === 'laranja' || a.nivel === 'vermelho'));
-  window.lastStormAlert = hot ? { hot: true, nivel: a.nivel, titulo: a.titulo, descricao: a.descricao, motivos: a.motivos || [], avisosOficiais: a.avisosOficiais || [] } : { hot: false };
-  if (!hot) {
-    bn.classList.remove('alert-takeover');
-    // Devolve a cena: card de alerta (se verde/amarelo) + lembrete Copel.
-    const ab = document.getElementById('alertaBox');
-    if (ab) ab.style.display = '';
-    const sr = document.getElementById('scheduledReminder');
-    if (sr && window.lastServicesSnapshot && typeof renderScheduledReminder === 'function') {
-      sr.style.display = '';
-      renderScheduledReminder(window.lastServicesSnapshot);
-    }
-    if (window.lastServicesSnapshot) updateBanner(window.lastServicesSnapshot);
-    return;
-  }
-  applyStormTakeover(window.lastStormAlert);
-}
-
-function applyStormTakeover(a) {
-  const bn = document.getElementById('banner');
-  if (!bn || !a) return;
-  const t = document.getElementById('bannerTitle');
-  const s = document.getElementById('bannerSub');
-  const badge = document.getElementById('bannerBadge');
-  const detailsEl = document.getElementById('bannerDetails');
-  const iconEl = document.getElementById('bannerIcon');
-  bn.className = 'banner alert-takeover ' + (a.nivel === 'vermelho' ? 'critical' : 'warn');
-  if (t) t.textContent = a.titulo || 'Alerta meteorológico';
-  if (s) s.textContent = a.descricao || '';
-  if (badge) badge.textContent = a.nivel === 'vermelho' ? 'ALERTA VERMELHO' : 'ALERTA LARANJA';
-  if (iconEl && typeof ICON !== 'undefined') iconEl.innerHTML = a.nivel === 'vermelho' ? ICON.error : ICON.warning;
-  if (detailsEl) {
-    const motivos = (a.motivos || []).map((m) => `<div>• ${esc(m)}</div>`).join('');
-    const oficiais = (a.avisosOficiais || []).slice(0, 2).map((o) =>
-      `<div style="font-size:11.5px;opacity:.8">• ${esc(o.fonte)}: ${esc(o.titulo)}</div>`
-    ).join('');
-    // Funde o lembrete Copel (desligamento programado) no MESMO card do topo
-    // pra não empilhar 2 banners: vira uma linha e o card separado sai de cena.
-    let copelLinha = '';
-    const srList = document.getElementById('scheduledReminderList');
-    const sr = document.getElementById('scheduledReminder');
-    if (srList && srList.innerHTML.trim()) {
-      copelLinha = `<div style="margin-top:8px">${icoMS('bolt','s18')} Desligamento programado (Copel): ${srList.innerHTML}</div>`;
-      if (sr) sr.style.display = 'none';
-    }
-    detailsEl.innerHTML = `<div class="banner-detail-item" onclick="document.getElementById('hidroBox').scrollIntoView({behavior:'smooth',block:'center'})" role="button" tabindex="0" title="Ver rios">{MOTIVOS}${oficiais}${copelLinha}<span class="banner-jump-tag">Ver rios ${icoMS('arrow_forward','s16')}</span></div>`.replace('{MOTIVOS}', motivos);
-    detailsEl.style.display = 'flex';
-  }
+  window.lastStormAlert = hot
+    ? { hot: true, nivel: a.nivel, titulo: a.titulo, descricao: a.descricao, motivos: a.motivos || [], avisosOficiais: a.avisosOficiais || [] }
+    : { hot: false };
+  renderHero();
 }
 
 /* O card "O que está acontecendo" saiu (24/09/2026). O que só ele mostrava —
@@ -3259,103 +3459,81 @@ function renderAlertaCard(data) {
 function renderHidroCard(data) {
   const box = document.getElementById('hidroBox');
   const content = document.getElementById('hidroContent');
-  const tag = document.getElementById('hidroStatusTag');
   if (!box || !content) return;
   const h = data?.hidro;
+  const chip = document.getElementById('riosChip');
   if (!h || !h.estacoes || !h.estacoes.length) {
     box.style.display = 'none';
+    if (chip) { chip.textContent = '—'; chip.dataset.nivel = 'info'; }
     return;
   }
-  box.style.display = 'flex';
-  // Flash manda na tag (transbordo em horas); permanência diz os dias fora.
-  const flash = h.ifl || null;
-  const nivelCores = {
-    verde: ['var(--g1)', 'var(--md-sys-color-on-success-container)'],
-    amarelo: ['var(--a1)', 'var(--md-sys-color-on-warning-container)'],
-    laranja: ['var(--r1)', 'var(--md-sys-color-on-error-container)'],
-    vermelho: ['var(--r1)', 'var(--md-sys-color-on-error-container)'],
-  };
-  /* A tag fala de IPIRANGA. Antes ela dizia "Atenção" (nível do município) com
-     duas linhas "CRÍTICO" logo abaixo — Cebolão e Jataizinho, que são estações
-     de REFERÊNCIA a jusante, no Tibagi. O leitor via contradição. Agora o
-     escopo está escrito e as estações de fora estão marcadas como referência. */
-  const flashAlerta = !!(flash && flash.nivel && flash.nivel !== 'verde');
-  const localAlerta = flashAlerta || h.riscoCheia === 'watch' || h.riscoEnxurrada === 'warn';
-  if (tag) {
-    const grave = flashAlerta && (flash.nivel === 'laranja' || flash.nivel === 'vermelho');
-    const par = grave ? nivelCores[flash.nivel] : localAlerta ? nivelCores.amarelo
-      : ['var(--md-sys-color-surface-container-high)', 'var(--text2)'];
-    tag.textContent = localAlerta ? 'Atenção em Ipiranga' : 'Normal em Ipiranga';
-    tag.style.background = par[0];
-    tag.style.color = par[1];
-    tag.style.fontWeight = grave ? '800' : '600';
+  box.style.display = 'block';
+
+  /* O estado do rio vem da MESMA função do herói e do tile: uma palavra, uma
+     cor, três lugares. */
+  const rio = estadoRio();
+  const risco = riscoTransbordo();
+  if (chip) {
+    chip.textContent = rio.rotulo;
+    chip.dataset.nivel = rio.nivel;
   }
+
   const fmtM = (cm) => cm == null ? '—' : (cm/100).toFixed(2).replace('.', ',') + ' m';
   const fmtV = (v) => v == null ? '—' : Math.round(v) + ' m³/s';
-  const fmtDelta = (d) => d == null ? '' : ` <span style="opacity:.7">(${d>0?'+':''}${(d/100).toFixed(2).replace('.', ',')} m /6h)</span>`;
-  const faixaBadge = (f) => {
-    if (f === 'critico') return ' <span class="bulletin-tag" style="background:var(--r1);color:var(--md-sys-color-on-error-container);font-weight:800">crítico</span>';
-    if (f === 'alerta') return ' <span class="bulletin-tag" style="background:var(--r1);color:var(--md-sys-color-on-error-container)">alerta</span>';
-    if (f === 'atencao') return ' <span class="bulletin-tag" style="background:var(--a1);color:var(--md-sys-color-on-warning-container)">atenção</span>';
-    return '';
+  /* Tendência em PALAVRA + a variação: "Estável · −0,05 m em 6 h · vazão 439 m³/s" */
+  const tendencia = (d) => {
+    if (d == null) return { palavra: 'Sem leitura de tendência', variacao: '' };
+    const m = Math.abs(d/100).toFixed(2).replace('.', ',');
+    const sinal = d > 0.5 ? '+' : d < -0.5 ? '−' : '';
+    return {
+      palavra: d > 0.5 ? 'Subindo' : d < -0.5 ? 'Descendo' : 'Estável',
+      variacao: `${sinal}${m} m em 6 h`,
+    };
   };
-  const frasePerm = (p) => {
-    if (!p || p.nivel === 'verde') return 'Rios em nível normal, escoando livremente.';
-    const d = String(p.diasEstimados).replace('.', ',');
-    if (p.nivel === 'vermelho') return `Se transbordar agora, fica ~${d} dias fora da caixa — evite áreas baixas de rio.`;
-    if (p.nivel === 'laranja') return `Se transbordar agora, fica ~${d} dias fora da caixa.`;
-    return 'Atenção: rio subindo, acompanhe.';
-  };
+  /* Cebolão e Jataizinho SAÍRAM do card (24/09/2026): são réguas a jusante, no
+     Tibagi, que não medem a bacia do Bitumirim. Os dados continuam na API. */
+  const NOMES_FORA = ['Cebolão', 'Jataizinho'];
+  const estacoesVisiveis = h.estacoes.filter((e) => !NOMES_FORA.some((r) => String(e.nome).indexOf(r) === 0));
+  const varias = estacoesVisiveis.length > 1;
+
+  const rows = estacoesVisiveis.map((e) => {
+    const nome = esc(String(e.nome).split(' (')[0]);
+    const t = tendencia(e.delta6hCm);
+    const chave = estadoDaFaixa(e.faixa);
+    // Chip por estação só quando há MAIS DE UMA (com uma só ele repetiria o
+    // chip do cabeçalho).
+    const tagEstacao = varias
+      ? ` <span class="chip-estado" data-nivel="${ESTADOS[chave].nivel}">${esc(ESTADOS[chave].rotulo)}</span>` : '';
+    return `<div class="rio-bloco">
+      <div class="rio-topo">
+        <span class="rio-nome">${nome}${tagEstacao}</span>
+        <span class="rio-nivel">${fmtM(e.nivelCm)}</span>
+      </div>
+      <div class="rio-linha">${esc(t.palavra)}${t.variacao ? ` · ${esc(t.variacao)}` : ''} · vazão ${fmtV(e.vazaoM3s)}</div>
+    </div>`;
+  }).join('');
+
+  /* UMA frase explicativa com o risco de transbordar — o lugar da confiança é
+     AQUI, não no herói (v2). */
+  const riscoTxt = risco.confianca != null
+    ? `Risco de transbordar: ${risco.palavra} (confiança ${risco.confianca}%).`
+    : `Risco de transbordar: ${risco.palavra}.`;
+  const notaRios = `<p class="rio-nota">O ${esc(rio.estacao)} mede a bacia do Bitumirim, o rio que alaga Ipiranga. ${esc(riscoTxt)}</p>`;
+
   const iflLine = (h.ifl && h.ifl.nivel !== 'verde')
     ? `<div style="background:var(--a1);border-radius:12px;padding:10px 12px;margin:6px 0;font-size:12.5px;color:var(--text)">${icoMS('bolt','s18')} <strong>Flash local (IFL ${esc(String(h.ifl.score).replace('.', ','))} · ${esc(h.ifl.nivel.toUpperCase())})</strong> — ${esc(h.ifl.motivos.join('; '))}</div>`
     : '';
-  // Previsão de saída da calha (v1) — "vai sair? quando?" com confiança
   const prev = h.previsao || null;
-  // Par container/on-container: no tema escuro --r6/--g6/--a5 sao pastel claro,
-  // e texto branco em cima deles ficava ilegivel (~1.6:1).
-  const prevCor = (v) => v === 'sim' ? ['var(--r1)', 'var(--md-sys-color-on-error-container)']
-    : v === 'nao' ? ['var(--g1)', 'var(--md-sys-color-on-success-container)']
-    : ['var(--a1)', 'var(--md-sys-color-on-warning-container)'];
-  const prevBadge = (v) => {
-    const txt = v === 'sim' ? 'Sim' : v === 'nao' ? 'Não' : 'Indefinido';
-    const [bg, fg] = prevCor(v);
-    return `<span class="rio-resposta" style="background:${bg};color:${fg}">${txt}</span>`;
-  };
-  // Painel A: o card mostra o VEREDITO + as estações em linhas compactas.
-  // O texto longo (regra, motivos, fórmula, doutrina) vai todo pro
-  // "como é calculado" — antes eram ~1.250 caracteres abertos na tela.
-  const veredito = prev
-    ? `<div class="rio-verdict">
-        <span class="rio-pergunta">Vai sair da calha?</span>
-        ${prevBadge(prev.vaiSair)}
-        <span class="rio-meta">com ${num(prev.confianca, 0)}% de confiança</span>
-      </div>`
-    : '';
   const motivos = (h.ifl && h.ifl.motivos && h.ifl.motivos.length)
     ? `<div style="margin:6px 0">${h.ifl.motivos.map((m) => `<div>• ${esc(m)}</div>`).join('')}</div>`
     : '';
-  /* Cebolão e Jataizinho SAÍRAM do card (24/09/2026): são réguas a jusante, no
-     Tibagi, que não medem a bacia do Bitumirim — davam "crítico" para um rio que
-     não alaga Ipiranga e só poluíam a tela. O Uvaia é a única que interessa.
-     Os dados continuam na API (/api/hidro) para quem precisar. */
-  const NOMES_FORA = ['Cebolão', 'Jataizinho'];
-  const estacoesVisiveis = h.estacoes.filter((e) => !NOMES_FORA.some((r) => String(e.nome).indexOf(r) === 0));
-  const rows = estacoesVisiveis.map((e) => {
-    const nome = esc(e.nome.split(' (')[0]);
-    const tag = faixaBadge(e.faixa) || ' <span class="bulletin-tag" style="background:var(--md-sys-color-surface-container-high);color:var(--text2)">normal</span>';
-    return `<div class="rio-row">
-      <span><span class="rio-nome">${nome}</span><br><span class="rio-meta">${fmtM(e.nivelCm)} · ${fmtV(e.vazaoM3s)}${fmtDelta(e.delta6hCm)}</span></span>
-      <span class="rio-tag">${tag}</span>
-    </div>`;
-  }).join('');
-  const notaEstacoes = `<div class="rio-nota">O <strong>Uvaia</strong> é quem mede a bacia do Bitumirim — o rio que alaga Ipiranga.</div>`;
   const formula = `<div style="margin-top:8px;line-height:1.6">
       <div><strong>Flash (IFL v3.1)</strong> = chuva 1h/6h/24h em Ipiranga (0–1): &lt;0,3 verde · 0,3–0,5 amarelo · 0,5–0,8 laranja · ≥0,8 vermelho. <strong>Antecedente 72h</strong> (palco): ≥150 mm eleva a amarelo — no regime frontal (mai–ago) a barra cai pra ≥100 mm, porque o inverno arma o palco com pouca água. Antecedente sozinho nunca passa de amarelo: laranja/vermelho exigem chuva atual. <strong>Permanência</strong> = dias fora da caixa SE transbordar: 0,0107 × Uvaia − 5,7 (ajuste preliminar com 2 rótulos reais: OUT23 7d, DEZ24 3d). Doutrina sazonal: no verão convectivo só o local manda (JAN25: Uvaia em P50 com régua em 4 m); no inverno frontal o Uvaia carrega a severidade (2013>2014≈2015>2019>2017 pelo pico Uvaia).</div>
       <div style="margin-top:4px"><strong>Vai sair da calha? (v1)</strong> = regra por regime + vizinhança em 11 rótulos de campo. <em>Convectivo (set–abr)</em>: chuva local em DUAS estações do município — ≥2 dias com ≥40 mm nas duas dentro de 96 h → sai (chuva de bacia; 1 dia isolado não enche, assinatura JAN25). <em>Frontal (mai–ago)</em>: a chuva local fica cega (os invernos saíram com 6–21 mm/96 h) — decide o antecedente de 30 dias (≥250 mm) somado à carga de bacia (Uvaia ≥500 cm). <strong>Confiança</strong> = fração dos casos parecidos no histórico que saíram da calha, com teto pelo tamanho da amostra (n=1 nunca passa de 55%). <strong>Quando</strong> = janela medida nos rótulos convectivos (13–48 h depois do último dia pesado); no frontal não há janela em horas. Estimativa, não oficial.</div>
       <div style="margin-top:4px">Rótulos: OUT23 (29/10 18h, Uvaia ~739) · DEZ24 (09/12 13h, Uvaia ~339) · SET26 (13/09, saiu sem transbordar) · JAN25 (21/01, régua 4m sem sair) · jul/24 e set/24 (não saíram) · invernos 13/14/15/17/19 (todos saíram; 2013 o mais dramático). Faixas P90/P98 do ano hidrológico.</div>
       <div style="margin-top:6px"><a href="/api/hidro" style="color:var(--md-sys-color-primary)">Dados crus (JSON)</a> · <a href="https://github.com/maKizo009/servicos-status/issues" style="color:var(--md-sys-color-primary)">Sugerir melhoria</a></div>
     </div>`;
-  content.innerHTML = veredito + rows + notaEstacoes +
+  content.innerHTML = rows + notaRios +
     `<details>
       <summary>Como é calculado</summary>
       <div style="margin-top:6px;line-height:1.6">
@@ -3371,22 +3549,15 @@ function renderHidroCard(data) {
       </div>
     </details>`;
 }
-
 function renderNowcastCard(data) {
-  const box = document.getElementById('nowcastBox');
-  if (!box) return;
-
   const nc = data?.nowcast;
-  const hasData = nc && nc.frames && nc.frames.length > 0;
 
   // Setas de direção dos núcleos no mapa (projeção da rota)
   renderCellArrows(nc);
 
-  if (!hasData) {
-    box.style.display = 'none';
-    return;
-  }
-  box.style.display = 'flex';
+  const det = document.getElementById('nowcastDetalhe');
+  const hasData = nc && nc.frames && nc.frames.length > 0;
+  if (!hasData) { if (det) det.innerHTML = ''; return; }
 
   const cell = nc.nearestCell;
   const dist = (cell && typeof cell.lat === 'number')
@@ -3397,81 +3568,37 @@ function renderNowcastCard(data) {
      80 km a informação deixa de ser alerta e passa a ser contexto. */
   const PERTO_KM = 80;
   const perto = dist != null && dist <= PERTO_KM;
-
-  // Intensidade dominante (sem jargão: dBZ é dado técnico, não manchete)
-  const badge = document.getElementById('nowcastIntensityBadge');
-  const intensityMap = {
-    light: 'Chuva fraca',
-    moderate: 'Chuva moderada',
-    heavy: 'Chuva forte',
-    extreme: 'Temporal',
-  };
-  const clsMap = { light: 'int-light', moderate: 'int-moderate', heavy: 'int-heavy', extreme: 'int-extreme' };
+  const intensityMap = { light: 'Chuva fraca', moderate: 'Chuva moderada', heavy: 'Chuva forte', extreme: 'Temporal' };
   const dom = nc.currentDominant || 'light';
-  if (badge) {
-    if (perto) {
-      badge.textContent = intensityMap[dom] || dom;
-      badge.className = `nowcast-intensity-badge ${clsMap[dom] || ''}`;
-    } else {
-      badge.textContent = 'Sem chuva no radar';
-      badge.className = 'nowcast-intensity-badge int-none';
-    }
-  }
-
-  // Movimento (direção + velocidade)
-  const mv = document.getElementById('nowcastMovement');
   const m = nc.movement;
-  if (mv) {
-    if (!perto) {
-      // Núcleo longe não vira frase: quem lê mora em Ipiranga, não no mapa.
-      mv.textContent = '';
-    } else if (m && m.speedKmh > 0.5) {
-      const dirs = ['N', 'NE', 'L', 'SE', 'S', 'SO', 'O', 'NO'];
-      const cardeal = dirs[Math.round(m.directionDeg / 45) % 8];
-      mv.textContent = `Movendo para ${cardeal} a ${num(m.speedKmh, 0)} km/h`;
-    } else {
-      mv.textContent = 'Movimento não confiável no momento';
-    }
-  }
 
-  // Onde está o núcleo mais intenso — a distância é o que dá sentido ao resto
-  const meta = document.getElementById('nowcastMeta');
-  const lastFrameTime = nc.frames[nc.frames.length - 1]?.time;
-  const obs = lastFrameTime
-    ? `leitura de ${new Date(lastFrameTime).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}`
-    : '';
-  if (meta) {
-    // O chip acima JÁ diz que não há chuva no radar: repetir aqui era o mesmo
-    // texto duas vezes no mesmo card (crítica 24/09/2026). Esta linha só existe
-    // quando tem algo que o chip não diz — a distância do núcleo.
-    if (dist != null && perto) {
-      meta.textContent = `Chuva a ~${num(dist, 0)} km de Ipiranga${obs ? ' · ' + obs : ''}`;
-    } else {
-      meta.textContent = '';
-    }
+  /* A conclusão do radar vive no card Tempo agora (renderClimaIA) — aqui fica
+     só o dado técnico, dentro do MESMO expander "Detalhes do radar". */
+  if (!det) return;
+  const dbz = nc.currentMaxDbz != null ? `${num(nc.currentMaxDbz, 0)} dBZ` : '—';
+  const frames = nc.framesTotal ?? nc.frames.length;
+  /* Última VARREDURA = o mesmo frame que o jogador do radar mostra (antes a
+     tela exibia 12:10 num lugar e 12:00 em outro). */
+  const passados = (data && data.radar && data.radar.radar && data.radar.radar.past) || [];
+  const ultima = passados.length ? passados[passados.length - 1].time : (nc.frames[nc.frames.length - 1]||{}).time || null;
+  const linhas = [];
+  if (ultima) {
+    linhas.push(`<div class="fact-linha"><span>Última varredura do radar</span><strong>${new Date(ultima * 1000).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}</strong></div>`);
   }
-
-  /* Dado técnico (dBZ, frames, projeção) recolhido: é o que o power user quer
-     ler e o que o morador não precisa ter na cara. Nomes certos, uma vez. */
-  const det = document.getElementById('nowcastDetalhe');
-  if (det) {
-    const dbz = nc.currentMaxDbz != null ? `${num(nc.currentMaxDbz, 0)} dBZ` : '—';
-    const frames = nc.framesTotal ?? nc.frames.length;
-    const linhas = [
-      `<div class="fact-linha"><span>Intensidade máxima no radar</span><strong>${dbz}</strong></div>`,
-      `<div class="fact-linha"><span>Quadros analisados</span><strong>${plural(frames, 'quadro', 'quadros')}</strong></div>`,
-    ];
-    if (m && m.speedKmh > 0.5) {
-      linhas.push(`<div class="fact-linha"><span>Deslocamento</span><strong>${num(m.speedKmh, 0)} km/h para ${num(m.directionDeg, 0)}°</strong></div>`);
-    }
-    // Núcleo a 400 km em outro estado não entra nem no técnico: era a última
-    // menção a São Paulo escondida no painel (pedido do Dave, 24/09/2026).
-    // Acima do limiar de "perto" o número não informa nada a quem mora aqui.
-    if (dist != null && perto) {
-      linhas.push(`<div class="fact-linha"><span>Núcleo mais próximo</span><strong>~${num(dist, 0)} km</strong></div>`);
-    }
-    det.innerHTML = `<summary>Dados técnicos do radar</summary><div class="facts">${linhas.join('')}</div>`;
+  if (perto) {
+    linhas.push(`<div class="fact-linha"><span>Chuva no radar</span><strong>${esc(intensityMap[dom] || dom)}</strong></div>`);
   }
+  linhas.push(`<div class="fact-linha"><span>Intensidade máxima</span><strong>${dbz}</strong></div>`);
+  linhas.push(`<div class="fact-linha"><span>Quadros analisados</span><strong>${plural(frames, 'quadro', 'quadros')}</strong></div>`);
+  if (m && m.speedKmh > 0.5) {
+    linhas.push(`<div class="fact-linha"><span>Deslocamento</span><strong>${num(m.speedKmh, 0)} km/h para ${num(m.directionDeg, 0)}°</strong></div>`);
+  }
+  /* Núcleo a 400 km em outro estado não entra nem no técnico: acima do limiar
+     de "perto" o número não informa nada a quem mora aqui. */
+  if (dist != null && perto) {
+    linhas.push(`<div class="fact-linha"><span>Núcleo mais próximo</span><strong>~${num(dist, 0)} km</strong></div>`);
+  }
+  det.innerHTML = `<div class="facts">${linhas.join('')}</div>`;
 }
 
 function haversineKm(lat1, lon1, lat2, lon2) {
@@ -3684,6 +3811,10 @@ function initThemeToggle() {
 
   function applyTheme(theme) {
     const root = document.documentElement;
+    /* Troca de tema com as transições DESLIGADAS por dois frames: no Chrome, uma
+       propriedade de cor que sai de var() de tema fica presa no valor do tema
+       anterior (tile branco no escuro, aba ilegível). Medido 24/09/2026. */
+    root.classList.add('trocando-tema');
     if (theme === 'dark') {
       root.setAttribute('data-theme', 'dark');
     } else if (theme === 'light') {
@@ -3698,6 +3829,7 @@ function initThemeToggle() {
     } else {
       localStorage.removeItem('theme');
     }
+    requestAnimationFrame(() => requestAnimationFrame(() => root.classList.remove('trocando-tema')));
   }
 
   if (storedTheme) {
@@ -3714,6 +3846,11 @@ function initThemeToggle() {
   });
 
   window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => {
+    /* Mesma proteção do applyTheme: a troca automática pelo sistema também pode
+       deixar cor presa na transição (o tema muda via media query, sem atributo). */
+    const r0 = document.documentElement;
+    r0.classList.add('trocando-tema');
+    requestAnimationFrame(() => requestAnimationFrame(() => r0.classList.remove('trocando-tema')));
     if (!localStorage.getItem('theme')) {
       const effective = getEffectiveTheme();
       if (icon) icon.textContent = effective === 'dark' ? 'light_mode' : 'dark_mode';
@@ -3799,10 +3936,23 @@ function copyPrompt(provider, text) {
 
   function setState(state) {
     if (!btn) return;
+    const dot = document.getElementById('pushDot');
     btn.classList.remove('on', 'denied');
-    if (state === 'on') { btn.classList.add('on'); iconEl.innerHTML = BELL_SVG.on; textEl.textContent = 'Alertas ativos'; }
-    else if (state === 'denied') { btn.classList.add('denied'); iconEl.innerHTML = BELL_SVG.denied; textEl.textContent = 'Notificações bloqueadas'; }
-    else if (state === 'off') { iconEl.innerHTML = BELL_SVG.off; textEl.textContent = 'Ativar alertas'; }
+    btn.dataset.state = state;
+    /* O sino é um botão REDONDO igual aos outros dois do topo: o estado vai no
+       fundo tonal (verde = ativado) + ponto de 8 px no canto — não numa pílula
+       larga preenchida. Quem não vê a cor tem o aria-label dizendo o estado. */
+    const rotulos = { on: 'Alertas ativados', off: 'Alertas desativados', denied: 'Notificações bloqueadas' };
+    const texto = rotulos[state] || rotulos.off;
+    if (state === 'on') { btn.classList.add('on'); iconEl.innerHTML = BELL_SVG.on; }
+    else if (state === 'denied') { btn.classList.add('denied'); iconEl.innerHTML = BELL_SVG.denied; }
+    else if (state === 'off') { iconEl.innerHTML = BELL_SVG.off; }
+    btn.setAttribute('aria-label', texto);
+    btn.title = state === 'on' ? 'Alertas ativados — toque para desativar'
+      : state === 'denied' ? 'Notificações bloqueadas neste navegador'
+      : 'Ativar alertas de chuva, energia e água no celular';
+    if (textEl) textEl.textContent = texto;
+    if (dot) dot.hidden = state !== 'on';
   }
 
   async function refreshState() {
