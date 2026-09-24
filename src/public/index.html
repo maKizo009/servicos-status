@@ -252,7 +252,13 @@
      no PRÓPRIO wrapper, então a subárvore inteira sobe junto. */
   z-index:0;isolation:isolate
 }
-#weatherMap{width:100%;height:100%;z-index:1}
+/* O wrapper nasceu como flex item do card (`flex:1 1 auto;height:auto`) e a altura
+   usada dele vem de `min-height` — com o pai em `height:auto`, `height:100%` aqui
+   resolvia para `auto` e o contêiner do mapa ficava com 0 px de altura: o radar
+   aparecia PRETO no modo normal (tela cheia funcionava porque lá o wrapper vira
+   `height:100vh`, altura definida). Preencher por posicionamento absoluto não
+   depende dessa resolução: o mapa ocupa a caixa usada do wrapper sempre. */
+#weatherMap{position:absolute;inset:0;width:100%;height:100%;z-index:1}
 
 .radar-controls-overlay{
   position:absolute;bottom:16px;left:16px;right:16px;z-index:1000;
