@@ -64,11 +64,11 @@
 *,*::before,*::after{margin:0;padding:0;box-sizing:border-box}
 :root{
   /* === Material Design 3 — Tonal Palette (Slate/Sky/Esmeralda) === */
-  --md-sys-color-surface:#F5FCF8;                /* Canvas */
-  --md-sys-color-surface-container-lowest:#FAFFFE;
-  --md-sys-color-surface-container-low:#F0F6F3;  /* Sidebar */
-  --md-sys-color-surface-container:#FAFFFE;       /* Cards */
-  --md-sys-color-surface-container-high:#E0EAE5; /* Headers internos / Badges */
+  --md-sys-color-surface:#f5fcf0;                /* Canvas */
+  --md-sys-color-surface-container-lowest:#ffffff;
+  --md-sys-color-surface-container-low:#eff6ea;  /* Sidebar */
+  --md-sys-color-surface-container:#e9f0e4;       /* Cards */
+  --md-sys-color-surface-container-high:#e3eadf; /* Headers internos / Badges */
   /* === Movimento (M3) — curva por PAPEL, nao "ease" generico === */
   --motion-emphasized:cubic-bezier(.05,.7,.1,1);  /* entradas: desacelera no fim */
   --motion-standard:cubic-bezier(.2,0,0,1);       /* hover / troca de estado */
@@ -77,26 +77,26 @@
   --dur-2:220ms;   /* hover, troca de cor */
   --dur-3:320ms;   /* subida de card */
   --dur-4:620ms;   /* superficie grande / cascata */
-  --md-sys-color-surface-container-highest:#C9D8D0;
-  --md-sys-color-on-surface:#0E1B15;             /* Texto principal */
-  --md-sys-color-on-surface-variant:#495851;     /* Texto secundário */
-  --md-sys-color-on-surface-muted:#56655E;       /* Texto terciário (AA em superfícies tonais) */
-  --md-sys-color-on-critical-fill:#ffffff;       /* Texto sobre preenchimento crítico (--r6) */
-  --md-sys-color-outline:#96A69E;
-  --md-sys-color-outline-variant:#E2E8F0;
-  --md-sys-color-primary:#047857;
+  --md-sys-color-surface-container-highest:#dee5d9;
+  --md-sys-color-on-surface:#171d16;             /* Texto principal */
+  --md-sys-color-on-surface-variant:#3e4a3d;     /* Texto secundário */
+  --md-sys-color-on-surface-muted:#556254;       /* Texto terciário (AA em superfícies tonais) */
+  --md-sys-color-on-critical-fill:#410000;       /* Texto sobre preenchimento crítico (--r6) */
+  --md-sys-color-outline:#6e7a6c;
+  --md-sys-color-outline-variant:#bdcab9;
+  --md-sys-color-primary:#1c6c30;
   --md-sys-color-on-primary:#ffffff;
-  --md-sys-color-primary-container:#E0F2FE;
-  --md-sys-color-on-primary-container:#0369A1;
-  --md-sys-color-secondary-container:#C8F0DC;
-  --md-sys-color-on-secondary-container:#0B3D2E;
-  --md-sys-color-error:#DC2626;
-  --md-sys-color-error-container:#FEE2E2;
-  --md-sys-color-on-error-container:#7F1D1D;
+  --md-sys-color-primary-container:#a4f5a9;
+  --md-sys-color-on-primary-container:#002108;
+  --md-sys-color-secondary-container:#d4e8d0;
+  --md-sys-color-on-secondary-container:#0f1f11;
+  --md-sys-color-error:#ba1a1a;
+  --md-sys-color-error-container:#ffdad6;
+  --md-sys-color-on-error-container:#410002;
   /* on-container legivel (AA) para containers tonais semanticos */
-  --md-sys-color-on-success-container:#14532D;
-  --md-sys-color-on-warning-container:#92400E;
-  --md-sys-color-on-warn-container:#78350F;
+  --md-sys-color-on-success-container:#00201a;
+  --md-sys-color-on-warning-container:#261900;
+  --md-sys-color-on-warn-container:#261900;
   --md-elevation-1:0 1px 2px 0 rgba(15,23,42,.30),0 1px 3px 1px rgba(15,23,42,.15);
   --md-elevation-2:0 1px 2px 0 rgba(15,23,42,.30),0 2px 6px 2px rgba(15,23,42,.15);
   --md-elevation-3:0 4px 8px 3px rgba(15,23,42,.15),0 1px 3px 0 rgba(15,23,42,.30);
@@ -106,22 +106,22 @@
   --md-shape-corner-xs:4px;--md-shape-corner-small:8px;--md-shape-corner-medium:12px;--md-shape-corner-large:16px;--md-shape-corner-xl:28px;--md-shape-corner-full:9999px;
 
   /* === Tokens legados (aliases para o M3 — nada quebra) === */
-  --s900:#0E1B15;--s800:#1F2C26;--s700:#36443D;--s600:#495851;--s500:#67776F;--s400:#96A69E;--s300:#C9D8D0;--s200:#E0EAE5;--s100:#F0F6F3;--s50:#F5FCF8;
-  --g6:#16A34A;--g5:#22C55E;--g1:#DCFCE7;--g0:#F0FDF4;
-  --a5:#D97706;--a4:#F59E0B;--a1:#FEF3C7;--a0:#FFFBEB;
-  --r6:#DC2626;--r5:#EF4444;--r1:#FEE2E2;--r0:#FEF2F2;
+  --s900:#111A13;--s800:#222B23;--s700:#39433B;--s600:#4D574E;--s500:#6B766C;--s400:#99A59B;--s300:#CBD8CD;--s200:#E2EAE3;--s100:#F1F6F2;--s50:#F6FCF7;
+  --g6:#006b5b;--g5:#006b5b;--g1:#84f6dd;--g0:#F0FDF4;
+  --a5:#795900;--a4:#795900;--a1:#ffdea0;--a0:#FFFBEB;
+  --r6:#a7382b;--r5:#a7382b;--r1:#ffdad5;--r0:#FEF2F2;
   /* MARCA (chrome/ações). Papel separado da escala de STATUS acima: era isso
      que faltava — três verdes misturados (header, controles neon, "ok"). */
-  --brand:#087F5B;--on-brand:#FFFFFF;--brand-c:#C8F0DC;
+  --brand:#1c6c30;--on-brand:#ffffff;--brand-c:#a4f5a9;
   --copel:#00923F;--sanepar:#003F87;
   /* === ESCALA DE STATUS (papel próprio, separada da cor de marca) ===
      Crítica 24/09/2026: o verde de "ok" era o mesmo verde neon dos controles
      e o vermelho de "crítico" era o mesmo do ponto do relógio. Agora status
      tem escala própria, sempre em par container/on-container. */
-  --st-ok:#15803D;--st-ok-c:#DCFCE7;--st-ok-on-c:#14532D;
-  --st-warn:#B45309;--st-warn-c:#FEF3C7;--st-warn-on-c:#78350F;
-  --st-crit:#B91C1C;--st-crit-c:#FEE2E2;--st-crit-on-c:#7F1D1D;
-  --st-info:#0369A1;--st-info-c:#E0F2FE;--st-info-on-c:#0C4A6E;
+  --st-ok:#006b5b;--st-ok-c:#84f6dd;--st-ok-on-c:#00201a;
+  --st-warn:#795900;--st-warn-c:#ffdea0;--st-warn-on-c:#261900;
+  --st-crit:#a7382b;--st-crit-c:#ffdad5;--st-crit-on-c:#410000;
+  --st-info:#0061a6;--st-info-c:#d2e4ff;--st-info-on-c:#001c37;
   --surface:var(--md-sys-color-surface-container);--text:var(--md-sys-color-on-surface);--text2:var(--md-sys-color-on-surface-variant);--text3:var(--md-sys-color-on-surface-muted);--border:var(--md-sys-color-outline-variant);
   --radius:12px;--radius-sm:8px;--shadow:var(--md-elevation-1);--shadow-lg:var(--md-elevation-2);--shadow-crit:0 4px 12px -2px rgba(15,23,42,.26),0 2px 5px -1px rgba(15,23,42,.16);--shadow-warn:0 4px 14px -2px rgba(217,119,6,.28),0 2px 6px -1px rgba(217,119,6,.16);
   --font:'Inter',system-ui,-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif
@@ -135,85 +135,85 @@
 @media (prefers-color-scheme: dark){
   :root:not([data-theme]){
     color-scheme:dark;
-    --md-sys-color-surface:#08150F;
-    --md-sys-color-surface-container-lowest:#05100B;
-    --md-sys-color-surface-container-low:#0E1B15;
-    --md-sys-color-surface-container:#1F2C26;
-    --md-sys-color-surface-container-high:#36443D;
-    --md-sys-color-surface-container-highest:#495851;
-    --md-sys-color-on-surface:#F5FCF8;
-    --md-sys-color-on-surface-variant:#C9D8D0;
-    --md-sys-color-on-surface-muted:#96A69E;
-    --md-sys-color-on-critical-fill:#450A0A;
-    --md-sys-color-outline:#96A69E;
+    --md-sys-color-surface:#0f150e;
+    --md-sys-color-surface-container-lowest:#091009;
+    --md-sys-color-surface-container-low:#171d16;
+    --md-sys-color-surface-container:#1b211a;
+    --md-sys-color-surface-container-high:#252c24;
+    --md-sys-color-surface-container-highest:#30372f;
+    --md-sys-color-on-surface:#dee5d9;
+    --md-sys-color-on-surface-variant:#bdcab9;
+    --md-sys-color-on-surface-muted:#a2af9f;
+    --md-sys-color-on-critical-fill:#ffdad5;
+    --md-sys-color-outline:#879485;
     --md-sys-color-outline-variant:rgba(255,255,255,.08);
-    --md-sys-color-primary:#38BDF8;
-    --md-sys-color-on-primary:#00364A;
-    --md-sys-color-primary-container:#0C4A6E;
-    --md-sys-color-on-primary-container:#E0F2FE;
-    --md-sys-color-secondary-container:#0B3D2E;
-    --md-sys-color-on-secondary-container:#C8F5DC;
-    --md-sys-color-error:#F87171;
-    --md-sys-color-error-container:#7F1D1D;
-    --md-sys-color-on-error-container:#FEE2E2;
-    --md-sys-color-on-success-container:#DCFCE7;
-    --md-sys-color-on-warning-container:#FBBF24;
-    --md-sys-color-on-warn-container:#FEF3C7;
+    --md-sys-color-primary:#89d990;
+    --md-sys-color-on-primary:#003912;
+    --md-sys-color-primary-container:#00531e;
+    --md-sys-color-on-primary-container:#a4f5a9;
+    --md-sys-color-secondary-container:#3a4b3a;
+    --md-sys-color-on-secondary-container:#d4e8d0;
+    --md-sys-color-error:#ffb4ab;
+    --md-sys-color-error-container:#93000a;
+    --md-sys-color-on-error-container:#ffdad6;
+    --md-sys-color-on-success-container:#84f6dd;
+    --md-sys-color-on-warning-container:#ffdea0;
+    --md-sys-color-on-warn-container:#ffdea0;
     --md-elevation-1:0 1px 3px 0 rgba(0,0,0,.3),0 1px 2px -1px rgba(0,0,0,.3);
     --md-elevation-2:0 4px 6px -1px rgba(0,0,0,.35),0 2px 4px -2px rgba(0,0,0,.25);
     --md-elevation-3:0 10px 15px -3px rgba(0,0,0,.4),0 4px 6px -4px rgba(0,0,0,.3);
   --md-elevation-lift:0 14px 28px -10px rgba(0,0,0,.62),0 6px 14px -6px rgba(0,0,0,.5);
-    --brand:#4ADE80;--on-brand:#052E1F;--brand-c:rgba(74,222,128,.18);
-    --brand:#4ADE80;--on-brand:#052E1F;--brand-c:rgba(74,222,128,.18);
+    --brand:#89d990;--on-brand:#003912;--brand-c:#00531e;
+    --brand:#89d990;--on-brand:#003912;--brand-c:#00531e;
   --copel:#4ADE80;--sanepar:#38BDF8;
-    --s900:#F5FCF8;--s800:#F0F6F3;--s700:#E0EAE5;--s600:#C9D8D0;--s500:#96A69E;--s400:#67776F;--s300:#495851;--s200:#36443D;--s100:#1F2C26;--s50:#0E1B15;
-    --g6:#4ADE80;--g5:#16A34A;--g1:rgba(34,197,94,.18);--g0:rgba(6,78,59,.3);
-    --a5:#FBBF24;--a4:#F59E0B;--a1:rgba(245,158,11,.18);--a0:rgba(120,53,15,.3);
-    --r6:#F87171;--r5:#EF4444;--r1:rgba(239,68,68,.18);--r0:rgba(127,29,29,.3);
-    --st-ok:#4ADE80;--st-ok-c:rgba(34,197,94,.16);--st-ok-on-c:#BBF7D0;
-    --st-warn:#FBBF24;--st-warn-c:rgba(245,158,11,.16);--st-warn-on-c:#FDE68A;
-    --st-crit:#F87171;--st-crit-c:rgba(239,68,68,.18);--st-crit-on-c:#FECACA;
-    --st-info:#7DD3FC;--st-info-c:rgba(56,189,248,.16);--st-info-on-c:#BAE6FD;
+    --s900:#F6FCF7;--s800:#F1F6F2;--s700:#E2EAE3;--s600:#CBD8CD;--s500:#99A59B;--s400:#6B766C;--s300:#4D574E;--s200:#39433B;--s100:#222B23;--s50:#111A13;
+    --g6:#66dac1;--g5:#66dac1;--g1:#005144;--g0:rgba(6,78,59,.3);
+    --a5:#fcbc00;--a4:#fcbc00;--a1:#5c4300;--a0:rgba(120,53,15,.3);
+    --r6:#ffb4a8;--r5:#ffb4a8;--r1:#862117;--r0:rgba(127,29,29,.3);
+    --st-ok:#66dac1;--st-ok-c:rgba(34,197,94,.16);--st-ok-on-c:#84f6dd;
+    --st-warn:#fcbc00;--st-warn-c:rgba(245,158,11,.16);--st-warn-on-c:#ffdea0;
+    --st-crit:#ffb4a8;--st-crit-c:rgba(239,68,68,.18);--st-crit-on-c:#ffdad5;
+    --st-info:#a0c9ff;--st-info-c:rgba(56,189,248,.16);--st-info-on-c:#d2e4ff;
   }
 }
 :root[data-theme="dark"]{
   color-scheme:dark;
-  --md-sys-color-surface:#08150F;
-  --md-sys-color-surface-container-lowest:#05100B;
-  --md-sys-color-surface-container-low:#0E1B15;
-  --md-sys-color-surface-container:#1F2C26;
-  --md-sys-color-surface-container-high:#36443D;
-  --md-sys-color-surface-container-highest:#495851;
-  --md-sys-color-on-surface:#F5FCF8;
-  --md-sys-color-on-surface-variant:#C9D8D0;
-  --md-sys-color-on-surface-muted:#96A69E;
-  --md-sys-color-on-critical-fill:#450A0A;
-  --md-sys-color-outline:#96A69E;
+  --md-sys-color-surface:#0f150e;
+  --md-sys-color-surface-container-lowest:#091009;
+  --md-sys-color-surface-container-low:#171d16;
+  --md-sys-color-surface-container:#1b211a;
+  --md-sys-color-surface-container-high:#252c24;
+  --md-sys-color-surface-container-highest:#30372f;
+  --md-sys-color-on-surface:#dee5d9;
+  --md-sys-color-on-surface-variant:#bdcab9;
+  --md-sys-color-on-surface-muted:#a2af9f;
+  --md-sys-color-on-critical-fill:#ffdad5;
+  --md-sys-color-outline:#879485;
   --md-sys-color-outline-variant:rgba(255,255,255,.08);
-  --md-sys-color-primary:#4ADE80;
-  --md-sys-color-on-primary:#052E1F;
-  --md-sys-color-primary-container:#0B3D2E;
-  --md-sys-color-on-primary-container:#C8F5DC;
-  --md-sys-color-secondary-container:#0B3D2E;
-  --md-sys-color-on-secondary-container:#C8F5DC;
-  --md-sys-color-error:#F87171;
-  --md-sys-color-error-container:#7F1D1D;
-  --md-sys-color-on-error-container:#FEE2E2;
-  --md-sys-color-on-success-container:#DCFCE7;
-  --md-sys-color-on-warning-container:#FBBF24;
-  --md-sys-color-on-warn-container:#FEF3C7;
+  --md-sys-color-primary:#89d990;
+  --md-sys-color-on-primary:#003912;
+  --md-sys-color-primary-container:#00531e;
+  --md-sys-color-on-primary-container:#a4f5a9;
+  --md-sys-color-secondary-container:#3a4b3a;
+  --md-sys-color-on-secondary-container:#d4e8d0;
+  --md-sys-color-error:#ffb4ab;
+  --md-sys-color-error-container:#93000a;
+  --md-sys-color-on-error-container:#ffdad6;
+  --md-sys-color-on-success-container:#84f6dd;
+  --md-sys-color-on-warning-container:#ffdea0;
+  --md-sys-color-on-warn-container:#ffdea0;
   --md-elevation-1:0 1px 3px 0 rgba(0,0,0,.3),0 1px 2px -1px rgba(0,0,0,.3);
   --md-elevation-2:0 4px 6px -1px rgba(0,0,0,.35),0 2px 4px -2px rgba(0,0,0,.25);
   --md-elevation-3:0 10px 15px -3px rgba(0,0,0,.4),0 4px 6px -4px rgba(0,0,0,.3);
   --md-elevation-lift:0 14px 28px -10px rgba(0,0,0,.62),0 6px 14px -6px rgba(0,0,0,.5);
-  --s900:#F5FCF8;--s800:#F0F6F3;--s700:#E0EAE5;--s600:#C9D8D0;--s500:#96A69E;--s400:#67776F;--s300:#495851;--s200:#36443D;--s100:#1F2C26;--s50:#0E1B15;
-  --g6:#4ADE80;--g5:#16A34A;--g1:rgba(34,197,94,.18);--g0:rgba(6,78,59,.3);
-  --a5:#FBBF24;--a4:#F59E0B;--a1:rgba(245,158,11,.18);--a0:rgba(120,53,15,.3);
-  --r6:#F87171;--r5:#EF4444;--r1:rgba(239,68,68,.18);--r0:rgba(127,29,29,.3);
-  --st-ok:#4ADE80;--st-ok-c:rgba(34,197,94,.16);--st-ok-on-c:#BBF7D0;
-  --st-warn:#FBBF24;--st-warn-c:rgba(245,158,11,.16);--st-warn-on-c:#FDE68A;
-  --st-crit:#F87171;--st-crit-c:rgba(239,68,68,.18);--st-crit-on-c:#FECACA;
-  --st-info:#7DD3FC;--st-info-c:rgba(56,189,248,.16);--st-info-on-c:#BAE6FD;
+  --s900:#F6FCF7;--s800:#F1F6F2;--s700:#E2EAE3;--s600:#CBD8CD;--s500:#99A59B;--s400:#6B766C;--s300:#4D574E;--s200:#39433B;--s100:#222B23;--s50:#111A13;
+  --g6:#66dac1;--g5:#66dac1;--g1:#005144;--g0:rgba(6,78,59,.3);
+  --a5:#fcbc00;--a4:#fcbc00;--a1:#5c4300;--a0:rgba(120,53,15,.3);
+  --r6:#ffb4a8;--r5:#ffb4a8;--r1:#862117;--r0:rgba(127,29,29,.3);
+  --st-ok:#66dac1;--st-ok-c:rgba(34,197,94,.16);--st-ok-on-c:#84f6dd;
+  --st-warn:#fcbc00;--st-warn-c:rgba(245,158,11,.16);--st-warn-on-c:#ffdea0;
+  --st-crit:#ffb4a8;--st-crit-c:rgba(239,68,68,.18);--st-crit-on-c:#ffdad5;
+  --st-info:#a0c9ff;--st-info-c:rgba(56,189,248,.16);--st-info-on-c:#d2e4ff;
 }
 
 .weather-section{
@@ -253,7 +253,7 @@
   box-shadow:0 8px 24px rgba(0,0,0,.25)
 }
 .radar-play-btn{
-  background:var(--g6);border:none;color:#052E16;width:44px;height:44px;border-radius:var(--md-shape-corner-medium);
+  background:var(--brand);border:none;color:var(--on-brand);width:44px;height:44px;border-radius:var(--md-shape-corner-medium);
   cursor:pointer;display:flex;align-items:center;justify-content:center;font-weight:600;
   transition:all .2s ease;flex-shrink:0
 }
@@ -261,26 +261,25 @@
 .radar-play-btn:active{transform:scale(.97)}
 /* No dark o --g6 é verde claro (#4ADE80) — ícone escuro mantém WCAG AA */
 :root[data-theme="dark"] .radar-play-btn,
-:root[data-theme="dark"] .layer-btn.active{background:var(--g6);color:#064E3B}
-.radar-slider{flex:1;min-width:120px;accent-color:var(--g6);cursor:pointer}
+.radar-slider{flex:1;min-width:120px;accent-color:var(--brand);cursor:pointer}
 .map-layer-selector{
   position:absolute;top:14px;right:14px;z-index:600;display:flex;gap:6px;
   background:rgba(15,23,42,.88);backdrop-filter:blur(12px);padding:4px;border-radius:var(--md-shape-corner-full);
   box-shadow:0 4px 12px rgba(0,0,0,.25)
 }
 .layer-btn{
-  background:transparent;border:none;color:#CBD5E1;font-size:12px;font-weight:500;
+  background:transparent;border:none;color:#dee5d9;font-size:12px;font-weight:500;
   padding:10px 12px;border-radius:var(--md-shape-corner-small);cursor:pointer;transition:all .2s ease;display:flex;align-items:center;gap:4px
 }
 .layer-btn:hover{color:#fff;background:rgba(255,255,255,.1)}
-.layer-btn.active{background:var(--g6);color:#052E16;font-weight:600}
+.layer-btn.active{background:var(--brand);color:var(--on-brand);font-weight:600}
 
 .radar-map-wrapper.is-fullscreen{
   position:fixed!important;top:0!important;left:0!important;width:100vw!important;
   height:100vh!important;z-index:99999!important;border-radius:0!important
 }
 
-.radar-time-text{font-size:12px;font-weight:600;font-variant-numeric:tabular-nums;color:#38BDF8;white-space:nowrap}
+.radar-time-text{font-size:12px;font-weight:600;font-variant-numeric:tabular-nums;color:#89d990;white-space:nowrap}
 
 .bulletin-box{
   background:var(--surface);border-radius:var(--md-shape-corner-medium);padding:16px;
@@ -347,8 +346,8 @@
 .leaflet-control-zoom a{background:rgba(15,23,42,.88)!important;color:#E2E8F0!important;border:none!important;backdrop-filter:blur(12px);width:34px!important;height:34px!important;line-height:34px!important}
 .leaflet-control-zoom a:hover{background:rgba(51,65,85,.95)!important;color:#fff!important}
 .leaflet-control-zoom a.leaflet-disabled{opacity:.4}
-.leaflet-control-attribution{background:rgba(15,23,42,.78)!important;color:#CBD5E1!important;border:none!important;border-radius:var(--md-shape-corner-small) 0 0 0!important;padding:2px 6px!important}
-.leaflet-control-attribution a{color:#38BDF8!important}
+.leaflet-control-attribution{background:rgba(9,16,9,.78)!important;color:#dee5d9!important;border:none!important;border-radius:var(--md-shape-corner-small) 0 0 0!important;padding:2px 6px!important}
+.leaflet-control-attribution a{color:#89d990!important}
 
 .rain-tile {
   image-rendering: smooth;
@@ -673,7 +672,7 @@ body{font-family:var(--font);background:var(--md-sys-color-surface);color:var(--
   /* absolute e nao no fluxo: no fluxo empurrava o conteudo do card critico 4px
      pra baixo e o titulo dele nao alinhava com o dos outros cards. */
   position:absolute;top:0;left:0;right:0;height:4px;
-  background:linear-gradient(90deg,var(--r6),#EF4444);display:none
+  background:linear-gradient(90deg,var(--st-crit-c),var(--st-crit));display:none
 }
 .card.critical .card-crit-bar{display:block}
 
@@ -1169,14 +1168,18 @@ details[open]::details-content{block-size:auto}
 @media(min-width:992px){
   .panel-grid{grid-template-columns:repeat(12,1fr);gap:16px}
   .panel-grid>#grid{display:contents}
-  .panel-grid>.radar-card{grid-column:1/9;grid-row:1}
-  .panel-grid>.clima-card{grid-column:9/13;grid-row:1}
-  .panel-grid>.situacao-card{grid-column:1/9;grid-row:2;justify-content:space-between}
-  .panel-grid>.rios-card{grid-column:9/13;grid-row:2}
+  /* Sem o card "O que está acontecendo" (saiu em 24/09/2026) a grade se
+     reorganiza sozinha: radar | clima, rios | saneamento, copel | programados.
+     O "dense" preenche a coluna da direita em vez de deixar buraco, e nenhuma
+     linha precisa de altura fixa — quem manda na altura é o conteúdo. */
+  .panel-grid{grid-auto-flow:row dense}
+  .panel-grid>.radar-card{grid-column:1/9}
+  .panel-grid>.clima-card{grid-column:9/13}
+  .panel-grid>.rios-card{grid-column:1/9}
   /* data-name e não .critical: com a Copel OK os dois cards cairiam no mesmo lugar. */
-  .panel-grid>#grid>.card[data-name="Copel"]{grid-column:1/9;grid-row:3/5}
-  .panel-grid>#grid>.card[data-name="Sanepar"]{grid-column:9/13;grid-row:3;align-self:start}
-  .panel-grid>.prog-card{grid-column:9/13;grid-row:4}
+  .panel-grid>#grid>.card[data-name="Copel"]{grid-column:1/9}
+  .panel-grid>#grid>.card[data-name="Sanepar"]{grid-column:9/13}
+  .panel-grid>.prog-card{grid-column:9/13}
   /* 5 pilulas = 5 colunas iguais. A 6a coluna era do selo; sem ele as pilulas
      voltam a ser coluna normal (mesma especificidade da regra do celular, que
      tem :last-child — por isso o :last-child aqui tambem). */
@@ -1273,11 +1276,42 @@ details[open]::details-content{block-size:auto}
 .fact-titulo{font-size:11px;font-weight:700;letter-spacing:.4px;text-transform:uppercase;color:var(--text3);margin-bottom:4px}
 .facts-fonte{font-size:11px;color:var(--text3);padding:2px 2px 0}
 
+/* ---------- Texto da IA no card do clima: uma frase, o resto sob demanda ---------- */
+.clima-ia{margin:0 16px 14px;padding-top:12px;border-top:1px solid var(--md-sys-color-outline-variant)}
+.clima-ia-txt{margin:0 0 8px;font-size:14px;line-height:1.5;color:var(--text);font-weight:500}
+.clima-ia-det{padding:2px 0 0;font-size:12.5px;line-height:1.62;color:var(--text2)}
+.clima-ia-det>p{margin:0 0 8px}
+.panel-card .clima-ia .bulletin-text{padding:0;margin:0 0 8px;font-size:12.5px;color:var(--text2)}
+.clima-motivos:not(:empty){margin-top:2px}
+.clima-oficiais:not(:empty){margin-top:6px;font-size:11.5px;color:var(--text3)}
+
+/* ---------- Radar em tela cheia: nenhum transform na árvore ---------- */
+html.map-fs .panel-card,html.map-fs .panel-card:hover,
+html.map-fs .radar-card,html.map-fs .radar-card:hover,
+html.map-fs .entra{transform:none !important;animation:none !important}
+html.map-fs{overflow:hidden}
+
+/* ---------- Radar mais enxuto (o mapa é o herói, a moldura não) ----------
+   A moldura comia altura demais para o pouco que informa (pedido 24/09/2026). */
+.radar-card>.panel-head{padding:10px 14px}
+.radar-card .panel-title{font-size:14.5px}
+.radar-card .panel-sub{font-size:11.5px}
+.map-layer-selector{top:10px;right:10px;padding:3px;gap:4px}
+.layer-btn{padding:6px 10px;font-size:11.5px;gap:4px}
+.layer-btn .ms{font-size:16px}
+.map-corner-btn{width:34px;height:34px;top:48px;right:10px}
+.map-corner-btn .ms{font-size:18px}
+.radar-controls-overlay{padding:6px 10px}
+/* O mapa acompanha a altura do card (flex) em vez de fixar 380px: nunca sobra
+   faixa vazia dentro do card nem o mapa vira uma tira. */
+.radar-map-wrapper{flex:1 1 auto;height:auto;min-height:260px}
+@media (max-width:640px){.radar-map-wrapper{min-height:230px}}
+
 /* ---------- Radar: tela cheia no canto, como ação ---------- */
 .map-corner-btn{
   position:absolute;top:62px;right:14px;z-index:600;width:40px;height:40px;
   display:grid;place-items:center;border:none;cursor:pointer;border-radius:50%;
-  background:rgba(15,23,42,.88);backdrop-filter:blur(12px);color:#CBD5E1;
+  background:rgba(9,16,9,.88);backdrop-filter:blur(12px);color:#dee5d9;
   box-shadow:0 4px 12px rgba(0,0,0,.25);
   transition:background var(--dur-2) var(--motion-standard),color var(--dur-2) var(--motion-standard),transform var(--dur-1) var(--motion-spring)
 }
@@ -1291,13 +1325,9 @@ details[open]::details-content{block-size:auto}
 .panel-card #hidroContent .rio-verdict{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin:2px 0 8px}
 
 /* ---------- Rios: estações de referência ditas com todas as letras ---------- */
-.rio-ref-tag{font-size:10px;font-weight:700;letter-spacing:.3px;text-transform:uppercase;color:var(--text2);
-  background:var(--md-sys-color-surface-container-high);border-radius:9999px;padding:1px 7px;white-space:nowrap}
-.panel-card #hidroContent .rio-ref{opacity:.92}
 /* Estação de REFERÊNCIA não é risco de Ipiranga: o chip dela é neutro mesmo em
    nível alto (o "CRÍTICO" vermelho de Cebolão/Jataizinho ao lado de um
    cabeçalho "Atenção" era a contradição que o leitor via). */
-.panel-card #hidroContent .rio-ref .rio-tag .bulletin-tag{background:var(--md-sys-color-surface-container-high) !important;color:var(--text2) !important;font-weight:600 !important}
 
 /* ---------- Intensidade de chuva: escala coerente (era verde em "moderada") ---------- */
 .nowcast-intensity-badge.int-none{background:var(--md-sys-color-surface-container-high);color:var(--text2)}
@@ -1486,31 +1516,29 @@ details[open]::details-content{block-size:auto}
           <div class="nowcast-meta" id="nowcastMeta"></div>
           <details class="panel-details" id="nowcastDetalhe"></details>
         </div>
+        <!-- O resumo da IA em UMA frase. O texto longo que ficava no card "O
+             que está acontecendo" desceu para dentro do expander: continua no
+             HTML (o Google lê, quem quiser abre) sem ocupar a tela. Os botões
+             de detalhe são o que sustenta a busca — mudam de lugar, não somem. -->
+        <div class="clima-ia">
+          <p class="clima-ia-txt" id="climaIAText">Analisando radar, pluviômetros e previsão…</p>
+          <details class="panel-details">
+            <summary>Como este texto é gerado</summary>
+            <div class="clima-ia-det">
+              <p>Texto descritivo automático, montado a partir do radar, dos pluviômetros do CEMADEN e da previsão do INMET. Pode conter erros — confira sempre no radar e nas fontes oficiais.</p>
+              <p class="bulletin-text" id="bulletinText">Carregando análise da situação climatológica de Ipiranga…</p>
+              <div class="clima-motivos" id="climaMotivos"></div>
+              <div class="clima-oficiais" id="climaAvisosOficiais"></div>
+              <div class="bulletin-meta-line">
+                <span class="bulletin-when" id="bulletinWhen"></span>
+                <span class="bulletin-tag" id="bulletinSourceTag">IA</span>
+              </div>
+            </div>
+          </details>
+        </div>
       </div>
 
       <!-- 3) SITUAÇÃO (8 colunas): alerta + boletim IA fundidos em UM card -->
-      <div class="card panel-card situacao-card">
-        <div class="panel-head">
-          <span class="panel-title">O que está acontecendo</span>
-          <span class="bulletin-tag" id="alertaNivelTag">—</span>
-        </div>
-        <div class="cemaden-box" id="alertaBox" style="display:none">
-          <div id="alertaContent" class="alerta-inline"></div>
-        </div>
-        <p class="bulletin-text" id="bulletinText">Carregando análise descritiva da situação climatológica de Ipiranga...</p>
-        <div class="bulletin-meta-line">
-          <span class="bulletin-when" id="bulletinWhen"></span>
-          <span class="bulletin-tag" id="bulletinSourceTag">IA</span>
-        </div>
-        <!-- De que é feito o texto: transparência que faltava e que dá fim ao
-             card (ele terminava em ~83px de vazio — crítica 24/09/2026). -->
-        <div class="panel-foot-note">Feito a partir do radar, dos pluviômetros do CEMADEN e da previsão do INMET.</div>
-        <details class="panel-details">
-          <summary>Como este texto é gerado</summary>
-          <p>Análise descritiva automática a partir do radar, do CEMADEN e da previsão do tempo. Pode conter erros — confira no radar e nas fontes oficiais.</p>
-        </details>
-      </div>
-
       <!-- 4) RIOS (4 colunas) -->
       <div class="card panel-card rios-card">
         <div class="panel-head">
@@ -2512,6 +2540,11 @@ async function initWeatherMap() {
 
   btnFs?.addEventListener('click', () => {
     const isFs = mapWrapper?.classList.toggle('is-fullscreen');
+    // Com transform em um ancestral (o lift de :hover do card) o position:fixed
+    // passa a se resolver CONTRA O CARD, e o overflow:hidden dele recorta o
+    // overlay: o botão ia para x=1526 e não tinha como sair da tela cheia
+    // (medido 24/09/2026). A classe no <html> zera a árvore de transform.
+    document.documentElement.classList.toggle('map-fs', !!isFs);
     btnFs.innerHTML = icoMS(isFs ? 'fullscreen_exit' : 'fullscreen', 's20');
     btnFs.setAttribute('aria-label', isFs ? 'Sair da tela cheia' : 'Ver o mapa em tela cheia');
     btnFs.classList.toggle('active', isFs);
@@ -2520,9 +2553,16 @@ async function initWeatherMap() {
     }, 100);
   });
 
+  // A altura do wrapper agora vem do card (flex). Sem avisar o Leaflet, ele
+  // desenha com o tamanho antigo e sobra faixa cinza nas bordas.
+  if (window.ResizeObserver && mapWrapper) {
+    new ResizeObserver(() => { try { map.invalidateSize(); } catch (e) {} }).observe(mapWrapper);
+  }
+
   document.addEventListener('keydown', (ev) => {
     if (ev.key === 'Escape' && mapWrapper?.classList.contains('is-fullscreen')) {
       mapWrapper.classList.remove('is-fullscreen');
+      document.documentElement.classList.remove('map-fs');
       btnFs.innerHTML = icoMS('fullscreen', 's20');
       btnFs.setAttribute('aria-label', 'Ver o mapa em tela cheia');
       btnFs.classList.remove('active');
@@ -2661,7 +2701,8 @@ async function fetchWeatherData() {
     renderNowcastCard(data);
     renderQuandoVisivel('#cemadenBox', () => renderCemadenCard(data));
     renderQuandoVisivel('#hidroBox', () => renderHidroCard(data));
-    renderAlertaCard(data);
+    renderClimaIA();
+  renderAlertaCard(data);
     renderTopAlert(data);
     renderStatusBand();
     window._cargaPainel = window._cargaPainel || { servicos: false, clima: false };
@@ -2799,7 +2840,7 @@ function animarEntrada(el, atraso){
 function entradaPainel(){
   window._cargaPainel = window._cargaPainel || { servicos: false, clima: false };
   if (!window._cargaPainel.servicos || !window._cargaPainel.clima) return;
-  ['.status-band', '.radar-card', '.clima-card', '.situacao-card',
+  ['.status-band', '.radar-card', '.clima-card',
    '.rios-card', '.prog-card', '.scheduled-reminder']
     .forEach((sel, i) => animarEntrada(document.querySelector(sel), i * 70));
 }
@@ -2851,6 +2892,31 @@ function vereditoGeral(){
   }
   return {nivel:'ok',frase:'Tudo tranquilo em Ipiranga',
     sub:'Sem chuva medida, rios na faixa normal e serviços operando.'};
+}
+
+/* A frase do card do clima: UMA só, sem jargão, sem núcleo a 400 km. É o que
+   substituiu o card "O que está acontecendo", que dizia o mesmo em 6 linhas
+   (pedido do Dave, 24/09/2026). */
+function renderClimaIA(){
+  const el=document.getElementById('climaIAText');
+  if(!el)return;
+  const w=window.latestWeatherData||{};
+  const est=(w.cemaden&&w.cemaden.estacoes)||[];
+  const nc=w.nowcast||{};
+  const chuvaAgora=est.reduce((t,e)=>t+(Number(e.acc1hr)||0),0);
+  const perto=(w.alertLevel==='alert'||w.alertLevel==='watch');
+  const raio=nc.nearestThreatKm!=null?Math.round(nc.nearestThreatKm):null;
+  const prob=w.rainProbabilityPct!=null?Math.round(Number(w.rainProbabilityPct)):null;
+  /* Uma frase sobre o TEMPO, só. Rio e energia têm card próprio e a faixa do
+     topo já dá o veredito — repetir aqui era a duplicação que a crítica pegou.
+     A distância de um núcleo só entra quando ele importa: núcleo a 400 km em
+     outro estado não vira frase (pedido do Dave, 24/09/2026). */
+  let t;
+  if(chuvaAgora>0) t=`Chovendo em Ipiranga: ${num(chuvaAgora,1)} mm na última hora.`;
+  else if(perto&&raio!=null) t=`Chuva forte a ~${raio} km, vindo para a região.`;
+  else if(prob!=null&&prob>=50) t=`Sem chuva no radar; o modelo dá ${prob}% de chance nas próximas 6 h.`;
+  else t='O radar não mostra chuva no Paraná agora.';
+  el.textContent=t;
 }
 
 /* Pinta o veredito. Com o takeover de temporal ativo o banner do topo já é a
@@ -3129,31 +3195,20 @@ function applyStormTakeover(a) {
   }
 }
 
+/* O card "O que está acontecendo" saiu (24/09/2026). O que só ele mostrava —
+   os motivos do alerta e os avisos oficiais — desceu para o expander do card do
+   clima: nada se perde, nada grita, e o texto continua no HTML para o buscador. */
 function renderAlertaCard(data) {
-  const box = document.getElementById('alertaBox');
-  const content = document.getElementById('alertaContent');
-  const tag = document.getElementById('alertaNivelTag');
-  if (!box || !content) return;
+  const mot = document.getElementById('climaMotivos');
+  const ofi = document.getElementById('climaAvisosOficiais');
+  if (!mot && !ofi) return;
   const a = data?.alertaUnificado;
-  if (!a) { box.style.display = 'none'; return; }
-  // Takeover ativo (laranja/vermelho no banner do topo): este card sai de
-  // cena pra não duplicar — a info já está lá em cima, compacta.
-  if (a.nivel === 'laranja' || a.nivel === 'vermelho') { box.style.display = 'none'; return; }
-  box.style.display = 'flex';
-  const cores = {
-    verde: ['var(--g1)', 'var(--md-sys-color-on-success-container)'],
-    amarelo: ['var(--a1)', 'var(--md-sys-color-on-warning-container)'],
-    laranja: ['var(--a1)', 'var(--md-sys-color-on-warning-container)'],
-    vermelho: ['var(--r1)', 'var(--md-sys-color-on-error-container)'],
-  };
-  const [bg, fg] = cores[a.nivel] || cores.verde;
-  if (tag) {
-    // "AMARELO" como rótulo não diz nada a um morador: o nível vira palavra.
-    const rotulos = { verde: 'Normal', amarelo: 'Atenção', laranja: 'Alerta', vermelho: 'Alerta grave' };
-    tag.textContent = rotulos[a.nivel] || a.nivel;
-    tag.style.background = bg;
-    tag.style.color = fg;
-    tag.style.fontWeight = (a.nivel === 'laranja' || a.nivel === 'vermelho') ? '800' : '600';
+  // Takeover ativo (laranja/vermelho no banner do topo): o expander não repete
+  // o que já está em cima, compacto.
+  if (!a || a.nivel === 'laranja' || a.nivel === 'vermelho') {
+    if (mot) mot.innerHTML = '';
+    if (ofi) ofi.innerHTML = '';
+    return;
   }
   // Sem triplicar: a descrição do backend já embute "Motivos: X" — mostra cada
   // texto uma vez só.
@@ -3169,8 +3224,8 @@ function renderAlertaCard(data) {
     return t;
   };
   /* O título do box e a PRIMEIRA FRASE do corpo eram o mesmo texto: a pessoa
-     lia a mesma frase duas vezes, em tamanhos e margens diferentes (crítica
-     24/09/2026). Aqui o corpo perde o trecho já dito no título. */
+     lia a mesma frase duas vezes (crítica 24/09/2026). O corpo perde o trecho
+     já dito no título. */
   const titulo = pushUnico(a.titulo);
   let descBruto = String(a.descricao || '').replace(/^Alerta (verde|amarelo|laranja|vermelho) — /i, '').replace(/\s+/g, ' ').trim();
   if (titulo) {
@@ -3181,14 +3236,17 @@ function renderAlertaCard(data) {
     }
   }
   const desc = pushUnico(descBruto);
-  const motivos = (a.motivos || []).map((m) => pushUnico(m)).filter(Boolean).map((m) => `<div>• ${esc(m)}</div>`).join('');
+  const motivos = (a.motivos || []).map((m) => pushUnico(m)).filter(Boolean)
+    .map((m) => `<div style="font-size:11.5px;color:var(--text3)">• ${esc(m)}</div>`).join('');
   const oficiais = (a.avisosOficiais || []).slice(0, 3).map((o) =>
-    `<div style="font-size:11.5px;opacity:.8">• ${esc(o.fonte)}: ${esc(o.titulo)} (${esc(o.nivel)})</div>`
+    `<div>• ${esc(o.fonte)}: ${esc(o.titulo)} (${esc(o.nivel)})</div>`
   ).join('');
-  content.innerHTML = (titulo ? `<div style="font-weight:600;color:var(--text)">${esc(titulo)}</div>` : '') +
-    (desc ? `<div style="margin-top:4px">${esc(desc)}</div>` : '') +
-    (motivos ? `<div style="margin-top:6px">${motivos}</div>` : '') +
-    (oficiais ? `<div style="margin-top:8px">${oficiais}</div>` : '');
+  if (mot) {
+    mot.innerHTML = (titulo ? `<div style="font-weight:600;color:var(--text)">${esc(titulo)}</div>` : '') +
+      (desc ? `<div style="margin-top:4px">${esc(desc)}</div>` : '') +
+      (motivos ? `<div style="margin-top:6px">${motivos}</div>` : '');
+  }
+  if (ofi) ofi.innerHTML = oficiais;
 }
 
 function renderHidroCard(data) {
@@ -3269,23 +3327,21 @@ function renderHidroCard(data) {
   const motivos = (h.ifl && h.ifl.motivos && h.ifl.motivos.length)
     ? `<div style="margin:6px 0">${h.ifl.motivos.map((m) => `<div>• ${esc(m)}</div>`).join('')}</div>`
     : '';
-  /* Só o Uvaia mede a bacia do Bitumirim — o rio que alaga Ipiranga (estudo em
-     docs/estudo-tibagi). Cebolão e Jataizinho ficam a jusante, no Tibagi, e
-     entram como REFERÊNCIA: nível alto lá não é risco aqui. Sem dizer isso, o
-     card parecia se contradizer (cabeçalho "Atenção" + linhas "Crítico"). */
-  const NOMES_REFERENCIA = ['Cebolão', 'Jataizinho'];
-  const ehReferencia = (nome) => NOMES_REFERENCIA.some((r) => String(nome).indexOf(r) === 0);
-  const rows = h.estacoes.map((e) => {
-    const nomeCurto = e.nome.split(' (')[0];
-    const nome = esc(nomeCurto);
-    const ref = ehReferencia(nomeCurto);
+  /* Cebolão e Jataizinho SAÍRAM do card (24/09/2026): são réguas a jusante, no
+     Tibagi, que não medem a bacia do Bitumirim — davam "crítico" para um rio que
+     não alaga Ipiranga e só poluíam a tela. O Uvaia é a única que interessa.
+     Os dados continuam na API (/api/hidro) para quem precisar. */
+  const NOMES_FORA = ['Cebolão', 'Jataizinho'];
+  const estacoesVisiveis = h.estacoes.filter((e) => !NOMES_FORA.some((r) => String(e.nome).indexOf(r) === 0));
+  const rows = estacoesVisiveis.map((e) => {
+    const nome = esc(e.nome.split(' (')[0]);
     const tag = faixaBadge(e.faixa) || ' <span class="bulletin-tag" style="background:var(--md-sys-color-surface-container-high);color:var(--text2)">normal</span>';
-    return `<div class="rio-row${ref ? ' rio-ref' : ''}">
-      <span><span class="rio-nome">${nome}${ref ? ' <span class="rio-ref-tag">referência</span>' : ''}</span><br><span class="rio-meta">${fmtM(e.nivelCm)} · ${fmtV(e.vazaoM3s)}${fmtDelta(e.delta6hCm)}</span></span>
+    return `<div class="rio-row">
+      <span><span class="rio-nome">${nome}</span><br><span class="rio-meta">${fmtM(e.nivelCm)} · ${fmtV(e.vazaoM3s)}${fmtDelta(e.delta6hCm)}</span></span>
       <span class="rio-tag">${tag}</span>
     </div>`;
   }).join('');
-  const notaEstacoes = `<div class="rio-nota">O <strong>Uvaia</strong> é quem mede a bacia do Bitumirim — o rio que alaga Ipiranga. <strong>Cebolão</strong> e <strong>Jataizinho</strong> ficam a jusante, no rio Tibagi, e aparecem como referência: nível alto lá não significa risco aqui.</div>`;
+  const notaEstacoes = `<div class="rio-nota">O <strong>Uvaia</strong> é quem mede a bacia do Bitumirim — o rio que alaga Ipiranga.</div>`;
   const formula = `<div style="margin-top:8px;line-height:1.6">
       <div><strong>Flash (IFL v3.1)</strong> = chuva 1h/6h/24h em Ipiranga (0–1): &lt;0,3 verde · 0,3–0,5 amarelo · 0,5–0,8 laranja · ≥0,8 vermelho. <strong>Antecedente 72h</strong> (palco): ≥150 mm eleva a amarelo — no regime frontal (mai–ago) a barra cai pra ≥100 mm, porque o inverno arma o palco com pouca água. Antecedente sozinho nunca passa de amarelo: laranja/vermelho exigem chuva atual. <strong>Permanência</strong> = dias fora da caixa SE transbordar: 0,0107 × Uvaia − 5,7 (ajuste preliminar com 2 rótulos reais: OUT23 7d, DEZ24 3d). Doutrina sazonal: no verão convectivo só o local manda (JAN25: Uvaia em P50 com régua em 4 m); no inverno frontal o Uvaia carrega a severidade (2013>2014≈2015>2019>2017 pelo pico Uvaia).</div>
       <div style="margin-top:4px"><strong>Vai sair da calha? (v1)</strong> = regra por regime + vizinhança em 11 rótulos de campo. <em>Convectivo (set–abr)</em>: chuva local em DUAS estações do município — ≥2 dias com ≥40 mm nas duas dentro de 96 h → sai (chuva de bacia; 1 dia isolado não enche, assinatura JAN25). <em>Frontal (mai–ago)</em>: a chuva local fica cega (os invernos saíram com 6–21 mm/96 h) — decide o antecedente de 30 dias (≥250 mm) somado à carga de bacia (Uvaia ≥500 cm). <strong>Confiança</strong> = fração dos casos parecidos no histórico que saíram da calha, com teto pelo tamanho da amostra (n=1 nunca passa de 55%). <strong>Quando</strong> = janela medida nos rótulos convectivos (13–48 h depois do último dia pesado); no frontal não há janela em horas. Estimativa, não oficial.</div>
@@ -3350,7 +3406,7 @@ function renderNowcastCard(data) {
       badge.textContent = intensityMap[dom] || dom;
       badge.className = `nowcast-intensity-badge ${clsMap[dom] || ''}`;
     } else {
-      badge.textContent = 'Sem chuva forte por perto';
+      badge.textContent = 'Sem chuva no radar';
       badge.className = 'nowcast-intensity-badge int-none';
     }
   }
@@ -3360,7 +3416,8 @@ function renderNowcastCard(data) {
   const m = nc.movement;
   if (mv) {
     if (!perto) {
-      mv.textContent = 'Nenhum núcleo a menos de ' + PERTO_KM + ' km de Ipiranga.';
+      // Núcleo longe não vira frase: quem lê mora em Ipiranga, não no mapa.
+      mv.textContent = '';
     } else if (m && m.speedKmh > 0.5) {
       const dirs = ['N', 'NE', 'L', 'SE', 'S', 'SO', 'O', 'NO'];
       const cardeal = dirs[Math.round(m.directionDeg / 45) % 8];
@@ -3378,11 +3435,11 @@ function renderNowcastCard(data) {
     : '';
   if (meta) {
     if (dist != null && perto) {
-      meta.textContent = `Núcleo a ~${num(dist, 0)} km de Ipiranga${obs ? ' · ' + obs : ''}`;
-    } else if (dist != null) {
-      meta.textContent = `O núcleo mais intenso está a ~${num(dist, 0)} km de Ipiranga — longe demais para virar alerta aqui.${obs ? ' ' + obs : ''}`;
+      meta.textContent = `Chuva a ~${num(dist, 0)} km de Ipiranga${obs ? ' · ' + obs : ''}`;
     } else {
-      meta.textContent = obs || 'Sem núcleo identificado no radar.';
+      // Núcleo a 400 km, em outro estado, é irrelevante para quem mora aqui:
+      // não se menciona (pedido 24/09/2026). A distância só aparece quando importa.
+      meta.textContent = 'O radar não mostra chuva no Paraná agora.';
     }
   }
 
