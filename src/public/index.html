@@ -64,11 +64,11 @@
 *,*::before,*::after{margin:0;padding:0;box-sizing:border-box}
 :root{
   /* === Material Design 3 — Tonal Palette (Slate/Sky/Esmeralda) === */
-  --md-sys-color-surface:#F8FAFC;                /* Canvas */
-  --md-sys-color-surface-container-lowest:#FFFFFF;
-  --md-sys-color-surface-container-low:#F1F5F9;  /* Sidebar */
-  --md-sys-color-surface-container:#FFFFFF;       /* Cards */
-  --md-sys-color-surface-container-high:#E2E8F0; /* Headers internos / Badges */
+  --md-sys-color-surface:#F5FCF8;                /* Canvas */
+  --md-sys-color-surface-container-lowest:#FAFFFE;
+  --md-sys-color-surface-container-low:#F0F6F3;  /* Sidebar */
+  --md-sys-color-surface-container:#FAFFFE;       /* Cards */
+  --md-sys-color-surface-container-high:#E0EAE5; /* Headers internos / Badges */
   /* === Movimento (M3) — curva por PAPEL, nao "ease" generico === */
   --motion-emphasized:cubic-bezier(.05,.7,.1,1);  /* entradas: desacelera no fim */
   --motion-standard:cubic-bezier(.2,0,0,1);       /* hover / troca de estado */
@@ -77,19 +77,19 @@
   --dur-2:220ms;   /* hover, troca de cor */
   --dur-3:320ms;   /* subida de card */
   --dur-4:620ms;   /* superficie grande / cascata */
-  --md-sys-color-surface-container-highest:#CBD5E1;
-  --md-sys-color-on-surface:#0F172A;             /* Texto principal */
-  --md-sys-color-on-surface-variant:#475569;     /* Texto secundário */
-  --md-sys-color-on-surface-muted:#546274;       /* Texto terciário (AA em superfícies tonais) */
+  --md-sys-color-surface-container-highest:#C9D8D0;
+  --md-sys-color-on-surface:#0E1B15;             /* Texto principal */
+  --md-sys-color-on-surface-variant:#495851;     /* Texto secundário */
+  --md-sys-color-on-surface-muted:#56655E;       /* Texto terciário (AA em superfícies tonais) */
   --md-sys-color-on-critical-fill:#ffffff;       /* Texto sobre preenchimento crítico (--r6) */
-  --md-sys-color-outline:#94A3B8;
+  --md-sys-color-outline:#96A69E;
   --md-sys-color-outline-variant:#E2E8F0;
   --md-sys-color-primary:#047857;
   --md-sys-color-on-primary:#ffffff;
   --md-sys-color-primary-container:#E0F2FE;
   --md-sys-color-on-primary-container:#0369A1;
-  --md-sys-color-secondary-container:#DCFCE7;
-  --md-sys-color-on-secondary-container:#14532D;
+  --md-sys-color-secondary-container:#C8F0DC;
+  --md-sys-color-on-secondary-container:#0B3D2E;
   --md-sys-color-error:#DC2626;
   --md-sys-color-error-container:#FEE2E2;
   --md-sys-color-on-error-container:#7F1D1D;
@@ -106,11 +106,22 @@
   --md-shape-corner-xs:4px;--md-shape-corner-small:8px;--md-shape-corner-medium:12px;--md-shape-corner-large:16px;--md-shape-corner-xl:28px;--md-shape-corner-full:9999px;
 
   /* === Tokens legados (aliases para o M3 — nada quebra) === */
-  --s900:#0F172A;--s800:#1E293B;--s700:#334155;--s600:#475569;--s500:#64748B;--s400:#94A3B8;--s300:#CBD5E1;--s200:#E2E8F0;--s100:#F1F5F9;--s50:#F8FAFC;
+  --s900:#0E1B15;--s800:#1F2C26;--s700:#36443D;--s600:#495851;--s500:#67776F;--s400:#96A69E;--s300:#C9D8D0;--s200:#E0EAE5;--s100:#F0F6F3;--s50:#F5FCF8;
   --g6:#16A34A;--g5:#22C55E;--g1:#DCFCE7;--g0:#F0FDF4;
   --a5:#D97706;--a4:#F59E0B;--a1:#FEF3C7;--a0:#FFFBEB;
   --r6:#DC2626;--r5:#EF4444;--r1:#FEE2E2;--r0:#FEF2F2;
+  /* MARCA (chrome/ações). Papel separado da escala de STATUS acima: era isso
+     que faltava — três verdes misturados (header, controles neon, "ok"). */
+  --brand:#087F5B;--on-brand:#FFFFFF;--brand-c:#C8F0DC;
   --copel:#00923F;--sanepar:#003F87;
+  /* === ESCALA DE STATUS (papel próprio, separada da cor de marca) ===
+     Crítica 24/09/2026: o verde de "ok" era o mesmo verde neon dos controles
+     e o vermelho de "crítico" era o mesmo do ponto do relógio. Agora status
+     tem escala própria, sempre em par container/on-container. */
+  --st-ok:#15803D;--st-ok-c:#DCFCE7;--st-ok-on-c:#14532D;
+  --st-warn:#B45309;--st-warn-c:#FEF3C7;--st-warn-on-c:#78350F;
+  --st-crit:#B91C1C;--st-crit-c:#FEE2E2;--st-crit-on-c:#7F1D1D;
+  --st-info:#0369A1;--st-info-c:#E0F2FE;--st-info-on-c:#0C4A6E;
   --surface:var(--md-sys-color-surface-container);--text:var(--md-sys-color-on-surface);--text2:var(--md-sys-color-on-surface-variant);--text3:var(--md-sys-color-on-surface-muted);--border:var(--md-sys-color-outline-variant);
   --radius:12px;--radius-sm:8px;--shadow:var(--md-elevation-1);--shadow-lg:var(--md-elevation-2);--shadow-crit:0 4px 12px -2px rgba(15,23,42,.26),0 2px 5px -1px rgba(15,23,42,.16);--shadow-warn:0 4px 14px -2px rgba(217,119,6,.28),0 2px 6px -1px rgba(217,119,6,.16);
   --font:'Inter',system-ui,-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif
@@ -124,24 +135,24 @@
 @media (prefers-color-scheme: dark){
   :root:not([data-theme]){
     color-scheme:dark;
-    --md-sys-color-surface:#0B1120;
-    --md-sys-color-surface-container-lowest:#090D16;
-    --md-sys-color-surface-container-low:#0F172A;
-    --md-sys-color-surface-container:#1E293B;
-    --md-sys-color-surface-container-high:#334155;
-    --md-sys-color-surface-container-highest:#475569;
-    --md-sys-color-on-surface:#F8FAFC;
-    --md-sys-color-on-surface-variant:#CBD5E1;
-    --md-sys-color-on-surface-muted:#94A3B8;
+    --md-sys-color-surface:#08150F;
+    --md-sys-color-surface-container-lowest:#05100B;
+    --md-sys-color-surface-container-low:#0E1B15;
+    --md-sys-color-surface-container:#1F2C26;
+    --md-sys-color-surface-container-high:#36443D;
+    --md-sys-color-surface-container-highest:#495851;
+    --md-sys-color-on-surface:#F5FCF8;
+    --md-sys-color-on-surface-variant:#C9D8D0;
+    --md-sys-color-on-surface-muted:#96A69E;
     --md-sys-color-on-critical-fill:#450A0A;
-    --md-sys-color-outline:#94A3B8;
+    --md-sys-color-outline:#96A69E;
     --md-sys-color-outline-variant:rgba(255,255,255,.08);
     --md-sys-color-primary:#38BDF8;
     --md-sys-color-on-primary:#00364A;
     --md-sys-color-primary-container:#0C4A6E;
     --md-sys-color-on-primary-container:#E0F2FE;
-    --md-sys-color-secondary-container:#064E3B;
-    --md-sys-color-on-secondary-container:#DCFCE7;
+    --md-sys-color-secondary-container:#0B3D2E;
+    --md-sys-color-on-secondary-container:#C8F5DC;
     --md-sys-color-error:#F87171;
     --md-sys-color-error-container:#7F1D1D;
     --md-sys-color-on-error-container:#FEE2E2;
@@ -152,33 +163,39 @@
     --md-elevation-2:0 4px 6px -1px rgba(0,0,0,.35),0 2px 4px -2px rgba(0,0,0,.25);
     --md-elevation-3:0 10px 15px -3px rgba(0,0,0,.4),0 4px 6px -4px rgba(0,0,0,.3);
   --md-elevation-lift:0 14px 28px -10px rgba(0,0,0,.62),0 6px 14px -6px rgba(0,0,0,.5);
-    --copel:#4ADE80;--sanepar:#38BDF8;
-    --s900:#F8FAFC;--s800:#F1F5F9;--s700:#E2E8F0;--s600:#CBD5E1;--s500:#94A3B8;--s400:#64748B;--s300:#475569;--s200:#334155;--s100:#1E293B;--s50:#0F172A;
+    --brand:#4ADE80;--on-brand:#052E1F;--brand-c:rgba(74,222,128,.18);
+    --brand:#4ADE80;--on-brand:#052E1F;--brand-c:rgba(74,222,128,.18);
+  --copel:#4ADE80;--sanepar:#38BDF8;
+    --s900:#F5FCF8;--s800:#F0F6F3;--s700:#E0EAE5;--s600:#C9D8D0;--s500:#96A69E;--s400:#67776F;--s300:#495851;--s200:#36443D;--s100:#1F2C26;--s50:#0E1B15;
     --g6:#4ADE80;--g5:#16A34A;--g1:rgba(34,197,94,.18);--g0:rgba(6,78,59,.3);
     --a5:#FBBF24;--a4:#F59E0B;--a1:rgba(245,158,11,.18);--a0:rgba(120,53,15,.3);
     --r6:#F87171;--r5:#EF4444;--r1:rgba(239,68,68,.18);--r0:rgba(127,29,29,.3);
+    --st-ok:#4ADE80;--st-ok-c:rgba(34,197,94,.16);--st-ok-on-c:#BBF7D0;
+    --st-warn:#FBBF24;--st-warn-c:rgba(245,158,11,.16);--st-warn-on-c:#FDE68A;
+    --st-crit:#F87171;--st-crit-c:rgba(239,68,68,.18);--st-crit-on-c:#FECACA;
+    --st-info:#7DD3FC;--st-info-c:rgba(56,189,248,.16);--st-info-on-c:#BAE6FD;
   }
 }
 :root[data-theme="dark"]{
   color-scheme:dark;
-  --md-sys-color-surface:#0B1120;
-  --md-sys-color-surface-container-lowest:#090D16;
-  --md-sys-color-surface-container-low:#0F172A;
-  --md-sys-color-surface-container:#1E293B;
-  --md-sys-color-surface-container-high:#334155;
-  --md-sys-color-surface-container-highest:#475569;
-  --md-sys-color-on-surface:#F8FAFC;
-  --md-sys-color-on-surface-variant:#CBD5E1;
-  --md-sys-color-on-surface-muted:#94A3B8;
+  --md-sys-color-surface:#08150F;
+  --md-sys-color-surface-container-lowest:#05100B;
+  --md-sys-color-surface-container-low:#0E1B15;
+  --md-sys-color-surface-container:#1F2C26;
+  --md-sys-color-surface-container-high:#36443D;
+  --md-sys-color-surface-container-highest:#495851;
+  --md-sys-color-on-surface:#F5FCF8;
+  --md-sys-color-on-surface-variant:#C9D8D0;
+  --md-sys-color-on-surface-muted:#96A69E;
   --md-sys-color-on-critical-fill:#450A0A;
-  --md-sys-color-outline:#94A3B8;
+  --md-sys-color-outline:#96A69E;
   --md-sys-color-outline-variant:rgba(255,255,255,.08);
-  --md-sys-color-primary:#38BDF8;
-  --md-sys-color-on-primary:#00364A;
-  --md-sys-color-primary-container:#0C4A6E;
-  --md-sys-color-on-primary-container:#E0F2FE;
-  --md-sys-color-secondary-container:#064E3B;
-  --md-sys-color-on-secondary-container:#DCFCE7;
+  --md-sys-color-primary:#4ADE80;
+  --md-sys-color-on-primary:#052E1F;
+  --md-sys-color-primary-container:#0B3D2E;
+  --md-sys-color-on-primary-container:#C8F5DC;
+  --md-sys-color-secondary-container:#0B3D2E;
+  --md-sys-color-on-secondary-container:#C8F5DC;
   --md-sys-color-error:#F87171;
   --md-sys-color-error-container:#7F1D1D;
   --md-sys-color-on-error-container:#FEE2E2;
@@ -189,10 +206,14 @@
   --md-elevation-2:0 4px 6px -1px rgba(0,0,0,.35),0 2px 4px -2px rgba(0,0,0,.25);
   --md-elevation-3:0 10px 15px -3px rgba(0,0,0,.4),0 4px 6px -4px rgba(0,0,0,.3);
   --md-elevation-lift:0 14px 28px -10px rgba(0,0,0,.62),0 6px 14px -6px rgba(0,0,0,.5);
-  --s900:#F8FAFC;--s800:#F1F5F9;--s700:#E2E8F0;--s600:#CBD5E1;--s500:#94A3B8;--s400:#64748B;--s300:#475569;--s200:#334155;--s100:#1E293B;--s50:#0F172A;
+  --s900:#F5FCF8;--s800:#F0F6F3;--s700:#E0EAE5;--s600:#C9D8D0;--s500:#96A69E;--s400:#67776F;--s300:#495851;--s200:#36443D;--s100:#1F2C26;--s50:#0E1B15;
   --g6:#4ADE80;--g5:#16A34A;--g1:rgba(34,197,94,.18);--g0:rgba(6,78,59,.3);
   --a5:#FBBF24;--a4:#F59E0B;--a1:rgba(245,158,11,.18);--a0:rgba(120,53,15,.3);
   --r6:#F87171;--r5:#EF4444;--r1:rgba(239,68,68,.18);--r0:rgba(127,29,29,.3);
+  --st-ok:#4ADE80;--st-ok-c:rgba(34,197,94,.16);--st-ok-on-c:#BBF7D0;
+  --st-warn:#FBBF24;--st-warn-c:rgba(245,158,11,.16);--st-warn-on-c:#FDE68A;
+  --st-crit:#F87171;--st-crit-c:rgba(239,68,68,.18);--st-crit-on-c:#FECACA;
+  --st-info:#7DD3FC;--st-info-c:rgba(56,189,248,.16);--st-info-on-c:#BAE6FD;
 }
 
 .weather-section{
@@ -355,81 +376,87 @@ body{font-family:var(--font);background:var(--md-sys-color-surface);color:var(--
 .container{max-width:1200px;margin:0 auto;padding:0 20px;width:100%}
 
 /* Header */
+/* ===== TOPO (redesign 24/09/2026) =====
+   A faixa verde saturada com botões translúcidos saiu: o chrome fica sobre o
+   fundo da página e a cor de marca aparece SÓ na ação principal. Eram 4 botões
+   iguais e sem rótulo; agora são ação principal (sino), tema e um menu. */
 .header{
-  background:linear-gradient(135deg,#064E3B 0%,#065F46 55%,#047857 100%);
-  padding:12px 20px;color:#fff;display:flex;align-items:center;justify-content:space-between;
-  box-shadow:0 1px 4px rgba(15,23,42,.15);position:relative;z-index:10;
-  flex-wrap:wrap;row-gap:8px
+  background:var(--md-sys-color-surface);padding:10px 20px;color:var(--text);
+  display:flex;align-items:center;justify-content:space-between;gap:12px;
+  position:relative;z-index:10;flex-wrap:wrap;row-gap:8px
 }
 .header-left{display:flex;align-items:center;gap:12px;flex:1 1 auto;min-width:0}
 .header-brand-logo{
-  width:38px;height:38px;background:rgba(11,61,46,.75);
-  border-radius:var(--md-shape-corner-medium);display:flex;align-items:center;justify-content:center;flex-shrink:0;
-  box-shadow:0 1px 3px rgba(0,0,0,.2)
+  width:40px;height:40px;border-radius:var(--md-shape-corner-medium);
+  display:flex;align-items:center;justify-content:center;flex-shrink:0
 }
-.header-brand-logo svg{width:26px;height:30px}
-.header-title{margin:0;font-size:18px;font-weight:700;letter-spacing:-.3px;line-height:1.2;font-family:'Montserrat',var(--font)}
-.header-title span{font-weight:700;color:#00C853;font-size:18px}
-.header-subtitle{font-size:12px;opacity:.85;font-weight:400;margin-top:2px}
-.header-refresh-btn{
-  display:flex;align-items:center;gap:8px;background:rgba(255,255,255,.16);border:none;
-  padding:10px 14px;border-radius:var(--md-shape-corner-medium);cursor:pointer;color:#fff;
-  font-family:var(--font);font-size:13px;font-weight:500;transition:all .2s;user-select:none;
-  backdrop-filter:blur(8px)
+.header-brand-logo svg{width:34px;height:34px}
+/* ===== ÍCONES: Material Symbols Rounded (subset próprio, 13 KB) =====
+   Um estilo só, mesmo peso, sem emoji — a crítica de 24/09/2026 pediu exatamente
+   isso. font-display:block para nunca aparecer o nome cru da ligadura. */
+@font-face{
+  font-family:'Material Symbols Rounded';font-style:normal;font-weight:400;
+  font-display:block;src:url('/vendor/fonts/material-symbols-rounded-subset.woff2') format('woff2')
 }
-.header-refresh-btn:hover{background:rgba(255,255,255,.28)}
-.header-refresh-btn:active{transform:scale(.98)}
-.header-refresh-btn .ri{width:16px;height:16px;fill:#fff;flex-shrink:0;transition:transform .3s}
-.header-refresh-btn .ri.spinning{animation:spin .8s linear infinite}
-@keyframes spin{to{transform:rotate(360deg)}}
-.header-refresh-btn .ht{font-variant-numeric:tabular-nums;opacity:.9}
-.theme-toggle-btn{
-  display:flex;align-items:center;justify-content:center;width:44px;height:44px;flex-shrink:0;
-  background:rgba(255,255,255,.16);border:none;border-radius:var(--md-shape-corner-full);
-  cursor:pointer;font-size:16px;transition:background .2s;backdrop-filter:blur(8px);margin-left:8px
+.ms{
+  font-family:'Material Symbols Rounded';font-weight:400;font-style:normal;
+  font-size:24px;line-height:1;letter-spacing:normal;text-transform:none;
+  display:inline-block;white-space:nowrap;word-wrap:normal;direction:ltr;
+  font-feature-settings:'liga';-webkit-font-smoothing:antialiased;user-select:none;flex:none
 }
-.theme-toggle-btn:hover{background:rgba(255,255,255,.28)}
-.theme-toggle-btn:active{transform:scale(.95)}
-/* Controles do topo: UM grupo que nunca quebra entre si e com todos no mesmo
-   tamanho. Antes cada um tinha padding/fonte/raio proprios e o botao de tema
-   caia sozinho na linha de baixo no celular. */
+.ms.fill{font-variation-settings:'FILL' 1}
+.ms.s14{font-size:14px}.ms.s16{font-size:16px}.ms.s18{font-size:18px}
+.ms.s20{font-size:20px}.ms.s22{font-size:22px}.ms.s28{font-size:28px}.ms.s36{font-size:36px}
+.header-title{margin:0;font-size:18px;font-weight:700;letter-spacing:-.3px;line-height:1.2;font-family:'Montserrat',var(--font);color:var(--text)}
+.header-title span{font-weight:700;color:var(--brand);font-size:18px}
+.header-subtitle{font-size:12px;color:var(--text2);font-weight:400;margin-top:2px}
+/* Relógio é texto, não botão: é o item do topo que carrega VALOR. */
+.header-clock{font-size:13px;color:var(--text2);font-variant-numeric:tabular-nums;padding:0 2px}
 .header-actions{display:flex;align-items:center;gap:6px;flex:0 0 auto;flex-wrap:nowrap;min-width:0}
-.push-btn,.admin-btn,.header-refresh-btn,.theme-toggle-btn{
-  display:flex;align-items:center;justify-content:center;gap:5px;
-  height:36px;min-height:36px;padding:0 11px;flex:0 0 auto;
-  background:rgba(255,255,255,.16);border:none;border-radius:var(--md-shape-corner-full);
-  cursor:pointer;font-size:12px;font-weight:600;color:#fff;font-family:inherit;
-  transition:background .2s;backdrop-filter:blur(8px);margin-left:0;white-space:nowrap;
-  text-decoration:none
+.hbtn{
+  display:flex;align-items:center;justify-content:center;gap:6px;height:40px;min-width:40px;padding:0 10px;
+  flex:0 0 auto;border:none;border-radius:var(--md-shape-corner-full);background:transparent;color:var(--text2);
+  cursor:pointer;font:inherit;font-size:12.5px;font-weight:600;text-decoration:none;
+  transition:background var(--dur-2) var(--motion-standard),color var(--dur-2) var(--motion-standard),transform var(--dur-1) var(--motion-spring)
 }
-.push-btn svg,.admin-btn svg,.header-refresh-btn .ri{width:15px;height:15px;flex-shrink:0}
-.theme-toggle-btn{width:36px;padding:0;font-size:15px}
-.header-refresh-btn{font-variant-numeric:tabular-nums;gap:6px}
-.header-refresh-btn .ri{transition:transform .3s}
-.push-btn:hover{background:rgba(255,255,255,.28)}
-.push-btn:active{transform:scale(.95)}
-.push-btn.on{background:rgba(0,146,63,.9)}
-.push-btn.denied{opacity:.55}
-.admin-btn:hover{background:rgba(255,255,255,.28)}
-#mi-toast{
-  position:fixed;left:50%;bottom:24px;transform:translateX(-50%) translateY(80px);z-index:9999;
-  max-width:min(92vw,480px);padding:12px 18px;border-radius:14px;font-size:13px;line-height:1.45;font-weight:500;
-  background:var(--md-sys-color-inverse-surface,#1E293B);color:var(--md-sys-color-inverse-on-surface,#F8FAFC);
-  box-shadow:0 8px 24px rgba(0,0,0,.28);opacity:0;pointer-events:none;transition:all .25s ease;
-  text-align:center
+.hbtn:hover{background:var(--md-sys-color-surface-container-high);color:var(--text)}
+.hbtn:active{transform:scale(.95)}
+.hbtn svg{width:22px;height:22px;fill:currentColor;flex:none}
+.hbtn .ms{font-size:22px;line-height:1}
+.hbtn.primary{background:var(--brand);color:var(--on-brand);padding:0 16px}
+.hbtn.primary:hover{background:var(--brand);color:var(--on-brand);filter:brightness(1.05)}
+.hbtn.on{background:var(--brand);color:var(--on-brand)}
+.hbtn.denied{opacity:.55}
+.hmenu{position:relative;display:flex;justify-content:center}
+.hmenu-pop{
+  position:absolute;right:0;top:calc(100% + 8px);min-width:216px;z-index:60;
+  display:flex;flex-direction:column;gap:2px;padding:6px;
+  background:var(--md-sys-color-surface-container-high);border-radius:var(--md-shape-corner-medium);
+  box-shadow:var(--md-elevation-3)
 }
-#mi-toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
-.header-right-group{display:flex;align-items:center}
-.ov-dot{width:9px;height:9px;border-radius:50%;transition:all .3s;flex-shrink:0}
-.ov-dot.ok{background:var(--g5)}
-.ov-dot.warn{background:var(--a4)}
-.ov-dot.critical{background:var(--r5)}
+.hmenu-pop[hidden]{display:none}
+.hmenu-item{
+  display:flex;align-items:center;gap:10px;width:100%;padding:10px 12px;border:none;
+  border-radius:var(--md-shape-corner-small);background:none;color:var(--text);font:inherit;
+  font-size:13.5px;font-weight:500;text-align:left;cursor:pointer;text-decoration:none
+}
+.hmenu-item:hover{background:var(--md-sys-color-surface-container-highest)}
+.hmenu-item svg{width:18px;height:18px;fill:currentColor;flex:none}
+.hmenu-item .ri{transition:transform .3s}
+.hmenu-item .ri.spinning{animation:spin .8s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
 @keyframes pulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.4;transform:scale(.85)}}
 @media (prefers-reduced-motion: reduce){
   *,*::before,*::after{animation-duration:.01ms !important;animation-iteration-count:1 !important;transition-duration:.01ms !important;scroll-behavior:auto !important}
 }
 :focus-visible{outline:3px solid var(--md-sys-color-primary);outline-offset:2px}
-.header :focus-visible,.radar-play-btn:focus-visible,.layer-btn:focus-visible,.theme-toggle-btn:focus-visible,.push-btn:focus-visible{outline-color:#A7F3D0}
+.hbtn:focus-visible,.hmenu-item:focus-visible,.band-refresh:focus-visible{outline-color:var(--brand)}
+@media (max-width:520px){
+  .header{padding:10px 14px}
+  .header-subtitle{display:none}
+  .header-clock{font-size:12px}
+  .header-actions{gap:2px}
+}
 
 /* User Connection Telemetry Pill */
 
@@ -601,11 +628,8 @@ body{font-family:var(--font);background:var(--md-sys-color-surface);color:var(--
 }
 
 /* === M3 Mobile refinements === */
-/* 5 controles em tela estreita: o icone de refresh (decorativo) sai antes que a
-   hora e o ponto de status, que sao informacao. */
-@media (max-width:400px){.header-actions .header-refresh-btn .ri{display:none}}
-/* Em 320px a pilula fica com 132px e o valor caia em 3 linhas, deixando a linha
-   do meio mais alta que as outras. Fonte um pouco menor = 2 linhas em todas. */
+/* Em 640px o topo vira 2 linhas: titulo em cima, controles embaixo em colunas
+   iguais (relogio, tema, alertas, menu). */
 @media (max-width: 520px){
   /* Nao cabe rotulo em 4 colunas iguais: fica so o icone. O aria-label/title
      continuam dizendo o que cada botao faz, e o relogio mantem a hora. */
@@ -624,7 +648,6 @@ body{font-family:var(--font);background:var(--md-sys-color-surface);color:var(--
   .radar-controls-overlay{padding:8px 12px}
   .header{padding:10px 14px}
   .banner,.scheduled-reminder{padding:12px 14px}
-  .header-refresh-btn{padding:6px 10px}
   .container{padding:0 12px}
 }
 @media (max-width: 640px){
@@ -897,7 +920,7 @@ body{font-family:var(--font);background:var(--md-sys-color-surface);color:var(--
 /* .entra e posto pelo JS quando o DADO chega. No load o card ainda e esqueleto:
    animar ali animaria o vazio e o conteudo apareceria seco depois. */
 .entra{animation:surfaceIn var(--dur-4) var(--motion-emphasized) both}
-.band-dot.pop{animation:dotPop .64s var(--motion-spring)}
+.band-dot.pop,.band-ico.pop{animation:dotPop .64s var(--motion-spring)}
 .band-val.trocou{animation:valIn .38s var(--motion-emphasized)}
 
 .card,.bulletin-box,.nowcast-box,.cemaden-box,.kpi-card,.outage-card,.stats-kpi-card,
@@ -1013,6 +1036,11 @@ details[open]::details-content{block-size:auto}
    LINHA DO ROTULO (como nos cards). Com align-items:center o ponto seguia o
    centro do bloco e, quando o valor quebrava em 2 linhas (RIOS), ele descia
    9px em relacao aos outros pontos — grade torta aos olhos. */
+/* Ícone do rótulo da pílula: um estilo só, cor vinda da escala de STATUS. */
+.band-ico{font-size:16px;color:var(--text3)}
+.band-ico[data-nivel="ok"]{color:var(--st-ok)}
+.band-ico[data-nivel="warn"]{color:var(--st-warn)}
+.band-ico[data-nivel="crit"]{color:var(--st-crit)}
 .band-dot{width:9px;height:9px;border-radius:50%;flex:none;background:var(--md-sys-color-outline)}
 .band-dot.ok{background:var(--g6)}
 .band-dot.warn{background:var(--a5)}
@@ -1022,7 +1050,7 @@ details[open]::details-content{block-size:auto}
 /* O ponto vive DENTRO da linha do rotulo (como nos cards): assim ele alinha
    sempre com o texto do rotulo, mesmo quando o valor quebra em 2 linhas. Antes
    ele seguia o centro do bloco e no RIOS descia 9px em relacao aos outros. */
-.band-lbl{display:flex;align-items:center;gap:5px;font-size:10.5px;font-weight:700;letter-spacing:.6px;text-transform:uppercase;color:var(--text2);line-height:1.2}
+.band-lbl{display:flex;align-items:center;gap:6px;font-size:10.5px;font-weight:700;letter-spacing:.6px;text-transform:uppercase;color:var(--text2);line-height:1.2}
 .band-val{font-size:14px;font-weight:700;font-variant-numeric:tabular-nums;line-height:1.3}
 .band-val small{font-size:11.5px;font-weight:500;color:var(--text2)}
 .band-pill[data-nivel="crit"]{background:var(--r1)}
@@ -1143,7 +1171,7 @@ details[open]::details-content{block-size:auto}
   .panel-grid>#grid{display:contents}
   .panel-grid>.radar-card{grid-column:1/9;grid-row:1}
   .panel-grid>.clima-card{grid-column:9/13;grid-row:1}
-  .panel-grid>.situacao-card{grid-column:1/9;grid-row:2}
+  .panel-grid>.situacao-card{grid-column:1/9;grid-row:2;justify-content:space-between}
   .panel-grid>.rios-card{grid-column:9/13;grid-row:2}
   /* data-name e não .critical: com a Copel OK os dois cards cairiam no mesmo lugar. */
   .panel-grid>#grid>.card[data-name="Copel"]{grid-column:1/9;grid-row:3/5}
@@ -1159,44 +1187,193 @@ details[open]::details-content{block-size:auto}
 /* Chuva JÁ detectada no radar: a linha muda de cor (sem borda, só papel tonal). */
 .panel-card .weather-badge[data-alerta]{background:var(--r1);border-radius:var(--md-shape-corner-small);padding:9px 10px;margin:2px 0}
 .panel-card .weather-badge[data-alerta] .k,.panel-card .weather-badge[data-alerta] .v{color:var(--md-sys-color-on-error-container)}
+
+/* ==========================================================================
+   REDESIGN 24/09/2026 — veredito em 1 frase, padrão de linha, detalhes
+   recolhidos. Regras no FIM do stylesheet de propósito: override com a mesma
+   especificidade resolve por ORDEM (pitfall que já custou tempo neste arquivo).
+   ========================================================================== */
+
+/* ---------- veredito do topo (a faixa de status vira: frase + pílulas) ---------- */
+.status-band{display:flex;flex-direction:column;gap:12px}
+.band-head{display:flex;align-items:flex-start;gap:12px;flex-wrap:wrap}
+.band-lead{width:40px;height:40px;border-radius:50%;display:grid;place-items:center;flex:none;
+  background:var(--md-sys-color-surface-container-low);color:var(--text2)}
+.band-lead svg{width:22px;height:22px;fill:currentColor}
+.band-lead[data-nivel="ok"]{background:var(--st-ok-c);color:var(--st-ok-on-c)}
+.band-lead[data-nivel="warn"]{background:var(--st-warn-c);color:var(--st-warn-on-c)}
+.band-lead[data-nivel="crit"]{background:var(--st-crit-c);color:var(--st-crit-on-c)}
+.band-lead[data-nivel="info"]{background:var(--st-info-c);color:var(--st-info-on-c)}
+.band-say{flex:1 1 260px;min-width:0}
+.band-veredito{margin:0;font-size:19px;line-height:1.25;font-weight:700;letter-spacing:-.2px;color:var(--text)}
+.band-veredito[hidden]{display:none}
+.band-veredito-sub{margin:3px 0 0;font-size:13px;line-height:1.45;color:var(--text2)}
+.band-veredito-sub[hidden]{display:none}
+.band-side{display:flex;align-items:center;gap:8px;margin-left:auto;flex:none}
+.band-hora{font-size:11.5px;color:var(--text3);font-variant-numeric:tabular-nums;white-space:nowrap}
+.band-refresh{width:36px;height:36px;border:none;border-radius:50%;flex:none;cursor:pointer;
+  background:var(--md-sys-color-surface-container-low);color:var(--text2);display:grid;place-items:center;
+  transition:background var(--dur-2) var(--motion-standard),transform var(--dur-1) var(--motion-spring)}
+.band-refresh svg{width:18px;height:18px;fill:currentColor}
+.band-refresh:hover{background:var(--md-sys-color-surface-container-high);color:var(--text)}
+.band-refresh:active{transform:scale(.94)}
+.band-refresh.spinning svg{animation:spin .8s linear infinite}
+@media (max-width:520px){
+  .band-veredito{font-size:17px}
+  .band-side{margin-left:0;width:100%;justify-content:space-between}
+}
+/* pílulas: agora dentro de um grid próprio (a faixa é coluna) */
+.band-pills{display:grid;grid-template-columns:repeat(2,1fr);gap:8px}
+.band-pills .band-pill{align-items:flex-start}
+@media (max-width:520px){
+  .band-pills .band-val{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+}
+.band-pills .band-pill:last-of-type{grid-column:1/-1}
+@media(min-width:992px){
+  .band-pills{grid-template-columns:repeat(5,1fr);gap:10px}
+  .band-pills .band-pill:last-of-type{grid-column:auto}
+}
+
+/* ---------- PADRÃO DE LINHA: o fato em uma linha, uma vez só ---------- */
+.row{display:flex;gap:14px;align-items:flex-start}
+.row .lead{width:40px;height:40px;border-radius:50%;display:grid;place-items:center;flex:none;
+  background:var(--st-info-c);color:var(--st-info-on-c)}
+.row .lead svg{width:22px;height:22px;fill:currentColor}
+.row .lead.ok{background:var(--st-ok-c);color:var(--st-ok-on-c)}
+.row .lead.warn{background:var(--st-warn-c);color:var(--st-warn-on-c)}
+.row .lead.critical{background:var(--st-crit-c);color:var(--st-crit-on-c)}
+.row .lead.info{background:var(--st-info-c);color:var(--st-info-on-c)}
+.row .txt{flex:1;min-width:0}
+.row .t{font-size:15px;font-weight:600;line-height:20px;color:var(--text)}
+.row .s{font-size:13px;color:var(--text2);line-height:19px;margin-top:2px}
+.row .end{flex:none;display:flex;align-items:center}
+.icon-btn{width:40px;height:40px;border:none;border-radius:50%;flex:none;cursor:pointer;
+  background:transparent;color:var(--text2);display:grid;place-items:center;
+  transition:background var(--dur-2) var(--motion-standard),transform var(--dur-1) var(--motion-spring)}
+.icon-btn svg{width:24px;height:24px;fill:currentColor}
+.icon-btn:hover{background:var(--md-sys-color-surface-container-high);color:var(--text)}
+.icon-btn:active{transform:scale(.94)}
+.icon-btn.expand svg{transition:transform var(--dur-2) var(--motion-standard)}
+.icon-btn.expand[aria-expanded="true"] svg{transform:rotate(180deg)}
+.card-status-badge.info{background:var(--md-sys-color-surface-container-high);color:var(--text2)}
+
+/* ---------- detalhes recolhidos (abre deslizando, sem pular) ---------- */
+.detail{display:grid;grid-template-rows:0fr;transition:grid-template-rows var(--dur-3) var(--motion-emphasized)}
+.detail.open{grid-template-rows:1fr}
+.detail>div{overflow:hidden}
+.facts{display:flex;flex-direction:column;gap:8px;margin-top:12px}
+.fact{background:var(--md-sys-color-surface-container-low);border-radius:var(--md-shape-corner-medium);padding:10px 12px}
+.fact-bloco{background:var(--md-sys-color-surface-container-low);border-radius:var(--md-shape-corner-medium);padding:10px 12px}
+.fact-topo{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:6px}
+.fact-topo strong{font-size:13.5px;font-weight:600;color:var(--text)}
+.fact-chip{font-size:11px;font-weight:600;padding:2px 8px;border-radius:9999px;
+  background:var(--md-sys-color-surface-container-high);color:var(--text2)}
+.fact-linha{display:flex;justify-content:space-between;gap:12px;font-size:12.5px;color:var(--text2);padding:2px 0}
+.fact-linha strong{color:var(--text);font-weight:500;text-align:right}
+.fact-titulo{font-size:11px;font-weight:700;letter-spacing:.4px;text-transform:uppercase;color:var(--text3);margin-bottom:4px}
+.facts-fonte{font-size:11px;color:var(--text3);padding:2px 2px 0}
+
+/* ---------- Radar: tela cheia no canto, como ação ---------- */
+.map-corner-btn{
+  position:absolute;top:62px;right:14px;z-index:600;width:40px;height:40px;
+  display:grid;place-items:center;border:none;cursor:pointer;border-radius:50%;
+  background:rgba(15,23,42,.88);backdrop-filter:blur(12px);color:#CBD5E1;
+  box-shadow:0 4px 12px rgba(0,0,0,.25);
+  transition:background var(--dur-2) var(--motion-standard),color var(--dur-2) var(--motion-standard),transform var(--dur-1) var(--motion-spring)
+}
+.map-corner-btn:hover{background:rgba(15,23,42,.98);color:#fff}
+.map-corner-btn:active{transform:scale(.94)}
+.map-layer-selector .layer-btn .ms{font-size:18px;line-height:1}
+
+/* ---------- Rios: veredito em frase, não em caixa alta ---------- */
+.rio-pergunta{font-size:13.5px;font-weight:600;color:var(--text2)}
+.rio-resposta{font-weight:700;padding:2px 9px;border-radius:6px;font-size:12.5px}
+.panel-card #hidroContent .rio-verdict{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin:2px 0 8px}
+
+/* ---------- Rios: estações de referência ditas com todas as letras ---------- */
+.rio-ref-tag{font-size:10px;font-weight:700;letter-spacing:.3px;text-transform:uppercase;color:var(--text2);
+  background:var(--md-sys-color-surface-container-high);border-radius:9999px;padding:1px 7px;white-space:nowrap}
+.panel-card #hidroContent .rio-ref{opacity:.92}
+/* Estação de REFERÊNCIA não é risco de Ipiranga: o chip dela é neutro mesmo em
+   nível alto (o "CRÍTICO" vermelho de Cebolão/Jataizinho ao lado de um
+   cabeçalho "Atenção" era a contradição que o leitor via). */
+.panel-card #hidroContent .rio-ref .rio-tag .bulletin-tag{background:var(--md-sys-color-surface-container-high) !important;color:var(--text2) !important;font-weight:600 !important}
+
+/* ---------- Intensidade de chuva: escala coerente (era verde em "moderada") ---------- */
+.nowcast-intensity-badge.int-none{background:var(--md-sys-color-surface-container-high);color:var(--text2)}
+.nowcast-intensity-badge.int-light{background:var(--st-info-c);color:var(--st-info-on-c)}
+.nowcast-intensity-badge.int-moderate{background:var(--st-warn-c);color:var(--st-warn-on-c)}
+.nowcast-intensity-badge.int-heavy{background:var(--st-crit-c);color:var(--st-crit-on-c)}
+.nowcast-intensity-badge.int-extreme{background:var(--st-crit);color:var(--st-crit-on-c);font-weight:800}
+
+@media (prefers-reduced-motion:reduce){
+  .detail{transition:none}
+  .icon-btn:active,.band-refresh:active{transform:none}
+}
 </style>
 </head>
 <body>
 <header class="header">
   <div class="header-left">
     <div class="header-brand-logo" aria-hidden="true">
-      <svg viewBox="0 0 100 115" width="26" height="30" fill="none">
-        <path d="M 20.5 64 A 36 36 0 1 1 79.5 64 L 52.8 104 A 3.6 3.6 0 0 1 47.2 104 Z" stroke="#00C853" stroke-width="7.5" stroke-linecap="round" stroke-linejoin="round"/>
-        <path d="M 24 48 A 39 39 0 0 1 76 48" stroke="#00C853" stroke-width="6.5" stroke-linecap="round"/>
-        <path d="M 34 56 A 24 24 0 0 1 66 56" stroke="#00C853" stroke-width="6" stroke-linecap="round"/>
-        <circle cx="50" cy="68" r="5.5" fill="#F0D835"/>
-        <path d="M 39 77 C 44 80.5 56 80.5 61 77 C 57 83.5 43 83.5 39 77 Z" fill="#00C853"/>
+      <!-- Silhueta do município: a assinatura é o contorno de Ipiranga, não um
+           pin genérico de mapa (crítica de identidade 24/09/2026). -->
+      <svg viewBox="0 0 40 40" width="34" height="34" aria-hidden="true">
+        <rect width="40" height="40" rx="12" fill="var(--brand-c)"/>
+        <path id="logoContorno" d="M19.3 24.2 L19.2 24.7 L20.1 25.1 L21.0 25.8 L22.6 26.7 L23.3 26.6 L27.9 30.1 L28.2 30.6 L29.2 31.1 L29.9 31.2 L30.5 32.0 L30.6 32.6 L31.3 33.9 L31.3 34.3 L32.6 34.2 L32.9 33.7 L33.0 32.9 L33.6 32.2 L33.3 31.9 L33.5 31.3 L34.0 31.1 L34.0 29.8 L34.4 29.5 L35.0 29.8 L35.8 30.6 L36.1 30.1 L35.6 29.8 L35.8 29.1 L36.2 28.6 L35.8 28.4 L35.2 27.6 L35.2 27.2 L36.1 26.8 L35.9 26.5 L36.1 26.0 L36.8 26.0 L36.4 25.2 L35.2 24.8 L35.8 23.7 L34.7 23.8 L34.2 24.5 L33.8 24.1 L34.6 23.2 L34.2 22.6 L33.6 22.5 L34.3 21.9 L33.8 21.3 L33.0 22.0 L32.5 22.2 L31.8 20.7 L31.2 21.2 L30.6 20.1 L30.8 19.9 L31.7 20.3 L32.6 20.2 L32.6 19.5 L32.4 19.2 L31.5 18.7 L30.5 18.5 L29.9 18.1 L29.9 18.8 L28.8 18.4 L28.3 17.7 L27.9 17.4 L27.6 15.9 L26.8 15.1 L25.8 14.9 L27.5 10.9 L29.6 5.7 L28.6 5.9 L28.6 6.4 L27.4 7.2 L27.0 7.8 L26.1 7.5 L25.1 8.3 L24.2 8.7 L23.6 9.8 L22.5 9.5 L22.3 10.1 L21.4 10.7 L19.5 11.2 L18.8 10.8 L18.2 9.5 L17.2 9.0 L17.1 8.7 L15.9 8.5 L15.4 9.0 L14.5 9.2 L14.1 8.9 L12.7 9.1 L11.4 8.7 L10.2 7.4 L8.9 8.3 L8.6 8.2 L8.2 8.9 L6.5 8.9 L5.2 8.4 L5.0 8.8 L4.4 8.9 L3.9 9.4 L3.2 9.2 L3.6 10.1 L4.4 11.2 L5.3 11.5 L5.9 12.3 L6.3 14.1 L7.0 14.0 L7.6 15.1 L8.7 16.5 L10.1 17.3 L9.9 17.9 L10.5 18.1 L10.8 18.5 L11.4 18.2 L12.0 18.7 L13.0 19.2 L13.7 19.3 L13.7 21.9 L13.9 22.1 L14.0 23.7 L14.2 24.1 L15.1 25.0 L16.0 25.4 L16.6 25.0 L16.9 24.4 L17.4 24.8 L18.9 23.9 L19.3 24.2 Z" fill="var(--brand)"/>
       </svg>
     </div>
-    <div>
+    <div class="header-id">
       <h1 class="header-title">Ipiranga <span>Monitor</span></h1>
-      <div class="header-subtitle">Serviços essenciais de Ipiranga/PR em tempo real</div>
+      <div class="header-subtitle">Chuva, rios e serviços de Ipiranga/PR</div>
     </div>
   </div>
   <div class="header-actions">
-  <button class="push-btn" id="btnPush" type="button" aria-label="Ativar alertas no celular" title="Receber alertas de tempestade, energia e água no celular" style="display:none">
-    <span id="pushBtnIcon" aria-hidden="true"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg></span>
-    <span class="btn-lbl" id="pushBtnText">Alertas</span>
-  </button>
-  <button class="push-btn" id="btnInstall" type="button" aria-label="Instalar o app" title="Instalar o Monitor Ipiranga no celular" style="display:none"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg> <span class="btn-lbl">Instalar</span></button>
-  <a class="admin-btn" id="btnAdmin" href="/admin" style="display:none" title="Painel Admin"><svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor" aria-hidden="true"><path d="M5 9.2h3V19H5zM10.6 5h2.8v14h-2.8zm5.6 8H19v6h-2.8z"/></svg> <span class="btn-lbl">Admin</span></a>
-  <button class="header-refresh-btn" id="btnRefresh" type="button" aria-label="Atualizar dados do monitoramento">
-    <svg class="ri" id="refreshIcon" viewBox="0 0 24 24"><path d="M17.65 6.35C16.2 4.9 14.21 4 12 4c-4.42 0-7.99 3.58-7.99 8s3.57 8 7.99 8c3.73 0 6.84-2.55 7.73-6h-2.08c-.82 2.33-3.04 4-5.65 4-3.31 0-6-2.69-6-6s2.69-6 6-6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z"/></svg>
-    <span class="ht" id="headerTime" aria-live="polite">--:--</span>
-    <span class="ov-dot ok" id="headerDot" role="img" aria-label="Status geral"></span>
-  </button>
-  <button class="theme-toggle-btn" id="btnThemeToggle" type="button" aria-label="Alternar tema claro/escuro" title="Alternar tema">
-    <span id="themeToggleIcon">🌙</span>
-  </button>
+    <!-- Relógio é TEXTO (não botão): é o item do topo que carrega valor, então
+         não vira ícone nem entra no menu. -->
+    <span class="header-clock" id="headerTime" aria-live="polite">--:--</span>
+    <button class="hbtn" id="btnThemeToggle" type="button" aria-label="Alternar tema claro/escuro" title="Alternar tema">
+      <span id="themeToggleIcon" class="ms" aria-hidden="true">dark_mode</span>
+    </button>
+    <button class="hbtn primary" id="btnPush" type="button" aria-label="Ativar alertas no celular" title="Receber alertas de chuva, energia e água no celular" style="display:none">
+      <span id="pushBtnIcon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg></span>
+      <span class="btn-lbl" id="pushBtnText">Alertas</span>
+    </button>
+    <!-- Tudo que não é a ação principal vive aqui: atualizar, instalar, admin. -->
+    <div class="hmenu">
+      <button class="hbtn" id="btnMenu" type="button" aria-label="Mais opções" aria-haspopup="true" aria-expanded="false">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 8c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zm0 2c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm0 6c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2z"/></svg>
+      </button>
+      <div class="hmenu-pop" id="menuPop" hidden>
+        <button class="hmenu-item" id="btnRefresh" type="button">
+          <svg class="ri" id="refreshIcon" viewBox="0 0 24 24" aria-hidden="true"><path d="M17.65 6.35C16.2 4.9 14.21 4 12 4c-4.42 0-7.99 3.58-7.99 8s3.57 8 7.99 8c3.73 0 6.84-2.55 7.73-6h-2.08c-.82 2.33-3.04 4-5.65 4-3.31 0-6-2.69-6-6s2.69-6 6-6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z"/></svg>
+          Atualizar agora
+        </button>
+        <button class="hmenu-item" id="btnInstall" type="button" style="display:none">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+          Instalar no celular
+        </button>
+        <a class="hmenu-item" id="btnAdmin" href="/admin" style="display:none">
+          <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M19.14 12.94c.04-.3.06-.61.06-.94 0-.32-.02-.64-.07-.94l2.03-1.58a.49.49 0 0 0 .12-.61l-1.92-3.32a.488.488 0 0 0-.59-.22l-2.39.96c-.5-.38-1.03-.7-1.62-.94l-.36-2.54a.484.484 0 0 0-.48-.41h-3.84c-.24 0-.43.17-.47.41l-.36 2.54c-.59.24-1.13.57-1.62.94l-2.39-.96c-.22-.08-.47 0-.59.22L2.74 8.87c-.12.21-.08.47.12.61l2.03 1.58c-.05.3-.09.63-.09.94s.02.64.07.94l-2.03 1.58a.49.49 0 0 0-.12.61l1.92 3.32c.12.22.37.29.59.22l2.39-.96c.5.38 1.03.7 1.62.94l.36 2.54c.05.24.24.41.48.41h3.84c.24 0 .44-.17.47-.41l.36-2.54c.59-.24 1.13-.56 1.62-.94l2.39.96c.22.08.47 0 .59-.22l1.92-3.32c.12-.22.07-.47-.12-.61l-2.01-1.58zM12 15.6A3.6 3.6 0 1 1 12 8.4a3.6 3.6 0 0 1 0 7.2z"/></svg>
+          Painel admin
+        </a>
+      </div>
+    </div>
   </div>
 </header>
 
 <div class="container">
+  <nav class="tabs-nav" aria-label="Seções do monitor">
+    <button class="tab-btn active" id="tabStatusBtn" type="button">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-6h2v6zm0-8h-2V7h2v2z"/></svg>
+      Status ao vivo
+    </button>
+    <button class="tab-btn" id="tabStatsBtn" type="button">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zM9 17H7v-7h2v7zm4 0h-2v-10h2v10zm4 0h-2v-4h2v4z"/></svg>
+      Relatório
+    </button>
+  </nav>
+
 
   <div id="banner" class="banner ok" role="status" aria-live="polite">
     <div class="banner-top-row">
@@ -1218,34 +1395,40 @@ details[open]::details-content{block-size:auto}
        status + lembrete de programado empilhados. Cada pílula leva ao card do
        detalhe — o link "Ver card ➔" órfão do banner antigo morre aqui. -->
   <div class="status-band" id="statusBand" role="status" aria-live="polite">
+    <!-- O veredito em uma frase: a única linha que alguém assustado precisa
+         ler. Derivado do mesmo dado dos cards (vereditoGeral() no JS). -->
+    <div class="band-head">
+      <span class="band-lead" id="bandLeadIcon" aria-hidden="true"></span>
+      <div class="band-say">
+        <h1 class="band-veredito" id="bandVeredito">Verificando…</h1>
+        <p class="band-veredito-sub" id="bandVereditoSub"></p>
+      </div>
+      <div class="band-side">
+        <span class="band-hora" id="bandHora"></span>
+        <button class="band-refresh" id="bandRefresh" type="button" aria-label="Atualizar agora" title="Atualizar agora">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M17.65 6.35C16.2 4.9 14.21 4 12 4c-4.42 0-7.99 3.58-7.99 8s3.57 8 7.99 8c3.73 0 6.84-2.55 7.73-6h-2.08c-.82 2.33-3.04 4-5.65 4-3.31 0-6-2.69-6-6s2.69-6 6-6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z"/></svg>
+        </button>
+      </div>
+    </div>
+    <div class="band-pills">
     <button class="band-pill" id="pillEnergia" type="button" aria-expanded="false" aria-controls="bandExpEnergia" data-expand="bandExpEnergia">
-      <span class="band-txt"><span class="band-lbl"><span class="band-dot" id="pillEnergiaDot" aria-hidden="true"></span>Energia</span><span class="band-val" id="pillEnergiaVal">—</span></span>
+      <span class="band-txt"><span class="band-lbl"><span class="ms s16 band-ico" id="pillEnergiaDot" data-nivel="info" aria-hidden="true">bolt</span>Energia</span><span class="band-val" id="pillEnergiaVal">—</span></span>
     </button>
     <button class="band-pill" id="pillAgua" type="button" data-target='.card[data-name="Sanepar"]'>
-      <span class="band-txt"><span class="band-lbl"><span class="band-dot" id="pillAguaDot" aria-hidden="true"></span>Água</span><span class="band-val" id="pillAguaVal">—</span></span>
+      <span class="band-txt"><span class="band-lbl"><span class="ms s16 band-ico" id="pillAguaDot" data-nivel="info" aria-hidden="true">water_drop</span>Água</span><span class="band-val" id="pillAguaVal">—</span></span>
     </button>
-    <button class="band-pill" id="pillRios" type="button" data-target=".rios-card">
-      <span class="band-txt"><span class="band-lbl"><span class="band-dot" id="pillRiosDot" aria-hidden="true"></span>Rios (Ipiranga)</span><span class="band-val" id="pillRiosVal">—</span></span>
+    <button class="band-pill" id="pillRios" type="button" title="Rios de Ipiranga" data-target=".rios-card">
+      <span class="band-txt"><span class="band-lbl"><span class="ms s16 band-ico" id="pillRiosDot" data-nivel="info" aria-hidden="true">waves</span>Rios</span><span class="band-val" id="pillRiosVal">—</span></span>
     </button>
     <button class="band-pill" id="pillChuva" type="button" data-target=".clima-card">
-      <span class="band-txt"><span class="band-lbl"><span class="band-dot" id="pillChuvaDot" aria-hidden="true"></span>Chuva 24 h</span><span class="band-val" id="pillChuvaVal">—</span></span>
+      <span class="band-txt"><span class="band-lbl"><span class="ms s16 band-ico" id="pillChuvaDot" data-nivel="info" aria-hidden="true">rainy</span>Chuva 24 h</span><span class="band-val" id="pillChuvaVal">—</span></span>
     </button>
     <button class="band-pill" id="pillProg" type="button" data-target="#scheduledReminder">
-      <span class="band-txt"><span class="band-lbl"><span class="band-dot" id="pillProgDot" aria-hidden="true"></span>Programados</span><span class="band-val" id="pillProgVal">—</span></span>
+      <span class="band-txt"><span class="band-lbl"><span class="ms s16 band-ico" id="pillProgDot" data-nivel="info" aria-hidden="true">event</span>Programados</span><span class="band-val" id="pillProgVal">—</span></span>
     </button>
+    </div>
     <div class="band-expand" id="bandExpEnergia" hidden></div>
   </div>
-
-  <nav class="tabs-nav" aria-label="Navegação do Monitor">
-    <button class="tab-btn active" id="tabStatusBtn" type="button">
-      <svg viewBox="0 0 24 24" style="width:18px;height:18px;fill:currentColor" aria-hidden="true"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 17.93c-3.95-.49-7-3.85-7-7.93 0-.62.08-1.21.21-1.79L9 15v1c0 1.1.9 2 2 2v1.93zm6.9-2.54c-.26-.81-1-1.39-1.9-1.39h-1v-3c0-.55-.45-1-1-1H8v-2h2c.55 0 1-.45 1-1V7h2c1.1 0 2-.9 2-2v-.41c2.93 1.19 5 4.06 5 7.41 0 2.08-.8 3.97-2.1 5.39z"/></svg>
-      Status Ao Vivo
-    </button>
-    <button class="tab-btn" id="tabStatsBtn" type="button">
-      <svg viewBox="0 0 24 24" style="width:18px;height:18px;fill:currentColor" aria-hidden="true"><path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zM9 17H7v-7h2v7zm4 0h-2v-10h2v10zm4 0h-2v-4h2v4z"/></svg>
-      Relatório & Estatísticas Diárias
-    </button>
-  </nav>
 
   <div id="statusView">
     <div class="panel-grid">
@@ -1257,17 +1440,20 @@ details[open]::details-content{block-size:auto}
             <span class="panel-title">Radar de chuva e clima</span>
             <span class="panel-sub">Ipiranga e região · contorno = limite do município</span>
           </span>
-          <span class="panel-tag ok">ao vivo</span>
         </div>
         <div class="radar-map-wrapper">
           <div class="map-layer-selector">
-            <button type="button" class="layer-btn" id="layerStreetBtn"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polygon points="1 6 1 22 8 18 16 22 23 18 23 2 16 6 8 2 1 6"/><line x1="8" y1="2" x2="8" y2="18"/><line x1="16" y1="6" x2="16" y2="22"/></svg> Mapa</button>
-            <button type="button" class="layer-btn active" id="layerSatBtn"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20"/><path d="M2 12h20"/></svg> Satélite HD</button>
-            <button type="button" class="layer-btn" id="btnFullscreen">🖥️ Tela Cheia</button>
+            <button type="button" class="layer-btn" id="layerStreetBtn"><span class="ms s18" aria-hidden="true">map</span> Mapa</button>
+            <button type="button" class="layer-btn active" id="layerSatBtn"><span class="ms s18" aria-hidden="true">satellite_alt</span> Satélite</button>
           </div>
+          <!-- Tela cheia é AÇÃO, não modo de camada: sai da barra e vira ícone
+               no canto do mapa (crítica 24/09/2026). -->
+          <button type="button" class="map-corner-btn" id="btnFullscreen" aria-label="Ver o mapa em tela cheia" title="Tela cheia">
+            <span class="ms s20" aria-hidden="true">fullscreen</span>
+          </button>
           <div id="weatherMap"></div>
           <div class="radar-controls-overlay">
-            <button type="button" class="radar-play-btn" id="radarPlayBtn" aria-label="Play / Pause radar">▶</button>
+            <button type="button" class="radar-play-btn" id="radarPlayBtn" aria-label="Play / Pause radar"><span class="ms fill">play_arrow</span></button>
             <input type="range" class="radar-slider" id="radarSlider" min="0" max="0" value="0" />
             <span class="radar-time-text" id="radarTimeLabel">Ao vivo</span>
           </div>
@@ -1281,23 +1467,24 @@ details[open]::details-content{block-size:auto}
           <span class="panel-meta">INMET</span>
         </div>
         <div class="weather-metrics-bar">
-          <div class="weather-badge" id="wxTempBadge">🌡️ --°C</div>
-          <div class="weather-badge" id="wxCondBadge">🌤️ Carregando...</div>
-          <div class="weather-badge" id="wxRainBadge">🌧️ --% Chuva</div>
-          <div class="weather-badge" id="wxWindBadge">💨 -- km/h</div>
+          <div class="weather-badge" id="wxTempBadge">--°C</div>
+          <div class="weather-badge" id="wxCondBadge">Carregando…</div>
+          <div class="weather-badge" id="wxRainBadge">--% chuva</div>
+          <div class="weather-badge" id="wxWindBadge">-- km/h</div>
         </div>
         <div class="cemaden-box" id="cemadenBox" style="display:none">
           <div class="panel-subhead">Chuva medida · CEMADEN</div>
           <div id="cemadenContent">Carregando leituras dos pluviômetros de Ipiranga...</div>
-          <div class="panel-foot-note">Acumulado das últimas 24 h (janela móvel) · fonte pública CEMADEN</div>
+          <div class="panel-foot-note" id="cemadenFootNote">Acumulado das últimas 24 h (janela móvel) · fonte pública CEMADEN</div>
         </div>
         <div class="nowcast-box" id="nowcastBox" style="display:none">
-          <div class="panel-subhead">Nowcast do radar</div>
+          <div class="panel-subhead">Chuva agora e nos próximos minutos</div>
           <div class="nowcast-status-row">
             <span class="nowcast-intensity-badge" id="nowcastIntensityBadge">—</span>
             <span class="nowcast-movement" id="nowcastMovement">—</span>
           </div>
           <div class="nowcast-meta" id="nowcastMeta"></div>
+          <details class="panel-details" id="nowcastDetalhe"></details>
         </div>
       </div>
 
@@ -1315,6 +1502,9 @@ details[open]::details-content{block-size:auto}
           <span class="bulletin-when" id="bulletinWhen"></span>
           <span class="bulletin-tag" id="bulletinSourceTag">IA</span>
         </div>
+        <!-- De que é feito o texto: transparência que faltava e que dá fim ao
+             card (ele terminava em ~83px de vazio — crítica 24/09/2026). -->
+        <div class="panel-foot-note">Feito a partir do radar, dos pluviômetros do CEMADEN e da previsão do INMET.</div>
         <details class="panel-details">
           <summary>Como este texto é gerado</summary>
           <p>Análise descritiva automática a partir do radar, do CEMADEN e da previsão do tempo. Pode conter erros — confira no radar e nas fontes oficiais.</p>
@@ -1455,17 +1645,20 @@ const LOGO={
   sanepar:`<svg viewBox="0 0 24 24"><rect x="1" y="1" width="22" height="22" rx="6" fill="#0B3D2E"/><text x="12" y="16.5" text-anchor="middle" fill="#F5F7FA" font-family="'Montserrat','Inter',sans-serif" font-size="12" font-weight="800">S</text></svg>`,
 };
 
+/* Ícones = Material Symbols Rounded. Os SVGs avulsos saíam com peso e
+   acabamento diferentes entre si (e alguns eram emoji) — agora há um só estilo. */
+const icoMS=(n,cls='')=>`<span class="ms ${cls}" aria-hidden="true">${n}</span>`;
 const ICON={
-  ok:`${SVG}<path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/></svg>`,
-  warning:`${SVG}<path d="M1 21h22L12 2 1 21zm12-3h-2v-2h2v2zm0-4h-2v-4h2v4z"/></svg>`,
-  error:`${SVG}<path d="M12 2C6.47 2 2 6.47 2 12s4.47 10 10 10 10-4.47 10-10S17.53 2 12 2zm5 13.59L15.59 17 12 13.41 8.41 17 7 15.59 10.59 12 7 8.41 8.41 7 12 10.59 15.59 7 17 8.41 13.41 12 17 15.59z"/></svg>`,
-  bolt:`${SVG}<path d="M11 15H6l7-14v8h5l-7 14v-8z"/></svg>`,
-  pin:`${SVG}<path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/></svg>`,
-  clock:`${SVG}<path d="M11.99 2C6.47 2 2 6.48 2 12s4.47 10 9.99 10C17.52 22 22 17.52 22 12S17.52 2 11.99 2zM12 20c-4.42 0-8-3.58-8-8s3.58-8 8-8 8 3.58 8 8-3.58 8-8 8zm.5-13H11v6l5.25 3.15.75-1.23-4.5-2.67z"/></svg>`,
-  users:`${SVG}<path d="M16 11c1.66 0 2.99-1.34 2.99-3S17.66 5 16 5c-1.66 0-3 1.34-3 3s1.34 3 3 3zm-8 0c1.66 0 2.99-1.34 2.99-3S9.66 5 8 5C6.34 5 5 6.34 5 8s1.34 3 3 3zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5c0-2.33-4.67-3.5-7-3.5zm8 0c-.29 0-.62.02-.97.05 1.16.84 1.97 1.97 1.97 3.45V19h6v-2.5c0-2.33-4.67-3.5-7-3.5z"/></svg>`,
-  worker:`${SVG}<path d="M12 2c1.1 0 2 .9 2 2v1h4c1.1 0 2 .9 2 2v3c0 3.87-3.13 7-7 7s-7-3.13-7-7V7c0-1.1.9-2 2-2h4V4c0-1.1.9-2 2-2zM5 19v3h14v-3c0-2.21-3.58-4-8-4s-8 1.79-8 4z"/></svg>`
+  ok:icoMS('check_circle'), warning:icoMS('warning'), error:icoMS('error'), bolt:icoMS('bolt'),
+  pin:icoMS('place'), clock:icoMS('schedule'), users:icoMS('group'), worker:icoMS('engineering'),
+  expand:icoMS('expand_more'), info:icoMS('info'), cloud_off:icoMS('cloud_off'),
+  play:icoMS('play_arrow'), pause:icoMS('pause'), fullscreen:icoMS('fullscreen'),
+  close:icoMS('close'), refresh:icoMS('refresh'), rain:icoMS('rainy'), water:icoMS('water_drop'),
+  waves:icoMS('waves'), air:icoMS('air'), temp:icoMS('device_thermostat'),
+  open:icoMS('open_in_new'), check:icoMS('check'), timer:icoMS('timer'),
+  event:icoMS('event_available'), sensors:icoMS('sensors'), wifi_off:icoMS('wifi_off'),
+  alert:icoMS('crisis_alert'), flood:icoMS('flood'), place:icoMS('place'), search:icoMS('search')
 };
-
 const $=(s)=>document.querySelector(s);
 /* Escapa HTML — dados externos (probes/COPEL/SANEPAR/VLM) NUNCA entram
    no innerHTML sem passar aqui (achado pentest 2026-08-12: XSS via
@@ -1529,6 +1722,89 @@ function formatCopelPrevisao(ev){
   if(dur)return dur;
   return 'Sem previsão';
 }
+
+/* ===================================================================
+   LIMIARES DE SEVERIDADE + pt-BR (crítica de design 24/09/2026)
+
+   Antes: QUALQUER interrupção virava "CRÍTICO" em vermelho — inclusive 1
+   consumidor de 6.017 (0,02%). Vermelho que acende para tudo não distingue
+   mais nada. Agora vermelho exige 10% da rede; abaixo disso é aviso neutro.
+
+   Os limiares valem para a APRESENTAÇÃO (cor, rótulo, ordenação visual).
+   O status do backend segue intocado de propósito: ele alimenta o push, e
+   mudar o gatilho de notificação é outra decisão (não é UI).
+   =================================================================== */
+const LIMIAR_ENERGIA={atencao:1,critico:10}; // % das UCs do município
+function severidadeEnergia(svc){
+  const d=(svc&&svc.data)||{};
+  const ucs=d.totalConsumers||0;
+  const pct=Number(d.pctAffected)||0;
+  if(!ucs)return{nivel:'ok',rotulo:'Normal'};
+  if(pct>=LIMIAR_ENERGIA.critico)return{nivel:'crit',rotulo:'Crítico'};
+  if(pct>=LIMIAR_ENERGIA.atencao)return{nivel:'warn',rotulo:'Atenção'};
+  return{nivel:'info',rotulo:'Aviso'};
+}
+/* "1 UCs" / "1 ocorrências" → plural certo. */
+function plural(n,singular,plural_){
+  return `${n.toLocaleString('pt-BR')} ${n===1?singular:plural_}`;
+}
+function consumidores(n){return plural(n,'consumidor','consumidores');}
+function ocorrencias(n){return plural(n,'ocorrência','ocorrências');}
+/* Número em pt-BR: vírgula decimal, nunca ponto ("0,02%", "11,7 km/h"). */
+function num(v,casas){
+  if(v==null||Number.isNaN(Number(v)))return '—';
+  return Number(v).toLocaleString('pt-BR',{minimumFractionDigits:casas||0,maximumFractionDigits:casas||0});
+}
+/* "Céu Limpo" → "Céu limpo" (sentence case, sem destruir siglas). */
+function sentenceCase(txt){
+  const s=String(txt||'').trim();
+  if(!s)return s;
+  const palavras=s.split(/\s+/);
+  return palavras.map((p,i)=>{
+    if(i===0)return p.charAt(0).toUpperCase()+p.slice(1).toLowerCase();
+    if(p.length<=2||p===p.toUpperCase())return p; // sigla curta: preserva
+    return p.toLowerCase();
+  }).join(' ');
+}
+/* "INTERRUPCAO" (cru da Copel) → "Interrupção". */
+function tipoCopel(t){
+  const cru=String(t||'').trim();
+  if(!cru)return 'Emergência';
+  const chave=cru.toUpperCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'');
+  const mapa={INTERRUPCAO:'Interrupção',EMERGENCIA:'Emergência',MANUTENCAO:'Manutenção',DESLIGAMENTO:'Desligamento programado',SUSPENSAO:'Suspensão'};
+  if(mapa[chave])return mapa[chave];
+  return cru.charAt(0).toUpperCase()+cru.slice(1).toLowerCase();
+}
+/* "2026-09-22 18:38:00" → "ontem, 18:38" (o morador não lê ISO nem duração). */
+function tempoDesdeCopel(v){
+  const d=paraData(v);
+  if(!d)return String(v||'');
+  const hh=d.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
+  const hoje=new Date();hoje.setHours(0,0,0,0);
+  const dia=new Date(d);dia.setHours(0,0,0,0);
+  const difDias=Math.round((hoje-dia)/86400000);
+  if(difDias===0)return `hoje, ${hh}`;
+  if(difDias===1)return `ontem, ${hh}`;
+  return `${d.toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit'})}, ${hh}`;
+}
+function paraData(v){
+  if(!v)return null;
+  let d=new Date(v);
+  if(isNaN(d.getTime())){
+    const m=String(v).match(/(\d{2})\/(\d{2})\/(\d{4})\s+(\d{2}):(\d{2})/);
+    if(m)d=new Date(`${m[3]}-${m[2]}-${m[1]}T${m[4]}:${m[5]}:00`);
+  }
+  return isNaN(d.getTime())?null:d;
+}
+/* Expansor de detalhes (o fato fica numa linha; o resto só sob demanda). */
+function toggleDetalhe(btn){
+  const alvo=document.getElementById(btn.getAttribute('aria-controls'));
+  if(!alvo)return;
+  const aberto=alvo.classList.toggle('open');
+  btn.setAttribute('aria-expanded',String(aberto));
+  btn.setAttribute('aria-label',aberto?'Recolher detalhes':'Ver detalhes');
+}
+window.toggleDetalhe=toggleDetalhe;
 function updateClock(){
   const now=new Date();
   $('#headerTime').textContent=now.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
@@ -1556,7 +1832,7 @@ function toggleCopelOutages(btn){
   container.style.display = isHidden ? 'flex' : 'none';
   if(isHidden){ window._outagesClosed.delete(key); } else { window._outagesClosed.add(key); }
   const icon = btn.querySelector('.btn-toggle-icon');
-  if(icon) icon.textContent = isHidden ? '▼' : '▶';
+  if(icon) icon.innerHTML = isHidden ? ICON.expand : icoMS('expand_less');
   btn.setAttribute('aria-expanded', isHidden ? 'true' : 'false');
 }
 
@@ -1596,11 +1872,11 @@ function renderScheduledReminder(services){
   for(const ev of scheduled){
     const previsao=formatCopelPrevisao(ev);
     const chips=[];
-    chips.push(`<span class="sr-chip">📍 ${esc(ev.bairro||'Ipiranga')}</span>`);
-    chips.push(`<span class="sr-chip">🕒 Início: ${esc(formatCopelStart(ev.dataInicio))}</span>`);
-    chips.push(`<span class="sr-chip">⏱️ ${esc(previsao)}</span>`);
+    chips.push(`<span class="sr-chip">${icoMS('place','s16')} ${esc(ev.bairro||'Ipiranga')}</span>`);
+    chips.push(`<span class="sr-chip">${icoMS('schedule','s16')} Início: ${esc(formatCopelStart(ev.dataInicio))}</span>`);
+    chips.push(`<span class="sr-chip">${icoMS('timer','s16')} ${esc(previsao)}</span>`);
     if(ev.qtdConsumidores>0){
-      chips.push(`<span class="sr-chip">⚡ ${ev.qtdConsumidores} ${ev.qtdConsumidores===1?'consumidor':'consumidores'}</span>`);
+      chips.push(`<span class="sr-chip">${icoMS('bolt','s16')} ${ev.qtdConsumidores} ${ev.qtdConsumidores===1?'consumidor':'consumidores'}</span>`);
     }
     html+=`<div class="scheduled-reminder-item">${chips.join('')}</div>`;
   }
@@ -1609,7 +1885,7 @@ function renderScheduledReminder(services){
 }
 
 function updateBanner(services){
-  const bn=$('#banner'),t=$('#bannerTitle'),s=$('#bannerSub'),badge=$('#bannerBadge'),dot=$('#headerDot'),detailsEl=$('#bannerDetails'),iconEl=$('#bannerIcon');
+  const bn=$('#banner'),t=$('#bannerTitle'),s=$('#bannerSub'),badge=$('#bannerBadge'),detailsEl=$('#bannerDetails'),iconEl=$('#bannerIcon');
   window.lastServicesSnapshot = services;
   renderStatusBand();
   // Takeover do temporal manda: o ciclo dos serviços NÃO pode apagar o alerta
@@ -1628,44 +1904,41 @@ function updateBanner(services){
 
   if(criticalSvcs.length>0){
     bn.classList.add('critical');
-    t.textContent='Ocorrências Críticas Detectadas!';
+    t.textContent='Ocorrências críticas detectadas';
     s.textContent=`Interrupção ativa em Ipiranga/PR`;
-    badge.textContent=`${criticalSvcs.length} CRÍTICO`;
-    dot.className='ov-dot critical';
+    badge.textContent=`${criticalSvcs.length} ${criticalSvcs.length>1?'serviços':'serviço'} com falha`;
     iconEl.innerHTML=ICON.error;
 
     let detailsHtml='';
     for(const cs of criticalSvcs){
       detailsHtml+=`<div class="banner-detail-item" onclick="scrollToCard('${esc(cs.name)}')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();scrollToCard('${esc(cs.name)}');}" role="button" tabindex="0" title="Clique para focar no card do serviço">
-        🔴 <strong>${esc(cs.name)}:</strong> ${esc(cs.details)}
-        <span class="banner-jump-tag">Ver card ➔</span>
+        ${icoMS('error','s18')} <strong>${esc(cs.name)}:</strong> ${esc(cs.details)}
+        <span class="banner-jump-tag">Ver card ${icoMS('arrow_forward','s16')}</span>
       </div>`;
     }
     detailsEl.innerHTML=detailsHtml;
     detailsEl.style.display='flex';
   }else if(warnSvcs.length>0){
     bn.classList.add('warn');
-    t.textContent='Atenção Necessária';
+    t.textContent='Atenção necessária';
     s.textContent='Alguns serviços estão operando com latência elevada ou alerta de desempenho.';
-    badge.textContent=`${warnSvcs.length} ALERTA`;
-    dot.className='ov-dot warn';
+    badge.textContent=`${warnSvcs.length} ${warnSvcs.length>1?'serviços':'serviço'} em alerta`;
     iconEl.innerHTML=ICON.warning;
 
     let detailsHtml='';
     for(const ws of warnSvcs){
       detailsHtml+=`<div class="banner-detail-item" onclick="scrollToCard('${esc(ws.name)}')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();scrollToCard('${esc(ws.name)}');}" role="button" tabindex="0" title="Clique para focar no card do serviço">
-        ⚠️ <strong>${esc(ws.name)}:</strong> ${esc(ws.details)}
-        <span class="banner-jump-tag">Ver card ➔</span>
+        ${icoMS('warning','s18')} <strong>${esc(ws.name)}:</strong> ${esc(ws.details)}
+        <span class="banner-jump-tag">Ver card ${icoMS('arrow_forward','s16')}</span>
       </div>`;
     }
     detailsEl.innerHTML=detailsHtml;
     detailsEl.style.display='flex';
   }else{
     bn.classList.add('ok');
-    t.textContent='Tudo Operando Estável';
+    t.textContent='Tudo operando estável';
     s.textContent='Todos os serviços monitorados (energia e água) estão funcionando normalmente em Ipiranga.';
-    badge.textContent=`${okCount} OK`;
-    dot.className='ov-dot ok';
+    badge.textContent=`${okCount} de ${services.length} ok`;
     iconEl.innerHTML=ICON.ok;
     detailsEl.style.display='none';
   }
@@ -1694,9 +1967,11 @@ function renderCards(services){
     const br=BRANDS[name]||{label:name,cls:'utility',cat:'utility',desc:'Serviço'};
     const st=svc.status||'ok';
     const ico=LOGO[br.cls];
-    const stLabel=st==='ok'?'Normal':st==='warn'?'Atenção':'CRÍTICO';
     
     let contentHtml='';
+    // Severidade efetiva do card (hoisted: o template do card fica FORA do
+    // ramo de utilidades e precisa ver estas variáveis).
+    let sevCls='ok', stCls=st, sevRotulo=st==='ok'?'Normal':st==='warn'?'Atenção':'Interrupção';
 
     // ================= COPEL / SANEPAR (UTILIDADES) =================
     if(br.cat==='utility'){
@@ -1705,232 +1980,132 @@ function renderCards(services){
       const cityTotalConsumers=svc.data?.cityTotalConsumers ?? null;
       const pctAffected=svc.data?.pctAffected ?? (cityTotalConsumers ? Number(((totalConsumers/cityTotalConsumers)*100).toFixed(2)) : null);
 
-      let summaryBoxHtml='';
-      let kpiGridHtml='';
-      let progressBarHtml='';
-      let faixasHtml='';
+      /* ---- UMA linha com o fato (crítica de design 24/09/2026) ----
+         O mesmo dado aparecia em 7 lugares (faixa do topo, caixa vermelha,
+         3 tiles de KPI, barra de impacto, faixas de duração e card do bairro):
+         ~1.300 px para dizer "1 consumidor sem luz". Agora o fato aparece UMA
+         vez, numa linha, e o resto vive dentro de "detalhes". */
+      const sev = name==='Copel'
+        ? severidadeEnergia(svc)
+        : {nivel: st==='ok' ? 'ok' : 'warn', rotulo: st==='ok' ? 'Normal' : 'Interrupção'};
+      sevCls = sev.nivel==='crit' ? 'critical' : sev.nivel==='warn' ? 'warn' : sev.nivel==='info' ? 'info' : 'ok';
+      stCls = sev.nivel==='crit' ? 'critical' : sev.nivel==='warn' ? 'warn' : 'ok';
+      sevRotulo = sev.rotulo;
+      const ativos = [...activeEvents].sort((a,b)=>String(a.dataInicio||a.inicio||'').localeCompare(String(b.dataInicio||b.inicio||'')));
+      const maisAntigo = ativos[0];
+      const leadIcon = ICON.bolt;
 
-      if(st==='critical'){
-        summaryBoxHtml=`<div class="summary-box critical">
-          ${ICON.bolt}
-          <div>${svc.details || 'Ocorrência de interrupção ativa'}</div>
-        </div>`;
-
-        if(name==='Copel'){
-          kpiGridHtml=`<div class="kpi-grid">
-            <div class="kpi-card crit">
-              <div class="kpi-label">UCs Sem Energia</div>
-              <div class="kpi-value">${totalConsumers.toLocaleString('pt-BR')}</div>
-              <div class="kpi-sub">Unidades afetadas</div>
-            </div>
-            <div class="kpi-card">
-              <div class="kpi-label">UCs no município</div>
-              <div class="kpi-value">${cityTotalConsumers!=null?cityTotalConsumers.toLocaleString('pt-BR'):'—'}</div>
-              <div class="kpi-sub">Ipiranga / PR</div>
-            </div>
-            <div class="kpi-card crit">
-              <div class="kpi-label">Porcentagem Afetada</div>
-              <div class="kpi-value">${pctAffected!=null?pctAffected+'%':'—'}</div>
-              <div class="kpi-sub">Da rede municipal</div>
-            </div>
-          </div>`;
-
-          progressBarHtml=`<div class="progress-container">
-            <div class="progress-header">
-              <span>Impacto no município</span>
-              <span style="color:var(--md-sys-color-on-error-container)">${pctAffected!=null?`${pctAffected}% sem energia`:`${totalConsumers} UCs sem energia`}</span>
-            </div>
-            <div class="progress-bar-bg">
-              <div class="progress-bar-fill" style="transform: scaleX(${Math.min(Math.max((pctAffected||0)/100, 0.02), 1)})"></div>
-            </div>
-          </div>`;
-
-          /* Detalhamento por duração (igual o mapa oficial da Copel):
-             faixasDuracao vem do backend (soma de UCs por faixa_duracao). */
-          const faixas=svc.data?.faixasDuracao || {};
-          const FAIXA_ORDEM=['ate_1h','1h_3h','3h_6h','6h_12h','12h_24h','24h_48h','mais_48h'];
-          const faixasRows=FAIXA_ORDEM.filter(f=>(faixas[f]||0)>0).map(f=>
-            `<div style="display:flex;justify-content:space-between;align-items:center;padding:5px 0;font-size:13px">`+
-            `<span>⏱️ ${esc(formatCopelDuracao(f))}</span>`+
-            `<strong>${faixas[f].toLocaleString('pt-BR')} UCs</strong></div>`
-          ).join('');
-          const faixasExtra=Object.keys(faixas).filter(f=>!FAIXA_ORDEM.includes(f)&&(faixas[f]||0)>0).map(f=>
-            `<div style="display:flex;justify-content:space-between;align-items:center;padding:5px 0;font-size:13px">`+
-            `<span>⏱️ ${esc(f)}</span><strong>${faixas[f].toLocaleString('pt-BR')} UCs</strong></div>`
-          ).join('');
-          if(faixasRows||faixasExtra){
-            faixasHtml=`<div style="margin-top:10px;background:var(--md-sys-color-surface-container-low);border-radius:12px;padding:12px 14px">`+
-              `<div style="font-size:13px;font-weight:700;margin-bottom:4px">Detalhamento por duração</div>`+
-              faixasRows+faixasExtra+
-              `<div style="font-size:11px;opacity:.7;margin-top:6px">Fonte: Copel/ANEEL</div></div>`;
-          }
+      let linhaTitulo='', linhaSub='';
+      if(name==='Copel'){
+        if(totalConsumers>0){
+          linhaTitulo = `${consumidores(totalConsumers)} sem luz`;
+          const partes=[];
+          const bairros=[...new Set(ativos.map(ev=>sentenceCase(String(ev.bairro||'Ipiranga').toLowerCase())))];
+          if(bairros.length===1) partes.push(`Bairro ${bairros[0]}`);
+          else if(bairros.length>1) partes.push(`${bairros.length} bairros`);
+          if(maisAntigo?.dataInicio) partes.push(`desde ${tempoDesdeCopel(maisAntigo.dataInicio)}`);
+          if(maisAntigo) partes.push(`previsão de volta ${formatCopelPrevisao(maisAntigo)}`);
+          linhaSub = partes.join(' · ');
+        }else{
+          linhaTitulo='Ninguém sem luz';
+          const pedidos=(svc.data?.emergencyRequests||[]).length;
+          linhaSub = pedidos
+            ? `${plural(pedidos,'solicitação não confirmada','solicitações não confirmadas')} pela Copel — sem interrupção ativa`
+            : 'Nenhuma ocorrência ativa no município agora';
         }
       }else{
-        const lastCheckRel = relativeTime(svc.timestamp || Date.now());
-        const nextCheckSec = Math.round(REFRESH_MS / 1000);
-        // FONTE DA VERDADE: o alerta de tempestade da COPEL segue apenas o
-        // nowcast determinístico com GATES DE RELEVÂNCIA (alertLevel do
-        // backend). "alert" (núcleo ≤80 km / ETA ≤120 min) acende o card;
-        // "watch" mostra vigilância suave; "monitor" mostra info sem alarme.
-        const rainLevel = (name==='Copel' ? (window.latestWeatherData?.alertLevel || 'none') : 'none');
-        const hasRainAlert = (rainLevel === 'alert');
-        const rainTitle = hasRainAlert
-          ? '⚠️ Alerta de Tempestade: Risco de Oscilação / Queda de Energia (COPEL)'
-          : (rainLevel === 'watch')
-            ? '👁️ Vigilância: chuva se aproximando da região (rede COPEL)'
-            : (rainLevel === 'monitor')
-              ? 'ℹ️ Monitoramento: Atividade de radar distante (COPEL)'
-              : '✅ Sem interrupções ativas';
-        const rainIcon = hasRainAlert ? '⚡' : (rainLevel === 'watch') ? '👁️' : (rainLevel === 'monitor') ? 'ℹ️' : ICON.ok;
-        summaryBoxHtml=`<div class="summary-box ${(hasRainAlert||rainLevel==='watch') ? 'warn' : 'ok'}" style="flex-direction:column;align-items:flex-start;gap:8px;padding:16px;${(hasRainAlert||rainLevel==='watch') ? 'background:var(--a1);border-radius:12px;' : ''}">
-          <div style="display:flex;align-items:center;gap:10px;font-size:15px;font-weight:700;color:${(hasRainAlert||rainLevel==='watch') ? 'var(--md-sys-color-on-warning-container)' : 'inherit'}">
-            ${rainIcon}
-            <span>${rainTitle}</span>
-          </div>
-          ${(hasRainAlert || rainLevel === 'watch' || rainLevel === 'monitor') ? `<div style="font-size:13px;color:var(--text);font-weight:500;padding-left:30px;line-height:1.4">
-            ${window.latestWeatherData?.regionalRainAlert || 'Chuva foi detectada no radar RainViewer na região dos Campos Gerais. Raios e ventos podem afetar a rede elétrica da COPEL em Ipiranga nas próximas horas.'}
-          </div>` : ''}
-          <div style="font-size:13px;color:var(--text2);font-weight:500;display:flex;flex-direction:column;gap:4px;padding-left:30px">
-            <div>🕒 <strong>Verificado:</strong> ${lastCheckRel}</div>
-            <div>🔄 <strong>Nova checagem:</strong> em ~${nextCheckSec}s</div>
-          </div>
-        </div>`;
+        if(ativos.length){
+          linhaTitulo = ativos.length===1 ? 'Interrupção de água em andamento' : `${ativos.length} interrupções de água em andamento`;
+          const b0=ativos[0];
+          linhaSub = [b0?.bairro||b0?.cidade, b0?.inicio?`início ${b0.inicio}`:null, b0?.fim?`retorno ${b0.fim}`:null].filter(Boolean).join(' · ');
+        }else{
+          linhaTitulo='Sem interrupções';
+          linhaSub='Abastecimento normal em Ipiranga';
+        }
       }
 
-      let outagesListHtml='';
-      if(activeEvents.length>0){
-        let itemsHtml='';
-        for(const ev of activeEvents){
+      /* ---- detalhes: só o que sobra, atrás do expansor ---- */
+      const blocos=[];
+      if(ativos.length){
+        blocos.push(ativos.map(ev=>{
           if(name==='Copel'){
             const isProg=ev.ehProgramada;
             const isSemEquipe=ev.equipeId==='SEM_EQUIPE';
-            const tagLabel=isProg?'Desligamento Programado':(ev.tipoPrincipal||'EMERGÊNCIA');
-            const tagCls=isProg?'prog':isSemEquipe?'sem-equipe':'';
-
-            // Previsão consistente (correção 2026-08-12): nunca "Sem previsão
-            // ainda" junto de estimativa — formatCopelPrevisao resolve.
-            const previsaoStr=formatCopelPrevisao(ev);
-
-            let statusEquipeHtml='';
-            if(isSemEquipe || ev.statusEquipe==='Preparação'){
-              statusEquipeHtml=`⏳ Preparação`;
-            }else{
-              statusEquipeHtml=`🟢 ${ev.statusEquipe || 'Em atendimento'}`;
-            }
-
-            let semEquipeWarningHtml='';
-            if(isSemEquipe && !isProg){
-              semEquipeWarningHtml=`<div class="outage-sem-equipe-alert">
-                ⚠️ Sem equipe despachada pela Copel
-              </div>`;
-            }
-
-            const consumers=ev.qtdConsumidores || 0;
-
-            itemsHtml+=`<div class="outage-card ${isSemEquipe && !isProg ?'sem-equipe':''}">
-              <div class="outage-head">
-                <div class="outage-location">
-                  ${ICON.pin}
-                  <span>Bairro ${ev.bairro || 'Ipiranga'}</span>
-                </div>
-                <div class="outage-badge-tag ${tagCls}">${tagLabel}</div>
-              </div>
-              ${semEquipeWarningHtml}
-              <div class="outage-meta-grid">
-                <div class="outage-meta-item">
-                  ${ICON.clock}
-                  <span>Início: <strong>${formatCopelStart(ev.dataInicio)}</strong></span>
-                </div>
-                <div class="outage-meta-item">
-                  ${ICON.clock}
-                  <span>Previsão: <strong>${previsaoStr}</strong></span>
-                </div>
-                <div class="outage-meta-item">
-                  ${ICON.worker}
-                  <span>Equipe: <strong>${statusEquipeHtml}</strong></span>
-                </div>
-                ${consumers>0 ? `
-                  <div class="outage-meta-item">
-                    <span class="consumers-count">⚡ ${consumers} ${consumers===1?'consumidor afetado':'consumidores afetados'}</span>
-                  </div>
-                `:''}
-              </div>
-            </div>`;
-          }else if(name==='Sanepar'){
-            itemsHtml+=`<div class="outage-card">
-              <div class="outage-head">
-                <div class="outage-location">
-                  ${ICON.pin}
-                  <span>${ev.bairro || ev.cidade}</span>
-                </div>
-                <div class="outage-badge-tag">INTERRUPÇÃO DE ÁGUA</div>
-              </div>
-              <div class="outage-meta-grid">
-                <div class="outage-meta-item">${ICON.clock} Início: <strong>${ev.inicio}</strong></div>
-                <div class="outage-meta-item">${ICON.clock} Retorno: <strong>${ev.fim}</strong></div>
-                <div class="outage-meta-item">Motivo: <strong>${ev.motivo}</strong></div>
-              </div>
+            const consum=ev.qtdConsumidores||0;
+            return `<div class="fact">
+              <div class="fact-topo"><strong>${esc(sentenceCase(String(ev.bairro||'Ipiranga').toLowerCase()))}</strong><span class="fact-chip">${esc(tipoCopel(ev.tipoPrincipal))}${isProg?' · programado':''}</span></div>
+              <div class="fact-linha"><span>Início</span><strong>${esc(tempoDesdeCopel(ev.dataInicio))}</strong></div>
+              <div class="fact-linha"><span>Previsão de volta</span><strong>${esc(formatCopelPrevisao(ev))}</strong></div>
+              <div class="fact-linha"><span>Equipe</span><strong>${isSemEquipe?'sem equipe despachada':esc(ev.statusEquipe||'em atendimento')}</strong></div>
+              ${consum?`<div class="fact-linha"><span>Consumidores</span><strong>${consumidores(consum)}</strong></div>`:''}
             </div>`;
           }
-        }
-
-        const utilKey='util-'+name;
-        // Painel A: lista de ocorrências aberta esticava o card da Copel para
-        // ~1.450px e abria um vão gigante ao lado. Fecha na PRIMEIRA renderização
-        // (só quando passa de 3); depois disso manda a escolha do usuário — por
-        // isso o Set _outagesAuto, separado do _outagesClosed.
-        if(!window._outagesAuto) window._outagesAuto = new Set();
-        const autoFechou = !window._outagesAuto.has(utilKey) && activeEvents.length > 3;
-        window._outagesAuto.add(utilKey);
-        const utilClosed = (window._outagesClosed && window._outagesClosed.has(utilKey)) || autoFechou;
-        outagesListHtml=`
-          <button class="btn-toggle-outages" onclick="toggleCopelOutages(this)" aria-expanded="${utilClosed?'false':'true'}" type="button" data-svc="${utilKey}">
-            <span>⚡ <strong>${activeEvents.length} ocorrências — bairros, horários e equipe</strong></span>
-            <span><span class="btn-toggle-icon">${utilClosed?'▶':'▼'}</span> Ver</span>
-          </button>
-          <div class="outages-container" style="display:${utilClosed?'none':'flex'}">
-            ${itemsHtml}
-          </div>
-        `;
+          return `<div class="fact">
+            <div class="fact-topo"><strong>${esc(ev.bairro||ev.cidade||'Ipiranga')}</strong><span class="fact-chip">${esc(ev.motivo||'Manutenção')}</span></div>
+            <div class="fact-linha"><span>Início</span><strong>${esc(ev.inicio||'—')}</strong></div>
+            <div class="fact-linha"><span>Retorno</span><strong>${esc(ev.fim||'—')}</strong></div>
+          </div>`;
+        }).join(''));
       }
 
-      // Faixas de duração ficam VISÍVEIS ao lado da barra de impacto: além de
-      // serem informação real, fecham a altura do card com o vizinho de 4 colunas.
-      contentHtml=summaryBoxHtml + kpiGridHtml + `<div class="stat-duo">${progressBarHtml}${faixasHtml}</div>` + outagesListHtml;
+      if(name==='Copel' && totalConsumers>0){
+        const pctTxt = pctAffected!=null ? `${num(pctAffected,2)}%` : '—';
+        blocos.push(`<div class="fact-linha"><span>Rede afetada</span><strong>${pctTxt} das UCs do município</strong></div>`);
+        if(cityTotalConsumers!=null){
+          blocos.push(`<div class="fact-linha"><span>UCs no município</span><strong>${cityTotalConsumers.toLocaleString('pt-BR')}</strong></div>`);
+        }
+        /* Duração (o mapa oficial da Copel publica a mesma faixa). */
+        const faixas=svc.data?.faixasDuracao||{};
+        const FAIXA_ORDEM=['ate_1h','1h_3h','3h_6h','6h_12h','12h_24h','24h_48h','mais_48h'];
+        const faixaRows=[...FAIXA_ORDEM,...Object.keys(faixas)]
+          .filter((f,i,a)=>a.indexOf(f)===i&&(faixas[f]||0)>0)
+          .map(f=>`<div class="fact-linha"><span>${esc(formatCopelDuracao(f)||f)}</span><strong>${plural(faixas[f],'UC','UCs')}</strong></div>`)
+          .join('');
+        if(faixaRows){
+          blocos.push(`<div class="fact-bloco"><div class="fact-titulo">Duração estimada</div>${faixaRows}</div>`);
+        }
+      }
+
+      const detalhesHtml = blocos.length
+        ? `<div class="detail" id="detalhe-${br.cls}"><div><div class="facts">${blocos.join('')}
+             <div class="facts-fonte">Fonte: ${name==='Copel'?'COPEL/ANEEL':'SANEPAR'}</div>
+           </div></div></div>`
+        : '';
+      const bodyHtml = `<div class="row">
+          <span class="lead ${sevCls}" aria-hidden="true">${leadIcon}</span>
+          <div class="txt">
+            <div class="t">${esc(linhaTitulo)}</div>
+            <div class="s">${esc(linhaSub)}</div>
+          </div>
+          ${detalhesHtml?`<div class="end"><button class="icon-btn expand" type="button" aria-expanded="false" aria-controls="detalhe-${br.cls}" aria-label="Ver detalhes" onclick="toggleDetalhe(this)">${ICON.expand}</button></div>`:''}
+        </div>
+        ${detalhesHtml}`;
+      contentHtml = bodyHtml;
     }
 
     // O ramo de OPERADORAS (telecom) do renderizador saiu em 22/09/2026:
     // nao ha mais servico com category 'telecom' (so COPEL e Sanepar).
 
     const officialUrl = OFFICIAL_URLS[name] || null;
-    const sourceBtnHtml = officialUrl ? `<a href="${esc(officialUrl)}" target="_blank" rel="noopener noreferrer" class="source-link-btn" title="Verificar no site oficial">Fonte Oficial ↗</a>` : '';
+    const sourceBtnHtml = officialUrl ? `<a href="${esc(officialUrl)}" target="_blank" rel="noopener noreferrer" class="source-link-btn" title="Verificar no site oficial">Fonte oficial ${icoMS('open_in_new','s16')}</a>` : '';
 
-    html+=`<div class="card ${st}" data-name="${esc(name)}">
-      <div class="card-crit-bar"></div>
+    html+=`<div class="card ${stCls}" data-name="${esc(name)}">
       <div class="card-inner">
         <div class="card-head">
           <div class="card-head-left">
             <div class="card-icon ${br.cls}">${ico}</div>
             <div class="card-name-group">
-              <div class="card-name">
-                ${esc(br.label)}
-                <span class="card-cb ${br.cat}">Utilidade</span>
-              </div>
+              <div class="card-name">${esc(br.label)}</div>
               <div class="card-sub">${esc(br.desc)}</div>
             </div>
           </div>
-          <div class="card-status-badge ${st}">${stLabel}</div>
+          <div class="card-status-badge ${sevCls}">${esc(sevRotulo)}</div>
         </div>
 
-        <div class="card-body">
-          ${contentHtml}
-        </div>
+        <div class="card-body">${contentHtml}</div>
 
         <div class="card-foot">
-          <div style="display:flex;flex-direction:column;gap:2px">
-            <span>Leitura: ${fmtTime(svc.timestamp)}</span>
-            <span style="font-size:12px;opacity:.85">${relativeTime(svc.timestamp)}</span>
-          </div>
+          <span>Atualizado às ${fmtTime(svc.timestamp)} · ${relativeTime(svc.timestamp)}</span>
           ${sourceBtnHtml}
         </div>
       </div>
@@ -1981,7 +2156,7 @@ function showStaleNotice(ts){
   document.getElementById('staleBar')?.remove();
   const bar=document.createElement('div');
   bar.id='staleBar';bar.className='stale-bar';bar.setAttribute('role','status');
-  bar.innerHTML=`<span>📡 Sem conexão agora — os dados abaixo são da última leitura (${fmtTime(ts)}).</span><button type="button" onclick="fetchData()">Tentar novamente</button>`;
+  bar.innerHTML=`<span>${icoMS('wifi_off','s18')} Sem conexão agora — os dados abaixo são da última leitura (${fmtTime(ts)}).</span><button type="button" onclick="fetchData()">Tentar novamente</button>`;
   grid.prepend(bar);
 }
 
@@ -2130,13 +2305,10 @@ setInterval(refreshRadar, 5 * 60 * 1000);
 async function fetchData(){
   const ri=$('#refreshIcon');
   if(Date.now()-lastFetch<1500){
+    // Antes o relógio virava "Aguarde...": o controle que carrega VALOR não
+    // pode ser reusado como mensagem. O giro do ícone já diz que está indo.
     ri.classList.add('spinning');
-    const timeEl=$('#headerTime');
-    timeEl.textContent='Aguarde...';
-    setTimeout(()=>{
-      ri.classList.remove('spinning');
-      updateClock();
-    },800);
+    setTimeout(()=>ri.classList.remove('spinning'),800);
     return;
   }
   lastFetch=Date.now();
@@ -2235,6 +2407,26 @@ async function fetchStats(){
 }
 
 document.getElementById('btnRefresh').addEventListener('click',fetchData);
+// Menu do topo: fecha ao clicar fora e no Esc (padrão de menu M3).
+(function(){
+  const btn=document.getElementById('btnMenu'), pop=document.getElementById('menuPop');
+  if(!btn||!pop)return;
+  const fecha=()=>{pop.hidden=true;btn.setAttribute('aria-expanded','false');};
+  btn.addEventListener('click',(e)=>{
+    e.stopPropagation();
+    const aberto=!pop.hidden;
+    pop.hidden=aberto;
+    btn.setAttribute('aria-expanded',String(!aberto));
+  });
+  document.addEventListener('click',(e)=>{ if(!pop.hidden && !pop.contains(e.target)) fecha(); });
+  document.addEventListener('keydown',(e)=>{ if(e.key==='Escape') fecha(); });
+})();
+document.getElementById('bandRefresh')?.addEventListener('click',(ev)=>{
+  const b=ev.currentTarget;
+  b.classList.add('spinning');
+  fetchData();
+  setTimeout(()=>b.classList.remove('spinning'),900);
+});
 document.getElementById('tabStatusBtn').addEventListener('click', () => switchTab('status'));
 document.getElementById('tabStatsBtn').addEventListener('click', () => switchTab('stats'));
 window.switchTab = switchTab;
@@ -2320,7 +2512,8 @@ async function initWeatherMap() {
 
   btnFs?.addEventListener('click', () => {
     const isFs = mapWrapper?.classList.toggle('is-fullscreen');
-    btnFs.textContent = isFs ? '❌ Sair da Tela Cheia' : '🖥️ Tela Cheia';
+    btnFs.innerHTML = icoMS(isFs ? 'fullscreen_exit' : 'fullscreen', 's20');
+    btnFs.setAttribute('aria-label', isFs ? 'Sair da tela cheia' : 'Ver o mapa em tela cheia');
     btnFs.classList.toggle('active', isFs);
     setTimeout(() => {
       if (map) map.invalidateSize();
@@ -2330,7 +2523,8 @@ async function initWeatherMap() {
   document.addEventListener('keydown', (ev) => {
     if (ev.key === 'Escape' && mapWrapper?.classList.contains('is-fullscreen')) {
       mapWrapper.classList.remove('is-fullscreen');
-      btnFs.textContent = '🖥️ Tela Cheia';
+      btnFs.innerHTML = icoMS('fullscreen', 's20');
+      btnFs.setAttribute('aria-label', 'Ver o mapa em tela cheia');
       btnFs.classList.remove('active');
       setTimeout(() => { if (map) map.invalidateSize(); }, 100);
     }
@@ -2389,11 +2583,11 @@ async function initWeatherMap() {
 function rotuloCondicao(data) {
   const cond = String(data && data.condition ? data.condition : 'Nublado');
   const indicaChuva = /chuva|garoa|chuvis|pancada|trovoad|tempestade|precipita/i.test(cond);
-  if (!indicaChuva) return cond;
+  if (!indicaChuva) return sentenceCase(cond);
   const estacoes = ((data && data.cemaden && data.cemaden.estacoes) || []).filter((e) => e && !e.stale);
   if (!estacoes.length) return cond;
   const medida = Math.max.apply(null, estacoes.map((e) => Number(e.acc1hr) || 0));
-  return medida > 0 ? cond : cond + ' (previsão)';
+  return medida > 0 ? sentenceCase(cond) : sentenceCase(cond) + ' (previsão)';
 }
 
 async function fetchWeatherData() {
@@ -2423,7 +2617,7 @@ async function fetchWeatherData() {
           // parêntese dava 'Chuva na Região (0%)' — leitura contraditória. Agora o
           // rótulo diz de onde vem, e a cor sai do CSS (data-alerta).
           rEl.dataset.alerta = '1';
-          rEl.innerHTML = `<span class="k">Chuva na região (radar)</span><span class="v">⚡ previsão ${data.rainProbabilityPct ?? 0}<small> %</small></span>`;
+          rEl.innerHTML = `<span class="k">Chuva na região (radar)</span><span class="v">${icoMS('thunderstorm','s18')} previsão ${data.rainProbabilityPct ?? 0}<small> %</small></span>`;
         }
       }
 
@@ -2610,6 +2804,84 @@ function entradaPainel(){
     .forEach((sel, i) => animarEntrada(document.querySelector(sel), i * 70));
 }
 
+/* ===================================================================
+   O VEREDITO EM UMA FRASE (crítica de design 24/09/2026)
+
+   O topo tinha 5 tiles e nenhuma frase. Quem chega assustado num temporal
+   precisa ler UMA linha — e ela não pode afirmar chuva que ninguém mediu
+   (era o defeito do alerta: título dizia "previsão de chuva" com 0% e o
+   amarelo vinha dos rios). Aqui a frase é derivada do MESMO dado que
+   alimenta os cards, com as palavras do morador.
+   =================================================================== */
+function vereditoGeral(){
+  const svcs=window.lastServicesSnapshot||[];
+  const w=window.latestWeatherData||{};
+  const h=w.hidro||{};
+  const est=(w.cemaden&&w.cemaden.estacoes)||[];
+  const copel=svcs.find(s=>s.name==='Copel');
+  const sev=severidadeEnergia(copel||{});
+
+  const chuvaAgora=est.reduce((t,e)=>t+(Number(e.acc1hr)||0),0);
+  const chuva24=est.length?Math.max.apply(null,est.map(e=>Number(e.acc24hr)||0)):0;
+  const nivelRadar=w.alertLevel||'none';
+  const chuvaPerto=nivelRadar==='alert'||nivelRadar==='watch';
+  const rioAlerta=!!((h.ifl&&h.ifl.nivel&&h.ifl.nivel!=='verde')||h.riscoCheia==='watch'||h.riscoEnxurrada==='warn');
+  const semLuz=(copel&&copel.data&&copel.data.totalConsumers)||0;
+  const prev=h.previsao||null;
+
+  if(chuvaAgora>0){
+    return {nivel:'warn',frase:'Chovendo em Ipiranga agora',
+      sub:`${num(chuvaAgora,1)} mm na última hora · ${num(chuva24,1)} mm nas últimas 24 h.`};
+  }
+  if(chuvaPerto){
+    const km=w.nearestThreatKm!=null?` a ~${num(w.nearestThreatKm,0)} km`:'';
+    return {nivel:'warn',frase:'Chuva forte se aproximando',
+      sub:`Núcleo de chuva forte${km} da cidade, vindo para a região.`};
+  }
+  if(rioAlerta){
+    return {nivel:'warn',frase:'Rios em atenção, sem chuva prevista',
+      sub: prev&&prev.vaiSair==='nao'
+        ? `Nada de chuva medido nem previsto agora. Vai sair da calha? Não, com ${num(prev.confianca,0)}% de confiança.`
+        : 'Nada de chuva medido nem previsto agora — o nível dos rios segue em observação.'};
+  }
+  if(semLuz>0){
+    return {nivel:sev.nivel==='ok'?'info':sev.nivel,
+      frase:`${consumidores(semLuz)} sem luz`,
+      sub:'Ocorrência ativa da COPEL no município; o restante está normal.'};
+  }
+  return {nivel:'ok',frase:'Tudo tranquilo em Ipiranga',
+    sub:'Sem chuva medida, rios na faixa normal e serviços operando.'};
+}
+
+/* Pinta o veredito. Com o takeover de temporal ativo o banner do topo já é a
+   voz da página — aí o veredito sai de cena em vez de repetir. */
+function renderVeredito(){
+  const el=document.getElementById('bandVeredito');
+  if(!el)return;
+  const subEl=document.getElementById('bandVereditoSub');
+  const horaEl=document.getElementById('bandHora');
+  const bn=document.getElementById('banner');
+  const takeover=!!(bn&&bn.classList.contains('alert-takeover'));
+  const v=vereditoGeral();
+  el.hidden=takeover;
+  if(subEl)subEl.hidden=takeover;
+  if(!takeover){
+    if(el.textContent!==v.frase)el.textContent=v.frase;
+    el.dataset.nivel=v.nivel;
+    if(subEl&&subEl.textContent!==v.sub)subEl.textContent=v.sub;
+  }
+  const lead=document.getElementById('bandLeadIcon');
+  if(lead){
+    lead.dataset.nivel=v.nivel;
+    const icone=v.nivel==='crit'?ICON.error:v.nivel==='warn'?ICON.warning:v.nivel==='info'?ICON.info:ICON.ok;
+    if(lead.dataset.ico!==v.nivel){lead.innerHTML=icone;lead.dataset.ico=v.nivel;}
+  }
+  if(horaEl){
+    const ts=Number(window.latestWeatherData?.updatedAt)||window._ultimoServicos||Date.now();
+    horaEl.textContent=`Atualizado às ${fmtTime(ts)} · ${relativeTime(ts)}`;
+  }
+}
+
 function renderStatusBand(){
   const svcs = window.lastServicesSnapshot || [];
   const w = window.latestWeatherData || {};
@@ -2629,11 +2901,13 @@ function renderStatusBand(){
     }
     const d = document.getElementById(id + 'Dot');
     if (d) {
-      const cls = 'band-dot' + (nivel && nivel !== 'info' ? ' ' + nivel : '');
-      if (d.className !== cls) {
-        const subiu = nivel && nivel !== 'info';
-        d.className = cls;
-        if (subiu) {
+      // O ícone carrega classe FIXA (.ms) — o estado vai em data-nivel, não em
+      // className (antes era um ponto colorido; a crítica pediu ícone, um
+      // estilo só, e sobrescrever className apagaria a fonte do ícone).
+      const novo = nivel && nivel !== 'info' ? nivel : 'info';
+      if (d.dataset.nivel !== novo) {
+        d.dataset.nivel = novo;
+        if (novo !== 'info') {
           d.classList.remove('pop'); void d.offsetWidth; d.classList.add('pop');
           setTimeout(() => d.classList.remove('pop'), 700);
         }
@@ -2643,17 +2917,16 @@ function renderStatusBand(){
     if (p) p.dataset.nivel = nivel || 'info';
   };
 
-  // --- Energia: o número que importa é UC sem luz ---
+  // --- Energia: severidade por LIMIAR (não pelo status cru do backend) ---
+  // "Crítico" para 1 UC de 6.017 (0,02%) acendia vermelho para tudo e a cor
+  // parava de significar algo. Ver severidadeEnergia().
   const ativos = dCopel.activeEvents || [];
   const ucs = dCopel.totalConsumers || 0;
   const cidade = dCopel.cityTotalConsumers ?? null;
   const pct = dCopel.pctAffected ?? null;
-  if (copel && copel.status === 'critical' && ucs > 0) {
-    pinta('pillEnergia', `${ucs.toLocaleString('pt-BR')} <small>UCs sem luz</small>`, 'crit');
-  } else if (copel && copel.status === 'warn') {
-    pinta('pillEnergia', 'Atenção', 'warn');
-  } else if (copel) {
-    pinta('pillEnergia', 'Normal', 'ok');
+  const sev = severidadeEnergia(copel || {});
+  if (copel) {
+    pinta('pillEnergia', ucs > 0 ? `${ucs.toLocaleString('pt-BR')} <small>sem luz</small>` : 'Ninguém <small>sem luz</small>', sev.nivel);
   }
   const exp = document.getElementById('bandExpEnergia');
   if (exp) {
@@ -2670,7 +2943,7 @@ function renderStatusBand(){
       exp.innerHTML = `<table>${linhas}</table><span class="band-nota">` +
         `${ativos.length} ocorrência${ativos.length > 1 ? 's' : ''} ativa${ativos.length > 1 ? 's' : ''}` +
         (cidade ? ` · ${ucs.toLocaleString('pt-BR')} de ${cidade.toLocaleString('pt-BR')} UCs do município` : '') +
-        (pct != null ? ` (${pct}%)` : '') +
+        (pct != null ? ` (${num(pct,2)}%)` : '') +
         (semEquipe ? ` · ${semEquipe} sem equipe despachada` : '') + '</span>';
     } else {
       exp.innerHTML = '<span class="band-nota">Sem interrupção ativa registrada pela Copel agora.</span>';
@@ -2680,8 +2953,10 @@ function renderStatusBand(){
   // --- Água ---
   if (sanepar) {
     const st = sanepar.status;
-    pinta('pillAgua', st === 'critical' ? 'Interrompida' : st === 'warn' ? 'Atenção' : 'Normal',
-      st === 'critical' ? 'crit' : st === 'warn' ? 'warn' : 'ok');
+    // Interrupção de água é ruim, mas vermelho fica reservado ao que atinge
+    // a cidade inteira (limiar de energia). Água entra como atenção.
+    pinta('pillAgua', st === 'critical' ? 'Interrupção' : st === 'warn' ? 'Atenção' : 'Normal',
+      st === 'ok' ? 'ok' : 'warn');
   }
 
   // --- Rios (o veredito que importa: sai ou não sai da calha) ---
@@ -2717,8 +2992,9 @@ function renderStatusBand(){
     pinta('pillProg', 'Nenhum', 'ok');
   }
   const badgeProg = document.getElementById('progBadge');
-  if (badgeProg) badgeProg.textContent = prog.length > 1 ? `${prog.length} PROGRAMADOS` : 'PROGRAMADO';
+  if (badgeProg) badgeProg.textContent = prog.length > 1 ? `${prog.length} programados` : 'Programado';
 
+  renderVeredito();
 }
 
 /* Pílulas: energia expande o resumo por bairro; as outras levam ao card. */
@@ -2761,23 +3037,40 @@ function renderCemadenCard(data) {
   }
   box.style.display = 'flex';
 
-  const fmt = (v) => (v == null || Number.isNaN(v) ? '—' : v.toFixed(1).replace('.', ',') + ' mm');
-  // "15/08/26 21:20" → "15/08 às 21:20" (backend já converte para horário de Brasília)
+  const fmt = (v) => (v == null || Number.isNaN(v) ? '—' : num(v, 1) + ' mm');
+  // "23/09/26 21:10" → "23/09 às 21:10". Sem "(Brasília)": o site inteiro está
+  // em horário local e o parêntese só poluía (crítica de design 24/09/2026).
   const hora = (h) => esc(h || '—').replace(/(\d{2})\/(\d{2})\/\d{2} (\d{2}:\d{2})/, '$1/$2 às $3');
 
   const rows = c.estacoes.map((e) => {
     // Estação parada = acumulado congelado: marca explícita, nunca "0 mm" limpo.
     const stale = e.stale
-      ? ' <span class="cemaden-stale">⚠️ sem leitura recente' +
+      ? ' <span class="cemaden-stale">sem leitura recente' +
         (e.frescorMin != null ? ' (' + e.frescorMin + ' min)' : '') + '</span>'
       : '';
+    // O card já é de Ipiranga: "Ipiranga (Centro)" vira "Centro" (o nome do
+    // município repetido em cada linha era ruído — crítica 24/09/2026).
+    const nomeCurto = String(e.nome || '')
+      .replace(/^Ipiranga\s*\(([^)]+)\)\s*$/i, '$1')
+      .replace(/^Ipiranga\s+/i, '')
+      .trim() || String(e.nome || '');
+    const cidadeChip = (e.cidade && !/^ipiranga$/i.test(String(e.cidade).trim()))
+      ? ' <span class="cemaden-tag">' + esc(e.cidade) + '</span>' : '';
     return '<div class="cemaden-row' + (e.stale ? ' cemaden-row-stale' : '') + '">' +
-      '<div class="cemaden-line1"><strong>' + esc(e.nome) + '</strong> <span class="cemaden-tag">' + esc(e.cidade) + '</span></div>' +
-      '<div class="cemaden-line2"><span class="cemaden-24h">' + fmt(e.acc24hr) + '</span> <span class="cemaden-24h-label">em 24h</span></div>' +
-      '<div class="cemaden-meta">Leitura: ' + hora(e.dataHoraUltimoValor) + ' (Brasília)' + stale + '</div>' +
+      '<div class="cemaden-line1"><strong>' + esc(nomeCurto) + '</strong>' + cidadeChip + '</div>' +
+      '<div class="cemaden-line2"><span class="cemaden-24h">' + fmt(e.acc24hr) + '</span> <span class="cemaden-24h-label">em 24 h</span></div>' +
+      (stale || e.leituraPropria ? '<div class="cemaden-meta">' + stale + '</div>' : '') +
       '</div>';
   }).join('');
   content.innerHTML = rows;
+  // "Leitura" repetia o mesmo horário em toda linha e ainda competia com o
+  // "Verificado" da coluna de serviços. Fica uma vez, no rodapé do card.
+  const notas = document.getElementById('cemadenFootNote');
+  if (notas) {
+    const ult = c.estacoes.map((e) => e.dataHoraUltimoValor).filter(Boolean).sort().pop();
+    notas.textContent = 'Acumulado das últimas 24 h (janela móvel) · fonte pública CEMADEN' +
+      (ult ? ' · leitura mais recente ' + String(hora(ult)).replace(/<[^>]*>/g, '') : '');
+  }
 }
 
 function renderTopAlert(data) {
@@ -2812,12 +3105,10 @@ function applyStormTakeover(a) {
   const badge = document.getElementById('bannerBadge');
   const detailsEl = document.getElementById('bannerDetails');
   const iconEl = document.getElementById('bannerIcon');
-  const dot = document.getElementById('headerDot');
   bn.className = 'banner alert-takeover ' + (a.nivel === 'vermelho' ? 'critical' : 'warn');
   if (t) t.textContent = a.titulo || 'Alerta meteorológico';
   if (s) s.textContent = a.descricao || '';
   if (badge) badge.textContent = a.nivel === 'vermelho' ? 'ALERTA VERMELHO' : 'ALERTA LARANJA';
-  if (dot) dot.className = 'ov-dot ' + (a.nivel === 'vermelho' ? 'critical' : 'warn');
   if (iconEl && typeof ICON !== 'undefined') iconEl.innerHTML = a.nivel === 'vermelho' ? ICON.error : ICON.warning;
   if (detailsEl) {
     const motivos = (a.motivos || []).map((m) => `<div>• ${esc(m)}</div>`).join('');
@@ -2830,10 +3121,10 @@ function applyStormTakeover(a) {
     const srList = document.getElementById('scheduledReminderList');
     const sr = document.getElementById('scheduledReminder');
     if (srList && srList.innerHTML.trim()) {
-      copelLinha = `<div style="margin-top:8px">⚡ Desligamento programado (Copel): ${srList.innerHTML}</div>`;
+      copelLinha = `<div style="margin-top:8px">${icoMS('bolt','s18')} Desligamento programado (Copel): ${srList.innerHTML}</div>`;
       if (sr) sr.style.display = 'none';
     }
-    detailsEl.innerHTML = `<div class="banner-detail-item" onclick="document.getElementById('hidroBox').scrollIntoView({behavior:'smooth',block:'center'})" role="button" tabindex="0" title="Ver rios">{MOTIVOS}${oficiais}${copelLinha}<span class="banner-jump-tag">Ver rios ➔</span></div>`.replace('{MOTIVOS}', motivos);
+    detailsEl.innerHTML = `<div class="banner-detail-item" onclick="document.getElementById('hidroBox').scrollIntoView({behavior:'smooth',block:'center'})" role="button" tabindex="0" title="Ver rios">{MOTIVOS}${oficiais}${copelLinha}<span class="banner-jump-tag">Ver rios ${icoMS('arrow_forward','s16')}</span></div>`.replace('{MOTIVOS}', motivos);
     detailsEl.style.display = 'flex';
   }
 }
@@ -2857,7 +3148,9 @@ function renderAlertaCard(data) {
   };
   const [bg, fg] = cores[a.nivel] || cores.verde;
   if (tag) {
-    tag.textContent = a.nivel.toUpperCase();
+    // "AMARELO" como rótulo não diz nada a um morador: o nível vira palavra.
+    const rotulos = { verde: 'Normal', amarelo: 'Atenção', laranja: 'Alerta', vermelho: 'Alerta grave' };
+    tag.textContent = rotulos[a.nivel] || a.nivel;
     tag.style.background = bg;
     tag.style.color = fg;
     tag.style.fontWeight = (a.nivel === 'laranja' || a.nivel === 'vermelho') ? '800' : '600';
@@ -2875,8 +3168,19 @@ function renderAlertaCard(data) {
     vistos.add(t);
     return t;
   };
+  /* O título do box e a PRIMEIRA FRASE do corpo eram o mesmo texto: a pessoa
+     lia a mesma frase duas vezes, em tamanhos e margens diferentes (crítica
+     24/09/2026). Aqui o corpo perde o trecho já dito no título. */
   const titulo = pushUnico(a.titulo);
-  const desc = pushUnico((a.descricao || '').replace(/^Alerta (verde|amarelo|laranja|vermelho) — /i, ''));
+  let descBruto = String(a.descricao || '').replace(/^Alerta (verde|amarelo|laranja|vermelho) — /i, '').replace(/\s+/g, ' ').trim();
+  if (titulo) {
+    const tNorm = String(titulo).replace(/\s+/g, ' ').trim();
+    if (descBruto.toLowerCase().startsWith(tNorm.toLowerCase())) {
+      descBruto = descBruto.slice(tNorm.length).replace(/^[\s.:—–-]+/, '');
+      descBruto = descBruto.charAt(0).toUpperCase() + descBruto.slice(1);
+    }
+  }
+  const desc = pushUnico(descBruto);
   const motivos = (a.motivos || []).map((m) => pushUnico(m)).filter(Boolean).map((m) => `<div>• ${esc(m)}</div>`).join('');
   const oficiais = (a.avisosOficiais || []).slice(0, 3).map((o) =>
     `<div style="font-size:11.5px;opacity:.8">• ${esc(o.fonte)}: ${esc(o.titulo)} (${esc(o.nivel)})</div>`
@@ -2906,28 +3210,26 @@ function renderHidroCard(data) {
     laranja: ['var(--r1)', 'var(--md-sys-color-on-error-container)'],
     vermelho: ['var(--r1)', 'var(--md-sys-color-on-error-container)'],
   };
+  /* A tag fala de IPIRANGA. Antes ela dizia "Atenção" (nível do município) com
+     duas linhas "CRÍTICO" logo abaixo — Cebolão e Jataizinho, que são estações
+     de REFERÊNCIA a jusante, no Tibagi. O leitor via contradição. Agora o
+     escopo está escrito e as estações de fora estão marcadas como referência. */
+  const flashAlerta = !!(flash && flash.nivel && flash.nivel !== 'verde');
+  const localAlerta = flashAlerta || h.riscoCheia === 'watch' || h.riscoEnxurrada === 'warn';
   if (tag) {
-    const pior = (flash && flash.nivel !== 'verde') ? flash : null;
-    if (pior && nivelCores[pior.nivel]) {
-      tag.textContent = (pior === flash ? 'FLASH ' : 'RIOS ') + pior.nivel.toUpperCase();
-      tag.style.background = nivelCores[pior.nivel][0];
-      tag.style.color = nivelCores[pior.nivel][1];
-      if (pior.nivel === 'vermelho') tag.style.fontWeight = '800';
-    } else if (h.riscoCheia === 'watch' || h.riscoEnxurrada === 'warn') {
-      tag.textContent = 'Atenção';
-      tag.style.background = 'var(--a1)';
-      tag.style.color = 'var(--md-sys-color-on-warning-container)';
-    } else {
-      tag.textContent = 'Referência';
-      tag.style.background = 'var(--md-sys-color-surface-container-high)';
-      tag.style.color = 'var(--text2)';
-    }
+    const grave = flashAlerta && (flash.nivel === 'laranja' || flash.nivel === 'vermelho');
+    const par = grave ? nivelCores[flash.nivel] : localAlerta ? nivelCores.amarelo
+      : ['var(--md-sys-color-surface-container-high)', 'var(--text2)'];
+    tag.textContent = localAlerta ? 'Atenção em Ipiranga' : 'Normal em Ipiranga';
+    tag.style.background = par[0];
+    tag.style.color = par[1];
+    tag.style.fontWeight = grave ? '800' : '600';
   }
   const fmtM = (cm) => cm == null ? '—' : (cm/100).toFixed(2).replace('.', ',') + ' m';
   const fmtV = (v) => v == null ? '—' : Math.round(v) + ' m³/s';
   const fmtDelta = (d) => d == null ? '' : ` <span style="opacity:.7">(${d>0?'+':''}${(d/100).toFixed(2).replace('.', ',')} m /6h)</span>`;
   const faixaBadge = (f) => {
-    if (f === 'critico') return ' <span class="bulletin-tag" style="background:var(--r1);color:var(--md-sys-color-on-error-container);font-weight:800">CRÍTICO</span>';
+    if (f === 'critico') return ' <span class="bulletin-tag" style="background:var(--r1);color:var(--md-sys-color-on-error-container);font-weight:800">crítico</span>';
     if (f === 'alerta') return ' <span class="bulletin-tag" style="background:var(--r1);color:var(--md-sys-color-on-error-container)">alerta</span>';
     if (f === 'atencao') return ' <span class="bulletin-tag" style="background:var(--a1);color:var(--md-sys-color-on-warning-container)">atenção</span>';
     return '';
@@ -2940,7 +3242,7 @@ function renderHidroCard(data) {
     return 'Atenção: rio subindo, acompanhe.';
   };
   const iflLine = (h.ifl && h.ifl.nivel !== 'verde')
-    ? `<div style="background:var(--a1);border-radius:12px;padding:10px 12px;margin:6px 0;font-size:12.5px;color:var(--text)">⚡ <strong>Flash local (IFL ${esc(String(h.ifl.score).replace('.', ','))} · ${esc(h.ifl.nivel.toUpperCase())})</strong> — ${esc(h.ifl.motivos.join('; '))}</div>`
+    ? `<div style="background:var(--a1);border-radius:12px;padding:10px 12px;margin:6px 0;font-size:12.5px;color:var(--text)">${icoMS('bolt','s18')} <strong>Flash local (IFL ${esc(String(h.ifl.score).replace('.', ','))} · ${esc(h.ifl.nivel.toUpperCase())})</strong> — ${esc(h.ifl.motivos.join('; '))}</div>`
     : '';
   // Previsão de saída da calha (v1) — "vai sair? quando?" com confiança
   const prev = h.previsao || null;
@@ -2950,38 +3252,47 @@ function renderHidroCard(data) {
     : v === 'nao' ? ['var(--g1)', 'var(--md-sys-color-on-success-container)']
     : ['var(--a1)', 'var(--md-sys-color-on-warning-container)'];
   const prevBadge = (v) => {
-    const txt = v === 'sim' ? 'SIM' : v === 'nao' ? 'NÃO' : 'INDEFINIDO';
+    const txt = v === 'sim' ? 'Sim' : v === 'nao' ? 'Não' : 'Indefinido';
     const [bg, fg] = prevCor(v);
-    return `<span style="background:${bg};color:${fg};font-weight:800;padding:2px 8px;border-radius:6px;font-size:11px">${txt}</span>`;
+    return `<span class="rio-resposta" style="background:${bg};color:${fg}">${txt}</span>`;
   };
   // Painel A: o card mostra o VEREDITO + as estações em linhas compactas.
   // O texto longo (regra, motivos, fórmula, doutrina) vai todo pro
   // "como é calculado" — antes eram ~1.250 caracteres abertos na tela.
   const veredito = prev
     ? `<div class="rio-verdict">
-        <span style="font-size:11px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;color:var(--text3)">Vai sair da calha?</span>
+        <span class="rio-pergunta">Vai sair da calha?</span>
         ${prevBadge(prev.vaiSair)}
-        <span class="rio-meta">${prev.confianca}% de confiança</span>
+        <span class="rio-meta">com ${num(prev.confianca, 0)}% de confiança</span>
       </div>`
     : '';
   const motivos = (h.ifl && h.ifl.motivos && h.ifl.motivos.length)
     ? `<div style="margin:6px 0">${h.ifl.motivos.map((m) => `<div>• ${esc(m)}</div>`).join('')}</div>`
     : '';
+  /* Só o Uvaia mede a bacia do Bitumirim — o rio que alaga Ipiranga (estudo em
+     docs/estudo-tibagi). Cebolão e Jataizinho ficam a jusante, no Tibagi, e
+     entram como REFERÊNCIA: nível alto lá não é risco aqui. Sem dizer isso, o
+     card parecia se contradizer (cabeçalho "Atenção" + linhas "Crítico"). */
+  const NOMES_REFERENCIA = ['Cebolão', 'Jataizinho'];
+  const ehReferencia = (nome) => NOMES_REFERENCIA.some((r) => String(nome).indexOf(r) === 0);
   const rows = h.estacoes.map((e) => {
-    const nome = esc(e.nome.split(' (')[0]);
+    const nomeCurto = e.nome.split(' (')[0];
+    const nome = esc(nomeCurto);
+    const ref = ehReferencia(nomeCurto);
     const tag = faixaBadge(e.faixa) || ' <span class="bulletin-tag" style="background:var(--md-sys-color-surface-container-high);color:var(--text2)">normal</span>';
-    return `<div class="rio-row">
-      <span><span class="rio-nome">${nome}</span><br><span class="rio-meta">${fmtM(e.nivelCm)} · ${fmtV(e.vazaoM3s)}${fmtDelta(e.delta6hCm)}</span></span>
+    return `<div class="rio-row${ref ? ' rio-ref' : ''}">
+      <span><span class="rio-nome">${nome}${ref ? ' <span class="rio-ref-tag">referência</span>' : ''}</span><br><span class="rio-meta">${fmtM(e.nivelCm)} · ${fmtV(e.vazaoM3s)}${fmtDelta(e.delta6hCm)}</span></span>
       <span class="rio-tag">${tag}</span>
     </div>`;
   }).join('');
+  const notaEstacoes = `<div class="rio-nota">O <strong>Uvaia</strong> é quem mede a bacia do Bitumirim — o rio que alaga Ipiranga. <strong>Cebolão</strong> e <strong>Jataizinho</strong> ficam a jusante, no rio Tibagi, e aparecem como referência: nível alto lá não significa risco aqui.</div>`;
   const formula = `<div style="margin-top:8px;line-height:1.6">
       <div><strong>Flash (IFL v3.1)</strong> = chuva 1h/6h/24h em Ipiranga (0–1): &lt;0,3 verde · 0,3–0,5 amarelo · 0,5–0,8 laranja · ≥0,8 vermelho. <strong>Antecedente 72h</strong> (palco): ≥150 mm eleva a amarelo — no regime frontal (mai–ago) a barra cai pra ≥100 mm, porque o inverno arma o palco com pouca água. Antecedente sozinho nunca passa de amarelo: laranja/vermelho exigem chuva atual. <strong>Permanência</strong> = dias fora da caixa SE transbordar: 0,0107 × Uvaia − 5,7 (ajuste preliminar com 2 rótulos reais: OUT23 7d, DEZ24 3d). Doutrina sazonal: no verão convectivo só o local manda (JAN25: Uvaia em P50 com régua em 4 m); no inverno frontal o Uvaia carrega a severidade (2013>2014≈2015>2019>2017 pelo pico Uvaia).</div>
       <div style="margin-top:4px"><strong>Vai sair da calha? (v1)</strong> = regra por regime + vizinhança em 11 rótulos de campo. <em>Convectivo (set–abr)</em>: chuva local em DUAS estações do município — ≥2 dias com ≥40 mm nas duas dentro de 96 h → sai (chuva de bacia; 1 dia isolado não enche, assinatura JAN25). <em>Frontal (mai–ago)</em>: a chuva local fica cega (os invernos saíram com 6–21 mm/96 h) — decide o antecedente de 30 dias (≥250 mm) somado à carga de bacia (Uvaia ≥500 cm). <strong>Confiança</strong> = fração dos casos parecidos no histórico que saíram da calha, com teto pelo tamanho da amostra (n=1 nunca passa de 55%). <strong>Quando</strong> = janela medida nos rótulos convectivos (13–48 h depois do último dia pesado); no frontal não há janela em horas. Estimativa, não oficial.</div>
       <div style="margin-top:4px">Rótulos: OUT23 (29/10 18h, Uvaia ~739) · DEZ24 (09/12 13h, Uvaia ~339) · SET26 (13/09, saiu sem transbordar) · JAN25 (21/01, régua 4m sem sair) · jul/24 e set/24 (não saíram) · invernos 13/14/15/17/19 (todos saíram; 2013 o mais dramático). Faixas P90/P98 do ano hidrológico.</div>
       <div style="margin-top:6px"><a href="/api/hidro" style="color:var(--md-sys-color-primary)">Dados crus (JSON)</a> · <a href="https://github.com/maKizo009/servicos-status/issues" style="color:var(--md-sys-color-primary)">Sugerir melhoria</a></div>
     </div>`;
-  content.innerHTML = veredito + rows +
+  content.innerHTML = veredito + rows + notaEstacoes +
     `<details>
       <summary>Como é calculado</summary>
       <div style="margin-top:6px;line-height:1.6">
@@ -2992,7 +3303,7 @@ function renderHidroCard(data) {
         ${iflLine}
         ${motivos}
         ${formula}
-        <div class="rio-nota">⚠️ <strong>Estimativa de algoritmo, não medição oficial.</strong> O Bitumirim não tem régua. Não prevê o futuro e não substitui a Defesa Civil (199) nem o IAT.
+        <div class="rio-nota">${icoMS('warning','s18')} <strong>Estimativa de algoritmo, não medição oficial.</strong> O Bitumirim não tem régua. Não prevê o futuro e não substitui a Defesa Civil (199) nem o IAT.
         ${h.atualizadoEm ? `Atualizado: ${new Date(h.atualizadoEm).toLocaleString('pt-BR')}.` : ''}</div>
       </div>
     </details>`;
@@ -3003,7 +3314,6 @@ function renderNowcastCard(data) {
   if (!box) return;
 
   const nc = data?.nowcast;
-  const nb = data?.nowcastBulletin;
   const hasData = nc && nc.frames && nc.frames.length > 0;
 
   // Setas de direção dos núcleos no mapa (projeção da rota)
@@ -3015,58 +3325,85 @@ function renderNowcastCard(data) {
   }
   box.style.display = 'flex';
 
-  // Intensidade dominante
+  const cell = nc.nearestCell;
+  const dist = (cell && typeof cell.lat === 'number')
+    ? haversineKm(-25.0244, -50.5845, cell.lat, cell.lon) : null;
+  /* PERTO = o que muda a vida de quem está em Ipiranga. Antes o painel pintava
+     "CHUVA FORTE · 43 dBZ" em vermelho para um núcleo a 423 km, em São Paulo
+     (caso real de 23/09/2026): alarme sobre o tempo de outro estado. Acima de
+     80 km a informação deixa de ser alerta e passa a ser contexto. */
+  const PERTO_KM = 80;
+  const perto = dist != null && dist <= PERTO_KM;
+
+  // Intensidade dominante (sem jargão: dBZ é dado técnico, não manchete)
   const badge = document.getElementById('nowcastIntensityBadge');
   const intensityMap = {
-    light: 'Chuva Fraca',
-    moderate: 'Chuva Moderada',
-    heavy: 'Chuva Forte',
+    light: 'Chuva fraca',
+    moderate: 'Chuva moderada',
+    heavy: 'Chuva forte',
     extreme: 'Temporal',
   };
   const clsMap = { light: 'int-light', moderate: 'int-moderate', heavy: 'int-heavy', extreme: 'int-extreme' };
   const dom = nc.currentDominant || 'light';
   if (badge) {
-    badge.textContent = `⚡ ${intensityMap[dom] || dom} · ${nc.currentMaxDbz ?? '?'} dBZ`;
-    badge.className = `nowcast-intensity-badge ${clsMap[dom] || ''}`;
+    if (perto) {
+      badge.textContent = intensityMap[dom] || dom;
+      badge.className = `nowcast-intensity-badge ${clsMap[dom] || ''}`;
+    } else {
+      badge.textContent = 'Sem chuva forte por perto';
+      badge.className = 'nowcast-intensity-badge int-none';
+    }
   }
 
   // Movimento (direção + velocidade)
   const mv = document.getElementById('nowcastMovement');
   const m = nc.movement;
   if (mv) {
-    if (m && m.speedKmh > 0.5) {
+    if (!perto) {
+      mv.textContent = 'Nenhum núcleo a menos de ' + PERTO_KM + ' km de Ipiranga.';
+    } else if (m && m.speedKmh > 0.5) {
       const dirs = ['N', 'NE', 'L', 'SE', 'S', 'SO', 'O', 'NO'];
-      const card = dirs[Math.round(m.directionDeg / 45) % 8];
-      mv.innerHTML = `<span style="font-size:16px">🧭</span> Movendo para ${esc(card)} (${esc(m.directionDeg)}°) · ${esc(m.speedKmh)} km/h`;
+      const cardeal = dirs[Math.round(m.directionDeg / 45) % 8];
+      mv.textContent = `Movendo para ${cardeal} a ${num(m.speedKmh, 0)} km/h`;
     } else {
-      mv.textContent = '🫥 Movimento não confiável no momento';
+      mv.textContent = 'Movimento não confiável no momento';
     }
   }
 
-  // Meta: distância até Ipiranga (se o núcleo mais intenso tiver lat/lon)
+  // Onde está o núcleo mais intenso — a distância é o que dá sentido ao resto
   const meta = document.getElementById('nowcastMeta');
+  const lastFrameTime = nc.frames[nc.frames.length - 1]?.time;
+  const obs = lastFrameTime
+    ? `leitura de ${new Date(lastFrameTime).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}`
+    : '';
   if (meta) {
-    const cell = nc.nearestCell;
-    if (cell && typeof cell.lat === 'number') {
-      const d = haversineKm(-25.0244, -50.5847, cell.lat, cell.lon);
-      const note = d < 80
-        ? `⚠️ Núcleo a ~${d.toFixed(0)} km de Ipiranga`
-        : `Núcleo a ~${d.toFixed(0)} km de Ipiranga`;
-      const lastFrameTime = nc.frames[nc.frames.length - 1]?.time;
-      const obsNote = lastFrameTime
-        ? `obs. ${new Date(lastFrameTime).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}`
-        : '';
-      const framesNote = ` · ${nc.framesTotal ?? nc.frames.length} frames (${obsNote})`;
-      meta.textContent = note + framesNote;
+    if (dist != null && perto) {
+      meta.textContent = `Núcleo a ~${num(dist, 0)} km de Ipiranga${obs ? ' · ' + obs : ''}`;
+    } else if (dist != null) {
+      meta.textContent = `O núcleo mais intenso está a ~${num(dist, 0)} km de Ipiranga — longe demais para virar alerta aqui.${obs ? ' ' + obs : ''}`;
     } else {
-      meta.textContent = `${nc.framesTotal ?? nc.frames.length} frames analisados`;
+      meta.textContent = obs || 'Sem núcleo identificado no radar.';
     }
   }
 
-  // Texto narrativo (Camada B — VLM vision) vive SOMENTE no boletim principal.
-  // (O card Nowcast mostra apenas dados determinísticos — sem duplicação.)
-  const txt = document.getElementById('nowcastText');
-  if (txt) txt.remove();
+  /* Dado técnico (dBZ, frames, projeção) recolhido: é o que o power user quer
+     ler e o que o morador não precisa ter na cara. Nomes certos, uma vez. */
+  const det = document.getElementById('nowcastDetalhe');
+  if (det) {
+    const dbz = nc.currentMaxDbz != null ? `${num(nc.currentMaxDbz, 0)} dBZ` : '—';
+    const frames = nc.framesTotal ?? nc.frames.length;
+    const linhas = [
+      `<div class="fact-linha"><span>Intensidade máxima no radar</span><strong>${dbz}</strong></div>`,
+      `<div class="fact-linha"><span>Quadros analisados</span><strong>${plural(frames, 'quadro', 'quadros')}</strong></div>`,
+    ];
+    if (m && m.speedKmh > 0.5) {
+      linhas.push(`<div class="fact-linha"><span>Deslocamento</span><strong>${num(m.speedKmh, 0)} km/h para ${num(m.directionDeg, 0)}°</strong></div>`);
+    }
+    if (dist != null) {
+      linhas.push(`<div class="fact-linha"><span>Distância até Ipiranga</span><strong>~${num(dist, 0)} km</strong></div>`);
+    }
+    det.innerHTML = `<summary>Dados técnicos do radar</summary><div class="facts">${linhas.join('')}</div>`;
+  }
 }
 
 function haversineKm(lat1, lon1, lat2, lon2) {
@@ -3229,7 +3566,7 @@ function toggleRadarPlay() {
   if (!isPlaying && window._carregarLoopRadar) window._carregarLoopRadar();
   isPlaying = !isPlaying;
   const btn = document.getElementById('radarPlayBtn');
-  if(btn) btn.textContent = isPlaying ? '⏸' : '▶';
+  if(btn) btn.innerHTML = isPlaying ? `${icoMS('pause')}` : `${icoMS('play_arrow','fill')}`;
 
   if (isPlaying) {
     // O loop de frames pode ainda não ter sido baixado (ele espera o frame atual
@@ -3287,7 +3624,7 @@ function initThemeToggle() {
       root.removeAttribute('data-theme');
     }
     const effective = getEffectiveTheme();
-    if (icon) icon.textContent = effective === 'dark' ? '☀️' : '🌙';
+    if (icon) icon.textContent = effective === 'dark' ? 'light_mode' : 'dark_mode';
     if (theme) {
       localStorage.setItem('theme', theme);
     } else {
@@ -3299,7 +3636,7 @@ function initThemeToggle() {
     applyTheme(storedTheme);
   } else {
     const effective = getEffectiveTheme();
-    if (icon) icon.textContent = effective === 'dark' ? '☀️' : '🌙';
+    if (icon) icon.textContent = effective === 'dark' ? 'light_mode' : 'dark_mode';
   }
 
   btn?.addEventListener('click', () => {
@@ -3311,7 +3648,7 @@ function initThemeToggle() {
   window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => {
     if (!localStorage.getItem('theme')) {
       const effective = getEffectiveTheme();
-      if (icon) icon.textContent = effective === 'dark' ? '☀️' : '🌙';
+      if (icon) icon.textContent = effective === 'dark' ? 'light_mode' : 'dark_mode';
     }
   });
 }
@@ -3344,7 +3681,7 @@ function copyPrompt(provider, text) {
   const original = btn ? btn.textContent : '';
   navigator.clipboard?.writeText(text).then(() => {
     if (btn) {
-      btn.textContent = '✓ Copiado! Cole e envie';
+      btn.innerHTML = `${icoMS('check','s18')} Copiado! Cole e envie`;
       setTimeout(() => { btn.textContent = original; }, 2500);
     }
   }).catch(() => {});
@@ -3488,21 +3825,21 @@ function copyPrompt(provider, text) {
         if (!ev.target || ev.target.id !== 'pushPromptYes') return;
         if (Notification.permission === 'denied') {
           setState('denied');
-          showToast('🔕 Notificações bloqueadas neste site. Para liberar: toque no 🔒 (ou ícone do site) ao lado da barra de endereço → Permissões → Notificações → Permitir. Depois recarregue a página.');
+          showToast('Notificações bloqueadas neste site. Para liberar: toque no cadeado (ou ícone do site) ao lado da barra de endereço → Permissões → Notificações → Permitir. Depois recarregue a página.');
           return;
         }
         const perm = await Notification.requestPermission();
         if (perm === 'granted' && await subscribe()) {
           try { localStorage.setItem('mi_push_prompt', JSON.stringify({ ts: Date.now(), done: true })); } catch (e) {}
           if (window.__miPushPopup) window.__miPushPopup.hide();
-          showToast('🔔 Alertas ativados! Você será avisado em chuva forte.');
+          showToast('Alertas ativados! Você será avisado em chuva forte.');
         } else if (perm === 'denied') { setState('denied'); }
       });
       btn.addEventListener('click', async () => {
         if (Notification.permission === 'denied') {
           // Navegador bloqueou: não dá pra re-pedir — instrução clara.
           setState('denied');
-          showToast('🔕 Notificações bloqueadas neste site. Para liberar: toque no 🔒 (ou ícone do site) ao lado da barra de endereço → Permissões → Notificações → Permitir. Depois recarregue a página.');
+          showToast('Notificações bloqueadas neste site. Para liberar: toque no cadeado (ou ícone do site) ao lado da barra de endereço → Permissões → Notificações → Permitir. Depois recarregue a página.');
           return;
         }
         const sub = await swReg.pushManager.getSubscription();
@@ -3586,7 +3923,7 @@ function copyPrompt(provider, text) {
 </script>
 <div id="pushPrompt" style="display:none;position:fixed;left:50%;transform:translateX(-50%) translateY(24px);bottom:18px;z-index:9998;width:min(92vw,440px);background:var(--md-sys-color-surface-container-high);border-radius:16px;box-shadow:0 12px 32px rgba(0,0,0,.3);padding:16px;opacity:0;transition:opacity .25s ease,transform .25s ease" role="dialog" aria-label="Ativar alertas de chuva">
   <div style="display:flex;gap:12px;align-items:flex-start">
-    <div style="font-size:26px;line-height:1">🔔</div>
+    <div class="ms s28" aria-hidden="true">notifications</div>
     <div style="flex:1">
       <div style="font-weight:700;font-size:14.5px;color:var(--text)">Receber alertas de chuva no celular?</div>
       <div style="font-size:12.5px;color:var(--text2);line-height:1.5;margin-top:4px">O Monitor avisa quando chuva forte vem pra Ipiranga — antes de você ver na janela. Só toca em alerta laranja ou vermelho, sem spam.</div>
