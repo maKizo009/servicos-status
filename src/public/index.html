@@ -113,6 +113,21 @@
   /* MARCA (chrome/ações). Papel separado da escala de STATUS acima: era isso
      que faltava — três verdes misturados (header, controles neon, "ok"). */
   --brand:#1c6c30;--on-brand:#ffffff;--brand-c:#a4f5a9;
+  /* === IDENTIDADE — verde de Ipiranga (app bar) ===
+     Papel PRÓPRIO, separado da marca e do status: o verde da bandeira entra
+     SÓ no fundo do app bar. Badge, ícone de status e palavra "Normal" NÃO
+     usam este token — foi juntar os dois que gerou a confusão visual de
+     24/09/2026 (mesmo verde prometendo duas coisas). */
+  --ipiranga-brand-green:#1B6B3A;
+  --ipiranga-brand-green-dark:#0E4A26;
+  /* Amarelo reservado a UMA superfície: o indicador de rolagem. */
+  --scroll-indicator-yellow:#F5C518;
+  --appbar-bg:var(--ipiranga-brand-green);
+  --appbar-on:#ffffff;
+  --appbar-on-soft:rgba(255,255,255,.9);
+  /* Cores do ícone do contorno do município QUANDO ele vive no app bar.
+     Mesmo desenho, tile/contorno legíveis sobre o verde (ver .header). */
+  --appbar-logo-tile:#a4f5a9;--appbar-logo-ink:#1c6c30;
   --copel:#00923F;--sanepar:#003F87;
   /* === ESCALA DE STATUS (papel próprio, separada da cor de marca) ===
      Crítica 24/09/2026: o verde de "ok" era o mesmo verde neon dos controles
@@ -135,6 +150,10 @@
 @media (prefers-color-scheme: dark){
   :root:not([data-theme]){
     color-scheme:dark;
+    /* App bar no escuro: o verde de identidade escurecido; e o tile do logo
+       vira claro porque #00531e sobre #0E4A26 não se distingue do fundo. */
+    --appbar-bg:var(--ipiranga-brand-green-dark);
+    --appbar-logo-tile:#F1F6F2;--appbar-logo-ink:#1B6B3A;
     --md-sys-color-surface:#0f150e;
     --md-sys-color-surface-container-lowest:#091009;
     --md-sys-color-surface-container-low:#171d16;
@@ -178,6 +197,9 @@
 }
 :root[data-theme="dark"]{
   color-scheme:dark;
+  /* (idem media query: o toggle manual passa por aqui) */
+  --appbar-bg:var(--ipiranga-brand-green-dark);
+  --appbar-logo-tile:#F1F6F2;--appbar-logo-ink:#1B6B3A;
   --md-sys-color-surface:#0f150e;
   --md-sys-color-surface-container-lowest:#091009;
   --md-sys-color-surface-container-low:#171d16;
@@ -390,12 +412,13 @@ body{font-family:var(--font);background:var(--md-sys-color-surface);color:var(--
 .container{max-width:1200px;margin:0 auto;padding:0 20px;width:100%}
 
 /* Header */
-/* ===== TOPO (redesign 24/09/2026) =====
-   A faixa verde saturada com botões translúcidos saiu: o chrome fica sobre o
-   fundo da página e a cor de marca aparece SÓ na ação principal. Eram 4 botões
-   iguais e sem rótulo; agora são ação principal (sino), tema e um menu. */
+/* ===== TOPO (redesign 24/09/2026; identidade 26/09/2026) =====
+   O chrome (4 botões iguais, sem rótulo) saiu — hoje são tema + menu.
+   O FUNDO voltou a ser o verde de identidade (--appbar-bg), agora com papel
+   explícito: verde de marca mora aqui e em nenhum badge de status. A barra
+   que existia antes era verde-escuro genérico; esta é o tom da bandeira. */
 .header{
-  background:var(--md-sys-color-surface);padding:10px 20px;color:var(--text);
+  background:var(--appbar-bg);padding:10px 20px;color:var(--appbar-on);
   display:flex;align-items:center;justify-content:space-between;gap:12px;
   position:relative;z-index:10;flex-wrap:wrap;row-gap:8px
 }
@@ -1418,8 +1441,41 @@ html.trocando-tema, html.trocando-tema *{transition:none !important}
    MESMO tamanho (44 px, círculo) e do MESMO tom. Sem relógio.
    ====================================================================== */
 .header{
-  position:sticky;top:0;z-index:70;background:var(--md-sys-color-surface);
+  position:sticky;top:0;z-index:70;background:var(--appbar-bg);color:var(--appbar-on);
   padding:10px 20px;flex-wrap:nowrap;row-gap:0;gap:10px
+}
+/* ---- Chrome do app bar: tudo branco sobre o verde de identidade.
+   O logo do município é o MESMO desenho; aqui só os tokens dele mudam de
+   valor (--brand-c/--brand) para o tile não se perder no fundo da barra. */
+.header{--brand-c:var(--appbar-logo-tile);--brand:var(--appbar-logo-ink)}
+.header .header-title{color:var(--appbar-on)}
+.header .header-title span{color:var(--appbar-on-soft)}
+.header .hbtn{background:transparent;color:var(--appbar-on)}
+.header .hbtn:hover{background:rgba(255,255,255,.16);color:#fff}
+.header .hbtn.on,.header .hbtn.primary{background:rgba(255,255,255,.18);color:#fff}
+/* Outline escuro sumia no fundo verde: no app bar o anel de foco é branco. */
+.header .hbtn:focus-visible{outline-color:#fff}
+
+/* ======================================================================
+   INDICADOR DE PROGRESSO DE ROLAGEM — a ÚNICA superfície amarela do app.
+   Amarelo não é estado: é posição na página (spec de identidade 26/09/2026).
+   Fica DENTRO do <header> ancorado no fundo dele: o header é sticky, então
+   a barra acompanha a barra verde sem `top` calculado por breakpoint (o
+   padding muda em 520/640 px e um `top` fixo descolaria ali).
+   Largura = scrollTop / (scrollHeight - clientHeight).
+   ====================================================================== */
+.scroll-indicator-track{
+  position:absolute;left:0;right:0;bottom:0;height:3px;width:100%;
+  background:transparent;pointer-events:none;z-index:1
+}
+.scroll-indicator{
+  display:block;height:100%;width:0%;
+  background-color:var(--scroll-indicator-yellow);
+  /* linear: a barra acompanha o gesto. `ease` atrasa no meio do rolê. */
+  transition:width 100ms linear
+}
+@media (prefers-reduced-motion:reduce){
+  .scroll-indicator{transition:none}
 }
 .header-left{min-width:0}
 .header-title{
@@ -1848,6 +1904,12 @@ html.trocando-tema, html.trocando-tema *{transition:none !important}
         </a>
       </div>
     </div>
+  </div>
+  <!-- Progresso de rolagem (única superfície amarela do app). Filha do
+       cabeçalho sticky para acompanhar a barra verde sem `top` mágico.
+       Decorativa — a posição da página já diz o mesmo. -->
+  <div class="scroll-indicator-track" aria-hidden="true">
+    <span class="scroll-indicator" id="scrollIndicator"></span>
   </div>
 </header>
 
@@ -3868,6 +3930,7 @@ document.getElementById('radarSlider')?.addEventListener('input', (e) => {
 
 document.addEventListener('DOMContentLoaded', () => {
   initThemeToggle();
+  initScrollIndicator();
   // O radar instantâneo (índice do RainViewer) desenha ANTES da API chegar —
   // mas só faz sentido depois do mapa existir. Antes ele estava preso dentro do
   // `if (rtt > 200)` da telemetria, então em conexão boa o cidadão olhava um
@@ -3935,6 +3998,24 @@ function initThemeToggle() {
       if (icon) icon.textContent = effective === 'dark' ? 'light_mode' : 'dark_mode';
     }
   });
+}
+
+// ==== Barra de progresso de rolagem (logo abaixo do app bar) ====
+function initScrollIndicator() {
+  const barra = document.getElementById('scrollIndicator');
+  if (!barra) return;
+  /* O denominador (scrollHeight - innerHeight) muda quando os cards chegam
+     da API; por isso o cálculo é refeito A CADA scroll, e também no resize —
+     guardar a altura uma vez deixava a barra curta em página que cresce. */
+  function atualizar() {
+    const doc = document.documentElement;
+    const percorrivel = doc.scrollHeight - window.innerHeight;
+    const progresso = percorrivel > 0 ? (window.scrollY / percorrivel) * 100 : 0;
+    barra.style.width = Math.min(100, Math.max(0, progresso)).toFixed(2) + '%';
+  }
+  window.addEventListener('scroll', atualizar, { passive: true });
+  window.addEventListener('resize', atualizar);
+  atualizar();
 }
 
 // ==== LLM-friendly: perguntar direto ao assistente de IA ====
