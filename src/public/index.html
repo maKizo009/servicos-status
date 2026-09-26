@@ -30,7 +30,8 @@
 {"@context":"https://schema.org","@type":"WebSite","name":"Monitor Ipiranga","alternateName":"Monitor de chuva e rios de Ipiranga (PR)","url":"https://servicos-status.vercel.app/","inLanguage":"pt-BR","description":"Monitoramento de chuva, radar meteorológico, nível dos rios e status de serviços em Ipiranga (PR).","publisher":{"@type":"Organization","name":"Monitor Ipiranga"},"about":[{"@type":"Thing","name":"radar de chuva"},{"@type":"Thing","name":"nível do rio Bitumirim"},{"@type":"Thing","name":"alagamento em Ipiranga (PR)"}]}
 </script>
 <link rel="manifest" href="/manifest.webmanifest">
-<meta name="theme-color" content="#064E3B">
+<meta name="theme-color" content="#1B6B3A" id="metaThemeColor">
+<meta name="theme-color" content="#0E4A26" media="(prefers-color-scheme: dark)" id="metaThemeColorDark">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Monitor Ipiranga">
@@ -3951,6 +3952,19 @@ function initThemeToggle() {
     return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
   }
 
+  /* A barra do navegador/PWA acompanha o app bar (o theme-color estava preso no
+     verde antigo #064E3B). Com tema MANUAL a meta do sistema é desligada
+     (media="not all") para não casarem duas metas ao mesmo tempo. */
+  function syncThemeColor(effective) {
+    const base = document.getElementById('metaThemeColor');
+    const sistema = document.getElementById('metaThemeColorDark');
+    if (base) base.setAttribute('content', effective === 'dark' ? '#0E4A26' : '#1B6B3A');
+    if (sistema) {
+      const manual = document.documentElement.getAttribute('data-theme');
+      sistema.setAttribute('media', manual ? 'not all' : '(prefers-color-scheme: dark)');
+    }
+  }
+
   function applyTheme(theme) {
     const root = document.documentElement;
     /* Troca de tema com as transições DESLIGADAS por dois frames: no Chrome, uma
@@ -3966,6 +3980,7 @@ function initThemeToggle() {
     }
     const effective = getEffectiveTheme();
     if (icon) icon.textContent = effective === 'dark' ? 'light_mode' : 'dark_mode';
+    syncThemeColor(effective);
     if (theme) {
       localStorage.setItem('theme', theme);
     } else {
@@ -3979,6 +3994,7 @@ function initThemeToggle() {
   } else {
     const effective = getEffectiveTheme();
     if (icon) icon.textContent = effective === 'dark' ? 'light_mode' : 'dark_mode';
+    syncThemeColor(effective);
   }
 
   btn?.addEventListener('click', () => {
@@ -3997,6 +4013,7 @@ function initThemeToggle() {
       const effective = getEffectiveTheme();
       if (icon) icon.textContent = effective === 'dark' ? 'light_mode' : 'dark_mode';
     }
+    syncThemeColor(getEffectiveTheme());
   });
 }
 
