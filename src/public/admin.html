@@ -261,14 +261,22 @@ $('btnLogin').addEventListener('click', async () => {
       credentials: 'same-origin',
       body: JSON.stringify({ email, password }),
     });
+    const data = await res.json().catch(() => ({}));
+    if (res.ok && data.status === 'passkey_required') {
+      // 2FA (26/09/2026): a senha não abre mais o painel sozinha quando existe
+      // passkey cadastrada — ela é o 1º fator e a passkey vem em seguida.
+      $('inPass').value = '';
+      $('loginError').textContent = 'Senha confirmada. Confirme a passkey...';
+      await bioLogin();
+      return;
+    }
     if (res.ok) {
       show('app');
       $('btnBiometria').style.display = 'inline-flex';
       loadStats();
       statsTimer = setInterval(loadStats, 60_000);
     } else {
-      const d = await res.json().catch(() => ({}));
-      $('loginError').textContent = d.error || 'Falha no login.';
+      $('loginError').textContent = data.error || 'Falha no login.';
     }
   } catch (e) {
     $('loginError').textContent = 'Erro de conexão: ' + e.message;

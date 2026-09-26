@@ -188,6 +188,126 @@ export function getSessionTokenFromCookie(
 	return null;
 }
 
+// ============ 2ª etapa do login: passkey obrigatória (26/09/2026) ============
+// Hoje a passkey era opcional e podia até substituir a senha. Com isto, senha e
+// passkey passam a ser DOIS fatores quando existe passkey cadastrada:
+//
+//   ADMIN_REQUIRE_PASSKEY=0     → senha OU passkey (comportamento antigo)
+//   ADMIN_REQUIRE_PASSKEY=auto  → senha E passkey (padrão). Sem nenhuma passkey
+//                                 cadastrada a senha entra sozinha, senão não
+//                                 haveria como registrar a primeira.
+//   ADMIN_REQUIRE_PASSKEY=only  → só passkey abre sessão (a senha apenas
+//                                 autoriza o registro de uma passkey nova)
+//
+// Se perder o aparelho: setar ADMIN_REQUIRE_PASSKEY=0 na Vercel (a senha volta
+// a bastar) — é o único caminho de recuperação, e é de propósito: sem isso o
+// 2FA teria uma porta dos fundos.
+
+export type PasskeyMode = "off" | "auto" | "only";
+
+export function passkeyMode(): PasskeyMode {
+	const raw = (process.env.ADMIN_REQUIRE_PASSKEY ?? "auto")
+		.trim()
+		.toLowerCase();
+	if (["0", "off", "false", "nao", "não", "disable"].includes(raw))
+		return "off";
+	if (["only", "somente", "só", "so"].includes(raw)) return "only";
+	return "auto";
+}
+
+/** Quantas passkeys estão registradas (0 = primeira ainda não foi criada). */
+export async function passkeyRegisteredCount(): Promise<number> {
+	try {
+		return (await getCredentials()).length;
+	} catch {
+		// banco fora: assume que existe (fail-closed na exigência, não no acesso)
+		return 1;
+	}
+}
+
+/** A senha sozinha abre sessão? */
+export async function passwordAloneAllowed(): Promise<boolean> {
+	const modo = passkeyMode();
+	if (modo === "off") return true;
+	return (await passkeyRegisteredCount()) === 0;
+}
+
+/** Depois da senha, é preciso passar pela passkey? */
+export async function passkeyRequired(): Promise<boolean> {
+	const modo = passkeyMode();
+	if (modo === "off") return false;
+	return (await passkeyRegisteredCount()) > 0;
+}
+
+/**
+ * Dois fatores na mesma sessão (senha E passkey). Só no modo "auto" o navegador
+ * precisa provar a senha antes da passkey; no "only" a passkey sozinha vale e no
+ * "off" cada fator entra sozinho (comportamento antigo preservado).
+ */
+export function twoFactorRequired(): boolean {
+	return passkeyMode() === "auto";
+}
+
+const PENDING_TTL_MS = 5 * 60_000;
+const PENDING_COOKIE = "mi_admin_2fa";
+
+/**
+ * Token curto que só diz "a senha do dono já foi conferida; falta a passkey".
+ * Não abre sessão sozinho: sem uma cerimônia de passkey válida ele não serve
+ * para nada (e expira em 5 min).
+ */
+export async function createPendingToken(): Promise<string> {
+	const payload = Buffer.from(
+		JSON.stringify({
+			p: "2fa",
+			exp: Date.now() + PENDING_TTL_MS,
+			r: randomBytes(6).toString("hex"),
+		}),
+	).toString("base64url");
+	return `${payload}.${signSession(payload)}`;
+}
+
+export function verifyPendingToken(token: string | null | undefined): boolean {
+	if (!token) return false;
+	const [payload, sig] = token.split(".");
+	if (!payload || !sig) return false;
+	const expected = signSession(payload);
+	const sigBuf = Buffer.from(sig);
+	const expBuf = Buffer.from(expected);
+	if (sigBuf.length !== expBuf.length || !timingSafeEqual(sigBuf, expBuf)) {
+		return false;
+	}
+	try {
+		const { p, exp } = JSON.parse(
+			Buffer.from(payload, "base64url").toString("utf8"),
+		) as { p: string; exp: number };
+		return p === "2fa" && exp > Date.now();
+	} catch {
+		return false;
+	}
+}
+
+export function pendingCookie(token: string): string {
+	return `${PENDING_COOKIE}=${token}; Path=/; HttpOnly; SameSite=Strict; Max-Age=${
+		PENDING_TTL_MS / 1000
+	}; Secure`;
+}
+
+export function clearPendingCookie(): string {
+	return `${PENDING_COOKIE}=; Path=/; HttpOnly; SameSite=Strict; Max-Age=0; Secure`;
+}
+
+export function getPendingTokenFromCookie(
+	cookieHeader: string | null,
+): string | null {
+	if (!cookieHeader) return null;
+	for (const part of cookieHeader.split(";")) {
+		const [k, ...v] = part.trim().split("=");
+		if (k === PENDING_COOKIE) return v.join("=");
+	}
+	return null;
+}
+
 // ============ Telemetria (acessos, instalações, sessões) ============
 
 export async function trackEvent(

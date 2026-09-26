@@ -1213,6 +1213,23 @@ export async function handleRequest(
 					{ status: 401, headers: { "Content-Type": "application/json" } },
 				);
 			}
+			// 2FA (26/09/2026): com passkey cadastrada a senha não abre sessão —
+			// ela prova o 1º fator e o navegador segue para a passkey.
+			const {
+				passkeyRequired,
+				createPendingToken,
+				pendingCookie,
+			} = await import("./admin.js");
+			if (await passkeyRequired()) {
+				const pend = await createPendingToken();
+				return new Response(JSON.stringify({ status: "passkey_required" }), {
+					status: 200,
+					headers: {
+						"Content-Type": "application/json",
+						"Set-Cookie": pendingCookie(pend),
+					},
+				});
+			}
 			const token = await createSessionToken();
 			return new Response(JSON.stringify({ status: "ok" }), {
 				status: 200,
@@ -1349,7 +1366,22 @@ export async function handleRequest(
 			return Response.json(out);
 		}
 		if (path === "/api/admin/webauthn/login/begin" && method === "POST") {
-			const { webauthnLoginBegin } = await import("./admin.js");
+			const {
+				webauthnLoginBegin,
+				twoFactorRequired,
+				verifyPendingToken,
+				getPendingTokenFromCookie,
+			} = await import("./admin.js");
+			// No modo padrão a passkey é o SEGUNDO fator: sem a senha antes
+			// (cookie curto mi_admin_2fa) ela não inicia. Sem isso, a passkey
+			// sozinha abriria sessão e o 2FA seria decorativo.
+			const pend = getPendingTokenFromCookie(getHeader(req, "cookie"));
+			if (twoFactorRequired() && !verifyPendingToken(pend)) {
+				return new Response(
+					JSON.stringify({ error: "Informe e-mail e senha antes da passkey" }),
+					{ status: 400, headers: { "Content-Type": "application/json" } },
+				);
+			}
 			const out = await webauthnLoginBegin(getHeader(req, "host"));
 			if (!out) {
 				return new Response(
@@ -1381,12 +1413,14 @@ export async function handleRequest(
 					},
 				);
 			}
+			const { clearPendingCookie } = await import("./admin.js");
+			const headers = new Headers({ "Content-Type": "application/json" });
+			headers.append("Set-Cookie", sessionCookie(out.token));
+			// o token do 1º fator morre aqui (a passkey já cumpriu o papel)
+			headers.append("Set-Cookie", clearPendingCookie());
 			return new Response(JSON.stringify({ status: "ok" }), {
 				status: 200,
-				headers: {
-					"Content-Type": "application/json",
-					"Set-Cookie": sessionCookie(out.token),
-				},
+				headers,
 			});
 		}
 		// ===== Push Web (PWA) — inscrições e teste =====
