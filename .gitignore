@@ -10,3 +10,8 @@ data/*.db*
 # Relatórios de pentest ficam FORA do repo (o repo é público e o documento
 # lista os pontos fracos atuais) — 26/09/2026
 security/PENTEST-*.md
+
+# Conteúdo de estudo/auditoria (310 MB): fica local, fora do repo público.
+# Removido do histórico em 26/09/2026 (git filter-repo) — backup em
+# /root/backups/servicos-status-pre-rewrite-26-09/docs
+/docs/
