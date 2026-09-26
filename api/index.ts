@@ -10,7 +10,11 @@ const ALLOWED_ORIGINS = new Set([
 /** Headers de segurança aplicados em TODAS as respostas (incl. erros). */
 const SECURITY_HEADERS: Record<string, string> = {
 	"Content-Security-Policy":
-		"default-src 'self'; script-src 'self' 'unsafe-inline' https://unpkg.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://unpkg.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: blob: https:; connect-src 'self' https:; media-src 'self' https:; frame-ancestors 'none'; object-src 'none'; base-uri 'self'; form-action 'self'",
+		// Mesma CSP dos estáticos (vercel.json). Antes liberava unpkg.com e
+		// fonts.googleapis/gstatic — herança de quando o Leaflet vinha de CDN;
+		// hoje o vendor/ é self-hosted e o front não usa nenhum dos dois
+		// (achado pentest 26/09/2026: superfície de supply-chain sem uso).
+		"default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' data: blob: https:; connect-src 'self' https:; media-src 'self' https:; frame-ancestors 'none'; object-src 'none'; base-uri 'self'; form-action 'self'",
 	"X-Frame-Options": "DENY",
 	"X-Content-Type-Options": "nosniff",
 	"Referrer-Policy": "strict-origin-when-cross-origin",

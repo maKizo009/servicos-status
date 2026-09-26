@@ -4156,10 +4156,15 @@ function copyPrompt(provider, text) {
     try {
       const sub = await swReg.pushManager.getSubscription();
       if (sub) {
+        // Manda as chaves junto: o servidor só apaga a inscrição de quem prova
+        // que é dono dela (pentest 26/09/2026 — antes bastava saber o
+        // endpoint pra apagar a inscrição de outra pessoa). O toJSON() tem que
+        // ser lido ANTES do sub.unsubscribe(), que zera as chaves.
+        const json = sub.toJSON();
         await fetch('/api/push/unsubscribe', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ endpoint: sub.endpoint }),
+          body: JSON.stringify({ endpoint: sub.endpoint, keys: json.keys || {} }),
         });
         await sub.unsubscribe();
       }

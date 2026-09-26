@@ -34,7 +34,11 @@ import {
 	getRadarNowcast,
 } from "./nowcast-service.js";
 import { fmtEta, formatRainEntityAlert } from "./radar-analysis.js";
-import { checkRateLimit, checkRateLimitScope } from "./rate-limiter.js";
+import {
+	checkRateLimit,
+	checkRateLimitScope,
+	checkRateLimitShared,
+} from "./rate-limiter.js";
 import {
 	CIDADES_CORREDOR,
 	cidadesComNucleo,
@@ -714,7 +718,18 @@ function getClientIp(req: IncomingRequest): string {
 
 async function getReqJson(req: IncomingRequest): Promise<unknown> {
 	if (!req) return {};
-	if (req.body && typeof req.body === "object") return req.body;
+	// `req.body` só vale como JSON já parseado quando o runtime entrega um
+	// OBJETO (caso do Vercel/Node, onde o body chega parseado). No runtime Bun
+	// `req.body` é o ReadableStream da requisição — tratá-lo como objeto fazia
+	// todo POST chegar vazio (descoberto no teste local de 26/09/2026; em prod
+	// o caminho é o do Vercel, então o efeito era só em dev/preview local).
+	if (
+		req.body &&
+		typeof req.body === "object" &&
+		typeof (req.body as ReadableStream).getReader !== "function"
+	) {
+		return req.body;
+	}
 	if (typeof req.json === "function") {
 		return await req.json().catch(() => ({}));
 	}
@@ -806,6 +821,36 @@ export async function handleRequest(
 			status: 405,
 			headers: { "Content-Type": "application/json", Allow: "GET, HEAD" },
 		});
+	}
+
+	// Rate limit dos /llms* (pentest 26/09/2026): estes endpoints ficavam ANTES
+	// do bloco de limite dos /api/* e sem limite próprio — em instância fria
+	// cada request podia cair em syncWeatherCycle() (cota NIM/LLM). 30/min:
+	// folgado para crawler de IA legítimo, apertado para abuso. Contador
+	// compartilhado (o Map por instância não segura rajada).
+	if (
+		path === "/llms.txt" ||
+		path === "/llms-full.txt" ||
+		path === "/llms-instructions.txt"
+	) {
+		const { checkRateLimitShared } = await import("./rate-limiter.js");
+		const { allowed, retryAfter } = await checkRateLimitShared(
+			getClientIp(req),
+			30,
+			"llms",
+		);
+		if (!allowed) {
+			return new Response(
+				JSON.stringify({ error: "Too many requests", retryAfter }),
+				{
+					status: 429,
+					headers: {
+						"Content-Type": "application/json",
+						"Retry-After": String(retryAfter),
+					},
+				},
+			);
+		}
 	}
 
 	// Serve llms.txt endpoints without rate limits
@@ -1111,7 +1156,11 @@ export async function handleRequest(
 			// Rate limit dedicado de login (5/min por IP), além do escopo
 			// "admin" (20/min): corta rajadas de brute force. O atraso fixo
 			// de 1.2s abaixo desacelera tentativas distribuídas.
-			const { allowed, retryAfter } = checkRateLimitScope(
+			// Compartilhado (Turso): medido em 26/09/2026 — 12 logins errados em
+			// PARALELO passavam 10 vezes (o Map por instância vê poucas
+			// tentativas cada). O atraso de 1,2s abaixo não serializa sob
+			// concorrência.
+			const { allowed, retryAfter } = await checkRateLimitShared(
 				getClientIp(req),
 				5,
 				"login",
@@ -1136,8 +1185,11 @@ export async function handleRequest(
 				verifyPassword,
 			} = await import("./admin.js");
 			if (!adminConfigured()) {
+				// Mensagem genérica: "Admin não configurado" confirmava ao
+				// visitante que existe painel e que falta configurar
+				// (achado pentest 26/09/2026).
 				return new Response(
-					JSON.stringify({ error: "Admin não configurado" }),
+					JSON.stringify({ error: "Serviço indisponível" }),
 					{ status: 503, headers: { "Content-Type": "application/json" } },
 				);
 			}
@@ -1161,7 +1213,7 @@ export async function handleRequest(
 					{ status: 401, headers: { "Content-Type": "application/json" } },
 				);
 			}
-			const token = createSessionToken();
+			const token = await createSessionToken();
 			return new Response(JSON.stringify({ status: "ok" }), {
 				status: 200,
 				headers: {
@@ -1171,7 +1223,25 @@ export async function handleRequest(
 			});
 		}
 		if (path === "/api/admin/logout" && method === "POST") {
-			const { clearSessionCookie } = await import("./admin.js");
+			const {
+				clearSessionCookie,
+				getSessionTokenFromCookie,
+				revokeAllSessions,
+				verifySessionToken,
+			} = await import("./admin.js");
+			// Revoga de verdade: só incrementa a epoch (que invalida todo token
+			// emitido antes) quando veio uma sessão VÁLIDA — assim um POST
+			// anônimo não derruba a sessão do dono, e um logout real mata o
+			// token copiado em outro dispositivo (achado pentest 26/09/2026:
+			// antes o logout só limpava o cookie e o token valia 30 dias).
+			const tokenAtual = getSessionTokenFromCookie(getHeader(req, "cookie"));
+			if (tokenAtual && (await verifySessionToken(tokenAtual))) {
+				await revokeAllSessions().catch((err: unknown) => {
+					logger.warn("Falha ao revogar sessões no logout", {
+						error: err instanceof Error ? err.message : String(err),
+					});
+				});
+			}
 			return new Response(JSON.stringify({ status: "ok" }), {
 				status: 200,
 				headers: {
@@ -1188,7 +1258,7 @@ export async function handleRequest(
 				verifySessionToken,
 			} = await import("./admin.js");
 			const token = getSessionTokenFromCookie(getHeader(req, "cookie"));
-			const authed = verifySessionToken(token);
+			const authed = await verifySessionToken(token);
 			return Response.json({
 				authed,
 				// Não expor "admin existe" para quem não está autenticado
@@ -1202,7 +1272,7 @@ export async function handleRequest(
 			const { getAdminStats, getSessionTokenFromCookie, verifySessionToken } =
 				await import("./admin.js");
 			const token = getSessionTokenFromCookie(getHeader(req, "cookie"));
-			if (!verifySessionToken(token)) {
+			if (!(await verifySessionToken(token))) {
 				return new Response(JSON.stringify({ error: "Não autenticado" }), {
 					status: 401,
 					headers: { "Content-Type": "application/json" },
@@ -1218,7 +1288,7 @@ export async function handleRequest(
 				"./admin.js"
 			);
 			const token = getSessionTokenFromCookie(getHeader(req, "cookie"));
-			if (!verifySessionToken(token)) {
+			if (!(await verifySessionToken(token))) {
 				return new Response(JSON.stringify({ error: "Não autenticado" }), {
 					status: 401,
 					headers: { "Content-Type": "application/json" },
@@ -1234,7 +1304,7 @@ export async function handleRequest(
 			const { getSessionTokenFromCookie, verifySessionToken } = await import(
 				"./admin.js"
 			);
-			return verifySessionToken(
+			return await verifySessionToken(
 				getSessionTokenFromCookie(getHeader(req, "cookie")),
 			);
 		})();
@@ -1267,7 +1337,16 @@ export async function handleRequest(
 				await getReqJson(req),
 				getHeader(req, "origin"),
 			);
-			return Response.json(out, { status: out.ok ? 200 : 400 });
+			if (!out.ok) {
+				logger.warn("WebAuthn register/complete falhou", {
+					error: String((out as { error?: string }).error ?? ""),
+				});
+				return Response.json(
+					{ error: "Falha no cadastro da passkey" },
+					{ status: 400 },
+				);
+			}
+			return Response.json(out);
 		}
 		if (path === "/api/admin/webauthn/login/begin" && method === "POST") {
 			const { webauthnLoginBegin } = await import("./admin.js");
@@ -1289,10 +1368,18 @@ export async function handleRequest(
 				getHeader(req, "origin"),
 			);
 			if (!out.ok || !out.token) {
-				return new Response(JSON.stringify({ error: out.error ?? "Falha" }), {
-					status: 400,
-					headers: { "Content-Type": "application/json" },
+				// Mensagem genérica: `out.error` podia trazer texto de biblioteca
+				// (achado pentest 26/09/2026).
+				logger.warn("WebAuthn login/complete falhou", {
+					error: out.error,
 				});
+				return new Response(
+					JSON.stringify({ error: "Falha na autenticação" }),
+					{
+						status: 400,
+						headers: { "Content-Type": "application/json" },
+					},
+				);
 			}
 			return new Response(JSON.stringify({ status: "ok" }), {
 				status: 200,
@@ -1304,20 +1391,25 @@ export async function handleRequest(
 		}
 		// ===== Push Web (PWA) — inscrições e teste =====
 		if (path === "/api/push/status") {
-			const { countPushSubscriptions, pushConfigured } = await import(
-				"./push.js"
-			);
+			const { pushConfigured } = await import("./push.js");
 			const config = loadConfig();
+			// Sem `subscribers`: era dado interno (quantas pessoas seguem os
+			// alertas) exposto em endpoint público e sem rate limit — achado
+			// pentest 26/09/2026. O front não usa o campo.
 			return Response.json({
 				configured: pushConfigured(),
 				vapidPublicKey: config.vapidPublicKey || null,
-				subscribers: await countPushSubscriptions().catch(() => 0),
 				timestamp: Date.now(),
 			});
 		}
 		if (path === "/api/push/subscribe" && method === "POST") {
 			try {
-				const { savePushSubscription } = await import("./push.js");
+				const {
+					savePushSubscription,
+					validatePushEndpoint,
+					countPushSubscriptions,
+					MAX_PUSH_SUBSCRIPTIONS,
+				} = await import("./push.js");
 				const body = (await getReqJson(req)) as {
 					endpoint?: string;
 					keys?: { p256dh?: string; auth?: string };
@@ -1326,6 +1418,29 @@ export async function handleRequest(
 					return new Response(
 						JSON.stringify({ error: "Inscrição incompleta (endpoint/keys)" }),
 						{ status: 400, headers: { "Content-Type": "application/json" } },
+					);
+				}
+				// Allowlist de host de push service: sem isso o `endpoint` era
+				// uma URL arbitrária que o servidor visitava no envio = SSRF
+				// cego + escrita pública (achado pentest 26/09/2026).
+				const recusa = validatePushEndpoint(
+					body.endpoint,
+					body.keys.p256dh,
+					body.keys.auth,
+				);
+				if (recusa) {
+					logger.warn("Push subscribe recusado", { motivo: recusa });
+					return new Response(JSON.stringify({ error: recusa }), {
+						status: 400,
+						headers: { "Content-Type": "application/json" },
+					});
+				}
+				const total = await countPushSubscriptions().catch(() => 0);
+				if (total >= MAX_PUSH_SUBSCRIPTIONS) {
+					logger.warn("Push subscribe: teto de inscrições atingido", { total });
+					return new Response(
+						JSON.stringify({ error: "Limite de inscrições atingido" }),
+						{ status: 503, headers: { "Content-Type": "application/json" } },
 					);
 				}
 				await savePushSubscription({
@@ -1344,15 +1459,32 @@ export async function handleRequest(
 		}
 		if (path === "/api/push/unsubscribe" && method === "POST") {
 			try {
-				const { removePushSubscription } = await import("./push.js");
-				const body = (await getReqJson(req)) as { endpoint?: string };
+				const { removePushSubscriptionIfOwned } = await import("./push.js");
+				const body = (await getReqJson(req)) as {
+					endpoint?: string;
+					keys?: { p256dh?: string; auth?: string };
+				};
 				if (!body?.endpoint) {
 					return new Response(JSON.stringify({ error: "endpoint ausente" }), {
 						status: 400,
 						headers: { "Content-Type": "application/json" },
 					});
 				}
-				await removePushSubscription(body.endpoint);
+				// Posse: só apaga a inscrição de quem apresenta as chaves que
+				// registrou (o front manda as mesmas). Antes, saber o endpoint
+				// bastava para apagar a inscrição alheia — quem fazia isso
+				// silenciava os alertas da vítima (IDOR, pentest 26/09/2026).
+				// Mesma resposta para "não existe" e "chave errada" (sem oráculo).
+				const removido = await removePushSubscriptionIfOwned(
+					body.endpoint,
+					body.keys,
+				);
+				if (!removido) {
+					return new Response(
+						JSON.stringify({ error: "Inscrição não encontrada" }),
+						{ status: 400, headers: { "Content-Type": "application/json" } },
+					);
+				}
 				return Response.json({ status: "ok", timestamp: Date.now() });
 			} catch (err: unknown) {
 				const errMsg = err instanceof Error ? err.message : String(err);
@@ -1370,7 +1502,9 @@ export async function handleRequest(
 				"./admin.js"
 			);
 			if (
-				!verifySessionToken(getSessionTokenFromCookie(getHeader(req, "cookie")))
+				!(await verifySessionToken(
+					getSessionTokenFromCookie(getHeader(req, "cookie")),
+				))
 			) {
 				return new Response(JSON.stringify({ error: "Não autenticado" }), {
 					status: 401,

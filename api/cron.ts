@@ -16,33 +16,40 @@ import {
 
 export default async function handler(req: any, res: any) {
 	try {
-		// ===== Auth do cron (achado pentest 2026-08-12) =====
-		// Sem proteção, qualquer um disparava o ciclo completo (cota NIM +
-		// Telegram + push pra todos os inscritos). Agora exige:
-		//   - Authorization: Bearer <CRON_SECRET>  (disparo manual/automação),
-		//   - OU header x-vercel-cron: 1           (cron nativo do Vercel).
-		// x-vercel-cron é spoofable (header simples) — por isso o rate limit
-		// dedicado (2/min/IP) abaixo segura abuso mesmo com header falso.
+		// ===== Auth do cron — SÓ Bearer do CRON_SECRET (pentest 26/09/2026) =====
+		// ANTES: `x-vercel-cron: 1` valia como identidade (header que qualquer um
+		// manda) e o rate limit que deveria segurar o abuso era por instância —
+		// rajada paralela passava. Resultado: qualquer pessoa disparava o ciclo
+		// completo (cota NIM/LLM + Telegram + push para os 45 inscritos).
+		// AGORA: fail-closed. Sem CRON_SECRET o endpoint não roda; sem o Bearer
+		// correto, 401. Os TRÊS disparadores mandam Bearer (cron-job.org job
+		// 8237452, cron Hermes vigia e GitHub Actions) e o vercel.json não tem
+		// cron nativo — nada dependia do header.
 		const config = loadConfig();
 		const headers = req?.headers ?? {};
 		const auth = headers.authorization ?? headers.Authorization ?? "";
-		const isVercelCron = headers["x-vercel-cron"] === "1";
 		const cronSecret = config.cronSecret;
-		const authed =
-			(cronSecret && auth === `Bearer ${cronSecret}`) ||
-			(cronSecret && isVercelCron) ||
-			(!cronSecret && isVercelCron);
-		if (!authed) {
+		if (!cronSecret) {
+			if (res && typeof res.status === "function") {
+				return res.status(503).json({ error: "Serviço indisponível" });
+			}
+			return Response.json({ error: "Serviço indisponível" }, { status: 503 });
+		}
+		if (auth !== `Bearer ${cronSecret}`) {
 			if (res && typeof res.status === "function") {
 				return res.status(401).json({ error: "Não autorizado" });
 			}
 			return Response.json({ error: "Não autorizado" }, { status: 401 });
 		}
-		const ip = String(headers["x-forwarded-for"] ?? "unknown")
-			.split(",")[0]
-			.trim();
-		const { checkRateLimitScope } = await import("../src/rate-limiter.js");
-		const { allowed, retryAfter } = checkRateLimitScope(ip, 2, "cron");
+		// IP confiável da plataforma (x-real-ip) e, na falta, o 1º hop do XFF.
+		// Contador COMPARTILHADO: vale para todas as instâncias (o Map local não
+		// segura rajada paralela — medido 26/09/2026).
+		const ip = String(
+			headers["x-real-ip"] ??
+				String(headers["x-forwarded-for"] ?? "unknown").split(",")[0],
+		).trim();
+		const { checkRateLimitShared } = await import("../src/rate-limiter.js");
+		const { allowed, retryAfter } = await checkRateLimitShared(ip, 2, "cron");
 		if (!allowed) {
 			if (res && typeof res.status === "function") {
 				return res
@@ -153,12 +160,19 @@ export default async function handler(req: any, res: any) {
 		}
 		return Response.json(result);
 	} catch (err: unknown) {
-		const msg = err instanceof Error ? err.message : String(err);
+		// Detalhe só no log: `err.message` devolvia mensagem de driver/LLM ao
+		// cliente (achado pentest 26/09/2026).
+		console.error(
+			"Cron handler error:",
+			err instanceof Error ? err.stack ?? err.message : err,
+		);
 		if (res && typeof res.status === "function") {
-			return res.status(500).json({ error: msg, timestamp: Date.now() });
+			return res
+				.status(500)
+				.json({ error: "Erro interno", timestamp: Date.now() });
 		}
 		return Response.json(
-			{ error: msg, timestamp: Date.now() },
+			{ error: "Erro interno", timestamp: Date.now() },
 			{ status: 500 },
 		);
 	}

@@ -5,9 +5,15 @@
  * Segurança:
  *  - Senha do admin nunca em texto puro: env ADMIN_PASSWORD_HASH no formato
  *    "scrypt:N:salt:hash" (gerado por scripts/hash-admin-password.ts).
- *  - Sessão: token HMAC-SHA256(SESSION_SECRET) com expiração de 12h, em
- *    cookie httpOnly + SameSite=Lax.
- *  - Login com atraso anti brute-force (1.5s) + comparação timing-safe.
+ *  - Sessão: token HMAC-SHA256(SESSION_SECRET), cookie httpOnly + SameSite=Lax
+ *    + Secure. Expiração em SESSION_TTL_HOURS (padrão 720h = 30 dias, sessão
+ *    pessoal do Dave) e REVOGAÇÃO GLOBAL: o token carrega a "epoch" da tabela
+ *    admin_session_epoch e o logout autenticado incrementa a epoch, matando as
+ *    sessões emitidas antes (antes o logout só limpava o cookie do navegador e
+ *    um token copiado continuava valendo 30 dias — achado pentest 26/09/2026).
+ *  - Login com atraso anti brute-force (1.5s) + comparação timing-safe + limite
+ *    compartilhado no Turso (escopo "login"): o contador em memória era por
+ *    instância e 10 de 12 tentativas paralelas passavam.
  */
 import {
 	createHmac,
@@ -25,7 +31,58 @@ import type {
 import { loadConfig } from "./config.js";
 import { getDbClient } from "./db.js";
 
-const SESSION_TTL_MS = 30 * 24 * 60 * 60_000; // 30 dias (sessão pessoal do Dave)
+// SESSION_TTL_HOURS=12 deixa a sessão de meio dia, sem mexer no código.
+const SESSION_TTL_MS =
+	Math.max(1, Number(process.env.SESSION_TTL_HOURS) || 720) * 60 * 60_000;
+
+// ============ Revogação de sessão (epoch) ============
+// Linha única; incrementar invalida TODO token emitido antes. Serve de botão de
+// pânico ("sair de todos os dispositivos") e é o que dá sentido ao logout.
+let tabelaEpochOk: Promise<unknown> | null = null;
+
+async function lerEpoch(): Promise<number | null> {
+	try {
+		const db = await getDbClient();
+		if (!tabelaEpochOk) {
+			tabelaEpochOk = db
+				.execute(
+					`CREATE TABLE IF NOT EXISTS admin_session_epoch (
+						id INTEGER PRIMARY KEY CHECK (id = 1),
+						epoch INTEGER NOT NULL
+					)`,
+				)
+				.catch((err: unknown) => {
+					tabelaEpochOk = null;
+					throw err;
+				});
+		}
+		await tabelaEpochOk;
+		const res = await db.execute({
+			sql: "SELECT epoch FROM admin_session_epoch WHERE id = 1",
+			args: [],
+		});
+		return Number(res.rows[0]?.epoch ?? 0);
+	} catch (err: unknown) {
+		// Banco fora do ar não pode trancar o painel: segue validando por
+		// assinatura+expiração e avisa no log (revogação fica indisponível).
+		console.warn(
+			"[admin] epoch de sessão indisponível:",
+			err instanceof Error ? err.message : err,
+		);
+		return null;
+	}
+}
+
+/** Invalida todas as sessões emitidas até agora (logout autenticado). */
+export async function revokeAllSessions(): Promise<void> {
+	const db = await getDbClient();
+	await db.execute({
+		sql: `INSERT INTO admin_session_epoch (id, epoch) VALUES (1, 1)
+           ON CONFLICT(id) DO UPDATE SET epoch = admin_session_epoch.epoch + 1`,
+		args: [],
+	});
+	tabelaEpochOk = null;
+}
 
 // ============ Senha (scrypt) ============
 
@@ -72,16 +129,19 @@ function signSession(payload: string): string {
 }
 
 /** Cria o token de sessão (base64url(payload).hmac). */
-export function createSessionToken(): string {
+export async function createSessionToken(): Promise<string> {
 	const exp = Date.now() + SESSION_TTL_MS;
+	const e = (await lerEpoch()) ?? 0;
 	const payload = Buffer.from(
-		JSON.stringify({ exp, r: randomBytes(6).toString("hex") }),
+		JSON.stringify({ exp, r: randomBytes(6).toString("hex"), e }),
 	).toString("base64url");
 	return `${payload}.${signSession(payload)}`;
 }
 
 /** Valida o token; retorna true se for assinatura válida e não expirou. */
-export function verifySessionToken(token: string | null | undefined): boolean {
+export async function verifySessionToken(
+	token: string | null | undefined,
+): Promise<boolean> {
 	if (!token) return false;
 	const [payload, sig] = token.split(".");
 	if (!payload || !sig) return false;
@@ -92,10 +152,15 @@ export function verifySessionToken(token: string | null | undefined): boolean {
 		return false;
 	}
 	try {
-		const { exp } = JSON.parse(
+		const { exp, e } = JSON.parse(
 			Buffer.from(payload, "base64url").toString("utf8"),
-		) as { exp: number };
-		return exp > Date.now();
+		) as { exp: number; e?: number };
+		if (exp <= Date.now()) return false;
+		const atual = await lerEpoch();
+		if (atual === null) return true; // banco fora: mantém revogação de fora
+		// Token antigo (emitido antes da epoch existir) vale enquanto a epoch
+		// estiver em 0; depois do 1º logout, todos caem juntos.
+		return (e ?? 0) === atual;
 	} catch {
 		return false;
 	}
@@ -108,7 +173,7 @@ export function sessionCookie(token: string): string {
 }
 
 export function clearSessionCookie(): string {
-	return "mi_admin=; Path=/; HttpOnly; SameSite=Lax; Max-Age=0";
+	return "mi_admin=; Path=/; HttpOnly; SameSite=Lax; Max-Age=0; Secure";
 }
 
 /** Extrai o cookie mi_admin do header Cookie. */
@@ -512,7 +577,7 @@ export async function webauthnLoginComplete(
 			sql: "UPDATE webauthn_credentials SET counter = ? WHERE id = ?",
 			args: [verification.authenticationInfo.newCounter, cred.id],
 		});
-		return { ok: true, token: createSessionToken() };
+		return { ok: true, token: await createSessionToken() };
 	} catch (err) {
 		return {
 			ok: false,

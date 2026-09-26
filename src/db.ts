@@ -12,10 +12,15 @@ let client: Client | null = null;
 
 export async function getDbClient(): Promise<Client> {
 	if (!client) {
-		const tursoUrl =
-			process.env.TURSO_DATABASE_URL ||
-			process.env.TURSO_URL ||
-			"libsql://health-lucasmodesto.aws-us-east-2.turso.io";
+		// Sem fallback hardcoded: a URL do banco de produção estava escrita no
+		// código de um repo PÚBLICO e, se a env faltasse, o app conectava em
+		// silêncio num host fixo (achado pentest 26/09/2026). Agora falha claro.
+		const tursoUrl = process.env.TURSO_DATABASE_URL || process.env.TURSO_URL;
+		if (!tursoUrl) {
+			throw new Error(
+				"TURSO_DATABASE_URL ausente: configure a env (o fallback hardcoded foi removido em 26/09/2026)",
+			);
+		}
 		const tursoToken =
 			process.env.TURSO_AUTH_TOKEN ||
 			process.env.TURSO_DATABASE_TOKEN ||
@@ -133,10 +138,7 @@ export async function initDb(): Promise<Client> {
 				purpose TEXT NOT NULL,
 				ts INTEGER NOT NULL
 			)`,
-				"CREATE INDEX IF NOT EXISTS idx_connectivity_timestamp ON connectivity_results(timestamp)",
-				"CREATE INDEX IF NOT EXISTS idx_bgp_timestamp ON bgp_results(timestamp)",
 				"CREATE INDEX IF NOT EXISTS idx_known_events_source ON known_events(source)",
-				"CREATE INDEX IF NOT EXISTS idx_signal_reports_expires ON signal_reports(expires_at)",
 				"CREATE INDEX IF NOT EXISTS idx_event_history_timestamp ON event_history(timestamp)",
 				"CREATE INDEX IF NOT EXISTS idx_weather_bulletins_generated ON weather_bulletins(generated_at)",
 				"CREATE INDEX IF NOT EXISTS idx_weather_nowcast_bulletins_generated ON weather_nowcast_bulletins(generated_at)",
@@ -146,6 +148,25 @@ export async function initDb(): Promise<Client> {
 			],
 			"write",
 		);
+
+		// Índices de tabelas que o batch NÃO cria (connectivity_results, bgp_results
+		// e signal_reports vieram de versões anteriores; em banco novo elas não
+		// existem). Dentro do batch, um único erro derruba o init INTEIRO — o
+		// libSQL roda batch em transação, então NENHUMA tabela era criada e o
+		// schema ficava "initialized" no log sem ter criado nada (achado
+		// 26/09/2026: banco local novo subia só com as tabelas criaadas sob
+		// demanda). Fora do batch, cada um falha sozinho e o init sobrevive.
+		for (const sql of [
+			"CREATE INDEX IF NOT EXISTS idx_connectivity_timestamp ON connectivity_results(timestamp)",
+			"CREATE INDEX IF NOT EXISTS idx_bgp_timestamp ON bgp_results(timestamp)",
+			"CREATE INDEX IF NOT EXISTS idx_signal_reports_expires ON signal_reports(expires_at)",
+		]) {
+			try {
+				await db.execute(sql);
+			} catch {
+				// tabela legada ausente neste banco — segue o jogo
+			}
+		}
 
 		// Migração idempotente (22/09/2026): bancos criados antes desta data não têm
 		// a coluna context_key. Ela é a impressão do CENÁRIO do boletim — sem ela o

@@ -7,3 +7,6 @@ data/*.db*
 
 .vercel
 .env*
+# Relatórios de pentest ficam FORA do repo (o repo é público e o documento
+# lista os pontos fracos atuais) — 26/09/2026
+security/PENTEST-*.md

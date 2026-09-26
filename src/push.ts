@@ -23,6 +23,87 @@ export interface PushSubscription {
 	keys: { p256dh: string; auth: string };
 }
 
+/**
+ * Hosts de push service aceitos (allowlist). Sem isso, o `endpoint` era uma URL
+ * arbitrária que o servidor visitava em `sendNotification` = SSRF cego
+ * (achado pentest 26/09/2026). Sufixo casa subdomínio (wns2-xyz.notify.windows.com).
+ */
+const PUSH_HOSTS = [
+	"fcm.googleapis.com",
+	"updates.push.services.mozilla.com",
+	"push.services.mozilla.com",
+	"notify.windows.com",
+	"push.apple.com",
+	"push.brave.com",
+];
+
+/** Extra (env, separado por vírgula) para provedor novo sem deploy. */
+function hostsExtras(): string[] {
+	return (process.env.PUSH_ENDPOINT_EXTRA_HOSTS ?? "")
+		.split(",")
+		.map((h) => h.trim().toLowerCase())
+		.filter(Boolean);
+}
+
+/** Teto de inscrições: subscription falsa em massa incha a tabela e o envio. */
+export const MAX_PUSH_SUBSCRIPTIONS = Number(
+	process.env.MAX_PUSH_SUBSCRIPTIONS ?? 5000,
+);
+
+const RE_B64 = /^[A-Za-z0-9_\-+/=]{8,200}$/;
+const RE_IP = /^\d{1,3}(\.\d{1,3}){3}$/;
+
+/** Normaliza chave do browser (base64url sem padding = base64 com padding). */
+export function normalizarChave(k: unknown): string {
+	return String(k ?? "")
+		.trim()
+		.replace(/ /g, "+")
+		.replace(/-/g, "+")
+		.replace(/_/g, "/")
+		.replace(/=+$/, "");
+}
+
+/**
+ * Valida um endpoint/keys vindos do cliente. Retorna a mensagem de recusa (para
+ * o 400) ou `null` quando está tudo certo. Motivo do log: se algum provedor
+ * legítimo ficar de fora da allowlist, o host aparece no log do servidor.
+ */
+export function validatePushEndpoint(
+	endpoint: unknown,
+	p256dh: unknown,
+	auth: unknown,
+): string | null {
+	const url = String(endpoint ?? "").trim();
+	if (!url || url.length > 2048) return "endpoint ausente ou longo demais";
+	let parsed: URL;
+	try {
+		parsed = new URL(url);
+	} catch {
+		return "endpoint inválido";
+	}
+	if (parsed.protocol !== "https:") return "endpoint precisa ser https";
+	// Push service sempre usa 443: porta explícita diferente é desvio (usaria a
+	// allowlist de host para sondar outra porta do provedor).
+	if (parsed.port && parsed.port !== "443") {
+		return "endpoint com porta não permitida";
+	}
+	const host = parsed.hostname.toLowerCase();
+	if (RE_IP.test(host) || host === "localhost" || host.endsWith(".local")) {
+		return "endpoint com host não permitido";
+	}
+	const permitido = [...PUSH_HOSTS, ...hostsExtras()].some(
+		(h) => host === h || host.endsWith(`.${h}`),
+	);
+	if (!permitido) {
+		logger.warn("Push endpoint recusado (fora da allowlist)", { host });
+		return "endpoint de push não suportado";
+	}
+	if (!RE_B64.test(String(p256dh ?? "")) || !RE_B64.test(String(auth ?? ""))) {
+		return "chaves de inscrição inválidas";
+	}
+	return null;
+}
+
 export function pushConfigured(): boolean {
 	const c = loadConfig();
 	return Boolean(c.vapidPublicKey && c.vapidPrivateKey && c.vapidSubject);
@@ -52,6 +133,36 @@ export async function removePushSubscription(endpoint: string): Promise<void> {
 		sql: "DELETE FROM push_subscriptions WHERE endpoint = ?",
 		args: [endpoint],
 	});
+}
+
+/**
+ * Remove SÓ se as chaves baterem com a inscrição gravada — prova de posse.
+ * Antes, `POST /api/push/unsubscribe` aceitava qualquer endpoint e apagava a
+ * inscrição alheia (IDOR / DoS de notificação, achado pentest 26/09/2026).
+ * Retorna false quando não existe ou quando a chave não confere.
+ */
+export async function removePushSubscriptionIfOwned(
+	endpoint: string,
+	keys: { p256dh?: unknown; auth?: unknown } | undefined,
+): Promise<boolean> {
+	const p256dh = normalizarChave(keys?.p256dh);
+	const auth = normalizarChave(keys?.auth);
+	if (!p256dh || !auth) return false;
+	const db = await getDbClient();
+	const res = await db.execute({
+		sql: "SELECT p256dh, auth FROM push_subscriptions WHERE endpoint = ?",
+		args: [endpoint],
+	});
+	const row = res.rows[0];
+	if (!row) return false;
+	if (
+		normalizarChave(row.p256dh) !== p256dh ||
+		normalizarChave(row.auth) !== auth
+	) {
+		return false;
+	}
+	await removePushSubscription(endpoint);
+	return true;
 }
 
 export async function countPushSubscriptions(): Promise<number> {
