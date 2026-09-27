@@ -135,8 +135,18 @@ export interface WeatherState {
 	regionalRainAlert: string;
 	/** Nível de alerta graduado (substitui o booleano na decisão de UI) */
 	alertLevel?: RainAlertLevel;
-	/** Distância do núcleo mais ameaçador (km) — para a UI informar horizonte */
+	/**
+	 * Distância do núcleo FORTE (heavy/extreme) mais PRÓXIMO de Ipiranga, em km.
+	 * É o número que o card anuncia — não confundir com "mais ameaçador", que é
+	 * outro critério (ordem de perigo/ETA).
+	 */
 	nearestThreatKm?: number | null;
+	/**
+	 * Veredito de movimento MEDIDO do núcleo forte mais próximo entre frames:
+	 * `approaching` = vem para a região; `crossing` = passa de lado; `receding` =
+	 * afastando. O texto só afirma "se aproximando" quando é `approaching`.
+	 */
+	nearestThreatApproach?: "approaching" | "receding" | "crossing" | null;
 	hourlyForecast: HourlyForecastPoint[];
 	radar: WeatherRadarData | null;
 	bulletin: WeatherBulletin | null;

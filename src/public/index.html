@@ -3363,8 +3363,14 @@ function vereditoGeral(){
   }
   if(chuva.perto){
     const km=w.nearestThreatKm!=null?` a ~${num(w.nearestThreatKm,0)} km`:'';
-    return {nivel:'warn',frase:'Chuva forte se aproximando',
-      sub:`Núcleo de chuva forte${km} da cidade, vindo para a região.`};
+    /* O verbo segue o MOVIMENTO MEDIDO do núcleo mais próximo (nearestThreatApproach):
+       dizer "se aproximando / vindo para a região" com o núcleo passando de lado é
+       mentira — e era o que a tela fazia com um núcleo a 222 km (bug 27/09/2026). */
+    const ap=w.nearestThreatApproach;
+    const vindo=ap==='approaching';
+    return {nivel:'warn',frase:vindo?'Chuva forte se aproximando':'Chuva forte por perto',
+      sub:`Núcleo de chuva forte${km} da cidade, ${vindo?'vindo para a região'
+        :ap==='receding'?'se afastando da região':'passando perto da região'}.`};
   }
   if(rio.chave!=='normal'){
     /* O rio em ATTENÇÃO porque está DESCENDO precisa DIZER que está descendo —

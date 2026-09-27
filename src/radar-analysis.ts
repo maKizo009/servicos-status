@@ -207,6 +207,27 @@ export interface ThreatCell extends RainCell {
 }
 
 /**
+ * Núcleo mais PRÓXIMO com intensidade de chuva forte (heavy/extreme) — é a
+ * distância que o card anuncia e que o leitor usa para decidir se sai de casa.
+ *
+ * `nowcast.threats` vem ordenado por PERIGO (aproximando com menor ETA
+ * primeiro), não por distância: usar `threats[0]` fazia o card dizer "núcleo de
+ * chuva forte a ~222 km" com um núcleo extreme a 74 km de Ipiranga (incidente ao
+ * vivo 27/09/2026 — o cidadão viu chuva forte no mapa e a distância anunciada
+ * era 4x maior). Sem nenhum forte, cai no mais próximo de qualquer intensidade.
+ */
+export function nearestStrongThreat(threats: ThreatCell[]): ThreatCell | null {
+	if (!threats.length) return null;
+	const porDist = (a: ThreatCell, b: ThreatCell) =>
+		a.distToTargetKm - b.distToTargetKm;
+	const fortes = threats.filter(
+		(t) => t.intensity === "heavy" || t.intensity === "extreme",
+	);
+	const base = fortes.length ? fortes : threats;
+	return base.slice().sort(porDist)[0] ?? null;
+}
+
+/**
  * Zonas de relevância (raios e ETAs máximos). Configuráveis aqui —
  * valores baseados no incidente real 2026-08-12 (núcleo a 336 km/ETA 488 min
  * NÃO deve acender alerta).
@@ -224,6 +245,14 @@ export const RELEVANCE_ZONES = {
 	maxRelevantKm: 250,
 	/** Núcleo extreme dentro deste raio SEMPRE gera alerta (fallback segurança) */
 	extremeFallbackKm: 50,
+	/**
+	 * Chuva FORTE já perto vira VIGILÂNCIA (amarelo) mesmo SEM aproximação
+	 * confirmada: `extreme` até este raio e `heavy` até a metade dele. Incidente
+	 * ao vivo 27/09/2026: extreme a 74 km passando de lado saía como `monitor`
+	 * (nenhum alerta, nenhum push) e o card ainda anunciava um núcleo a 222 km.
+	 * Não é ALERTA (não afirmamos que vem) — é o amarelo de vigilância.
+	 */
+	nearStrongKm: 80,
 } as const;
 
 /**
@@ -232,6 +261,7 @@ export const RELEVANCE_ZONES = {
  *  - approaching + ETA ≤ 120 min + dist ≤ 80 km → alert
  *  - approaching + ETA ≤ 360 min + dist ≤ 200 km → watch
  *  - extreme a <50 km → alert mesmo sem movimento confiável
+ *  - extreme ≤80 km / heavy ≤40 km → watch (vigilância por proximidade)
  *  - crossing/receding/estacionário/longe → monitor (sem risco iminente)
  */
 export function classifyRelevanceZone(
@@ -245,6 +275,16 @@ export function classifyRelevanceZone(
 	// vigilância), mesmo com veredito "approaching". A 556 km/11 km/h o ETA
 	// seria de 50 h — não é horizonte de nowcast.
 	if (distKm > RELEVANCE_ZONES.maxRelevantKm) return "monitor";
+	// Chuva FORTE já perto: VIGILÂNCIA (amarelo) mesmo com veredito de
+	// crossing/receding ou sem tracking. A regra acima continua valendo para o
+	// ALERTA (nunca afirmamos que vem sem aproximação medida) — mas núcleo
+	// extreme/heavy a poucos km de Ipiranga não pode sair como "monitor".
+	// EXCEÇÃO preservada (incidente 2026-08-12): núcleo medido AFASTANDO fica
+	// monitor — a doutrina "receding nunca alerta" não é tocada aqui.
+	const vigilanciaPorProximidade =
+		approach !== "receding" &&
+		((intensity === "extreme" && distKm <= RELEVANCE_ZONES.nearStrongKm) ||
+			(intensity === "heavy" && distKm <= RELEVANCE_ZONES.nearStrongKm / 2));
 	// Movimento confiável MEDIDO entre frames (>2 km/h com veredito) manda:
 	// receding/crossing nunca é alerta, mesmo extreme a 30 km (está indo
 	// embora). approaching usa as zonas de distância/ETA.
@@ -265,7 +305,7 @@ export function classifyRelevanceZone(
 				return "watch";
 			}
 		}
-		return "monitor";
+		return vigilanciaPorProximidade ? "watch" : "monitor";
 	}
 	// Fallback de segurança (SEM movimento confiável): núcleo extreme MUITO
 	// perto pode ter surgido e se intensificado entre frames sem tracking —
@@ -273,7 +313,7 @@ export function classifyRelevanceZone(
 	if (distKm <= RELEVANCE_ZONES.extremeFallbackKm && intensity === "extreme") {
 		return "alert";
 	}
-	return "monitor";
+	return vigilanciaPorProximidade ? "watch" : "monitor";
 }
 
 export interface FrameAnalysis {

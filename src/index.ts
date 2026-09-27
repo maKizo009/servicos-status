@@ -33,7 +33,11 @@ import {
 	ANALYSIS_TILE_PX,
 	getRadarNowcast,
 } from "./nowcast-service.js";
-import { fmtEta, formatRainEntityAlert } from "./radar-analysis.js";
+import {
+	fmtEta,
+	formatRainEntityAlert,
+	nearestStrongThreat,
+} from "./radar-analysis.js";
 import {
 	checkRateLimit,
 	checkRateLimitScope,
@@ -316,9 +320,16 @@ export async function syncWeatherCycle(): Promise<WeatherState> {
 					? "watch"
 					: "monitor";
 			state.alertLevel = alertLevel;
-			state.nearestThreatKm = topThreat
-				? Math.round(topThreat.distToTargetKm)
+			// A distância anunciada é a do núcleo FORTE MAIS PRÓXIMO — não a do
+			// primeiro da lista, que vem ordenada por PERIGO (aproximando com
+			// menor ETA). Com `threats[0]` o card dizia "núcleo de chuva forte a
+			// ~222 km" com um extreme a 74 km (incidente 27/09/2026). O verbo do
+			// card ("vindo para a região") segue o veredito de movimento MEDIDO.
+			const nucleoProximo = nearestStrongThreat(nowcast.threats);
+			state.nearestThreatKm = nucleoProximo
+				? Math.round(nucleoProximo.distToTargetKm)
 				: null;
+			state.nearestThreatApproach = nucleoProximo?.threat?.approach ?? null;
 
 			state.hasRegionalRain = alertLevel === "alert";
 			// SEVERIDADE (push) ≠ RELEVÂNCIA (site). Área de chuva moderada é
@@ -333,7 +344,7 @@ export async function syncWeatherCycle(): Promise<WeatherState> {
 			state.radarSevero = Boolean(entidadeSevera);
 			state.radarKind = (nearestAlert ?? nearestWatch)?.kind ?? null;
 			if (alertLevel === "monitor") {
-				state.regionalRainAlert = `ℹ️ Monitoramento: atividade de radar detectada a ${topThreat ? `~${Math.round(topThreat.distToTargetKm)} km` : "grande distância"} de Ipiranga. Sem risco iminente no momento.`;
+				state.regionalRainAlert = `ℹ️ Monitoramento: atividade de radar detectada a ${nucleoProximo ? `~${Math.round(nucleoProximo.distToTargetKm)} km` : "grande distância"} de Ipiranga. Sem risco iminente no momento.`;
 			} else {
 				// Área de chuva (moderada) x núcleo (tempestade): o texto muda, o gate
 				// não. Texto montado em formatRainEntityAlert (testável).
