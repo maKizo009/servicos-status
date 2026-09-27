@@ -203,9 +203,18 @@ export interface DadosLocaisAlerta {
  * Nosso próprio alerta: fusão determinística dos dados locais + oficiais.
  * Oficiais AGRAVAM (sobem o nível); só o vermelho oficial sobe sozinho.
  */
+/** Contexto de TRANSIÇÃO entre ciclos (maleabilidade do tom). */
+export interface ContextoTransicaoAlerta {
+	/** Nível do ciclo anterior — permite narrar rebaixamento/subida */
+	nivelAnterior?: NivelAlerta | null;
+	/** O núcleo que dirigia o alerta está enfraquecendo no radar */
+	nucleoDissipando?: boolean;
+}
+
 export function buildAlertaUnificado(
 	local: DadosLocaisAlerta,
 	oficiais: AlertasOficiaisState | null,
+	transicao: ContextoTransicaoAlerta = {},
 ): AlertaUnificado {
 	const motivos: string[] = [];
 	let nivel: NivelAlerta = "verde";
@@ -330,10 +339,23 @@ export function buildAlertaUnificado(
 							: "Atenção — chuva em Ipiranga/região"
 					: "Tempo sem alertas em Ipiranga";
 
+	// Maleabilidade do tom (pedido do dono 27/09/2026): quando o alerta DESCE, a
+	// descrição diz que desceu e por quê — não fica com tom antigo de tempestade
+	// depois que o núcleo enfraqueceu/dissipou no radar. O `nivel` já reflete o
+	// ciclo atual (não há trava): isto é a narração da mudança, não a decisão.
+	const anterior = transicao.nivelAnterior ?? null;
+	const desceu = anterior != null && ordem(nivel) < ordem(anterior);
+	const subiu = anterior != null && ordem(nivel) > ordem(anterior);
+	const mudanca = desceu
+		? ` Alerta rebaixado de ${anterior} para ${nivel}${transicao.nucleoDissipando ? " — o núcleo está enfraquecendo no radar" : ""}.`
+		: subiu
+			? ` Alerta subiu de ${anterior} para ${nivel}.`
+			: "";
+
 	const descricao =
 		motivos.length > 0
-			? `${titulo}. Motivos: ${motivos.join("; ")}.`
-			: "Sem chuva relevante medida nem avisos oficiais para Ipiranga no momento.";
+			? `${titulo}. Motivos: ${motivos.join("; ")}.${mudanca}`
+			: `${desceu ? titulo : "Sem chuva relevante medida nem avisos oficiais para Ipiranga no momento."}${mudanca}`;
 
 	return {
 		nivel,

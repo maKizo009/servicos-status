@@ -85,6 +85,8 @@ export interface RainCell {
 	lon: number;
 	/** Vetor de movimento INDIVIDUAL do núcleo (associado entre frames), se houver */
 	trackedMovement?: MovementVector | null;
+	/** Em quantos frames consecutivos o núcleo aparece (1 = surgiu no último) */
+	framesVivo?: number;
 }
 
 /**
@@ -145,6 +147,10 @@ export function formatRainEntityAlert(opts: {
 	etaMin: number | null;
 	/** Tendência de intensidade entre frames (enfraquecendo = pode dissipar) */
 	tendencia?: "intensificando" | "estavel" | "enfraquecendo" | null;
+	/** Núcleo sem outros núcleos fortes num raio de ISOLAMENTO_KM */
+	isolado?: boolean;
+	/** Em quantos frames o núcleo aparece (1 = surgiu agora) */
+	framesVivo?: number | null;
 }): string {
 	const isArea = opts.kind === "area";
 	const label = INTENSITY_LABEL[opts.intensity] ?? opts.intensity;
@@ -154,6 +160,18 @@ export function formatRainEntityAlert(opts: {
 	// ressalva (observação do dono 27/09/2026: "é comum essas chuvas se dissipar
 	// conforme chegam aqui"). Não é para tirar a chegada — é para não prometer.
 	const dissipa = opts.tendencia === "enfraquecendo";
+	// Perfil do núcleo (medido, não adjetivo solto): isolado = nenhum outro núcleo
+	// forte em ISOLAMENTO_KM; recente = apareceu no frame mais novo (pulso curto).
+	// Quando já está enfraquecendo, o perfil e a ressalva dizem a mesma coisa —
+	// uma frase só, sem repetir "pode dissipar" duas vezes.
+	const isolado = opts.isolado === true;
+	const recente = opts.framesVivo === 1;
+	const perfil =
+		isolado && (recente || dissipa)
+			? " Núcleo isolado e recente no radar — pulso curto, pode dissipar antes de chegar."
+			: isolado
+				? " Núcleo isolado (sem outros núcleos por perto)."
+				: null;
 	const ressalva = dissipa
 		? " O núcleo está enfraquecendo no caminho — pode dissipar antes de chegar."
 		: "";
@@ -167,13 +185,13 @@ export function formatRainEntityAlert(opts: {
 		const cauda = isArea
 			? " Chuva a caminho — acompanhe os acumulados."
 			: " Atenção a oscilações na rede elétrica (COPEL).";
-		return `${rotulo} detectad${isArea ? "a" : "o"} a ${km} de Ipiranga${eta}.${dissipa ? ressalva : cauda}`;
+		return `${rotulo} detectad${isArea ? "a" : "o"} a ${km} de Ipiranga${eta}.${perfil ?? (dissipa ? ressalva : cauda)}`;
 	}
 	const eta = temEta ? ` (chegada em ${fmtEta(opts.etaMin)})` : "";
 	const rotulo = isArea
 		? `área de chuva ${label}`
 		: `núcleo de chuva ${label}`;
-	return `👁️ Vigilância: ${rotulo} detectad${isArea ? "a" : "o"} a ${km} de Ipiranga${eta}. Sem alerta iminente, acompanhe.${ressalva}`;
+	return `👁️ Vigilância: ${rotulo} detectad${isArea ? "a" : "o"} a ${km} de Ipiranga${eta}. Sem alerta iminente, acompanhe.${perfil ?? ressalva}`;
 }
 
 export function fmtEta(etaMin: number | null | undefined): string {
@@ -191,9 +209,21 @@ export function fmtEta(etaMin: number | null | undefined): string {
 	}
 	return `cerca de ${Math.round(h)} horas`;
 }
+/**
+ * Raio para considerar um núcleo ISOLADO (km): nenhum outro núcleo heavy/extreme
+ * dentro dele. 30 km ≈ 2× o diâmetro de uma célula convectiva típica (10-15 km) —
+ * mais perto que isso costuma ser o MESMO sistema, não vizinho.
+ * Calibrável com série real; documentado aqui para não virar número mágico.
+ */
+export const ISOLAMENTO_KM = 30;
+
 export interface ThreatCell extends RainCell {
 	/** Distância haversine do núcleo até o alvo (km) */
 	distToTargetKm: number;
+	/** Quantos OUTROS núcleos heavy/extreme existem num raio de ISOLAMENTO_KM */
+	vizinhosFortes?: number;
+	/** Núcleo sem vizinho forte por perto = pulso convectivo isolado */
+	isolado?: boolean;
 	/** Movimento individual do núcleo (pode ser null se não associável) */
 	movement: MovementVector | null;
 	/** Tendência de intensidade entre frames (do movimento associado) */
@@ -992,6 +1022,32 @@ export function tendenciaIntensidade(
 	return "estavel";
 }
 
+/**
+ * Quantos frames consecutivos o núcleo aparece (`framesVivo`): 1 = surgiu no
+ * frame mais novo, 2 = já estava no anterior, 3 = nos três.
+ *
+ * É a medida honesta de "duração" disponível: o nowcast analisa 3 frames de
+ * 10 min (30 min de histórico). Serve para dizer "núcleo recente no radar —
+ * pulso curto" (pedido do dono 27/09/2026) sem inventar vida útil.
+ * Usa a MESMA cadeia do markReversals: o núcleo do último frame guarda em
+ * fromLat/fromLon de onde veio; o núcleo correspondente do frame do meio
+ * carrega o movimento do par anterior.
+ */
+export function markDuracao(analyses: FrameAnalysis[]): void {
+	const latest = analyses[analyses.length - 1];
+	const mid = analyses[analyses.length - 2];
+	for (const cell of latest?.cells ?? []) {
+		const m1 = cell.trackedMovement;
+		cell.framesVivo = 1;
+		if (!m1 || !mid) continue;
+		const anterior = mid.cells.find(
+			(c) => haversineKm(c.lat, c.lon, m1.fromLat, m1.fromLon) < 1,
+		);
+		if (!anterior) continue;
+		cell.framesVivo = anterior.trackedMovement ? 3 : 2;
+	}
+}
+
 /** Diferença angular absoluta entre dois rumos (0..180°) */
 function angleDeltaDeg(a: number, b: number): number {
 	const d = Math.abs(a - b) % 360;
@@ -1065,18 +1121,29 @@ export function assessAllThreats(
 		MODERATE_AREA_MIN_PX_AT_256,
 		Math.round(MODERATE_AREA_MIN_PX_AT_256 * (tileSize / 256) ** 2),
 	);
-	return cells
-		.filter((c) => {
-			if (c.intensity === "heavy" || c.intensity === "extreme") {
-				return c.pixelCount >= minPx;
-			}
-			// Área de chuva contínua: entra no MESMO gate (distância/ETA/direção)
-			// do núcleo. Sem isto, chuva moderada chegando de área grande é
-			// invisível pro alerta (caso real 21/09/2026).
-			if (c.intensity === "moderate") return c.pixelCount >= minAreaPx;
-			return false;
-		})
+	const ameacas = cells.filter((c) => {
+		if (c.intensity === "heavy" || c.intensity === "extreme") {
+			return c.pixelCount >= minPx;
+		}
+		// Área de chuva contínua: entra no MESMO gate (distância/ETA/direção)
+		// do núcleo. Sem isto, chuva moderada chegando de área grande é
+		// invisível pro alerta (caso real 21/09/2026).
+		if (c.intensity === "moderate") return c.pixelCount >= minAreaPx;
+		return false;
+	});
+	// Núcleos fortes do MESMO frame: servem para dizer se o núcleo é ISOLADO
+	// (pedido do dono 27/09/2026: "mostrar que é um núcleo isolado, de duração
+	// rápida"). Conta só vizinho com a mesma natureza de núcleo.
+	const nucleosFortes = ameacas.filter((c) => c.intensity !== "moderate");
+	return ameacas
 		.map((c) => {
+			const vizinhosFortes =
+				c.intensity === "moderate"
+					? 0
+					: nucleosFortes.filter(
+							(o) =>
+								o !== c && haversineKm(c.lat, c.lon, o.lat, o.lon) <= ISOLAMENTO_KM,
+						).length;
 			const movement = c.trackedMovement ?? null;
 			const threat = movement
 				? assessThreat(c.lat, c.lon, movement, targetLat, targetLon)
@@ -1087,6 +1154,8 @@ export function assessAllThreats(
 				kind: (c.intensity === "moderate" ? "area" : "nucleo") as
 					| "area"
 					| "nucleo",
+				vizinhosFortes,
+				isolado: vizinhosFortes === 0,
 				distToTargetKm,
 				movement,
 				tendencia: movement?.tendencia ?? null,
@@ -1205,6 +1274,8 @@ export async function analyzeRadarNowcast(
 	// Rumo invertido entre pares consecutivos = ruído → descarta o vetor
 	// (antes virava "núcleo voltando pra Ipiranga", impossível).
 	markReversals(analyses);
+	// Idade do núcleo em frames (1 = surgiu agora) para o texto do card.
+	markDuracao(analyses);
 
 	// Movimento global: o do núcleo mais intenso do último frame (retrocompatível)
 	const latest = analyses[analyses.length - 1];

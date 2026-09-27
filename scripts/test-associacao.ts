@@ -10,8 +10,10 @@
  */
 import { describe, expect, test } from "bun:test";
 import {
+	assessAllThreats,
 	associateMovements,
 	formatRainEntityAlert,
+	markDuracao,
 	tendenciaIntensidade,
 	type FrameAnalysis,
 	type RainCell,
@@ -156,5 +158,81 @@ describe("tendência de intensidade (dissipação no caminho)", () => {
 		});
 		expect(firme).not.toContain("dissipar");
 		expect(firme).toContain("COPEL"); // cauda normal volta quando não dissipa
+	});
+});
+
+describe("perfil do núcleo: isolado e recente (pedido do dono 27/09/2026)", () => {
+	// Ipiranga (alvo do nowcast) — distâncias reais do projeto.
+	const IPIRANGA = { lat: -25.0244, lon: -50.5847 };
+
+	test("núcleo sozinho é ISOLADO; dois núcleos a 20 km entre si não são", () => {
+		const sozinho = assessAllThreats(
+			[cell({ lat: -25.3, lon: -50.9, dbz: 53 })],
+			IPIRANGA.lat,
+			IPIRANGA.lon,
+		);
+		expect(sozinho[0]?.isolado).toBe(true);
+		expect(sozinho[0]?.vizinhosFortes).toBe(0);
+
+		const dois = assessAllThreats(
+			[
+				cell({ lat: -25.3, lon: -50.9, dbz: 53 }),
+				// ~20 km do primeiro (dentro de ISOLAMENTO_KM = 30)
+				cell({ lat: -25.3, lon: -51.1, dbz: 48 }),
+			],
+			IPIRANGA.lat,
+			IPIRANGA.lon,
+		);
+		const nucleos = dois.filter((t) => t.kind === "nucleo");
+		expect(nucleos.length).toBe(2);
+		expect(nucleos.every((n) => n.isolado === false)).toBe(true);
+		expect(nucleos[0]?.vizinhosFortes).toBe(1);
+	});
+
+	test("idade em frames: 1 = surgiu agora, 2 = vinha do frame anterior, 3 = nos três", () => {
+		const t = (min: number) => 1_000_000 + min * 60_000;
+		// frame 1 → 2: núcleo A anda; frame 2 → 3: A continua e B surge
+		const f1 = frame(t(0), [cell({ lat: -25.60, lon: -51.20, dbz: 50 })]);
+		const f2 = frame(t(10), [cell({ lat: -25.55, lon: -51.15, dbz: 52 })]);
+		const f3 = frame(t(20), [
+			cell({ lat: -25.50, lon: -51.10, dbz: 53 }),
+			cell({ lat: -25.9, lon: -51.4, dbz: 46 }),
+		]);
+		associateMovements(f1, f2);
+		associateMovements(f2, f3);
+		markDuracao([f1, f2, f3]);
+
+		expect(f3.cells[0]?.framesVivo).toBe(3); // estava no f1 e no f2
+		expect(f3.cells[1]?.framesVivo).toBe(1); // surgiu no último frame
+	});
+
+	test("texto: pulso isolado e recente avisa que pode dissipar", () => {
+		const txt = formatRainEntityAlert({
+			level: "watch",
+			kind: "nucleo",
+			intensity: "heavy",
+			distKm: 45,
+			approach: "crossing",
+			etaMin: null,
+			isolado: true,
+			framesVivo: 1,
+		});
+		expect(txt).toContain("Núcleo isolado e recente no radar");
+		expect(txt).toContain("pulso curto");
+	});
+
+	test("texto: núcleo isolado sem tendência só reporta o isolamento", () => {
+		const txt = formatRainEntityAlert({
+			level: "watch",
+			kind: "nucleo",
+			intensity: "extreme",
+			distKm: 80,
+			approach: "approaching",
+			etaMin: 150,
+			isolado: true,
+			framesVivo: 3,
+		});
+		expect(txt).toContain("Núcleo isolado (sem outros núcleos por perto)");
+		expect(txt).not.toContain("pulso curto");
 	});
 });

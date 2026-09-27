@@ -219,6 +219,15 @@ let weatherInterval: ReturnType<typeof setInterval> | null = null;
 /** Exportado para o /api/cron (api/cron.ts) rodar o ciclo completo de clima+radar+NIM. */
 export async function syncWeatherCycle(): Promise<WeatherState> {
 	await ensureInitialized();
+	// Nível do alerta no ciclo ANTERIOR, lido ANTES de qualquer cache deste ciclo:
+	// é o que permite narrar rebaixamento/subida do tom (maleabilidade pedida pelo
+	// dono 27/09/2026). Sem ciclo anterior (cold start) fica null — sem frase.
+	const nivelAlertaAnterior =
+		getCachedWeatherState()?.alertaUnificado?.nivel ?? null;
+	// Tendência do núcleo que dirige o alerta (escopo do ciclo: lida no bloco do
+	// radar, usada na narração da transição e no push).
+	let nucleoTendencia: "intensificando" | "estavel" | "enfraquecendo" | null =
+		null;
 	logger.info("Starting weather & radar sync cycle...");
 	// Os avisos oficiais (INMET/Simepar/Defesa Civil) não dependem de nada do
 	// ciclo e levam até 8 s: dispara JUNTO com o primeiro lote em vez de esperar
@@ -341,6 +350,10 @@ export async function syncWeatherCycle(): Promise<WeatherState> {
 			// primeira devolvia a ÁREA que chega antes e o alerta saía amarelo com
 			// núcleo extreme iminente (incidente 27/09/2026).
 			const nucleoSevero = nucleoSeveroIminente(nowcast.threats);
+			nucleoTendencia =
+				(nucleoSevero ?? nucleoProximo)?.tendencia ??
+				(nucleoSevero ?? nucleoProximo)?.movement?.tendencia ??
+				null;
 			state.radarSevero = Boolean(nucleoSevero);
 			// O kind do card é o da entidade que DIRIGE o alerta: núcleo severo >
 			// a que chega primeiro (nearestAlert) > vigilância.
@@ -366,6 +379,8 @@ export async function syncWeatherCycle(): Promise<WeatherState> {
 							approach: t.threat?.approach ?? null,
 							etaMin: t.threat?.etaMin ?? null,
 							tendencia: t.tendencia ?? t.movement?.tendencia ?? null,
+							isolado: t.isolado === true,
+							framesVivo: t.framesVivo ?? null,
 						})
 					: `ℹ️ Monitoramento: sem chuva relevante no radar a caminho de Ipiranga.`;
 			}
@@ -632,6 +647,12 @@ export async function syncWeatherCycle(): Promise<WeatherState> {
 					state.hidro?.desatualizado !== true,
 			},
 			oficiais,
+			{
+				// Contexto de transição: o tom do alerta tem que poder DESCER quando
+				// o núcleo enfraquece/dissipa (pedido do dono 27/09/2026).
+				nivelAnterior: nivelAlertaAnterior,
+				nucleoDissipando: nucleoTendencia === "enfraquecendo",
+			},
 		);
 		state.alertaUnificado = unificado;
 		logAlertaUnificado(unificado);
