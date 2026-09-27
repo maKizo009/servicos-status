@@ -245,7 +245,7 @@ interface Dados {
 	dominante: string;
 	alerta: { nivel: string; titulo: string; descricao: string; motivos: string[] };
 	avisosOficiais: number;
-	hidro: Array<{ nome: string; rio: string; papel: string; nivel: number; delta6h: number; faixa: string; chuva: number }>;
+	hidro: Array<{ nome: string; rio: string; papel: string; nivel: number; delta6h: number; faixa: string; recessao: { horas: number; quedaM: number } | null; chuva: number }>;
 	risco: { enxurrada: string; cheia: string; iflScore: number; iflNivel: string };
 	previsaoRio: { vaiSair: string; confianca: number; regra: string; motivos: string[] };
 }
@@ -320,7 +320,15 @@ function extrair(state: WeatherState | null): Dados {
 				papel: txt(e.papel),
 				nivel: num(e.nivelCm, Number.NaN),
 				delta6h: num(e.delta6hCm, Number.NaN),
-				faixa: ROTULO_FAIXA[txt(e.faixa)] ?? txt(e.faixa),
+				faixa: (() => {
+					const f = txt(e.faixaEfetiva ?? e.faixa);
+					return ROTULO_FAIXA[f] ?? f;
+				})(),
+				recessao: (() => {
+					const r = obj(e.recessao);
+					if (r.confirmada !== true) return null;
+					return { horas: num(r.horasSemSubir, 0), quedaM: num(r.quedaDesdePicoCm, 0) / 100 };
+				})(),
 				chuva: num(e.chuvaMm, 0),
 			})),
 		risco: {
@@ -724,6 +732,9 @@ export function renderRioBitumirim(state: WeatherState | null): string {
 				esc(tendencia(e.delta6h)) +
 				"</td><td>" +
 				esc(e.faixa || "—") +
+				(e.recessao
+					? ` <span class="recessao">(em recessão há ${inteiro(e.recessao.horas)} h — ${dec(e.recessao.quedaM, 2)} m abaixo do pico: alerta removido)</span>`
+					: "") +
 				"</td></tr>",
 		)
 		.join("");

@@ -137,7 +137,14 @@ function renderHidroSection(weather: WeatherState | null): string {
 					: "";
 			const hora = e.dataHora ? ` — ${sanitizeLlmField(e.dataHora, 40)}` : "";
 			const nome = sanitizeLlmField(e.nome, 60);
-			return `- **${nome} (${e.codigo}):** nível ${nivel}${delta}, vazão ${vazao}${hora} — ${sanitizeLlmField(e.papel, 80)}`;
+			/* Faixa EFETIVA (com a recessão aplicada) + o porquê quando o alerta
+			   foi removido: agente que lê daqui não pode achar que o nível alto
+			   está em alerta nem que o monitor "esqueceu" o rio. */
+			const faixa = e.faixaEfetiva ?? e.faixa ?? "sem dado";
+			const recuo = e.recessao?.confirmada
+				? ` — EM RECESSÃO há ${e.recessao.horasSemSubir} h (−${(e.recessao.quedaDesdePicoCm / 100).toFixed(2).replace(".", ",")} m desde o pico): a faixa de alerta foi atingida no pico e o alerta foi REMOVIDO, o nível segue em ${faixa}`
+				: "";
+			return `- **${nome} (${e.codigo}):** nível ${nivel}${delta}, vazão ${vazao}${hora} — faixa ${faixa}${recuo} — ${sanitizeLlmField(e.papel, 80)}`;
 		})
 		.join("\n");
 

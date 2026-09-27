@@ -32,6 +32,7 @@ export const SENTINELAS = [
 		rio: "Tibagi",
 		papel: "Montante — onda vindo do alto Tibagi em direção à foz",
 		municipio: "Ponta Grossa",
+		disparaAlerta: true,
 	},
 	{
 		codigo: "64504210",
@@ -39,6 +40,7 @@ export const SENTINELAS = [
 		rio: "Tibagi",
 		papel: "Jusante distante (Londrina, ~180 km da foz) — NÃO prevê Ipiranga; só confirma escoamento dias depois",
 		municipio: "Londrina",
+		disparaAlerta: false,
 	},
 	{
 		codigo: "64507000",
@@ -46,8 +48,127 @@ export const SENTINELAS = [
 		rio: "Tibagi",
 		papel: "Jusante distante — NÃO prevê Ipiranga; só confirma escoamento dias depois",
 		municipio: "Jataizinho",
+		disparaAlerta: false,
 	},
 ] as const;
+
+/**
+ * RECESSÃO — quando o alerta CAI (Dave, 27/09/2026).
+ *
+ * O alerta não pode seguir vigente só porque a faixa foi atingida no pico: se o
+ * nível está DIMINUINDO há um período determinado, o alerta sai. Antes disso a
+ * única saída era o nível voltar abaixo do P98 — com o Uvaia em 6,47 m caindo
+ * ~2 cm/h isso levava dias, e o card dizia "Rio Uvaia em alerta" junto de
+ * "risco de transbordar: baixo" (contradição apontada pelo dono).
+ *
+ * Limiares MEDIDOS nas séries reais da ANA (janela de 24 h), não chutados:
+ *   - OUT23 (pico 1189 cm) → recessão violenta: confirma 3 h depois do pico
+ *   - DEZ24 (pico  891 cm) → rio em platô por dias: NUNCA confirma (o alerta
+ *                            fica, e é o certo: a água continuava alta)
+ *   - SET26 (pico  911 cm) → confirma 62 h depois do pico
+ *   - inverno/2026 (seco)  → confirma em 5,5% das horas (não é gatilho de cabelo)
+ * Em NENHUM evento a regra confirmou durante a SUBIDA (0 horas) — o "sem subir"
+ * impede o disparo no meio de uma cheia em ascensão.
+ */
+export const RECESSAO_LIMIARES = {
+	/** Janela de análise (a série da estação traz 24 h horárias). */
+	janelaHoras: 24,
+	/** Horas seguidas sem subir (tolerância de 1 cm = ruído da telemetria). */
+	minHorasSemSubir: 12,
+	/** Queda mínima na janela E desde o pico da janela, em cm. */
+	minQuedaCm: 30,
+} as const;
+
+/** Tolerância de "não subiu": a telemetria oscila ±1 cm sem mudar de tendência. */
+const TOL_SUBIDA_CM = 1;
+
+export interface Recessao {
+	/** true = queda sustentada o bastante para tirar o alerta da faixa. */
+	confirmada: boolean;
+	/** Horas seguidas sem nenhuma subida (contadas a partir da leitura atual). */
+	horasSemSubir: number;
+	/** Queda líquida dentro da janela (cm, positivo = desceu). */
+	quedaJanelaCm: number;
+	/** Queda desde o pico da janela (cm). */
+	quedaDesdePicoCm: number;
+	/** Pico da janela (cm) — referência do "desde o pico". */
+	picoCm: number | null;
+}
+
+export type FaixaHidro = "normal" | "atencao" | "alerta" | "critico";
+
+/**
+ * Avalia a recessão de UMA estação a partir da série horária.
+ * A série da ANA chega com o mais RECENTE primeiro (ver `fetchEstacao`).
+ */
+export function avaliarRecessao(
+	serie: HidroSeriePonto[],
+	limiares: {
+		janelaHoras: number;
+		minHorasSemSubir: number;
+		minQuedaCm: number;
+	} = RECESSAO_LIMIARES,
+): Recessao {
+	const pts = serie.filter(
+		(p): p is HidroSeriePonto & { nivelCm: number } => p.nivelCm != null,
+	);
+	const vazio: Recessao = {
+		confirmada: false,
+		horasSemSubir: 0,
+		quedaJanelaCm: 0,
+		quedaDesdePicoCm: 0,
+		picoCm: null,
+	};
+	if (pts.length < 3) return vazio;
+	const atual = pts[0].nivelCm;
+	// Horas SEM SUBIR: anda do mais novo para o mais antigo enquanto cada leitura
+	// não fica acima da anterior (tolerância de 1 cm). Qualquer repique real
+	// (ex.: pausa no meio de uma cheia em ascensão) zera a contagem.
+	let semSubir = 0;
+	for (let k = 0; k + 1 < pts.length; k++) {
+		if (pts[k].nivelCm <= pts[k + 1].nivelCm + TOL_SUBIDA_CM) semSubir++;
+		else break;
+	}
+	const janela = pts.slice(0, Math.max(3, limiares.janelaHoras));
+	const maisAntigo = janela[janela.length - 1].nivelCm;
+	const picoCm = Math.max(...janela.map((p) => p.nivelCm));
+	const quedaJanelaCm = maisAntigo - atual;
+	const quedaDesdePicoCm = picoCm - atual;
+	return {
+		confirmada:
+			semSubir >= limiares.minHorasSemSubir &&
+			quedaJanelaCm >= limiares.minQuedaCm &&
+			quedaDesdePicoCm >= limiares.minQuedaCm,
+		horasSemSubir: semSubir,
+		quedaJanelaCm: Math.round(quedaJanelaCm * 10) / 10,
+		quedaDesdePicoCm: Math.round(quedaDesdePicoCm * 10) / 10,
+		picoCm,
+	};
+}
+
+/**
+ * Recessão confirmada REMOVE o alerta da faixa, um degrau abaixo
+ * (alerta → atenção, crítico → alerta). Só as faixas que acendem alerta são
+ * tocadas: "atenção" e "normal" seguem iguais.
+ * O degrau (e não o zero) é de propósito: um rio que subiu até a faixa de
+ * alerta e está descendo há 12 h não é mais ALERTA, mas segue ACIMA do normal —
+ * a leitura honesta é "atenção". E a faixa crítica (teto de cheia histórica)
+ * continua alerta enquanto a água estiver nela.
+ */
+export function faixaComRecessao(
+	faixa: FaixaHidro | null,
+	recessao: Recessao | null | undefined,
+): FaixaHidro | null {
+	if (!faixa || !recessao?.confirmada) return faixa;
+	if (faixa === "critico") return "alerta";
+	if (faixa === "alerta") return "atencao";
+	return faixa;
+}
+
+/** Estação que ACENDE o alerta de Ipiranga (jusante é contexto, não gatilho). */
+export function sentinelaDisparaAlerta(codigo: string): boolean {
+	return SENTINELAS.find((s) => s.codigo === codigo)?.disparaAlerta ?? true;
+}
 
 /**
  * Faixas de referência por sentinela — P90/P98 de 365 DIAS reais
@@ -443,6 +564,18 @@ export interface HidroEstacao {
 	dataHora: string | null;
 	/** Faixa calibrada do nível atual (P90/P98 de 180 dias) */
 	faixa: "normal" | "atencao" | "alerta" | "critico" | null;
+	/**
+	 * Faixa JÁ com a recessão aplicada — é esta que acende/apaga alerta e que a
+	 * UI mostra. Um nível que só está na faixa de alerta por causa do pico, mas
+	 * vem descendo há 12 h, sai de "alerta" para "atenção".
+	 */
+	faixaEfetiva?: "normal" | "atencao" | "alerta" | "critico" | null;
+	/** Tendência em palavras (Δ6h): subindo / estável / descendo. */
+	tendencia?: "subindo" | "estavel" | "descendo";
+	/** Avaliação de recessão (queda sustentada tira o alerta da faixa). */
+	recessao?: Recessao | null;
+	/** false = estação a jusante: contexto de escoamento, não acende alerta. */
+	disparaAlerta?: boolean;
 	/** Série das últimas ~24 h (horária) quando disponível */
 	serie: HidroSeriePonto[];
 	/** Δ nível nas últimas 6 h (cm), null se sem histórico suficiente */
@@ -604,6 +737,18 @@ async function fetchEstacao(
 				delta6hCm = latest.nivelCm - (serieLimpa[idx].nivelCm as number);
 			}
 		}
+		// Recessão: queda SUSTENTADA tira o alerta da faixa (ver RECESSAO_LIMIARES).
+		const serieRecente = serieLimpa.slice(0, 24);
+		const recessao = avaliarRecessao(serieRecente);
+		const faixa = faixaEstendida(codigo, latest.nivelCm);
+		const tendencia: "subindo" | "estavel" | "descendo" =
+			delta6hCm == null
+				? "estavel"
+				: delta6hCm > 2
+					? "subindo"
+					: delta6hCm < -2
+						? "descendo"
+						: "estavel";
 		return {
 			codigo,
 			nome,
@@ -614,8 +759,12 @@ async function fetchEstacao(
 			vazaoM3s: latest.vazaoM3s,
 			chuvaMm: latest.chuvaMm,
 			dataHora: latest.dataHora,
-			faixa: faixaEstendida(codigo, latest.nivelCm),
-			serie: serieLimpa.slice(0, 24),
+			faixa,
+			faixaEfetiva: faixaComRecessao(faixa, recessao),
+			tendencia,
+			recessao,
+			disparaAlerta: sentinelaDisparaAlerta(codigo),
+			serie: serieRecente,
 			delta6hCm,
 			erro: null,
 		};
@@ -678,30 +827,47 @@ export function avaliarRisco(
 		d == null
 			? "sem histórico 6h"
 			: `${d > 0 ? "subindo" : d < 0 ? "descendo" : "estável"} (${d > 0 ? "+" : ""}${(d / 100).toFixed(2).replace(".", ",")} m/6h)`;
+		// Faixa EFETIVA = faixa medida com a recessão aplicada. É ela que acende e
+	// apaga alerta (e o que a UI mostra); a faixa crua segue no payload.
+	const efetiva = (e: HidroEstacao) =>
+		e.faixaEfetiva ??
+		faixaComRecessao(e.faixa ?? faixaEstendida(e.codigo, e.nivelCm), e.recessao);
 	const trechos = comDados.map((e) => {
 		const nomeCurto = e.nome.split(" (")[0];
-		const fx = faixaNivel(e.codigo, e.nivelCm);
+		const fx = efetiva(e);
 		const fxTxt =
-			fx === "alerta"
-				? " (faixa ALERTA)"
-				: fx === "atencao"
-					? " (faixa atenção)"
-					: "";
+			fx === "critico"
+				? " (faixa CRÍTICA)"
+				: fx === "alerta"
+					? " (faixa ALERTA)"
+					: fx === "atencao"
+						? " (faixa atenção)"
+						: "";
 		const chuva =
 			e.chuvaMm != null
 				? `, chuva ${e.chuvaMm.toFixed(1).replace(".", ",")} mm/h no local`
 				: "";
-		return `${nomeCurto}: ${((e.nivelCm as number) / 100).toFixed(2).replace(".", ",")} m${fxTxt} (${fmtDelta(e.delta6hCm)}${chuva})`;
+		const recuo =
+			e.recessao?.confirmada && (e.faixa === "alerta" || e.faixa === "critico")
+				? `, EM RECESSÃO há ${e.recessao.horasSemSubir} h (−${(e.recessao.quedaDesdePicoCm / 100).toFixed(2).replace(".", ",")} m desde o pico) — alerta removido`
+				: "";
+		return `${nomeCurto}: ${((e.nivelCm as number) / 100).toFixed(2).replace(".", ",")} m${fxTxt} (${fmtDelta(e.delta6hCm)}${chuva}${recuo})`;
 	});
 	const subindoForte = comDados.some((e) => (e.delta6hCm ?? 0) >= 30);
 	const chuvaSentinela = Math.max(0, ...comDados.map((e) => e.chuvaMm ?? 0));
 	const chuvaLocal = chuva?.p6h ?? 0;
 	const porCodigo = (cod: string) => comDados.find((e) => e.codigo === cod);
 	const uvaia = porCodigo("64444000");
-	const faixaUvaia = faixaNivel("64444000", uvaia?.nivelCm ?? null);
-	const algumaEmAlerta = comDados.some(
-		(e) => faixaNivel(e.codigo, e.nivelCm) === "alerta",
+	const faixaUvaia = uvaia ? efetiva(uvaia) : null;
+	// Alerta = faixa de alerta/crítica em estação que PREVÊ Ipiranga. As de
+	// jusante (Cebolão/Londrina, Jataizinho) medem a água que já foi embora —
+	// ficam no payload como escoamento, mas não seguram o alerta daqui.
+	const emAlerta = comDados.filter(
+		(e) =>
+			sentinelaDisparaAlerta(e.codigo) &&
+			(efetiva(e) === "alerta" || efetiva(e) === "critico"),
 	);
+	const algumaEmAlerta = emAlerta.length > 0;
 	// DRENAGEM BLOQUEADA (v3): Uvaia alto + chuva em Ipiranga = o que
 	// transbordar não desce (OUT23 7d fora, DEZ24 3d). Condicional: só importa
 	// se o flash atuar; sozinha não prevê transbordo (DEZ24 transbordou com
@@ -717,7 +883,11 @@ export function avaliarRisco(
 		(chuvaLocal >= 15 && chuvaSentinela >= 10);
 	const motivos: string[] = [];
 	if (algumaEmAlerta)
-		motivos.push("nível na faixa de alerta (P98 do ano hidrológico)");
+		motivos.push(
+			`${emAlerta
+				.map((e) => e.nome.split(" (")[0])
+				.join(" e ")} na faixa de alerta (P98 do ano hidrológico)`,
+		);
 	if (subindoForte)
 		motivos.push("nível subindo ≥30 cm em 6h em ao menos uma sentinela");
 	if (drenagemBloqueada)
@@ -728,16 +898,25 @@ export function avaliarRisco(
 		motivos.push(
 			`chuva convergente (${chuvaLocal.toFixed(1).replace(".", ",")} mm/6h em Ipiranga + ${chuvaSentinela.toFixed(1).replace(".", ",")} mm/h na sentinela)`,
 		);
-	// PERMANÊNCIA (v3) + IFL (flash, 100% local) — doutrina 2 pernas:
-	// chuva local causa o transbordo (horas); Uvaia manda nos dias fora.
-	// delta24h da série horária da própria sentinela (último − primeiro).
-	const serieU = (uvaia?.serie ?? []).filter(
-		(p): p is { nivelCm: number } & typeof p => p.nivelCm != null,
-	);
-	const deltaUvaia24h =
-		serieU.length >= 2
-			? serieU[serieU.length - 1].nivelCm - serieU[0].nivelCm
-			: (uvaia?.delta6hCm ?? null);
+	// NOTAS (não acendem alerta, explicam por que ele NÃO está aceso):
+	// estação que chegou na faixa de alerta no pico e está em recessão.
+	const notas: string[] = [];
+	for (const e of comDados) {
+		if (
+			!e.recessao?.confirmada ||
+			!sentinelaDisparaAlerta(e.codigo) ||
+			(e.faixa !== "alerta" && e.faixa !== "critico")
+		)
+			continue;
+		notas.push(
+			`${e.nome.split(" (")[0]} atingiu a faixa de ${e.faixa === "critico" ? "crítica" : "alerta"} no pico e está DESCENDO há ${e.recessao.horasSemSubir} h (−${(e.recessao.quedaDesdePicoCm / 100).toFixed(2).replace(".", ",")} m desde o pico): alerta removido, o nível segue em ${efetiva(e) === "atencao" ? "atenção" : String(efetiva(e))}.`,
+		);
+	}
+	// IFL (flash, 100% local) — doutrina 2 pernas: chuva local causa o transbordo
+	// (horas); Uvaia manda nos dias fora.
+	// (O `deltaUvaia24h` que alimentava a permanência aposentada saiu daqui: era
+	// código morto desde 21/09 e, com a série vindo do mais NOVO para o mais
+	// antigo, o sinal dele estava invertido — landmine para quem voltasse a usar.)
 	// APOSENTADOS (21/09/2026): `permanencia` e a `projecao` v1.0 saíram do estado.
 	// O estudo v3.1 mostrou que o Uvaia — insumo dos dois — NÃO separa transbordo de
 	// não-transbordo (INV2015 986 cm × JAN25 168 cm, desfechos trocados), então ambos
@@ -770,6 +949,7 @@ export function avaliarRisco(
 			(motivos.length > 0
 				? ` Atenção: ${motivos.join("; ")} — acompanhe Defesa Civil/IAT.`
 				: " Níveis sem tendência de cheia no momento.") +
+			(notas.length > 0 ? ` ${notas.join(" ")}` : "") +
 			` Para alertas oficiais, siga Defesa Civil e IAT.`,
 	};
 }

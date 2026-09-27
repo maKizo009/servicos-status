@@ -3291,9 +3291,20 @@ function estadoDaEnergia(sev) {
 function estadoRio() {
   const w = window.latestWeatherData || {};
   const h = w.hidro || {};
-  const estacoes = (h.estacoes || []).filter((e) => !/^(Cebolão|Jataizinho)/.test(String(e.nome || '')));
+  /* Estação a JUSANTE (Cebolão/Londrina, Jataizinho) mede a água que JÁ PASSOU
+     por Ipiranga — contexto de escoamento, nunca estado do rio daqui. O filtro
+     é o campo do backend (disparaAlerta), com o nome como rede de segurança
+     para payload antigo em cache. */
+  const estacoes = (h.estacoes || []).filter((e) => e.disparaAlerta !== false
+    && !/^(Cebolão|Jataizinho)/.test(String(e.nome || '')));
   let chave = 'normal';
-  estacoes.forEach((e) => { chave = piorEstado(chave, estadoDaFaixa(e.faixa)); });
+  estacoes.forEach((e) => {
+    /* faixaEfetiva vem do backend JÁ com a recessão aplicada: rio que só estava
+       na faixa de alerta por causa do pico e vem DESCENDO há um período
+       determinado aparece como atenção — o alerta foi removido, o nível alto
+       não. Sem campo (payload antigo), cai na faixa crua. */
+    chave = piorEstado(chave, estadoDaFaixa(e.faixaEfetiva || e.faixa));
+  });
   const ifl = (h.ifl && h.ifl.nivel) || 'verde';
   chave = piorEstado(chave, ifl === 'vermelho' ? 'emergencia' : ifl === 'laranja' ? 'alerta' : ifl === 'amarelo' ? 'atencao' : 'normal');
   if (h.riscoCheia === 'watch' || h.riscoEnxurrada === 'warn') chave = piorEstado(chave, 'atencao');
@@ -3304,6 +3315,8 @@ function estadoRio() {
     nivel: ESTADOS[chave].nivel,
     estacao: uvaia ? String(uvaia.nome).split(' (')[0] : 'Uvaia',
     estacoes,
+    /* Recessão da sentinela de montante: alimenta a frase "nível caindo há X h". */
+    recessao: (uvaia && uvaia.recessao && uvaia.recessao.confirmada) ? uvaia.recessao : null,
   };
 }
 /* Vai sair da calha? em uma palavra (a confiança de apoio vive no card Rios). */
@@ -3354,8 +3367,14 @@ function vereditoGeral(){
       sub:`Núcleo de chuva forte${km} da cidade, vindo para a região.`};
   }
   if(rio.chave!=='normal'){
+    /* O rio em ATTENÇÃO porque está DESCENDO precisa DIZER que está descendo —
+       senão o leitor vê "atenção" com nível alto e não entende por que o alerta
+       saiu. O número é a queda desde o pico (medida, não estimativa). */
+    const caindo = rio.recessao
+      ? `Nível caindo há ${num(rio.recessao.horasSemSubir,0)} h — ${num(rio.recessao.quedaDesdePicoCm/100,2)} m abaixo do pico. `
+      : '';
     return {nivel:rio.nivel,frase:`Rio ${rio.estacao} em ${rio.rotulo.toLowerCase()}`,
-      sub:`Sem chuva agora nem prevista. Risco de transbordar: ${risco.palavra}.`};
+      sub:`${caindo}Sem chuva agora nem prevista. Risco de transbordar: ${risco.palavra}.`};
   }
   if(semLuz>0){
     const en=estadoDaEnergia(sev);
@@ -3633,15 +3652,23 @@ function renderHidroCard(data) {
     };
   };
   /* Cebolão e Jataizinho SAÍRAM do card (24/09/2026): são réguas a jusante, no
-     Tibagi, que não medem a bacia do Bitumirim. Os dados continuam na API. */
+     Tibagi, que não medem a bacia do Bitumirim. Os dados continuam na API.
+     O filtro agora é o CAMPO do backend (disparaAlerta) — os nomes ficam como
+     rede de segurança para payload antigo em cache. */
   const NOMES_FORA = ['Cebolão', 'Jataizinho'];
-  const estacoesVisiveis = h.estacoes.filter((e) => !NOMES_FORA.some((r) => String(e.nome).indexOf(r) === 0));
+  const estacoesVisiveis = h.estacoes.filter((e) => e.disparaAlerta !== false
+    && !NOMES_FORA.some((r) => String(e.nome).indexOf(r) === 0));
   const varias = estacoesVisiveis.length > 1;
 
   const rows = estacoesVisiveis.map((e) => {
     const nome = esc(String(e.nome).split(' (')[0]);
     const t = tendencia(e.delta6hCm);
-    const chave = estadoDaFaixa(e.faixa);
+    const chave = estadoDaFaixa(e.faixaEfetiva || e.faixa);
+    /* Quando a recessão tirou o alerta, a linha DIZ isso: o leitor tem que
+       entender por que o nível alto não está em alerta. */
+    const recuo = (e.recessao && e.recessao.confirmada && (e.faixa === 'alerta' || e.faixa === 'critico'))
+      ? ` · em recessão há ${num(e.recessao.horasSemSubir,0)} h (${num(e.recessao.quedaDesdePicoCm/100,2)} m abaixo do pico) — alerta removido`
+      : '';
     // Chip por estação só quando há MAIS DE UMA (com uma só ele repetiria o
     // chip do cabeçalho).
     const tagEstacao = varias
@@ -3651,7 +3678,7 @@ function renderHidroCard(data) {
         <span class="rio-nome">${nome}${tagEstacao}</span>
         <span class="rio-nivel">${fmtM(e.nivelCm)}</span>
       </div>
-      <div class="rio-linha">${esc(t.palavra)}${t.variacao ? ` · ${esc(t.variacao)}` : ''} · vazão ${fmtV(e.vazaoM3s)}</div>
+      <div class="rio-linha">${esc(t.palavra)}${t.variacao ? ` · ${esc(t.variacao)}` : ''} · vazão ${fmtV(e.vazaoM3s)}${recuo}</div>
     </div>`;
   }).join('');
 
