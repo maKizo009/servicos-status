@@ -365,6 +365,7 @@ export async function syncWeatherCycle(): Promise<WeatherState> {
 							distKm: t.distToTargetKm,
 							approach: t.threat?.approach ?? null,
 							etaMin: t.threat?.etaMin ?? null,
+							tendencia: t.tendencia ?? t.movement?.tendencia ?? null,
 						})
 					: `ℹ️ Monitoramento: sem chuva relevante no radar a caminho de Ipiranga.`;
 			}

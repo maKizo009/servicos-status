@@ -143,11 +143,20 @@ export function formatRainEntityAlert(opts: {
 	distKm: number;
 	approach: ThreatVerdict["approach"] | null;
 	etaMin: number | null;
+	/** Tendência de intensidade entre frames (enfraquecendo = pode dissipar) */
+	tendencia?: "intensificando" | "estavel" | "enfraquecendo" | null;
 }): string {
 	const isArea = opts.kind === "area";
 	const label = INTENSITY_LABEL[opts.intensity] ?? opts.intensity;
 	const km = `~${Math.round(opts.distKm)} km`;
 	const temEta = opts.approach === "approaching" && opts.etaMin != null;
+	// Núcleo enfraquecendo no caminho: a previsão de chegada é honesta só com a
+	// ressalva (observação do dono 27/09/2026: "é comum essas chuvas se dissipar
+	// conforme chegam aqui"). Não é para tirar a chegada — é para não prometer.
+	const dissipa = opts.tendencia === "enfraquecendo";
+	const ressalva = dissipa
+		? " O núcleo está enfraquecendo no caminho — pode dissipar antes de chegar."
+		: "";
 	if (opts.level === "alert") {
 		const eta = temEta
 			? `, aproximando-se (chegada em ${fmtEta(opts.etaMin)})`
@@ -158,13 +167,13 @@ export function formatRainEntityAlert(opts: {
 		const cauda = isArea
 			? " Chuva a caminho — acompanhe os acumulados."
 			: " Atenção a oscilações na rede elétrica (COPEL).";
-		return `${rotulo} detectad${isArea ? "a" : "o"} a ${km} de Ipiranga${eta}.${cauda}`;
+		return `${rotulo} detectad${isArea ? "a" : "o"} a ${km} de Ipiranga${eta}.${dissipa ? ressalva : cauda}`;
 	}
 	const eta = temEta ? ` (chegada em ${fmtEta(opts.etaMin)})` : "";
 	const rotulo = isArea
 		? `área de chuva ${label}`
 		: `núcleo de chuva ${label}`;
-	return `👁️ Vigilância: ${rotulo} detectad${isArea ? "a" : "o"} a ${km} de Ipiranga${eta}. Sem alerta iminente, acompanhe.`;
+	return `👁️ Vigilância: ${rotulo} detectad${isArea ? "a" : "o"} a ${km} de Ipiranga${eta}. Sem alerta iminente, acompanhe.${ressalva}`;
 }
 
 export function fmtEta(etaMin: number | null | undefined): string {
@@ -187,6 +196,8 @@ export interface ThreatCell extends RainCell {
 	distToTargetKm: number;
 	/** Movimento individual do núcleo (pode ser null se não associável) */
 	movement: MovementVector | null;
+	/** Tendência de intensidade entre frames (do movimento associado) */
+	tendencia?: "intensificando" | "estavel" | "enfraquecendo" | null;
 	/** Veredicto de ameaça determinístico (null se sem movimento confiável) */
 	threat: ThreatVerdict | null;
 	/**
@@ -372,6 +383,16 @@ export interface MovementVector {
 	reversal?: boolean;
 	/** Rumo medido no par anterior (para auditoria da inversão) */
 	previousDirectionDeg?: number;
+	/** maxDbz do núcleo no frame ANTERIOR (par associado) */
+	dbzAnterior?: number | null;
+	/** maxDbz(agora) − maxDbz(anterior): negativo = enfraquecendo no caminho */
+	deltaDbz?: number | null;
+	/**
+	 * Tendência de intensidade entre frames. O dono observou (27/09/2026) que é
+	 * comum o núcleo se dissipar ao chegar em Ipiranga — sem isto o card prometia
+	 * "chegando em ~90 min" e o núcleo morria no caminho, sem aviso.
+	 */
+	tendencia?: "intensificando" | "estavel" | "enfraquecendo" | null;
 }
 
 // ============ Classificação de pixel ============
@@ -903,44 +924,72 @@ export function associateMovements(
 	newer: FrameAnalysis,
 	maxAssocKm = 80,
 ): void {
+	// ASSOCIAÇÃO EXCLUSIVA (greedy por distância): cada núcleo do frame antigo
+	// pareia com NO MÁXIMO um núcleo do frame novo. Com o vizinho-mais-próximo
+	// solto, dois núcleos novos escolhiam o MESMO antigo: os dois saíam com o
+	// mesmo fromLat/fromLon e vetor inventado (um deles marcado como reversão).
+	// Ao vivo 27/09/2026: núcleo extreme a 51,8 km saía com direção 354° (norte)
+	// partindo do mesmo ponto do vizinho, veredito "crossing" — o app dizia "sem
+	// alerta iminente" com o temporal vindo de fato, e o dono leu o mapa certo.
+	for (const cell of newer.cells) cell.trackedMovement = null;
+
+	const pares: { cell: RainCell; oc: RainCell; d: number }[] = [];
 	for (const cell of newer.cells) {
-		let best: RainCell | null = null;
-		let bestDist = Infinity;
 		for (const oc of older.cells) {
 			const d = haversineKm(cell.lat, cell.lon, oc.lat, oc.lon);
-			if (d < bestDist) {
-				bestDist = d;
-				best = oc;
-			}
+			if (d <= maxAssocKm) pares.push({ cell, oc, d });
 		}
-		if (!best || bestDist > maxAssocKm) {
-			cell.trackedMovement = null;
-			continue;
-		}
-		const dLon = cell.lon - best.lon;
-		const dLat = cell.lat - best.lat;
+	}
+	pares.sort((a, b) => a.d - b.d);
+
+	const antigosUsados = new Set<RainCell>();
+	const novosResolvidos = new Set<RainCell>();
+	for (const { cell, oc, d } of pares) {
+		if (novosResolvidos.has(cell) || antigosUsados.has(oc)) continue;
+		novosResolvidos.add(cell);
+		antigosUsados.add(oc);
+		const dLon = cell.lon - oc.lon;
+		const dLat = cell.lat - oc.lat;
 		const bearingRad = Math.atan2(dLon, dLat); // atan2(E, N)
 		const directionDeg = ((bearingRad * 180) / Math.PI + 360) % 360;
 		const intervalMin = (newer.time - older.time) / 60_000;
-		const speedKmh = intervalMin > 0 ? (bestDist / intervalMin) * 60 : 0;
+		const speedKmh = intervalMin > 0 ? (d / intervalMin) * 60 : 0;
 		// Velocidade implausível (>150 km/h): associação espúria (núcleo
 		// dissipou e outro surgiu perto). Não confiável → sem movimento.
-		if (speedKmh > 150) {
-			cell.trackedMovement = null;
-			continue;
-		}
+		if (speedKmh > 150) continue;
+		const deltaDbz = cell.maxDbz - oc.maxDbz;
 		cell.trackedMovement = {
 			directionDeg: Math.round(directionDeg),
 			speedKmh: Math.round(speedKmh * 10) / 10,
 			intervalMin,
-			dxPx: Math.round(cell.centroidX - best.centroidX),
-			dyPx: Math.round(cell.centroidY - best.centroidY),
-			fromLat: best.lat,
-			fromLon: best.lon,
+			dxPx: Math.round(cell.centroidX - oc.centroidX),
+			dyPx: Math.round(cell.centroidY - oc.centroidY),
+			fromLat: oc.lat,
+			fromLon: oc.lon,
 			toLat: cell.lat,
 			toLon: cell.lon,
+			dbzAnterior: oc.maxDbz,
+			deltaDbz: Math.round(deltaDbz * 10) / 10,
+			tendencia: tendenciaIntensidade(deltaDbz),
 		};
 	}
+}
+
+/**
+ * Tendência de intensidade do núcleo entre frames (Δ em dBZ por frame de 10 min):
+ * ≥ +5 dBZ intensificando, ≤ −5 dBZ enfraquecendo, senão estável. Pura (testável).
+ *
+ * Limiar de ±5 dBZ é o que separa "está mudando" de "está oscilando": a
+ * classificação de pixel por paleta já varia ±2 dBZ entre frames vizinhos.
+ * Calibrar com série real antes de endurecer (nenhum número redondo chutado).
+ */
+export function tendenciaIntensidade(
+	deltaDbz: number | null | undefined,
+): "intensificando" | "estavel" | "enfraquecendo" | null {
+	if (deltaDbz == null || !Number.isFinite(deltaDbz)) return null;
+	if (deltaDbz >= 5) return "intensificando";
+	if (deltaDbz <= -5) return "enfraquecendo";
+	return "estavel";
 }
 
 /** Diferença angular absoluta entre dois rumos (0..180°) */
@@ -1040,6 +1089,7 @@ export function assessAllThreats(
 					| "nucleo",
 				distToTargetKm,
 				movement,
+				tendencia: movement?.tendencia ?? null,
 				threat,
 				// Gate de relevância (distância + ETA + direção): define se o
 				// núcleo é iminente, vigilância ou apenas monitoramento.
