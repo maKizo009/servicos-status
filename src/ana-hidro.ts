@@ -61,21 +61,30 @@ export const SENTINELAS = [
  * ~2 cm/h isso levava dias, e o card dizia "Rio Uvaia em alerta" junto de
  * "risco de transbordar: baixo" (contradição apontada pelo dono).
  *
- * Limiares MEDIDOS nas séries reais da ANA (janela de 24 h), não chutados:
- *   - OUT23 (pico 1189 cm) → recessão violenta: confirma 3 h depois do pico
- *   - DEZ24 (pico  891 cm) → rio em platô por dias: NUNCA confirma (o alerta
- *                            fica, e é o certo: a água continuava alta)
- *   - SET26 (pico  911 cm) → confirma 62 h depois do pico
- *   - inverno/2026 (seco)  → confirma em 5,5% das horas (não é gatilho de cabelo)
- * Em NENHUM evento a regra confirmou durante a SUBIDA (0 horas) — o "sem subir"
- * impede o disparo no meio de uma cheia em ascensão.
+ * Limiares MEDIDOS nas séries reais da ANA (não chutados). Varredura do limiar de
+ * queda com janela de pico de 72 h, contando horas em que a regra confirmaria
+ * DURANTE a subida (o erro fatal: limpar alerta com a cheia ainda subindo):
+ *     queda >= 20 cm → 89 h de falso positivo na subida (OUT23)  ✗
+ *     queda >= 24 cm → 19 h                                      ✗
+ *     queda >= 25 cm →  9 h                                      ✗
+ *     queda >= 26 cm →  0 h   ← fronteira medida (26 cm é o mínimo seguro)
+ *     queda >= 30 cm →  0 h   ← ESCOLHIDO: 4 cm de margem sobre a fronteira
+ * Com 30 cm, os três eventos históricos se comportam assim:
+ *   - OUT23 (pico 1189 cm) → confirma 3 h depois do pico
+ *   - DEZ24 (pico  891 cm) → rio em platô por DIAS: só confirma 357 h depois
+ *                            (o alerta fica durante o platô, e é o certo)
+ *   - SET26 (pico  911 cm) → confirma 58 h depois do pico (queda lenta do Uvaia)
+ * A janela do PICO é de 72 h (e não 24 h) porque o pico da cheia precisa continuar
+ * sendo a referência: numa janela de 24 h o pico SAI dela conforme o tempo passa e
+ * a "queda desde o pico" afrouxa sozinha (foi medido: o mesmo caso de hoje levava
+ * horas a mais para fechar). A contagem de "sem subir" segue com a série recente.
  */
 export const RECESSAO_LIMIARES = {
-	/** Janela de análise (a série da estação traz 24 h horárias). */
-	janelaHoras: 24,
+	/** Janela do PICO (referência do "desde o pico"), em horas horárias. */
+	janelaPicoHoras: 72,
 	/** Horas seguidas sem subir (tolerância de 1 cm = ruído da telemetria). */
 	minHorasSemSubir: 12,
-	/** Queda mínima na janela E desde o pico da janela, em cm. */
+	/** Queda mínima DESDE O PICO da janela, em cm. */
 	minQuedaCm: 30,
 } as const;
 
@@ -87,12 +96,12 @@ export interface Recessao {
 	confirmada: boolean;
 	/** Horas seguidas sem nenhuma subida (contadas a partir da leitura atual). */
 	horasSemSubir: number;
-	/** Queda líquida dentro da janela (cm, positivo = desceu). */
-	quedaJanelaCm: number;
 	/** Queda desde o pico da janela (cm). */
 	quedaDesdePicoCm: number;
 	/** Pico da janela (cm) — referência do "desde o pico". */
 	picoCm: number | null;
+	/** Leitura atual (cm) — o "pico menos atual" fica auditável na tela. */
+	atualCm: number | null;
 }
 
 export type FaixaHidro = "normal" | "atencao" | "alerta" | "critico";
@@ -104,7 +113,7 @@ export type FaixaHidro = "normal" | "atencao" | "alerta" | "critico";
 export function avaliarRecessao(
 	serie: HidroSeriePonto[],
 	limiares: {
-		janelaHoras: number;
+		janelaPicoHoras: number;
 		minHorasSemSubir: number;
 		minQuedaCm: number;
 	} = RECESSAO_LIMIARES,
@@ -115,9 +124,9 @@ export function avaliarRecessao(
 	const vazio: Recessao = {
 		confirmada: false,
 		horasSemSubir: 0,
-		quedaJanelaCm: 0,
 		quedaDesdePicoCm: 0,
 		picoCm: null,
+		atualCm: null,
 	};
 	if (pts.length < 3) return vazio;
 	const atual = pts[0].nivelCm;
@@ -129,20 +138,17 @@ export function avaliarRecessao(
 		if (pts[k].nivelCm <= pts[k + 1].nivelCm + TOL_SUBIDA_CM) semSubir++;
 		else break;
 	}
-	const janela = pts.slice(0, Math.max(3, limiares.janelaHoras));
-	const maisAntigo = janela[janela.length - 1].nivelCm;
+	const janela = pts.slice(0, Math.max(3, limiares.janelaPicoHoras));
 	const picoCm = Math.max(...janela.map((p) => p.nivelCm));
-	const quedaJanelaCm = maisAntigo - atual;
 	const quedaDesdePicoCm = picoCm - atual;
 	return {
 		confirmada:
 			semSubir >= limiares.minHorasSemSubir &&
-			quedaJanelaCm >= limiares.minQuedaCm &&
 			quedaDesdePicoCm >= limiares.minQuedaCm,
 		horasSemSubir: semSubir,
-		quedaJanelaCm: Math.round(quedaJanelaCm * 10) / 10,
 		quedaDesdePicoCm: Math.round(quedaDesdePicoCm * 10) / 10,
 		picoCm,
+		atualCm: atual,
 	};
 }
 
@@ -645,10 +651,13 @@ async function fetchEstacao(
 	papel: string,
 ): Promise<HidroEstacao> {
 	const hoje = new Date();
-	const ontem = new Date(Date.now() - 24 * 3600 * 1000);
+	// 3 dias: a janela do PICO da recessão é de 72 h horárias (o pico da cheia não
+	// pode sair da série — ver RECESSAO_LIMIARES). A série devolvida no estado é
+	// recortada em 24 h mais abaixo, para o payload não crescer.
+	const inicio = new Date(Date.now() - 3 * 24 * 3600 * 1000);
 	const fmt = (d: Date) =>
 		`${String(d.getDate()).padStart(2, "0")}/${String(d.getMonth() + 1).padStart(2, "0")}/${d.getFullYear()}`;
-	const dataInicio = fmt(ontem);
+	const dataInicio = fmt(inicio);
 	const dataFim = fmt(hoje);
 	const url = `https://telemetriaws1.ana.gov.br/ServiceANA.asmx/DadosHidrometeorologicos?codEstacao=${codigo}&dataInicio=${dataInicio}&dataFim=${dataFim}`;
 
@@ -738,8 +747,10 @@ async function fetchEstacao(
 			}
 		}
 		// Recessão: queda SUSTENTADA tira o alerta da faixa (ver RECESSAO_LIMIARES).
+		// Avaliada sobre a série LONGA (72 h) para o pico da cheia ser a referência;
+		// o estado carrega só as 24 h mais recentes.
+		const recessao = avaliarRecessao(serieLimpa);
 		const serieRecente = serieLimpa.slice(0, 24);
-		const recessao = avaliarRecessao(serieRecente);
 		const faixa = faixaEstendida(codigo, latest.nivelCm);
 		const tendencia: "subindo" | "estavel" | "descendo" =
 			delta6hCm == null

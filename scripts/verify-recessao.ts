@@ -35,7 +35,7 @@ function relatar(hidro: HidroState, chuva: ChuvaLocal | null) {
 				`\n  faixa medida: ${e.faixa ?? "—"} · faixa EFETIVA (com recessão): ${e.faixaEfetiva ?? e.faixa ?? "—"}` +
 				`\n  dispara alerta de Ipiranga: ${e.disparaAlerta === false ? "NÃO (jusante)" : "sim"}` +
 				(r
-					? `\n  recessão: ${r.confirmada ? "CONFIRMADA" : "não"} · ${r.horasSemSubir} h sem subir · queda janela ${r.quedaJanelaCm} cm · desde o pico ${r.quedaDesdePicoCm} cm (pico ${m(r.picoCm)})`
+					? `\n  recessão: ${r.confirmada ? "CONFIRMADA" : "não"} · ${r.horasSemSubir} h sem subir · ${r.quedaDesdePicoCm} cm abaixo do pico (${m(r.picoCm)} → ${m(r.atualCm)})`
 					: ""),
 		);
 	}
