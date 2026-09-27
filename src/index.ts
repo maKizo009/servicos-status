@@ -37,6 +37,7 @@ import {
 	fmtEta,
 	formatRainEntityAlert,
 	nearestStrongThreat,
+	nucleoSeveroIminente,
 } from "./radar-analysis.js";
 import {
 	checkRateLimit,
@@ -336,19 +337,26 @@ export async function syncWeatherCycle(): Promise<WeatherState> {
 			// relevante para o card e irrelevante para interromper o celular
 			// (regra do dono 21/09/2026: "alertas só em casos realmente
 			// importantes"). Só núcleo de tempestade na zona de alerta promove.
-			const entidadeSevera =
-				nearestAlert &&
-				nearestAlert.kind === "nucleo" &&
-				(nearestAlert.intensity === "heavy" ||
-					nearestAlert.intensity === "extreme");
-			state.radarSevero = Boolean(entidadeSevera);
-			state.radarKind = (nearestAlert ?? nearestWatch)?.kind ?? null;
+			// A zona pode ter MAIS DE UMA entidade e a lista vem por ETA: pegar a
+			// primeira devolvia a ÁREA que chega antes e o alerta saía amarelo com
+			// núcleo extreme iminente (incidente 27/09/2026).
+			const nucleoSevero = nucleoSeveroIminente(nowcast.threats);
+			state.radarSevero = Boolean(nucleoSevero);
+			// O kind do card é o da entidade que DIRIGE o alerta: núcleo severo >
+			// a que chega primeiro (nearestAlert) > vigilância.
+			state.radarKind =
+				(nucleoSevero ?? nearestAlert ?? nearestWatch)?.kind ?? null;
 			if (alertLevel === "monitor") {
 				state.regionalRainAlert = `ℹ️ Monitoramento: atividade de radar detectada a ${nucleoProximo ? `~${Math.round(nucleoProximo.distToTargetKm)} km` : "grande distância"} de Ipiranga. Sem risco iminente no momento.`;
 			} else {
 				// Área de chuva (moderada) x núcleo (tempestade): o texto muda, o gate
-				// não. Texto montado em formatRainEntityAlert (testável).
-				const t = alertLevel === "alert" ? nearestAlert : nearestWatch;
+				// não. Texto montado em formatRainEntityAlert (testável). O núcleo
+				// severo manda no texto: dizer "área sem núcleo de tempestade" com um
+				// núcleo extreme chegando é mentira (incidente 27/09/2026).
+				const t =
+					alertLevel === "alert"
+						? (nucleoSevero ?? nearestAlert)
+						: nearestWatch;
 				state.regionalRainAlert = t
 					? formatRainEntityAlert({
 							level: alertLevel,

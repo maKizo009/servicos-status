@@ -228,6 +228,31 @@ export function nearestStrongThreat(threats: ThreatCell[]): ThreatCell | null {
 }
 
 /**
+ * NÚCLEO de tempestade (heavy/extreme) já na zona IMINENTE — a evidência que
+ * promove o alerta a laranja (interrompe o celular). Devolve a entidade MAIS
+ * SEVERA primeiro (extreme antes de heavy) e, entre iguais, a mais próxima.
+ *
+ * A zona de alerta pode conter MAIS DE UMA entidade e `threats` vem ordenado por
+ * ETA: pegar a primeira (`threats.find(zona === "alert")`) devolvia a ÁREA de
+ * chuva moderada que chega antes e o alerta saía AMARELO com um núcleo extreme a
+ * 66,7 km, ETA 94 min, maxDbz 58 chegando (incidente ao vivo 27/09/2026 —
+ * questionado pelo dono: "isso aí já é alerta laranja, parece núcleo forte").
+ */
+export function nucleoSeveroIminente(threats: ThreatCell[]): ThreatCell | null {
+	const iminentes = threats.filter(
+		(t) =>
+			t.relevanceZone === "alert" &&
+			t.kind === "nucleo" &&
+			(t.intensity === "heavy" || t.intensity === "extreme"),
+	);
+	if (!iminentes.length) return null;
+	const peso = (t: ThreatCell) => (t.intensity === "extreme" ? 0 : 1);
+	return iminentes.sort(
+		(a, b) => peso(a) - peso(b) || a.distToTargetKm - b.distToTargetKm,
+	)[0];
+}
+
+/**
  * Zonas de relevância (raios e ETAs máximos). Configuráveis aqui —
  * valores baseados no incidente real 2026-08-12 (núcleo a 336 km/ETA 488 min
  * NÃO deve acender alerta).

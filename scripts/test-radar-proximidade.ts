@@ -22,6 +22,7 @@ import {
 	RELEVANCE_ZONES,
 	classifyRelevanceZone,
 	nearestStrongThreat,
+	nucleoSeveroIminente,
 	type ThreatCell,
 } from "../src/radar-analysis.js";
 
@@ -161,6 +162,56 @@ describe("núcleo forte e PERTO vira vigilância (amarelo), não 'monitor'", () 
 		// Núcleo que surge e se intensifica entre frames: sem veredito de rumo,
 		// mas a 60 km e extreme — o cidadão vê amarelo, não "monitor".
 		expect(classifyRelevanceZone(60, null, null, "extreme", null)).toBe("watch");
+	});
+});
+
+describe("núcleo de tempestade iminente promove a laranja (caso ao vivo 27/09)", () => {
+	/** (intensidade, km, zona, kind, ETA min) — payload real no momento do relato. */
+	const CENA: [string, number, "alert" | "watch" | "monitor", "nucleo" | "area", number | null][] = [
+		["moderate", 39.3, "alert", "area", 56.8],
+		["extreme", 66.7, "alert", "nucleo", 94.1],
+		["extreme", 82.2, "watch", "nucleo", 169.3],
+	];
+	const cena = CENA.map(([i, km, zona, kind, eta], k) => ({
+		...celula([i, km, "approaching", 90], k),
+		kind: kind as ThreatCell["kind"],
+		relevanceZone: zona as ThreatCell["relevanceZone"],
+		threat: {
+			bearingFromTargetDeg: 54,
+			radialKmh: -80,
+			radialFraction: 0.9,
+			approach: "approaching" as const,
+			etaMin: eta,
+		},
+	})) as ThreatCell[];
+
+	test("a ÁREA que chega antes não pode mascarar o núcleo extreme atrás dela", () => {
+		const s = nucleoSeveroIminente(cena);
+		expect(s?.intensity).toBe("extreme");
+		expect(s?.distToTargetKm).toBe(66.7);
+		// o defeito antigo: o primeiro da lista (por ETA) era a área moderada
+		expect(cena[0].kind).toBe("area");
+	});
+
+	test("só área na zona de alerta → nenhum núcleo severo (amarelo preservado)", () => {
+		const soArea = [cena[0]];
+		expect(nucleoSeveroIminente(soArea)).toBe(null);
+	});
+
+	test("núcleo severo só em VIGILÂNCIA (82 km) não promove a laranja", () => {
+		expect(nucleoSeveroIminente([cena[2]])).toBe(null);
+	});
+
+	test("entre dois núcleos iminentes, o extreme manda (mesmo mais longe)", () => {
+		const dois = [
+			{ ...cena[1], intensity: "heavy" as const, distToTargetKm: 40 },
+			cena[1],
+		];
+		expect(nucleoSeveroIminente(dois)?.intensity).toBe("extreme");
+	});
+
+	test("sem entidade severa: lista vazia → null", () => {
+		expect(nucleoSeveroIminente([])).toBe(null);
 	});
 });
 
