@@ -643,6 +643,47 @@ function parseXmlDados(xml: string): HidroSeriePonto[] {
 	return pontos;
 }
 
+/**
+ * Saneia lixo de sensor: 777777.7 = código de falha da telemetria (visto em 250
+ * pontos de 180 dias em Antas). Ponto absurdo não pode virar "leitura atual" nem
+ * contaminar o Δ6h.
+ */
+function saneaPonto(p: HidroSeriePonto): HidroSeriePonto {
+	return {
+		...p,
+		nivelCm:
+			p.nivelCm != null && p.nivelCm > 0 && p.nivelCm < 2000 ? p.nivelCm : null,
+		vazaoM3s:
+			p.vazaoM3s != null && p.vazaoM3s >= 0 && p.vazaoM3s < 20000
+				? p.vazaoM3s
+				: null,
+	};
+}
+
+const ANA_URL = "https://telemetriaws1.ana.gov.br/ServiceANA.asmx/DadosHidrometeorologicos";
+
+/**
+ * UMA requisição à ANA, já saneada e ordenada (mais novo primeiro).
+ * Devolve `null` quando o serviço responde vazio/erro — quem chama decide se
+ * isso é fatal (janela recente) ou tolerável (janela antiga da recessão).
+ */
+async function baixarSerieAna(
+	codigo: string,
+	dataInicio: string,
+	dataFim: string,
+): Promise<HidroSeriePonto[] | null> {
+	const url = `${ANA_URL}?codEstacao=${codigo}&dataInicio=${dataInicio}&dataFim=${dataFim}`;
+	const res = await fetch(url, {
+		signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
+		headers: { Accept: "application/xml" },
+	});
+	if (!res.ok) throw new Error(`HTTP ${res.status}`);
+	const xml = await res.text();
+	if (xml.includes("<ErrorTable") || xml.includes("Sem dados")) return null;
+	const serie = parseXmlDados(xml).map(saneaPonto);
+	return serie.length > 0 ? serie : null;
+}
+
 async function fetchEstacao(
 	codigo: string,
 	nome: string,
@@ -651,89 +692,53 @@ async function fetchEstacao(
 	papel: string,
 ): Promise<HidroEstacao> {
 	const hoje = new Date();
-	// 3 dias: a janela do PICO da recessão é de 72 h horárias (o pico da cheia não
-	// pode sair da série — ver RECESSAO_LIMIARES). A série devolvida no estado é
-	// recortada em 24 h mais abaixo, para o payload não crescer.
-	const inicio = new Date(Date.now() - 3 * 24 * 3600 * 1000);
 	const fmt = (d: Date) =>
 		`${String(d.getDate()).padStart(2, "0")}/${String(d.getMonth() + 1).padStart(2, "0")}/${d.getFullYear()}`;
-	const dataInicio = fmt(inicio);
-	const dataFim = fmt(hoje);
-	const url = `https://telemetriaws1.ana.gov.br/ServiceANA.asmx/DadosHidrometeorologicos?codEstacao=${codigo}&dataInicio=${dataInicio}&dataFim=${dataFim}`;
+	const diasAtras = (n: number) => fmt(new Date(Date.now() - n * 24 * 3600 * 1000));
+	/** Estação sem dados: o ciclo de clima segue, sem número inventado. */
+	const vazio = (erro: string): HidroEstacao => ({
+		codigo,
+		nome,
+		rio,
+		municipio,
+		papel,
+		nivelCm: null,
+		vazaoM3s: null,
+		chuvaMm: null,
+		dataHora: null,
+		faixa: null,
+		serie: [],
+		delta6hCm: null,
+		erro,
+	});
 
 	try {
-		const res = await fetch(url, {
-			signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
-			headers: { Accept: "application/xml" },
-		});
-		if (!res.ok) {
-			return {
-				codigo,
-				nome,
-				rio,
-				municipio,
-				papel,
-				nivelCm: null,
-				vazaoM3s: null,
-				chuvaMm: null,
-				dataHora: null,
-				faixa: null,
-				serie: [],
-				delta6hCm: null,
-				erro: `HTTP ${res.status}`,
-			};
+		// A janela do PICO da recessão precisa de 72 h (RECESSAO_LIMIARES), mas pedir
+		// os 3 dias numa ÚNICA requisição estoura os 10 s de timeout quando quem
+		// chama está fora do Brasil — medido em produção na Vercel: as 3 sentinelas
+		// voltaram "The operation was aborted due to timeout" e o card do rio ficou
+		// sem dados. Duas requisições do tamanho que sempre funcionou resolvem:
+		// recente (24 h, obrigatória) + antiga (48 h até ontem, opcional).
+		const [recente, antiga] = await Promise.all([
+			baixarSerieAna(codigo, diasAtras(1), fmt(hoje)),
+			baixarSerieAna(codigo, diasAtras(3), diasAtras(1)).catch(() => null),
+		]);
+		if (!recente) return vazio("Sem dados no período");
+		// O dia de fronteira aparece nas duas janelas: deduplica por dataHora,
+		// preferindo a leitura VÁLIDA (a recente manda quando ambas têm nível) e
+		// já ordenando mais novo primeiro, como o resto do módulo espera.
+		const porHora = new Map<string, HidroSeriePonto>();
+		for (const p of [...recente, ...(antiga ?? [])]) {
+			const atual = porHora.get(p.dataHora);
+			if (!atual || (atual.nivelCm == null && p.nivelCm != null)) {
+				porHora.set(p.dataHora, p);
+			}
 		}
-		const xml = await res.text();
-		if (xml.includes("<ErrorTable") || xml.includes("Sem dados")) {
-			return {
-				codigo,
-				nome,
-				rio,
-				municipio,
-				papel,
-				nivelCm: null,
-				vazaoM3s: null,
-				chuvaMm: null,
-				dataHora: null,
-				faixa: null,
-				serie: [],
-				delta6hCm: null,
-				erro: "Sem dados no período",
-			};
-		}
-		const serie = parseXmlDados(xml);
-		// Saneia lixo de sensor: 777777.7 = código de falha da telemetria
-		// (visto em 250 pontos de 180 dias em Antas). Ponto absurdo não pode
-		// virar "leitura atual" nem contaminar o Δ6h.
-		const sanea = (p: HidroSeriePonto): HidroSeriePonto => ({
-			...p,
-			nivelCm:
-				p.nivelCm != null && p.nivelCm > 0 && p.nivelCm < 2000
-					? p.nivelCm
-					: null,
-			vazaoM3s:
-				p.vazaoM3s != null && p.vazaoM3s >= 0 && p.vazaoM3s < 20000
-					? p.vazaoM3s
-					: null,
-		});
-		const serieLimpa = serie.map(sanea);
-		if (serieLimpa.length === 0) {
-			return {
-				codigo,
-				nome,
-				rio,
-				municipio,
-				papel,
-				nivelCm: null,
-				vazaoM3s: null,
-				chuvaMm: null,
-				dataHora: null,
-				faixa: null,
-				serie: [],
-				delta6hCm: null,
-				erro: "Série vazia",
-			};
-		}
+		const serie = [...porHora.values()].sort((a, b) =>
+			a.dataHora < b.dataHora ? 1 : -1,
+		);
+		const serieLimpa = serie.map(saneaPonto);
+		if (serieLimpa.length === 0) return vazio("Série vazia");
 		let latestIdx = serieLimpa.findIndex((p) => p.nivelCm != null);
 		if (latestIdx < 0) latestIdx = 0;
 		const latest = serieLimpa[latestIdx];
@@ -780,22 +785,7 @@ async function fetchEstacao(
 			erro: null,
 		};
 	} catch (e: unknown) {
-		const msg = e instanceof Error ? e.message : String(e);
-		return {
-			codigo,
-			nome,
-			rio,
-			municipio,
-			papel,
-			nivelCm: null,
-			vazaoM3s: null,
-			chuvaMm: null,
-			dataHora: null,
-			faixa: null,
-			serie: [],
-			delta6hCm: null,
-			erro: msg,
-		};
+		return vazio(e instanceof Error ? e.message : String(e));
 	}
 }
 
