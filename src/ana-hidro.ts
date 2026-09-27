@@ -609,6 +609,12 @@ export interface HidroState {
 	previsao: PrevisaoCalha | null;
 	/** Texto curto para o llms.txt */
 	resumoRisco: string;
+	/**
+	 * true = a ANA não respondeu neste ciclo e o que está aqui é a ÚLTIMA
+	 * triangulação boa (ver `preservarHidro`). O front diz há quanto tempo é a
+	 * leitura em vez de mostrar número velho como se fosse agora.
+	 */
+	desatualizado?: boolean;
 }
 
 function parseNum(v: string | null | undefined): number | null {
@@ -955,6 +961,41 @@ export function avaliarRisco(
 	};
 }
 
+/**
+ * Um ciclo SEM resposta da ANA não pode apagar o card do rio (o /api/hidro
+ * devolvia "Triangulação indisponível" e o cidadão perdia a referência do nível
+ * no meio de uma cheia). Se o ciclo novo veio sem NENHUMA leitura e existe uma
+ * triangulação anterior com dados, mantém a anterior marcada como
+ * `desatualizado` — o front mostra o horário da última leitura em vez de
+ * apresentar número velho como se fosse agora.
+ *
+ * Pura de propósito: recebe a anterior de fora (é o estado persistido) e é
+ * testável sem rede.
+ */
+export function preservarHidro(
+	novo: HidroState,
+	anterior: HidroState | null | undefined,
+): HidroState {
+	const temDado = (h: HidroState | null | undefined): boolean =>
+		Array.isArray(h?.estacoes) && h.estacoes.some((e) => e.nivelCm != null);
+	if (temDado(novo)) return { ...novo, desatualizado: false };
+	if (!temDado(anterior)) return novo; // nunca houve dado bom: nada a preservar
+	// Motivo no nível do ESTADO (não só da estação): é o que aparece no /api/hidro
+	// e no log quando alguém pergunta por que o card está preservado.
+	const motivoEstacoes = novo.estacoes
+		.map((e) => e.erro)
+		.filter((m): m is string => !!m)
+		.join(" | ");
+	return {
+		...(anterior as HidroState),
+		desatualizado: true,
+		erro:
+			novo.erro ||
+			motivoEstacoes ||
+			"ANA sem resposta — última leitura mantida",
+	};
+}
+
 /** Busca as 3 sentinelas ANA em paralelo (usado no cron). */
 export async function fetchHidroTriangulacao(
 	chuva: ChuvaLocal | null = null,
@@ -990,6 +1031,7 @@ export async function fetchHidroTriangulacao(
 			fonte: "ANA Hidro (telemetria)",
 			atualizadoEm: Date.now(),
 			erro,
+			desatualizado: false,
 			...risco,
 			previsao,
 		};

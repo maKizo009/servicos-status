@@ -4,7 +4,7 @@ import {
 	fetchAlertasOficiais,
 	logAlertaUnificado,
 } from "./alertas-oficiais.js";
-import { fetchHidroTriangulacao } from "./ana-hidro.js";
+import { fetchHidroTriangulacao, preservarHidro } from "./ana-hidro.js";
 import {
 	fetchCemadenIpiranga,
 	maxAcumuladoFresco,
@@ -236,12 +236,18 @@ export async function syncWeatherCycle(): Promise<WeatherState> {
 	// leitores: o mosaico JPEG do Simepar saiu em 23/09/2026 — vinha "assado"
 	// (mapa + rótulos + radar no mesmo pixel) e, com o radar de Teixeira Soares
 	// desativado, sobrava só Cascavel a ~400 km = feixe alto e resolução grossa.
-	const hidro = await fetchHidroTriangulacao({
-		p1h: maxAcc((e) => e.acc1hr),
-		p6h: maxAcc((e) => e.acc6hr),
-		p24h: maxAcc((e) => e.acc24hr),
-		p72h: maxAcc((e) => e.acc72hr),
-	});
+	const hidro = preservarHidro(
+		await fetchHidroTriangulacao({
+			p1h: maxAcc((e) => e.acc1hr),
+			p6h: maxAcc((e) => e.acc6hr),
+			p24h: maxAcc((e) => e.acc24hr),
+			p72h: maxAcc((e) => e.acc72hr),
+		}),
+		// ANA fora do ar não apaga o card do rio: preserva a última triangulação
+		// boa (marcada como desatualizada). TTL largo de propósito — o que importa
+		// é a última leitura, não o ciclo anterior.
+		(await loadWeatherState(24 * 3600_000))?.hidro,
+	);
 
 	// Boletim da tabela legada (weather_bulletins, formato "NIM texto" que não
 	// é mais gravado): só é usado se FRESCO (<60 min), senão a Camada B
@@ -438,7 +444,11 @@ export async function syncWeatherCycle(): Promise<WeatherState> {
 				ecmwfPct: weatherInfo.rainProbabilityPct,
 				ecmwfProx6hMm: prox6h,
 				alertLevel: state.alertLevel ?? "monitor",
-				hidroWatch: state.hidro?.riscoCheia === "watch",
+				// Leitura VELHA (ANA sem resposta) não dirige o alerta unificado: só
+				// estado fresco acende/segura push. Ver `preservarHidro`.
+				hidroWatch:
+					state.hidro?.riscoCheia === "watch" &&
+					state.hidro?.desatualizado !== true,
 				avisosOficiais: (state.alertasOficiais?.avisos ?? []).map(
 					(a) => `${a.fonte}: ${a.titulo}`,
 				),
@@ -597,7 +607,9 @@ export async function syncWeatherCycle(): Promise<WeatherState> {
 				radarAlertLevel: state.alertLevel ?? "monitor",
 				radarSevero: state.radarSevero ?? false,
 				radarKind: state.radarKind ?? null,
-				hidroWatch: state.hidro?.riscoCheia === "watch",
+				hidroWatch:
+					state.hidro?.riscoCheia === "watch" &&
+					state.hidro?.desatualizado !== true,
 			},
 			oficiais,
 		);

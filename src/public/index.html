@@ -3687,7 +3687,16 @@ function renderHidroCard(data) {
   const riscoTxt = risco.confianca != null
     ? `Risco de transbordar: ${risco.palavra} (confiança ${risco.confianca}%).`
     : `Risco de transbordar: ${risco.palavra}.`;
-  const notaRios = `<p class="rio-nota">O ${esc(rio.estacao)} mede a bacia do Bitumirim, o rio que alaga Ipiranga. ${esc(riscoTxt)}</p>`;
+  /* Dado PRESERVADO de um ciclo em que a ANA não respondeu (ver preservarHidro):
+     o horário da última leitura vai na cara do leitor — número velho não pode
+     passar por leitura de agora. */
+  const velho = h.desatualizado === true;
+  const horaLeitura = (() => {
+    const dh = estacoesVisiveis.map((e) => String(e.dataHora || '')).filter(Boolean).sort().pop();
+    const m = dh ? dh.match(/(\d{2}):(\d{2})/) : null;
+    return m ? ` de ${m[1]}h${m[2]}` : '';
+  })();
+  const notaRios = `<p class="rio-nota">O ${esc(rio.estacao)} mede a bacia do Bitumirim, o rio que alaga Ipiranga. ${esc(riscoTxt)}${velho ? ` <strong>A ANA não está respondendo agora — estes números são da última leitura${esc(horaLeitura)}.</strong>` : ''}</p>`;
 
   const iflLine = (h.ifl && h.ifl.nivel !== 'verde')
     ? `<div style="background:var(--a1);border-radius:12px;padding:10px 12px;margin:6px 0;font-size:12.5px;color:var(--text)">${icoMS('bolt','s18')} <strong>Flash local (IFL ${esc(String(h.ifl.score).replace('.', ','))} · ${esc(h.ifl.nivel.toUpperCase())})</strong> — ${esc(h.ifl.motivos.join('; '))}</div>`

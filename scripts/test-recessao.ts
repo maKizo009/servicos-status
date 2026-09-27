@@ -16,9 +16,11 @@ import {
 	avaliarRecessao,
 	avaliarRisco,
 	faixaComRecessao,
+	preservarHidro,
 	sentinelaDisparaAlerta,
 	type HidroEstacao,
 	type HidroSeriePonto,
+	type HidroState,
 } from "../src/ana-hidro.js";
 
 // OUT23 — 72 slots ATÉ o pico de 1189.3 cm (2023-11-03 06:00:00): cheia EM ASCENSÃO, não pode confirmar
@@ -278,5 +280,59 @@ describe("risco combinado (o alerta do card)", () => {
 		expect(sentinelaDisparaAlerta("64504210")).toBe(false); // Cebolão
 		expect(sentinelaDisparaAlerta("64507000")).toBe(false); // Jataizinho
 		expect(sentinelaDisparaAlerta("99999999")).toBe(true); // desconhecida: conservador
+	});
+});
+
+describe("ANA fora do ar não apaga o card do rio", () => {
+	const comDados: HidroState = {
+		estacoes: [estacao(SERIE_AO_VIVO)],
+		fonte: "ANA Hidro (telemetria)",
+		atualizadoEm: 1790543000000,
+		riscoEnxurrada: "ok",
+		riscoCheia: "watch",
+		ifl: null,
+		regime: null,
+		previsao: null,
+		resumoRisco: "Uvaia em nível de alerta",
+	};
+	// ciclo em que a ANA não respondeu (timeout medido em produção na Vercel)
+	const falhou: HidroState = {
+		...comDados,
+		estacoes: [
+			{
+				...estacao(SERIE_AO_VIVO),
+				nivelCm: null,
+				faixa: null,
+				faixaEfetiva: null,
+				serie: [],
+				delta6hCm: null,
+				recessao: null,
+				erro: "The operation was aborted due to timeout",
+			},
+		],
+		atualizadoEm: null,
+		riscoCheia: "ok",
+		resumoRisco: "Triangulação indisponível no momento (sentinelas sem dados).",
+	};
+
+	test("ciclo com dados passa direto e marca desatualizado:false", () => {
+		const r = preservarHidro(comDados, null);
+		expect(r.estacoes[0].nivelCm).toBe(646.7);
+		expect(r.desatualizado).toBe(false);
+	});
+
+	test("ANA falhou: mantém a última leitura boa, marcada como desatualizada", () => {
+		const r = preservarHidro(falhou, comDados);
+		expect(r.estacoes[0].nivelCm).toBe(646.7); // o card NÃO fica sem número
+		expect(r.desatualizado).toBe(true);
+		expect(r.riscoCheia).toBe("watch"); // risco conhecido, não um "ok" falso
+		expect(r.erro).toContain("timeout"); // motivo, para diagnóstico
+	});
+
+	test("falhou e nunca houve leitura boa: devolve o ciclo vazio como veio", () => {
+		const r = preservarHidro(falhou, null);
+		expect(r.estacoes[0].nivelCm).toBe(null);
+		expect(r.desatualizado).not.toBe(true);
+		expect(preservarHidro(falhou, { ...comDados, estacoes: [] }).estacoes[0].nivelCm).toBe(null);
 	});
 });
