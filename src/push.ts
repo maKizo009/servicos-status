@@ -316,6 +316,41 @@ export function pushParaAlerta(
 }
 
 /**
+ * Aviso que o dono pediu para constar no push (27/09/2026): o que está chegando
+ * pode mudar de rumo/intensidade, então a pessoa tem que olhar o radar — não
+ * basta "acompanhe os acumulados".
+ */
+export function avisoMovimentoNucleo(radarSevero: boolean): string | null {
+	return radarSevero
+		? "As condições podem mudar rápido — acompanhe a movimentação do núcleo no radar do app."
+		: null;
+}
+
+/**
+ * Conteúdo do push de chuva IMINENTE no radar (Camada A: zona `alert`).
+ *
+ * Só NÚCLEO de tempestade (heavy/extreme) interrompe o celular: área de chuva
+ * moderada é vigilância (amarelo) e devolve `null` — nada de push.
+ * A notificação incoerente que o dono recebeu em 27/09/2026 ("⛈️ Alerta de
+ * tempestade em Ipiranga" com corpo "🌧️ Área de chuva moderada detectada a ~39 km")
+ * nasceu de um push que não olhava o TIPO nem a SEVERIDADE da entidade que o
+ * radar apontava. Pura (testável).
+ */
+export function conteudoPushChuvaIminente(estado: {
+	radarSevero: boolean;
+	textoRadar?: string | null;
+}): { titulo: string; corpo: string } | null {
+	if (!estado.radarSevero) return null;
+	const base =
+		(estado.textoRadar ?? "").trim() ||
+		"Núcleo de chuva forte se aproximando de Ipiranga.";
+	return {
+		titulo: "⛈️ Alerta de tempestade em Ipiranga",
+		corpo: [base, avisoMovimentoNucleo(true)].filter(Boolean).join(" "),
+	};
+}
+
+/**
  * Envia push com cooldown por evento (chave + TTL). Retorna true se enviou.
  * Usado pelo ciclo (api/cron): temporal (TTL 60min), copel:<id>, sanepar:<id>.
  */

@@ -638,13 +638,22 @@ export async function syncWeatherCycle(): Promise<WeatherState> {
 		// Push no celular (PWA): só laranja/vermelho, com cooldown.
 		// Nunca quebra o ciclo — falha de push é só log.
 		try {
-			const { pushParaAlerta, sendEventPush } = await import("./push.js");
+			const { avisoMovimentoNucleo, pushParaAlerta, sendEventPush } =
+				await import("./push.js");
 			const regra = pushParaAlerta(unificado.nivel);
 			if (regra) {
+				// O aviso de olhar o radar entra no corpo do push: o que se aproxima
+				// pode mudar de rumo/intensidade (pedido do dono, 27/09/2026).
+				const corpoPush = [
+					unificado.descricao,
+					avisoMovimentoNucleo(state.radarSevero === true),
+				]
+					.filter(Boolean)
+					.join(" ");
 				const enviado = await sendEventPush(
 					regra.evento,
 					`${regra.emoji} ${unificado.titulo}`,
-					unificado.descricao,
+					corpoPush,
 					regra.ttlMs,
 				);
 				logger.info("Push de alerta avaliado", {

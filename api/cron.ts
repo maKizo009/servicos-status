@@ -6,7 +6,10 @@ import {
 	saveEventLog,
 } from "../src/db.js";
 import { syncWeatherCycle } from "../src/index.js";
-import { sendEventPush } from "../src/push.js";
+import {
+	conteudoPushChuvaIminente,
+	sendEventPush,
+} from "../src/push.js";
 import { EventTracker } from "../src/state.js";
 import {
 	sendCopelAlert,
@@ -116,13 +119,27 @@ export default async function handler(req: any, res: any) {
 		}
 
 		// Alerta de TEMPORAL iminente (Camada A: zona "alert" ≤80km/ETA≤2h).
-		// Cooldown de 60 min — o ciclo roda a cada 10 min e não pode spammar.
-		if (weatherState.alertLevel === "alert") {
+		// Só NÚCLEO de tempestade (heavy/extreme) interrompe o celular: uma ÁREA de
+		// chuva moderada é vigilância (amarelo) e não vira push. A notificação
+		// incoerente de 27/09/2026 ("⛈️ Alerta de tempestade" com corpo de "chuva
+		// moderada a ~39 km") nasceu daqui: disparava com qualquer `alertLevel ===
+		// "alert"`, sem olhar o tipo/severidade da entidade.
+		// Um push por evento: quando o alerta unificado já está laranja/vermelho,
+		// ele manda o push do mesmo núcleo — aqui não se duplica.
+		const nivelUnificado = weatherState.alertaUnificado?.nivel;
+		const unificadoJaAvisa =
+			nivelUnificado === "laranja" || nivelUnificado === "vermelho";
+		const conteudoTemporal = unificadoJaAvisa
+			? null
+			: conteudoPushChuvaIminente({
+					radarSevero: weatherState.radarSevero === true,
+					textoRadar: weatherState.regionalRainAlert ?? null,
+				});
+		if (conteudoTemporal) {
 			const enviado = await sendEventPush(
 				"temporal",
-				"🌩️ Alerta de tempestade em Ipiranga",
-				weatherState.regionalRainAlert ||
-					"Núcleo de chuva se aproximando — proteja equipamentos.",
+				conteudoTemporal.titulo,
+				conteudoTemporal.corpo,
 				60 * 60_000,
 			);
 			if (enviado) {
@@ -130,7 +147,7 @@ export default async function handler(req: any, res: any) {
 					botToken: config.telegramBotToken,
 					chatId: config.telegramChatId,
 					level: "critical",
-					summary: weatherState.regionalRainAlert || "Alerta de tempestade",
+					summary: conteudoTemporal.corpo,
 				});
 			}
 		}
