@@ -3890,8 +3890,11 @@ function arrowColorForIntensity(intensity) {
 
 /**
  * Desenha (ou atualiza) as setas de direção dos núcleos no mapa.
- * `nowcast` = data.nowcast do /api/weather. Núcleos sem movimento
- * confiável (speed <= 1 km/h ou sem associação) não ganham seta.
+ * `nowcast` = data.nowcast do /api/weather. Seta SÓ para núcleo em zona
+ * de relevância alert/watch (vem para a cidade ou está perto) — núcleo em
+ * monitor (afastando/de lado/longe) não ganha seta nem rastro, mesmo com
+ * movimento medido (regra do dono 28/09/2026: seta laranja em núcleo que
+ * vai embora lê-se como alerta vindo). Sem movimento confiável, sem seta.
  */
 function renderCellArrows(nowcast) {
   if (!map || !nowcast) return;
@@ -3907,10 +3910,24 @@ function renderCellArrows(nowcast) {
   const layer = L.layerGroup();
   const PROJECT_MINUTES = 30; // projeção da ponta da seta (rota visível)
 
+  // Núcleos relevantes (alert/watch) pelo par lat/lon — threats[] carrega as
+  // mesmas coordenadas das cells do último frame (assessAllThreats espalha a
+  // cell). Sem a lista (payload antigo), mantém o comportamento anterior.
+  const threats = Array.isArray(nowcast.threats) ? nowcast.threats : null;
+  const relevante = threats
+    ? new Set(
+        threats
+          .filter((t) => t.relevanceZone === 'alert' || t.relevanceZone === 'watch')
+          .map((t) => `${Number(t.lat).toFixed(4)},${Number(t.lon).toFixed(4)}`),
+      )
+    : null;
+
   latest.cells.forEach((cell) => {
     const mv = cell.trackedMovement;
     // Só seta para núcleo com movimento medido de verdade
     if (!mv || mv.speedKmh <= 1) return;
+    // Fora de alert/watch = monitor (afastando/de lado/longe): sem seta.
+    if (relevante && !relevante.has(`${Number(cell.lat).toFixed(4)},${Number(cell.lon).toFixed(4)}`)) return;
 
     // Ponta da seta: projeção linear de PROJECT_MINUTES na direção do movimento
     const leadKm = Math.max((mv.speedKmh * PROJECT_MINUTES) / 60, 5);
