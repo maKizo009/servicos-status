@@ -3435,7 +3435,11 @@ function renderHero(){
 
   const estadoEnergia = estadoDaEnergia(severidadeEnergia(copel || {}));
   const ucs = dCopel.totalConsumers || 0;
+  /* Água: fonte não consultada é "Sem dado", não "Atenção" — o status warn da
+     Sanepar não consultada não é uma ocorrência conhecida (mesma regra do chip
+     do card). */
   const estadoAgua = !sanepar ? 'normal'
+    : (sanepar.data && sanepar.data.consultaFalhou) ? 'sem_dado'
     : sanepar.status === 'critical' ? 'alerta' : sanepar.status === 'warn' ? 'atencao' : 'normal';
   const estadoChuva = chuva.agora > 0 ? 'atencao' : 'normal';
 
