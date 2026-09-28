@@ -1547,8 +1547,13 @@ html.trocando-tema, html.trocando-tema *{transition:none !important}
   background:var(--md-sys-color-surface-container);box-shadow:var(--md-elevation-2);
   margin-top:14px;padding:16px;display:flex;flex-direction:column;gap:14px
 }
-.hero-card[data-alerta="laranja"]{box-shadow:var(--md-elevation-2),inset 0 0 0 1px var(--a1)}
-.hero-card[data-alerta="vermelho"]{box-shadow:var(--md-elevation-2),inset 0 0 0 1px var(--r1)}
+.hero-card[data-alerta="laranja"],
+.hero-card[data-alerta="vermelho"]{
+  /* Sem anel de 1px: o `inset 0 0 0 1px` virava uma linha solta e dura em volta
+     do card (o dono pediu para tirar em 28/09/2026). O nível do alerta já é dito
+     pelo título, pelo ícone tonal e pela faixa de takeover — a linha era só ruído. */
+  box-shadow:var(--md-elevation-2)
+}
 .hero-head{display:flex;align-items:flex-start;gap:12px}
 .hero-lead{
   width:40px;height:40px;border-radius:50%;display:grid;place-items:center;flex:none;
