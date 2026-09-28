@@ -13,6 +13,7 @@ import {
 	CHEGADA_KM,
 	desfechoDoEpisodio,
 	fecharEpisodio,
+	formatarRelatorioTexto,
 	resumoDissipacao,
 } from "../src/dissipacao.js";
 
@@ -206,5 +207,37 @@ describe("resumo do livro", () => {
 		const r = resumoDissipacao([comDado, semDado]);
 		expect(r.isoladosComDado).toBe(1);
 		expect(r.isolados).toBe(1);
+	});
+});
+
+describe("texto do relatório (formatador único)", () => {
+	test("livro vazio avisa que ainda não há episódios", () => {
+		const t = formatarRelatorioTexto([], 14);
+		expect(t).toContain("Livro da dissipação");
+		expect(t).toContain("Ainda sem episódios");
+	});
+
+	test("com episódios conta os desfechos e declara as limitações", () => {
+		const eps = [
+			fecharEpisodio([a({ medidoEm: T0, distKm: 12, chuva6hMm: 4 })]),
+			fecharEpisodio([a({ medidoEm: T0, distKm: 9 })]),
+			fecharEpisodio([
+				a({ medidoEm: T0, distKm: 120, maxDbz: 58 }),
+				a({
+					medidoEm: T0 + min(10),
+					distKm: 100,
+					maxDbz: 58,
+				}),
+			]),
+		];
+		const t = formatarRelatorioTexto(eps, 7);
+		expect(t).toContain("chegou e molhou a estação : 1");
+		expect(t).toContain("chegou seco (eco em altura): 1");
+		expect(t).toContain("sumiu antes de chegar    : 1");
+		expect(t).toContain("dos que chegaram, molharam: 50%");
+		// limitação tem que estar no TEXTO (não só no código)
+		expect(t).toContain("não distingue dissipação real");
+		expect(t).toContain("sem atribuição célula→estação");
+		expect(t).toContain("💧");
 	});
 });

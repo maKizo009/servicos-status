@@ -237,6 +237,75 @@ export interface ResumoDissipacao {
 	isoladosComDado: number;
 }
 
+/**
+ * Texto do relatório (mesmo conteúdo no script e no endpoint — formatador ÚNICO
+ * para não divergir). Pura: recebe episódios + janela, devolve o texto.
+ */
+export function formatarRelatorioTexto(eps: Episodio[], dias: number): string {
+	const r = resumoDissipacao(eps);
+	const fmtHora = (ms: number) =>
+		new Date(ms).toLocaleString("pt-BR", {
+			day: "2-digit",
+			month: "2-digit",
+			hour: "2-digit",
+			minute: "2-digit",
+			timeZone: "America/Sao_Paulo",
+		});
+	const linhas: string[] = [
+		`📕 Livro da dissipação — últimos ${dias} dias`,
+		`   episódios de núcleo: ${r.episodios}`,
+	];
+	if (r.episodios === 0) {
+		linhas.push(
+			"   Ainda sem episódios suficientes — o livro começou a gravar agora;",
+			"   a estatística fica boa depois de alguns eventos de chuva.",
+		);
+		return linhas.join("\n");
+	}
+	linhas.push(
+		"",
+		"Desfecho:",
+		`   chegou e molhou a estação : ${r.chegouEMolhou}`,
+		`   chegou seco (eco em altura): ${r.chegouSeco}`,
+		`   dissipou no caminho      : ${r.dissipouNoCaminho}`,
+		`   sumiu antes de chegar    : ${r.sumiuAntes}`,
+		"",
+		`   chegaram em Ipiranga (≤${CHEGADA_KM} km): ${r.chegaram}`,
+		`   dos que chegaram, molharam: ${r.pctChegouMolhando}%`,
+		`   perderam ≥${QUEDA_RELEVANTE_DBZ} dBZ no caminho: ${r.pctEnfraqueceu}%`,
+		`   ΔdBZ médio do episódio: ${r.deltaDbzMedio}`,
+		`   dBZ médio na chegada: ${r.dbzMedioNaChegada}`,
+	);
+	if (r.isoladosComDado > 0) {
+		linhas.push(
+			`   episódios de núcleo ISOLADO: ${r.isolados}/${r.isoladosComDado} (com dado)`,
+		);
+	}
+	linhas.push("", "Episódios (mais recentes primeiro):");
+	for (const e of [...eps].reverse().slice(0, 25)) {
+		const marcador =
+			e.desfecho === "chegou_e_molhou"
+				? "💧"
+				: e.desfecho === "chegou_seco"
+					? "🌫️"
+					: e.desfecho === "dissipou_no_caminho"
+						? "📉"
+						: "❓";
+		linhas.push(
+			`   ${marcador} ${fmtHora(e.inicioEm)} | ${e.amostras} ciclos (${e.duracaoMin} min) | ` +
+				`${e.dbzInicial}→${e.dbzFinal} dBZ (Δ${e.deltaDbz}) | chegou a ${e.distMinKm.toFixed(0)} km | ` +
+				`chuva ${e.chuvaNoEpisodioMm} mm | ${e.desfecho}`,
+		);
+	}
+	linhas.push(
+		"",
+		"⚠️  \"sumiu antes de chegar\" não distingue dissipação real, queda abaixo do",
+		"    limiar de detecção e saída do grid (radar mede eco em altura); a chuva é",
+		"    contada no PERÍODO do episódio, sem atribuição célula→estação.",
+	);
+	return linhas.join("\n");
+}
+
 /** Números do livro. Função pura: recebe episódios, devolve o resumo. */
 export function resumoDissipacao(eps: Episodio[]): ResumoDissipacao {
 	const chegadas = eps.filter((e) => e.distMinKm <= CHEGADA_KM);
