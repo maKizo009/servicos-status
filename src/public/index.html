@@ -2496,7 +2496,7 @@ function renderCards(services){
           const uc=ev.consumers>0?`${ev.consumers} UCs`:'—';
           return `${fmtTime(ev.timestamp)} · ${b} · ${uc}`;
         });
-        avisos=`Avisos recentes (48 h): ${itens.join(' · ')}${recentes.length>2?` (+${recentes.length-2})`:''}`;
+        avisos=`Avisos recentes (48 h): ${itens.join(' · ')}${recentes.length>2?` (+${recentes.length-2} avisos)`:''}`;
       }
 
       /* Detalhes: só o que sobra (bairro por bairro, duração), atrás de um
