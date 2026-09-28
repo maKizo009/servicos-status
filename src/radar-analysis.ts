@@ -166,12 +166,20 @@ export function formatRainEntityAlert(opts: {
 	// uma frase só, sem repetir "pode dissipar" duas vezes.
 	const isolado = opts.isolado === true;
 	const recente = opts.framesVivo === 1;
-	const perfil =
-		isolado && (recente || dissipa)
-			? " Núcleo isolado e recente no radar — pulso curto, pode dissipar antes de chegar."
-			: isolado
-				? " Núcleo isolado (sem outros núcleos por perto)."
-				: null;
+	// Uma frase por fato, sem repetir "pode dissipar" e SEM afirmar "recente"
+	// quando o núcleo já vinha nos 3 frames (mentira pega ao vivo 28/09/2026 00:00:
+	// núcleo com framesVivo=3 saiu como "recente no radar, pulso curto").
+	const perfil = isolado
+		? ` Núcleo isolado${
+				recente ? " e recente no radar" : " (sem outros núcleos por perto)"
+			}${
+				dissipa
+					? recente
+						? " — pulso curto, pode dissipar antes de chegar."
+						: " e enfraquecendo no caminho — pode dissipar antes de chegar."
+					: "."
+			}`
+		: null;
 	const ressalva = dissipa
 		? " O núcleo está enfraquecendo no caminho — pode dissipar antes de chegar."
 		: "";

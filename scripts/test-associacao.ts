@@ -206,7 +206,7 @@ describe("perfil do núcleo: isolado e recente (pedido do dono 27/09/2026)", () 
 		expect(f3.cells[1]?.framesVivo).toBe(1); // surgiu no último frame
 	});
 
-	test("texto: pulso isolado e recente avisa que pode dissipar", () => {
+	test("texto: isolado e recente SEM enfraquecer não promete dissipação", () => {
 		const txt = formatRainEntityAlert({
 			level: "watch",
 			kind: "nucleo",
@@ -218,7 +218,8 @@ describe("perfil do núcleo: isolado e recente (pedido do dono 27/09/2026)", () 
 			framesVivo: 1,
 		});
 		expect(txt).toContain("Núcleo isolado e recente no radar");
-		expect(txt).toContain("pulso curto");
+		// "pulso curto, pode dissipar" só com evidência de enfraquecimento.
+		expect(txt).not.toContain("pulso curto");
 	});
 
 	test("texto: núcleo isolado sem tendência só reporta o isolamento", () => {
@@ -234,5 +235,60 @@ describe("perfil do núcleo: isolado e recente (pedido do dono 27/09/2026)", () 
 		});
 		expect(txt).toContain("Núcleo isolado (sem outros núcleos por perto)");
 		expect(txt).not.toContain("pulso curto");
+	});
+});
+
+describe("perfil do núcleo não pode mentir sobre a idade (pego ao vivo 28/09 00:00)", () => {
+	test("núcleo antigo (frames=3) enfraquecendo NÃO é 'recente' nem 'pulso curto'", () => {
+		const txt = formatRainEntityAlert({
+			level: "alert",
+			kind: "nucleo",
+			intensity: "heavy",
+			distKm: 42.9,
+			approach: "approaching",
+			etaMin: 109,
+			isolado: true,
+			framesVivo: 3,
+			tendencia: "enfraquecendo",
+		});
+		expect(txt).not.toContain("recente");
+		expect(txt).not.toContain("pulso curto");
+		expect(txt).toContain("Núcleo isolado (sem outros núcleos por perto)");
+		expect(txt).toContain("enfraquecendo no caminho");
+		expect(txt).toContain("pode dissipar antes de chegar");
+		// não repete a ressalva
+		expect(txt.match(/pode dissipar antes de chegar/g)?.length).toBe(1);
+	});
+
+	test("isolado + recente + enfraquecendo: uma frase só", () => {
+		const txt = formatRainEntityAlert({
+			level: "watch",
+			kind: "nucleo",
+			intensity: "heavy",
+			distKm: 30,
+			approach: "crossing",
+			etaMin: null,
+			isolado: true,
+			framesVivo: 1,
+			tendencia: "enfraquecendo",
+		});
+		expect(txt).toContain("Núcleo isolado e recente no radar — pulso curto");
+		expect(txt.match(/pode dissipar/g)?.length).toBe(1);
+	});
+
+	test("não isolado + enfraquecendo: só a ressalva, sem falar de isolamento", () => {
+		const txt = formatRainEntityAlert({
+			level: "alert",
+			kind: "nucleo",
+			intensity: "extreme",
+			distKm: 60,
+			approach: "approaching",
+			etaMin: 90,
+			isolado: false,
+			framesVivo: 2,
+			tendencia: "enfraquecendo",
+		});
+		expect(txt).not.toContain("isolado");
+		expect(txt).toContain("enfraquecendo no caminho");
 	});
 });
