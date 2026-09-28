@@ -1710,6 +1710,9 @@ html.trocando-tema, html.trocando-tema *{transition:none !important}
 .svc-topo .chip-estado{margin-left:auto}
 .svc-msg{margin:0;font-size:13px;line-height:1.5;color:var(--text2)}
 .svc-manut{margin:0;font-size:12.5px;font-weight:600;line-height:1.5;color:var(--a5)}
+/* Aviso que já passou (energia/água): fato datado do histórico do monitor, em
+   tom neutro — não é estado atual, então não pinta cor de alerta. */
+.svc-avisos{margin:0;font-size:12.5px;font-weight:600;line-height:1.5;color:var(--text2)}
 .svc-rodape{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
 .svc-fonte{
   display:inline-flex;align-items:center;gap:4px;min-height:44px;font-size:12.5px;
@@ -2285,6 +2288,7 @@ function formatCopelPrevisao(ev){
 const LIMIAR_ENERGIA={atencao:1,critico:10}; // % das UCs do município
 function severidadeEnergia(svc){
   const d=(svc&&svc.data)||{};
+  if(d.consultaFalhou)return{nivel:'info',rotulo:'Sem dado',semDado:true};
   const ucs=d.totalConsumers||0;
   const pct=Number(d.pctAffected)||0;
   if(!ucs)return{nivel:'ok',rotulo:'Normal'};
@@ -2425,17 +2429,26 @@ function renderCards(services){
     const ico = name==='Sanepar' ? icoMS('water_drop','s22') : icoMS('bolt','s22');
     const nomeSvc = name==='Copel' ? 'Copel · Energia' : name==='Sanepar' ? 'Sanepar · Água' : esc(br.label);
 
-    let chaveEstado='normal', msg='', manutencao='', detalhes='';
+    let chaveEstado='normal', msg='', manutencao='', avisos='', detalhes='';
 
     if(br.cat==='utility'){
       const activeEvents=svc.data?.activeEvents || [];
+      /* Avisos das últimas 48 h, do histórico do PRÓPRIO monitor (event_history):
+         o push avisa, mas a página não tinha ONDE mostrar o aviso depois (o dono
+         recebeu push de 24 UCs e o card dizia "Nenhuma interrupção ativa" —
+         28/09/2026). Com ocorrência ativa a própria mensagem já conta. */
+      const recentes=svc.data?.recentEvents || [];
       const totalConsumers=svc.data?.totalConsumers || 0;
       const ativos=[...activeEvents].sort((a,b)=>String(a.dataInicio||a.inicio||'').localeCompare(String(b.dataInicio||b.inicio||'')));
       const maisAntigo=ativos[0];
 
       if(name==='Copel'){
         chaveEstado=estadoDaEnergia(severidadeEnergia(svc));
-        if(totalConsumers>0){
+        if(svc.data?.consultaFalhou){
+          /* Sem consulta confirmada o card NÃO afirma "Sem ocorrências" (antes
+             a lista vazia de uma consulta falhada virava "Normal"). */
+          msg='Não foi possível consultar a Copel agora.';
+        }else if(totalConsumers>0){
           const partes=[];
           const bairros=[...new Set(ativos.map(ev=>sentenceCase(String(ev.bairro||'Ipiranga').toLowerCase())))];
           if(bairros.length===1) partes.push(`Bairro ${bairros[0]}`);
@@ -2463,8 +2476,11 @@ function renderCards(services){
           manutencao=`Manutenção programada: ${quando}${prog.length>1?` (+${prog.length-1})`:''}`;
         }
       }else{
-        chaveEstado = st==='critical' ? 'alerta' : st==='warn' ? 'atencao' : 'normal';
-        if(ativos.length){
+        chaveEstado = svc.data?.consultaFalhou ? 'sem_dado'
+          : st==='critical' ? 'alerta' : st==='warn' ? 'atencao' : 'normal';
+        if(svc.data?.consultaFalhou){
+          msg='Não foi possível consultar a Sanepar agora.';
+        }else if(ativos.length){
           const b0=ativos[0];
           const partes=[b0?.bairro||b0?.cidade, b0?.inicio?`início ${b0.inicio}`:null, b0?.fim?`retorno ${b0.fim}`:null].filter(Boolean);
           msg=(ativos.length===1?'Interrupção de água em andamento.':`${ativos.length} interrupções de água em andamento.`)
@@ -2472,6 +2488,15 @@ function renderCards(services){
         }else{
           msg='Abastecimento normal em Ipiranga.';
         }
+      }
+
+      if(!ativos.length && recentes.length){
+        const itens=recentes.slice(0,2).map(ev=>{
+          const b=sentenceCase(String(ev.bairro||'Ipiranga').toLowerCase());
+          const uc=ev.consumers>0?`${ev.consumers} UCs`:'—';
+          return `${fmtTime(ev.timestamp)} · ${b} · ${uc}`;
+        });
+        avisos=`Avisos recentes (48 h): ${itens.join(' · ')}${recentes.length>2?` (+${recentes.length-2})`:''}`;
       }
 
       /* Detalhes: só o que sobra (bairro por bairro, duração), atrás de um
@@ -2547,6 +2572,7 @@ function renderCards(services){
           <span class="chip-estado" data-nivel="${nivel}">${esc(ESTADOS[chaveEstado].rotulo)}</span>
         </div>
         <p class="svc-msg">${esc(msg)}</p>
+        ${avisos?`<p class="svc-avisos">${esc(avisos)}</p>`:''}
         ${manutencao?`<p class="svc-manut">${esc(manutencao)}</p>`:''}
         <div class="svc-rodape">${fonteHtml}${fonteVelha}</div>
         ${detalhes}
@@ -3264,6 +3290,10 @@ function entradaPainel(){
    =================================================================== */
 const ESTADOS = {
   normal:     { rotulo: 'Normal',     nivel: 'ok' },
+  /* Sem dado: a fonte não foi consultada com sucesso. NÃO é "Normal" (o site
+     não pode afirmar que a rede está bem sem ter consultado) nem "Atenção"
+     (não há ocorrência conhecida) — é a palavra honesta para ignorância. */
+  sem_dado:   { rotulo: 'Sem dado',   nivel: 'info' },
   atencao:    { rotulo: 'Atenção',    nivel: 'warn' },
   alerta:     { rotulo: 'Alerta',     nivel: 'crit' },
   emergencia: { rotulo: 'Emergência', nivel: 'emerg' },
@@ -3281,6 +3311,7 @@ function estadoDaFaixa(f) {
 }
 /* Severidade da energia (severidadeEnergia) → palavra da escala. */
 function estadoDaEnergia(sev) {
+  if (sev && sev.semDado) return 'sem_dado';
   if (!sev || sev.nivel === 'ok' || sev.nivel === 'info') return 'normal';
   if (sev.nivel === 'crit') return 'alerta';
   return 'atencao';

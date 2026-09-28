@@ -1,4 +1,5 @@
 import type { AppConfig } from "./config.js";
+import { getRecentEvents } from "./db.js";
 import { logger } from "./logger.js";
 import { checkCopel } from "./probes/copel.js";
 import { checkSanepar } from "./probes/sanepar.js";
@@ -15,6 +16,9 @@ export interface AllCheckData {
 	newCopelOutages: CopelOutage[];
 	saneparInterruptions: SaneparInterruption[];
 	newSaneparInterruptions: SaneparInterruption[];
+	/** A consulta à fonte foi confirmada? Lista vazia + false = "não sei". */
+	copelConsultaOk: boolean;
+	saneparConsultaOk: boolean;
 	timestamp: number;
 }
 
@@ -35,7 +39,7 @@ export async function runAllChecks(
 				config.copelTimeoutMs,
 				tracker,
 			)
-		: { allOutages: [], newOutages: [] };
+		: { allOutages: [], newOutages: [], consultaOk: false };
 
 	const saneparRes = config.municipio
 		? await checkSanepar(
@@ -47,13 +51,15 @@ export async function runAllChecks(
 				config.municipio,
 				tracker,
 			)
-		: { allInterruptions: [], newInterruptions: [] };
+		: { allInterruptions: [], newInterruptions: [], consultaOk: false };
 
 	return {
 		copelOutages: copelRes.allOutages,
 		newCopelOutages: copelRes.newOutages,
 		saneparInterruptions: saneparRes.allInterruptions,
 		newSaneparInterruptions: saneparRes.newInterruptions,
+		copelConsultaOk: copelRes.consultaOk,
+		saneparConsultaOk: saneparRes.consultaOk,
 		timestamp,
 	};
 }
@@ -118,8 +124,34 @@ export async function buildUnifiedReport(
 	const interrupcaoIds = new Set(
 		interrupcoes.map((o) => o.idOcorrencia || `${o.bairro}|${o.dataInicio}`),
 	);
-	const copelStatusConfirmed =
-		interrupcoes.length > 0 ? "critical" : "ok";
+	/* Consulta NÃO confirmada não vira "ok". A lista vazia de uma consulta que
+	   falhou é IGNORÂNCIA, não ausência de ocorrências — e o site afirmava "Sem
+	   ocorrências" com a API da Copel fora do ar (relato do dono 28/09/2026). */
+	const copelConsultaOk = data.copelConsultaOk !== false;
+	const copelStatusConfirmed: "ok" | "warn" | "critical" = !copelConsultaOk
+		? "warn"
+		: interrupcoes.length > 0
+			? "critical"
+			: "ok";
+
+	/* Memória dos avisos (janela de 48 h): o card mostrava só o estado
+	   instantâneo, então o push não deixava rastro na página depois que a luz
+	   voltava. Falha aqui nunca derruba o relatório. */
+	const buscarAvisos = async (
+		source: string,
+	): Promise<Awaited<ReturnType<typeof getRecentEvents>>> => {
+		try {
+			return await getRecentEvents(source, Date.now() - 48 * 3_600_000, 5);
+		} catch (err: unknown) {
+			logger.warn("Falha ao ler avisos recentes do histórico", {
+				source,
+				error: err instanceof Error ? err.message : String(err),
+			});
+			return [];
+		}
+	};
+	const avisosCopel = await buscarAvisos("copel");
+	const avisosSanepar = await buscarAvisos("sanepar");
 
 	// Idade da interrupção mais antiga. Sem isso o card mostra só a contagem de
 	// UCs — que fica IGUAL por horas numa queda longa e parece scraper travado
@@ -189,8 +221,9 @@ export async function buildUnifiedReport(
 		name: "Copel",
 		category: "utility",
 		status: copelStatusConfirmed,
-		details:
-			copelStatusConfirmed === "ok"
+		details: !copelConsultaOk
+			? "Não foi possível consultar a Copel agora"
+			: copelStatusConfirmed === "ok"
 				? emergenciasNaoConfirmadas.length > 0
 					? `${emergenciasNaoConfirmadas.length} ${emergenciasNaoConfirmadas.length === 1 ? "solicitação" : "solicitações"} não confirmadas — sem interrupção ativa`
 					: "Sem ocorrências"
@@ -215,23 +248,32 @@ export async function buildUnifiedReport(
 			duplicatesFound: copelDupes,
 			scheduledOutages,
 			emergencyRequests: emergenciasNaoConfirmadas,
+			consultaFalhou: !copelConsultaOk,
+			recentEvents: avisosCopel,
 		},
 	});
 
-	const saneparStatus =
-		data.saneparInterruptions.length > 0 ? "critical" : "ok";
+	const saneparConsultaOk = data.saneparConsultaOk !== false;
+	const saneparStatus: "ok" | "warn" | "critical" = !saneparConsultaOk
+		? "warn"
+		: data.saneparInterruptions.length > 0
+			? "critical"
+			: "ok";
 	services.push({
 		name: "Sanepar",
 		category: "utility",
 		status: saneparStatus,
-		details:
-			saneparStatus === "ok"
+		details: !saneparConsultaOk
+			? "Não foi possível consultar a Sanepar agora"
+			: saneparStatus === "ok"
 				? "Sem interrupções"
 				: `${data.saneparInterruptions.length} interrupção(ões)`,
 		timestamp: data.timestamp,
 		data: {
 			activeEvents: data.saneparInterruptions,
 			newEvents: data.newSaneparInterruptions,
+			consultaFalhou: !saneparConsultaOk,
+			recentEvents: avisosSanepar,
 		},
 	});
 

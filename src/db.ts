@@ -244,6 +244,34 @@ export async function saveEventLog(
 	});
 }
 
+/**
+ * Últimos eventos de um serviço (copel/sanepar), do mais recente ao mais antigo,
+ * dentro da janela. É a MEMÓRIA dos avisos: o card de Serviços mostrava só o
+ * estado instantâneo, então um push recebido não deixava rastro nenhum na página
+ * depois que a luz voltava (o dono recebeu push de 24 UCs e o site dizia
+ * "Nenhuma interrupção ativa" — 28/09/2026).
+ */
+export async function getRecentEvents(
+	source: string,
+	sinceMs: number,
+	limit = 5,
+): Promise<EventLogItem[]> {
+	const db = await getDbClient();
+	const res = await db.execute({
+		sql: "SELECT id, source, title, bairro, details, consumers, timestamp FROM event_history WHERE source = ? AND timestamp >= ? ORDER BY timestamp DESC LIMIT ?",
+		args: [source, sinceMs, limit],
+	});
+	return res.rows.map((r: Record<string, unknown>) => ({
+		id: Number(r.id),
+		source: String(r.source),
+		title: String(r.title),
+		bairro: String(r.bairro ?? ""),
+		details: String(r.details ?? ""),
+		consumers: Number(r.consumers ?? 0),
+		timestamp: Number(r.timestamp),
+	}));
+}
+
 export async function getDailyStatsSummary() {
 	const db = await getDbClient();
 	const now = Date.now();

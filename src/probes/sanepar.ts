@@ -131,6 +131,9 @@ export function parseSaneparHtml(
 export interface SaneparCheckResult {
 	allInterruptions: SaneparInterruption[];
 	newInterruptions: SaneparInterruption[];
+	/** false = consulta NÃO confirmada (sem view_dom_id, nenhum display lido).
+	 *  Lista vazia com `consultaOk:false` é "não sei", nunca "sem interrupções". */
+	consultaOk: boolean;
 }
 
 export async function checkSanepar(
@@ -148,9 +151,12 @@ export async function checkSanepar(
 
 	if (domIds.length === 0) {
 		logger.warn("Sanepar: nenhum view_dom_id encontrado");
-		return { allInterruptions: [], newInterruptions: [] };
+		return { allInterruptions: [], newInterruptions: [], consultaOk: false };
 	}
 
+	// Quantos displays foram lidos de fato: lista vazia por falha de leitura não
+	// pode virar "abastecimento normal" no site (falha silenciosa).
+	let displaysLidos = 0;
 	for (let i = 0; i < Math.min(domIds.length, displays.length); i++) {
 		const display = displays[i];
 		const domId = domIds[i];
@@ -162,6 +168,7 @@ export async function checkSanepar(
 			timeoutMs,
 		);
 		if (!html) continue;
+		displaysLidos++;
 
 		const interruptions = parseSaneparHtml(html, municipio);
 		for (const intr of interruptions) {
@@ -181,5 +188,9 @@ export async function checkSanepar(
 		});
 	}
 
-	return { allInterruptions, newInterruptions };
+	return {
+		allInterruptions,
+		newInterruptions,
+		consultaOk: displaysLidos > 0,
+	};
 }

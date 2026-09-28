@@ -13,6 +13,13 @@ function normalizeString(str: string): string {
 export interface CopelCheckResult {
 	allOutages: CopelOutage[];
 	newOutages: CopelOutage[];
+	/**
+	 * false = a consulta NÃO foi confirmada (HTTP != 200, corpo sem `ocorrencias`,
+	 * JSON inválido, rede/timeout). Lista vazia com `consultaOk:false` significa
+	 * "não sei", NUNCA "sem ocorrências" — o site já afirmava "Sem ocorrências"
+	 * com a API da Copel fora do ar (falha silenciosa, relato do dono 28/09/2026).
+	 */
+	consultaOk: boolean;
 }
 
 export async function checkCopel(
@@ -31,13 +38,19 @@ export async function checkCopel(
 		});
 		if (!resp.ok) {
 			logger.warn("COPEL API returned non-ok status", { status: resp.status });
-			return { allOutages: [], newOutages: [] };
+			return { allOutages: [], newOutages: [], consultaOk: false };
 		}
 
 		const data = (await resp.json()) as {
 			ocorrencias?: Record<string, unknown>[];
 		};
-		const ocorrencias = data.ocorrencias ?? [];
+		// Corpo 200 SEM a chave `ocorrencias` não é "sem ocorrências": é resposta
+		// quebrada (a API sempre manda a lista, mesmo vazia).
+		if (!Array.isArray(data.ocorrencias)) {
+			logger.warn("COPEL API: resposta sem lista de ocorrências");
+			return { allOutages: [], newOutages: [], consultaOk: false };
+		}
+		const ocorrencias = data.ocorrencias;
 
 		const targetMunicipio = normalizeString(municipio);
 
@@ -95,7 +108,8 @@ export async function checkCopel(
 	} catch (err: unknown) {
 		const msg = err instanceof Error ? err.message : String(err);
 		logger.error("Erro ao verificar COPEL", { error: msg });
+		return { allOutages: [], newOutages: [], consultaOk: false };
 	}
 
-	return { allOutages, newOutages };
+	return { allOutages, newOutages, consultaOk: true };
 }
