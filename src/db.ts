@@ -2,6 +2,7 @@ import {
 	type Client,
 	createClient as createWebClient,
 } from "@libsql/client/web";
+import type { AmostraNucleo } from "./dissipacao.js";
 import { logger } from "./logger.js";
 import type {
 	WeatherBulletin,
@@ -93,9 +94,35 @@ export async function initDb(): Promise<Client> {
 				last_seen_at INTEGER NOT NULL
 			)`,
 				`CREATE TABLE IF NOT EXISTS push_sent (
-				evento TEXT PRIMARY KEY,
-				enviado_at INTEGER NOT NULL
-			)`,
+					evento TEXT PRIMARY KEY,
+					enviado_at INTEGER NOT NULL
+				)`,
+				// Livro da dissipação: uma linha por núcleo relevante por ciclo.
+				// Serve para medir a hipótese do dono ("essas chuvas se dissipam
+				// conforme chegam aqui") com dado do próprio radar, em vez de
+				// impressão visual. Ver src/dissipacao.ts.
+				`CREATE TABLE IF NOT EXISTS radar_dissipacao (
+					id INTEGER PRIMARY KEY AUTOINCREMENT,
+					medido_em INTEGER NOT NULL,
+					lat REAL NOT NULL,
+					lon REAL NOT NULL,
+					dist_km REAL NOT NULL,
+					max_dbz REAL NOT NULL,
+					intensity TEXT NOT NULL,
+					kind TEXT NOT NULL,
+					isolado INTEGER,
+					frames_vivo INTEGER,
+					delta_dbz REAL,
+					tendencia TEXT,
+					approach TEXT,
+					eta_min REAL,
+					zona TEXT NOT NULL,
+					nivel TEXT,
+					chuva_1h_mm REAL,
+					chuva_6h_mm REAL
+				)`,
+				`CREATE INDEX IF NOT EXISTS idx_radar_dissipacao_medido
+					ON radar_dissipacao (medido_em)`,
 				`CREATE TABLE IF NOT EXISTS app_events (
 				id INTEGER PRIMARY KEY AUTOINCREMENT,
 				tipo TEXT NOT NULL,
@@ -303,6 +330,93 @@ export async function saveRadarCache(data: WeatherRadarData): Promise<void> {
 			data.lastSuccessTime,
 			Date.now(),
 		],
+	});
+}
+
+/**
+ * Grava uma AMOSTRA por núcleo relevante do ciclo (livro da dissipação).
+ * Devolve quantas linhas entrou. Nunca lança por si: quem chama trata.
+ */
+export async function salvarAmostrasDissipacao(
+	amostras: AmostraNucleo[],
+): Promise<number> {
+	if (amostras.length === 0) return 0;
+	const db = await getDbClient();
+	await db.batch(
+		amostras.map((a) => ({
+			sql: "INSERT INTO radar_dissipacao (medido_em, lat, lon, dist_km, max_dbz, intensity, kind, isolado, frames_vivo, delta_dbz, tendencia, approach, eta_min, zona, nivel, chuva_1h_mm, chuva_6h_mm) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+			args: [
+				a.medidoEm,
+				a.lat,
+				a.lon,
+				a.distKm,
+				a.maxDbz,
+				a.intensity,
+				a.kind,
+				a.isolado === null ? null : a.isolado ? 1 : 0,
+				a.framesVivo,
+				a.deltaDbz,
+				a.tendencia,
+				a.approach,
+				a.etaMin,
+				a.zona,
+				a.nivel,
+				a.chuva1hMm,
+				a.chuva6hMm,
+			],
+		})),
+		"write",
+	);
+	return amostras.length;
+}
+
+/**
+ * Apaga amostras mais antigas que `dias` (retenção padrão: 180 dias — o livro
+ * serve para estatística de comportamento, não para auditoria eterna).
+ */
+export async function limparAmostrasDissipacaoAntigas(
+	dias = 180,
+): Promise<number> {
+	const db = await getDbClient();
+	const limite = Date.now() - dias * 24 * 3600_000;
+	const res = await db.execute({
+		sql: "DELETE FROM radar_dissipacao WHERE medido_em < ?",
+		args: [limite],
+	});
+	return res.rowsAffected ?? 0;
+}
+
+/** Lê as amostras do livro desde `desdeMs` (ordem cronológica). */
+export async function lerAmostrasDissipacao(
+	desdeMs: number,
+	limite = 20000,
+): Promise<AmostraNucleo[]> {
+	const db = await getDbClient();
+	const res = await db.execute({
+		sql: "SELECT * FROM radar_dissipacao WHERE medido_em >= ? ORDER BY medido_em ASC LIMIT ?",
+		args: [desdeMs, limite],
+	});
+	return res.rows.map((r) => {
+		const row = r as Record<string, unknown>;
+		return {
+			medidoEm: Number(row.medido_em),
+			lat: Number(row.lat),
+			lon: Number(row.lon),
+			distKm: Number(row.dist_km),
+			maxDbz: Number(row.max_dbz),
+			intensity: String(row.intensity),
+			kind: String(row.kind),
+			isolado: row.isolado === null ? null : Number(row.isolado) === 1,
+			framesVivo: row.frames_vivo === null ? null : Number(row.frames_vivo),
+			deltaDbz: row.delta_dbz === null ? null : Number(row.delta_dbz),
+			tendencia: row.tendencia === null ? null : String(row.tendencia),
+			approach: row.approach === null ? null : String(row.approach),
+			etaMin: row.eta_min === null ? null : Number(row.eta_min),
+			zona: String(row.zona),
+			nivel: row.nivel === null ? null : String(row.nivel),
+			chuva1hMm: row.chuva_1h_mm === null ? null : Number(row.chuva_1h_mm),
+			chuva6hMm: row.chuva_6h_mm === null ? null : Number(row.chuva_6h_mm),
+		};
 	});
 }
 

@@ -33,6 +33,7 @@ import {
 	ANALYSIS_TILE_PX,
 	getRadarNowcast,
 } from "./nowcast-service.js";
+import type { AmostraNucleo } from "./dissipacao.js";
 import {
 	fmtEta,
 	formatRainEntityAlert,
@@ -228,6 +229,9 @@ export async function syncWeatherCycle(): Promise<WeatherState> {
 	// radar, usada na narração da transição e no push).
 	let nucleoTendencia: "intensificando" | "estavel" | "enfraquecendo" | null =
 		null;
+	// Livro da dissipação: amostras do ciclo (preenchidas no bloco do radar,
+	// gravadas no banco depois que o nível do alerta do ciclo existe).
+	const amostrasLivro: AmostraNucleo[] = [];
 	logger.info("Starting weather & radar sync cycle...");
 	// Os avisos oficiais (INMET/Simepar/Defesa Civil) não dependem de nada do
 	// ciclo e levam até 8 s: dispara JUNTO com o primeiro lote em vez de esperar
@@ -383,6 +387,31 @@ export async function syncWeatherCycle(): Promise<WeatherState> {
 							framesVivo: t.framesVivo ?? null,
 						})
 					: `ℹ️ Monitoramento: sem chuva relevante no radar a caminho de Ipiranga.`;
+			}
+			// Livro da dissipação: só entidades RELEVANTES (alert/watch) — monitor
+			// não interessa para medir chuva que chega. O nível unificado do ciclo é
+			// anexado depois (quando ele existe).
+			for (const t of nowcast.threats) {
+				if (t.relevanceZone === "monitor") continue;
+				amostrasLivro.push({
+					medidoEm: Date.now(),
+					lat: t.lat,
+					lon: t.lon,
+					distKm: t.distToTargetKm,
+					maxDbz: t.maxDbz,
+					intensity: t.intensity,
+					kind: t.kind,
+					isolado: t.isolado ?? null,
+					framesVivo: t.framesVivo ?? null,
+					deltaDbz: t.movement?.deltaDbz ?? null,
+					tendencia: t.movement?.tendencia ?? t.tendencia ?? null,
+					approach: t.threat?.approach ?? null,
+					etaMin: t.threat?.etaMin ?? null,
+					zona: t.relevanceZone,
+					nivel: null,
+					chuva1hMm: maxAcc((e) => e.acc1hr),
+					chuva6hMm: maxAcc((e) => e.acc6hr),
+				});
 			}
 		}
 		// ── Solo sob demanda (regra do Dave 21/09/2026) ─────────────────────
@@ -656,6 +685,23 @@ export async function syncWeatherCycle(): Promise<WeatherState> {
 		);
 		state.alertaUnificado = unificado;
 		logAlertaUnificado(unificado);
+		// Livro da dissipação: grava as amostras do ciclo com o nível do alerta.
+		// Nunca quebra o ciclo — falha aqui é só log (regra do projeto).
+		if (amostrasLivro.length > 0) {
+			try {
+				const { salvarAmostrasDissipacao } = await import("./db.js");
+				for (const a of amostrasLivro) a.nivel = unificado.nivel;
+				const gravadas = await salvarAmostrasDissipacao(amostrasLivro);
+				logger.info("Livro da dissipação: amostras gravadas", {
+					gravadas,
+					nivel: unificado.nivel,
+				});
+			} catch (err) {
+				logger.warn("Livro da dissipação falhou (sem quebrar o ciclo)", {
+					error: String(err),
+				});
+			}
+		}
 		setCachedWeatherState(state);
 		// Push no celular (PWA): só laranja/vermelho, com cooldown.
 		// Nunca quebra o ciclo — falha de push é só log.
