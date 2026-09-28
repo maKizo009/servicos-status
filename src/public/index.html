@@ -2286,6 +2286,11 @@ function formatCopelPrevisao(ev){
    mudar o gatilho de notificação é outra decisão (não é UI).
    =================================================================== */
 const LIMIAR_ENERGIA={atencao:1,critico:10}; // % das UCs do município
+/* Queda de energia que vale o TOPO da página (e o amarelo no chip/tile): 20 UCs.
+   Num município de 6 mil UCs isso é ~0,3% e não move o limiar de %, mas são 20
+   casas sem luz — pedido do dono, 28/09/2026 ("o topo é para alertas, então é
+   muito importante ele aparecer quando há uma queda grande de energia"). */
+const LIMIAR_QUEDA_TOPO=20;
 function severidadeEnergia(svc){
   const d=(svc&&svc.data)||{};
   if(d.consultaFalhou)return{nivel:'info',rotulo:'Sem dado',semDado:true};
@@ -2294,6 +2299,7 @@ function severidadeEnergia(svc){
   if(!ucs)return{nivel:'ok',rotulo:'Normal'};
   if(pct>=LIMIAR_ENERGIA.critico)return{nivel:'crit',rotulo:'Crítico'};
   if(pct>=LIMIAR_ENERGIA.atencao)return{nivel:'warn',rotulo:'Atenção'};
+  if(ucs>=LIMIAR_QUEDA_TOPO)return{nivel:'warn',rotulo:'Atenção'};
   return{nivel:'info',rotulo:'Aviso'};
 }
 /* "1 UCs" / "1 ocorrências" → plural certo. */
@@ -3391,6 +3397,24 @@ function vereditoGeral(){
   if(chuva.agora>0){
     return {nivel:'warn',frase:'Chovendo em Ipiranga agora',
       sub:`${num(chuva.agora,1)} mm na última hora · ${num(chuva.em24h,1)} mm nas últimas 24 h.`};
+  }
+  /* Queda de energia ATIVA e grande assume o topo: o topo é lugar de alerta
+     (o dono recebeu push de 24 UCs sem luz e o topo dizia "Rio Uvaia em
+     atenção"). Fica ACIMA de chuva perto (fato acontecido pesa mais que núcleo
+     que pode dissipar, a própria observação dele) e ABAIXO de rio em
+     alerta/emergência — risco de alagamento é risco de vida, luz não é. */
+  if(semLuz>=LIMIAR_QUEDA_TOPO && rio.chave!=='alerta' && rio.chave!=='emergencia'){
+    const dCopel=(copel&&copel.data)||{};
+    const ativos=(dCopel.activeEvents||[]).slice().sort((a,b)=>
+      String(a.dataInicio||'').localeCompare(String(b.dataInicio||'')));
+    const ev=ativos.find(e=>Number(e.qtdConsumidores||0)>0) || ativos[0] || {};
+    const bairro=ev.bairro?sentenceCase(String(ev.bairro).toLowerCase()):'Ipiranga';
+    const desde=ev.dataInicio?` desde ${tempoDesdeCopel(ev.dataInicio)}`:'';
+    const volta=ev.dataInicio?` — previsão de volta ${formatCopelPrevisao(ev)}`:'';
+    const pct=(Number(dCopel.pctAffected)||0);
+    return {nivel:pct>=LIMIAR_ENERGIA.critico?'crit':'warn',
+      frase:`${consumidores(semLuz)} sem luz em ${bairro}`,
+      sub:`Queda de energia ativa${desde}${volta}. Dado da COPEL — pode mudar.`};
   }
   if(chuva.perto){
     const km=w.nearestThreatKm!=null?` a ~${num(w.nearestThreatKm,0)} km`:'';
