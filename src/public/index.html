@@ -4396,24 +4396,68 @@ function copyPrompt(provider, text) {
   if ('serviceWorker' in navigator) {
     navigator.serviceWorker.register('/sw.js').catch(() => {});
   }
-  // Botão de instalar: aparece quando o navegador autoriza (beforeinstallprompt)
   var btnInstall = document.getElementById('btnInstall');
   var deferredPrompt = null;
+  var jaInstalado = window.matchMedia('(display-mode: standalone)').matches ||
+    window.matchMedia('(display-mode: minimal-ui)').matches ||
+    window.navigator.standalone === true;
+  var mostrarBotao = () => { if (btnInstall && !jaInstalado) btnInstall.style.display = 'inline-flex'; };
+  // Chromium/Edge/Android avisam quando o site é instalável.
   window.addEventListener('beforeinstallprompt', (e) => {
     e.preventDefault();
     deferredPrompt = e;
-    if (btnInstall) btnInstall.style.display = 'inline-flex';
+    mostrarBotao();
   });
+  // Firefox e Safari NUNCA disparam beforeinstallprompt; alguns Chromium
+  // escondem "Instalar app" no menu (no desktop o item vive em
+  // "Salvar e compartilhar" → "Instalar página como app"). Sem um caminho
+  // manual o usuário simplesmente não instala — relato do dono 29/09/2026
+  // (instalava no Brave e não no Chrome).
+  setTimeout(mostrarBotao, 2500);
+
+  var AJUDA_ID = 'mi-instalar-ajuda';
+  function fecharAjuda() {
+    var el = document.getElementById(AJUDA_ID);
+    if (el) el.style.display = 'none';
+  }
+  function ajudaVisivel() {
+    var el = document.getElementById(AJUDA_ID);
+    return !!el && el.style.display !== 'none';
+  }
+  function mostrarAjuda() {
+    var el = document.getElementById(AJUDA_ID);
+    if (!el) {
+      el = document.createElement('div');
+      el.id = AJUDA_ID;
+      el.setAttribute('role', 'status');
+      el.style.cssText = 'position:fixed;left:50%;transform:translateX(-50%);bottom:18px;z-index:9999;width:min(92vw,420px);background:var(--md-sys-color-surface-container-high,#fff);color:var(--text,#111);border-radius:16px;box-shadow:0 12px 32px rgba(0,0,0,.3);padding:14px 16px;font-size:13px;line-height:1.55;text-align:left';
+      el.innerHTML = '<strong style="font-size:13.5px">Instalar o Monitor Ipiranga</strong>' +
+        '<div style="margin-top:6px">Android (Chrome, Edge, Opera): menu <strong>⋮</strong> → <strong>Instalar app</strong> (em alguns aparelhos aparece como "Adicionar à tela inicial").</div>' +
+        '<div style="margin-top:5px">iPhone/iPad (Safari): botão <strong>Compartilhar</strong> → <strong>Adicionar à Tela de Início</strong>.</div>' +
+        '<div style="margin-top:5px">Computador (Chrome, Edge): menu <strong>⋮</strong> → <strong>Salvar e compartilhar</strong> → <strong>Instalar página como app</strong>.</div>' +
+        '<div style="margin-top:6px;color:var(--text2,#555)">Firefox e Brave trazem o item "Instalar" no próprio menu.</div>';
+      document.body.appendChild(el);
+    } else {
+      el.style.display = 'block';
+    }
+    clearTimeout(el._timer);
+    el._timer = setTimeout(() => { el.style.display = 'none'; }, 25000);
+  }
   if (btnInstall) {
     btnInstall.addEventListener('click', async () => {
-      if (!deferredPrompt) return;
-      deferredPrompt.prompt();
-      await deferredPrompt.userChoice;
-      deferredPrompt = null;
-      btnInstall.style.display = 'none';
+      if (deferredPrompt) {
+        var p = deferredPrompt;
+        deferredPrompt = null;
+        try { p.prompt(); await p.userChoice; } catch (e) { /* segue para a ajuda */ }
+        if (!window.matchMedia('(display-mode: standalone)').matches) mostrarAjuda();
+        return;
+      }
+      if (ajudaVisivel()) { fecharAjuda(); return; }
+      mostrarAjuda();
     });
   }
   window.addEventListener('appinstalled', () => {
+    fecharAjuda();
     if (btnInstall) btnInstall.style.display = 'none';
   });
 })();
