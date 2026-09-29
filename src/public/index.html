@@ -409,8 +409,12 @@
 .llm-btn:hover{filter:brightness(.96);box-shadow:var(--md-elevation-1)}
 .llm-ask{background:var(--md-sys-color-secondary-container);color:var(--md-sys-color-on-secondary-container)}
 .llm-ask:hover{filter:brightness(.96)}
-html{font-size:16px;-webkit-font-smoothing:antialiased}
-body{font-family:var(--font);background:var(--md-sys-color-surface);color:var(--text);min-height:100dvh;display:flex;flex-direction:column}
+html{font-size:16px;-webkit-font-smoothing:antialiased;-webkit-text-size-adjust:100%;text-size-adjust:100%}
+/* Fallback de unidade: `dvh` só existe do Chrome 108 em diante. Navegadores que
+   rodam sobre WebView antigo (DuckDuckGo Android é um WebView) ignoravam a
+   declaracao inteira e o body ficava sem altura mínima — layout quebrado só
+   neles. Com `vh` antes, todo mundo tem altura; quem suporta `dvh` melhora. */
+body{font-family:var(--font);background:var(--md-sys-color-surface);color:var(--text);min-height:100vh;min-height:100dvh;display:flex;flex-direction:column}
 
 .container{max-width:1200px;margin:0 auto;padding:0 20px;width:100%}
 
@@ -875,6 +879,41 @@ body{font-family:var(--font);background:var(--md-sys-color-surface);color:var(--
 }
 .tab-btn:hover:not(.active){color:var(--text);background:var(--md-sys-color-surface-container-high)}
 
+/* ---------- Instalar como app (na PÁGINA, não escondido no menu) ----------
+   Pedido do dono (29/09/2026): a opção existia só no menu hambúrguer e o
+   usuário não achava. Card de uma linha, dispensável, que some sozinho quando
+   o app já está instalado (modo standalone) ou quando o aparelho dispensou.
+   Ícone em SVG (não na fonte de ícones) para não depender do carregamento de
+   fonte para o card fazer sentido. */
+.install-card{
+  display:flex;align-items:center;gap:12px;margin-top:12px;padding:10px 12px;
+  background:var(--md-sys-color-surface-container-low);border-radius:var(--md-shape-corner-large);
+  border:1px solid var(--md-sys-color-outline-variant)
+}
+.install-card[hidden]{display:none}
+.install-ico{
+  width:38px;height:38px;flex:none;border-radius:50%;display:flex;align-items:center;justify-content:center;
+  background:var(--md-sys-color-primary-container);color:var(--md-sys-color-on-primary-container)
+}
+.install-ico svg{width:20px;height:20px}
+.install-txt{flex:1 1 auto;min-width:0}
+.install-txt strong{display:block;font-size:14px;font-weight:600;line-height:1.25;color:var(--text)}
+.install-txt span{display:block;font-size:12.5px;color:var(--text2);line-height:1.35;margin-top:2px}
+.install-go{
+  flex:none;border:none;cursor:pointer;font-family:var(--font);font-size:13px;font-weight:700;
+  padding:10px 16px;border-radius:var(--md-shape-corner-full);
+  background:var(--md-sys-color-primary);color:var(--md-sys-color-on-primary)
+}
+.install-x{
+  flex:none;border:none;background:none;cursor:pointer;color:var(--text3);
+  font-size:20px;line-height:1;padding:6px 8px;border-radius:var(--md-shape-corner-full)
+}
+@media (max-width:640px){
+  .install-card{gap:10px;padding:10px}
+  .install-txt span{display:none}      /* no celular cabe em uma linha */
+  .install-go{padding:9px 14px}
+}
+
 /* Stats View */
 .stats-container{display:flex;flex-direction:column;gap:20px;padding:20px 0}
 .stats-kpi-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:16px}
@@ -894,6 +933,8 @@ body{font-family:var(--font);background:var(--md-sys-color-surface);color:var(--
 .stats-table{width:100%;border-collapse:collapse;text-align:left;font-size:13px}
 .stats-table th{background:var(--md-sys-color-surface-container-high);padding:12px 16px;font-weight:600;font-size:12px;color:var(--text2);letter-spacing:.3px;text-transform:uppercase}
 .stats-table td{padding:13px 16px;color:var(--text);vertical-align:middle}
+.stats-table tbody tr:nth-child(even) td{background:var(--md-sys-color-surface-container-low)}
+/* `color-mix()` é do Chrome 111+ — a linha acima é o fallback de quem não tem. */
 .stats-table tbody tr:nth-child(even) td{background:color-mix(in srgb,var(--md-sys-color-surface-container-low) 55%,transparent)}
 .stats-table tr:hover td{background:var(--md-sys-color-surface-container-high)}
 
@@ -1936,6 +1977,21 @@ html.trocando-tema, html.trocando-tema *{transition:none !important}
     </button>
   </nav>
 
+  <!-- Instalar como app: fica VISÍVEL na página (pedido do dono 29/09/2026) — a
+       opção existia só no menu hambúrguer. O JS esconde quando o app já está
+       instalado (standalone) ou quando o aparelho dispensou o card. Ícone em
+       SVG de propósito: não depende da fonte de ícones para fazer sentido. -->
+  <section class="install-card" id="installCard" hidden>
+    <span class="install-ico" aria-hidden="true">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+    </span>
+    <div class="install-txt">
+      <strong>Instalar no celular</strong>
+      <span>Abre como app e deixa os avisos de chuva na tela de início.</span>
+    </div>
+    <button class="install-go" id="btnInstallGo" type="button">Instalar</button>
+    <button class="install-x" id="btnInstallX" type="button" aria-label="Dispensar o aviso de instalação">&times;</button>
+  </section>
 
   <!-- HERÓI: o card de status. Título = pior estado; tiles 2×2 (um fato cada,
        sem subtexto) que levam ao card do detalhe; UM carimbo de atualização no
@@ -4396,24 +4452,35 @@ function copyPrompt(provider, text) {
   if ('serviceWorker' in navigator) {
     navigator.serviceWorker.register('/sw.js').catch(() => {});
   }
-  var btnInstall = document.getElementById('btnInstall');
+  var btnInstall = document.getElementById('btnInstall');   // item do menu hambúrguer
+  var cardInstall = document.getElementById('installCard');   // card visível na página
+  var btnInstallGo = document.getElementById('btnInstallGo');
+  var btnInstallX = document.getElementById('btnInstallX');
   var deferredPrompt = null;
   var jaInstalado = window.matchMedia('(display-mode: standalone)').matches ||
     window.matchMedia('(display-mode: minimal-ui)').matches ||
     window.navigator.standalone === true;
-  var mostrarBotao = () => { if (btnInstall && !jaInstalado) btnInstall.style.display = 'inline-flex'; };
+  // O aparelho pode dispensar o card uma vez; o item do menu continua como
+  // caminho alternativo (senão a pessoa perde a forma de instalar).
+  var dispensou = false;
+  try { dispensou = localStorage.getItem('mi_install_x') === '1'; } catch (e) {}
+  function mostrarEntradas() {
+    if (jaInstalado) return;
+    if (btnInstall) btnInstall.style.display = 'inline-flex';
+    if (cardInstall && !dispensou) cardInstall.hidden = false;
+  }
   // Chromium/Edge/Android avisam quando o site é instalável.
   window.addEventListener('beforeinstallprompt', (e) => {
     e.preventDefault();
     deferredPrompt = e;
-    mostrarBotao();
+    mostrarEntradas();
   });
   // Firefox e Safari NUNCA disparam beforeinstallprompt; alguns Chromium
   // escondem "Instalar app" no menu (no desktop o item vive em
   // "Salvar e compartilhar" → "Instalar página como app"). Sem um caminho
   // manual o usuário simplesmente não instala — relato do dono 29/09/2026
   // (instalava no Brave e não no Chrome).
-  setTimeout(mostrarBotao, 2500);
+  setTimeout(mostrarEntradas, 2500);
 
   var AJUDA_ID = 'mi-instalar-ajuda';
   function fecharAjuda() {
@@ -4443,22 +4510,32 @@ function copyPrompt(provider, text) {
     clearTimeout(el._timer);
     el._timer = setTimeout(() => { el.style.display = 'none'; }, 25000);
   }
-  if (btnInstall) {
-    btnInstall.addEventListener('click', async () => {
-      if (deferredPrompt) {
-        var p = deferredPrompt;
-        deferredPrompt = null;
-        try { p.prompt(); await p.userChoice; } catch (e) { /* segue para a ajuda */ }
-        if (!window.matchMedia('(display-mode: standalone)').matches) mostrarAjuda();
-        return;
-      }
-      if (ajudaVisivel()) { fecharAjuda(); return; }
-      mostrarAjuda();
+  // Mesma ação para o card da página e para o item do menu: prompt nativo
+  // quando o navegador oferece; passo a passo quando não oferece.
+  async function pedirInstalacao() {
+    if (deferredPrompt) {
+      var p = deferredPrompt;
+      deferredPrompt = null;
+      try { p.prompt(); await p.userChoice; } catch (e) { /* segue para a ajuda */ }
+      if (!window.matchMedia('(display-mode: standalone)').matches) mostrarAjuda();
+      return;
+    }
+    if (ajudaVisivel()) { fecharAjuda(); return; }
+    mostrarAjuda();
+  }
+  if (btnInstall) btnInstall.addEventListener('click', pedirInstalacao);
+  if (btnInstallGo) btnInstallGo.addEventListener('click', pedirInstalacao);
+  if (btnInstallX) {
+    btnInstallX.addEventListener('click', () => {
+      dispensou = true;
+      try { localStorage.setItem('mi_install_x', '1'); } catch (e) {}
+      if (cardInstall) cardInstall.hidden = true;
     });
   }
   window.addEventListener('appinstalled', () => {
     fecharAjuda();
     if (btnInstall) btnInstall.style.display = 'none';
+    if (cardInstall) cardInstall.hidden = true;
   });
 })();
 </script>
