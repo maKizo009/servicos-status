@@ -479,6 +479,13 @@ body{font-family:var(--font);background:var(--md-sys-color-surface);color:var(--
   box-shadow:var(--md-elevation-3)
 }
 .hmenu-pop[hidden]{display:none}
+/* Item "Instalar": a visibilidade é do CSS, não de style inline. O item é uma
+   LINHA do menu (`display:flex` + width:100%); mostrar via `inline-flex` inline
+   deixava o item do tamanho do conteúdo em navegadores que tratam inline-flex
+   dentro do popup de outro jeito (relato 29/09/2026: opção de instalar
+   "quebrada" no menu de 3 pontos). */
+#btnInstall{display:none}
+#btnInstall.visivel{display:flex}
 .hmenu-item{
   display:flex;align-items:center;gap:10px;width:100%;padding:10px 12px;border:none;
   border-radius:var(--md-shape-corner-small);background:none;color:var(--text);font:inherit;
@@ -1946,7 +1953,7 @@ html.trocando-tema, html.trocando-tema *{transition:none !important}
           <svg class="ri" id="refreshIcon" viewBox="0 0 24 24" aria-hidden="true"><path d="M17.65 6.35C16.2 4.9 14.21 4 12 4c-4.42 0-7.99 3.58-7.99 8s3.57 8 7.99 8c3.73 0 6.84-2.55 7.73-6h-2.08c-.82 2.33-3.04 4-5.65 4-3.31 0-6-2.69-6-6s2.69-6 6-6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z"/></svg>
           Atualizar agora
         </button>
-        <button class="hmenu-item" id="btnInstall" type="button" style="display:none">
+        <button class="hmenu-item" id="btnInstall" type="button">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
           Instalar no celular
         </button>
@@ -4466,7 +4473,7 @@ function copyPrompt(provider, text) {
   try { dispensou = localStorage.getItem('mi_install_x') === '1'; } catch (e) {}
   function mostrarEntradas() {
     if (jaInstalado) return;
-    if (btnInstall) btnInstall.style.display = 'inline-flex';
+    if (btnInstall) btnInstall.classList.add('visivel');
     if (cardInstall && !dispensou) cardInstall.hidden = false;
   }
   // Chromium/Edge/Android avisam quando o site é instalável.
@@ -4534,7 +4541,7 @@ function copyPrompt(provider, text) {
   }
   window.addEventListener('appinstalled', () => {
     fecharAjuda();
-    if (btnInstall) btnInstall.style.display = 'none';
+    if (btnInstall) btnInstall.classList.remove('visivel');
     if (cardInstall) cardInstall.hidden = true;
   });
 })();
