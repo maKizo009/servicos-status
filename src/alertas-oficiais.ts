@@ -191,9 +191,19 @@ export interface DadosLocaisAlerta {
 	ecmwfPct: number | null;
 	ecmwfProx6hMm: number | null;
 	radarAlertLevel: "alert" | "watch" | "monitor" | "none";
-	/** Núcleo de tempestade (heavy/extreme) na zona de alerta — é o que PODE
-	 * interromper o celular. Área de chuva moderada NÃO entra aqui. */
+	/**
+	 * Núcleo de tempestade (heavy/extreme) na zona de alerta — é o que PODE
+	 * interromper o celular. Área de chuva moderada NÃO entra aqui.
+	 *
+	 * IMPORTANTE (29/09/2026): aqui chega a evidência já CONFIRMADA pela série de
+	 * ciclos (`avaliarPersistencia`). Núcleo severo que apareceu num único ciclo
+	 * NÃO promove laranja — ele entra em `radarSeveroNaoConfirmado`.
+	 */
 	radarSevero?: boolean;
+	/** Núcleo severo no 1º ciclo (sem confirmação no ciclo anterior): fica no amarelo */
+	radarSeveroNaoConfirmado?: boolean;
+	/** Quantos ciclos seguidos sustentam a evidência severa (transparência no card) */
+	radarSeveroCiclos?: number;
 	/** Entidade que dirigiu o alerta, p/ o texto não chamar área de "chuva forte". */
 	radarKind?: "nucleo" | "area" | null;
 	hidroWatch: boolean;
@@ -244,8 +254,14 @@ export function buildAlertaUnificado(
 		// NÃO promove a laranja (regra do dono 21/09/2026) — ela fica no amarelo,
 		// e o título não pode afirmar "chuva forte" para uma área.
 		nivel = "laranja";
-		if (local.radarSevero)
+		if (local.radarSevero) {
 			motivos.push("núcleo de chuva forte se aproximando no radar (≤80 km)");
+			const ciclos = local.radarSeveroCiclos ?? 0;
+			if (ciclos >= 2)
+				motivos.push(
+					`núcleo severo confirmado em ${ciclos} ciclos seguidos de radar (10 min cada)`,
+				);
+		}
 		if (c6 >= 25)
 			motivos.push(
 				`${c6.toFixed(1).replace(".", ",")} mm em 6h nos pluviômetros`,
@@ -266,9 +282,11 @@ export function buildAlertaUnificado(
 		nivel = "amarelo";
 		if (local.radarAlertLevel === "alert" || local.radarAlertLevel === "watch")
 			motivos.push(
-				local.radarKind === "area"
-					? "área de chuva se aproximando no radar (sem núcleo de tempestade)"
-					: "núcleo de chuva em vigilância no radar",
+				local.radarSeveroNaoConfirmado === true
+					? "núcleo de chuva forte recém-detectado no radar (1º ciclo) — aguardando confirmação antes de interromper o celular"
+					: local.radarKind === "area"
+						? "área de chuva se aproximando no radar (sem núcleo de tempestade)"
+						: "núcleo de chuva em vigilância no radar",
 			);
 		if (c24 >= 20)
 			motivos.push(

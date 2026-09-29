@@ -19,6 +19,11 @@ import {
 	getLatestWeatherBulletin,
 	getWeatherStateCache,
 	initDb,
+	lerCiclosAlerta,
+	lerUltimoNivelAlerta,
+	limparAmostrasDissipacaoAntigas,
+	limparCiclosAlertaAntigos,
+	salvarCicloAlerta,
 	saveEventLog,
 	saveWeatherStateCache,
 } from "./db.js";
@@ -35,10 +40,15 @@ import {
 } from "./nowcast-service.js";
 import type { AmostraNucleo } from "./dissipacao.js";
 import {
+	avaliarPersistencia,
+	type VereditoPersistencia,
+} from "./persistencia-alerta.js";
+import {
+	avaliarNucleoSevero,
 	fmtEta,
 	formatRainEntityAlert,
 	nearestStrongThreat,
-	nucleoSeveroIminente,
+	type VereditoNucleoSevero,
 } from "./radar-analysis.js";
 import {
 	checkRateLimit,
@@ -223,12 +233,36 @@ export async function syncWeatherCycle(): Promise<WeatherState> {
 	// Nível do alerta no ciclo ANTERIOR, lido ANTES de qualquer cache deste ciclo:
 	// é o que permite narrar rebaixamento/subida do tom (maleabilidade pedida pelo
 	// dono 27/09/2026). Sem ciclo anterior (cold start) fica null — sem frase.
-	const nivelAlertaAnterior =
+	// O cache em memória morre no cold start da Vercel; por isso o fallback lê o
+	// nível do último ciclo GRAVADO no banco (persistência, 29/09/2026).
+	let nivelAlertaAnterior =
 		getCachedWeatherState()?.alertaUnificado?.nivel ?? null;
+	if (!nivelAlertaAnterior) {
+		try {
+			const persistido = await lerUltimoNivelAlerta();
+			nivelAlertaAnterior =
+				persistido === "verde" ||
+				persistido === "amarelo" ||
+				persistido === "laranja" ||
+				persistido === "vermelho"
+					? persistido
+					: null;
+		} catch (err) {
+			logger.warn("Nível anterior não pôde ser lido do banco", {
+				error: String(err),
+			});
+		}
+	}
 	// Tendência do núcleo que dirige o alerta (escopo do ciclo: lida no bloco do
 	// radar, usada na narração da transição e no push).
 	let nucleoTendencia: "intensificando" | "estavel" | "enfraquecendo" | null =
 		null;
+	// Evidência severa do ciclo (preenchida no bloco do radar) e o veredito de
+	// persistência — a laranja/push agora exige que a evidência se SUSTENTE entre
+	// ciclos, não que apareça uma vez. Id do ciclo = ts do frame de radar.
+	let vereditoSevero: VereditoNucleoSevero | null = null;
+	let persistenciaCiclo: VereditoPersistencia | null = null;
+	let cicloTs = 0;
 	// Livro da dissipação: amostras do ciclo (preenchidas no bloco do radar,
 	// gravadas no banco depois que o nível do alerta do ciclo existe).
 	const amostrasLivro: AmostraNucleo[] = [];
@@ -353,7 +387,19 @@ export async function syncWeatherCycle(): Promise<WeatherState> {
 			// A zona pode ter MAIS DE UMA entidade e a lista vem por ETA: pegar a
 			// primeira devolvia a ÁREA que chega antes e o alerta saía amarelo com
 			// núcleo extreme iminente (incidente 27/09/2026).
-			const nucleoSevero = nucleoSeveroIminente(nowcast.threats);
+			// Piso de severidade + tendência (29/09/2026): núcleo na METADE FRACA da
+			// faixa "forte" (38–42 dBZ), isolado e enfraquecendo, não é evidência
+			// para interromper o celular. Antes, só zona+tipo promoviam.
+			const veredito = avaliarNucleoSevero(nowcast.threats);
+			vereditoSevero = veredito;
+			const nucleoSevero =
+				veredito?.severo === true ? veredito.cell : null;
+			// Id do ciclo = timestamp do FRAME de radar analisado (não o relógio):
+			// o cron pode rodar várias vezes no mesmo frame e a contagem de ciclos
+			// consecutivos tem que refletir o radar, não a frequência do cron.
+			const frameMaisNovo = nowcast.frames[nowcast.frames.length - 1];
+			cicloTs =
+				frameMaisNovo?.time ?? Math.floor(Date.now() / 600_000) * 600_000;
 			nucleoTendencia =
 				(nucleoSevero ?? nucleoProximo)?.tendencia ??
 				(nucleoSevero ?? nucleoProximo)?.movement?.tendencia ??
@@ -660,6 +706,50 @@ export async function syncWeatherCycle(): Promise<WeatherState> {
 		const prox6h = (weatherInfo.hourlyForecast || [])
 			.slice(0, 6)
 			.reduce((s, h) => s + (h.precipitationMm ?? 0), 0);
+		// PERSISTÊNCIA (29/09/2026): a evidência severa do ciclo precisa se
+		// SUSTENTAR em ≥2 ciclos seguidos de radar para virar laranja/push.
+		// Ler o histórico nunca quebra o ciclo; se a leitura falhar, o veredito
+		// abre (fail-open) com motivo explícito — banco fora não pode virar
+		// "nunca mais alerta".
+		const severoAgora = vereditoSevero?.severo === true;
+		const imediatoAgora = vereditoSevero?.imediato === true;
+		try {
+			const historico = await lerCiclosAlerta(Date.now() - 6 * 3600_000);
+			persistenciaCiclo = avaliarPersistencia({
+				historico,
+				agoraMs: cicloTs,
+				nucleoSeveroAgora: severoAgora,
+				imediatoAgora,
+			});
+		} catch (err) {
+			logger.warn("Persistência do alerta indisponível (fail-open)", {
+				error: String(err),
+			});
+			persistenciaCiclo = avaliarPersistencia({
+				historico: null,
+				agoraMs: cicloTs,
+				nucleoSeveroAgora: severoAgora,
+				imediatoAgora,
+			});
+		}
+		const severoConfirmado = persistenciaCiclo.persistiu;
+		state.radarSeveroConfirmado = severoConfirmado;
+		state.radarSeveroCiclos = persistenciaCiclo.ciclosConsecutivos;
+		logger.info("Persistência do núcleo severo", {
+			cicloTs,
+			severoAgora,
+			imediatoAgora,
+			persistiu: severoConfirmado,
+			ciclos: persistenciaCiclo.ciclosConsecutivos,
+			motivo: persistenciaCiclo.motivo,
+			descricao: persistenciaCiclo.descricao,
+		});
+		// Card honesto: núcleo severo de 1º ciclo é VIGILÂNCIA, não alerta —
+		// dizer o motivo evita o leitor achar que o monitor "perdeu" o núcleo.
+		if (severoAgora && !severoConfirmado && state.regionalRainAlert) {
+			state.regionalRainAlert +=
+				" Núcleo severo no 1º ciclo do radar — o monitor aguarda o próximo ciclo antes de interromper o celular.";
+		}
 		const unificado = buildAlertaUnificado(
 			{
 				acc1hrMax: maxA((e) => e.acc1hr),
@@ -669,7 +759,11 @@ export async function syncWeatherCycle(): Promise<WeatherState> {
 				ecmwfPct: weatherInfo.rainProbabilityPct,
 				ecmwfProx6hMm: prox6h,
 				radarAlertLevel: state.alertLevel ?? "monitor",
-				radarSevero: state.radarSevero ?? false,
+				// Laranja/push exige evidência CONFIRMADA entre ciclos; o 1º ciclo
+				// de um núcleo severo fica no amarelo com motivo explícito.
+				radarSevero: severoAgora && severoConfirmado,
+				radarSeveroNaoConfirmado: severoAgora && !severoConfirmado,
+				radarSeveroCiclos: persistenciaCiclo.ciclosConsecutivos,
 				radarKind: state.radarKind ?? null,
 				hidroWatch:
 					state.hidro?.riscoCheia === "watch" &&
@@ -703,6 +797,34 @@ export async function syncWeatherCycle(): Promise<WeatherState> {
 			}
 		}
 		setCachedWeatherState(state);
+		// Persistência do CICLO (29/09/2026): grava a evidência severa + o nível
+		// final. É o que o próximo ciclo lê para confirmar (ou não) a severidade e
+		// para narrar transição de nível mesmo depois de um cold start.
+		try {
+			await salvarCicloAlerta({
+				ts: cicloTs,
+				nucleoSevero: severoAgora,
+				imediato: imediatoAgora,
+				severoConfirmado,
+				ciclosConsecutivos: persistenciaCiclo.ciclosConsecutivos,
+				maxDbz: vereditoSevero?.cell.maxDbz ?? null,
+				distKm: vereditoSevero?.cell.distToTargetKm ?? null,
+				tendencia:
+					vereditoSevero?.cell.tendencia ??
+					vereditoSevero?.cell.movement?.tendencia ??
+					null,
+				kind: vereditoSevero?.cell.kind ?? state.radarKind ?? null,
+				lat: vereditoSevero?.cell.lat ?? null,
+				lon: vereditoSevero?.cell.lon ?? null,
+				nivel: unificado.nivel,
+				motivo: persistenciaCiclo.descricao,
+			});
+		} catch (err) {
+			logger.warn("Ciclo de alerta não foi persistido (sem quebrar o ciclo)", {
+				error: String(err),
+			});
+		}
+
 		// Push no celular (PWA): só laranja/vermelho, com cooldown.
 		// Nunca quebra o ciclo — falha de push é só log.
 		try {
@@ -749,6 +871,25 @@ export async function syncWeatherCycle(): Promise<WeatherState> {
 		await saveWeatherStateCache(JSON.stringify(state));
 	} catch (err) {
 		logger.warn("Falha ao persistir weather_state_cache", {
+			error: String(err),
+		});
+	}
+
+	// Retenção (roda numa janela diária de 20 min, idempotente): o livro e a
+	// persistência de ciclos servem para estatística de comportamento, não para
+	// auditoria eterna. Antes disso o livro crescia para sempre — a função de
+	// limpeza existia e nunca era chamada.
+	try {
+		const agora = new Date();
+		if (agora.getUTCHours() === 4 && agora.getUTCMinutes() < 20) {
+			const [amostras, ciclos] = await Promise.all([
+				limparAmostrasDissipacaoAntigas(180),
+				limparCiclosAlertaAntigos(30),
+			]);
+			logger.info("Retenção aplicada", { amostrasApagadas: amostras, ciclosApagados: ciclos });
+		}
+	} catch (err) {
+		logger.warn("Retenção falhou (sem quebrar o ciclo)", {
 			error: String(err),
 		});
 	}

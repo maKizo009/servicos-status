@@ -14,6 +14,8 @@ import {
 	desfechoDoEpisodio,
 	fecharEpisodio,
 	formatarRelatorioTexto,
+	JANELA_ABERTA_MIN,
+	marcarEpisodiosAbertos,
 	resumoDissipacao,
 } from "../src/dissipacao.js";
 
@@ -239,5 +241,130 @@ describe("texto do relatório (formatador único)", () => {
 		expect(t).toContain("não distingue dissipação real");
 		expect(t).toContain("sem atribuição célula→estação");
 		expect(t).toContain("💧");
+	});
+});
+
+/**
+ * Correções de 29/09/2026 — o balde "sumiu antes de chegar" estava inflado.
+ *
+ * Revisão do dono depois do falso laranja: dos 86 episódios, 73 apareciam como
+ * "sumiu antes de chegar", mas só 14% tinham queda ≥5 dBZ e o ΔdBZ médio era
+ * −1 dBZ. Duas causas mecânicas: episódio de 1 ciclo (a maioria) entrava como
+ * desfecho, e núcleo que regredia para área de chuva saía do livro sem desfecho
+ * (o relatório só alimentava amostras de núcleo).
+ */
+describe("episódios em aberto (observação incompleta não é desfecho)", () => {
+	test("núcleo visto num ciclo e ainda recente fica EM ABERTO (caso real 29/09)", () => {
+		// O núcleo de 38 dBZ a 64 km que disparou o falso laranja: 1 ciclo só.
+		const eps = agruparEpisodios(
+			[a({ medidoEm: T0, distKm: 64, maxDbz: 38, intensity: "heavy", tendencia: "enfraquecendo" })],
+			{ agoraMs: T0 + min(5) },
+		);
+		expect(eps.length).toBe(1);
+		expect(eps[0]?.desfecho).toBe("em_aberto");
+		expect(eps[0]?.emAberto).toBe(true);
+	});
+
+	test("o MESMO episódio vira desfecho depois da janela de observação", () => {
+		const eps = agruparEpisodios(
+			[a({ medidoEm: T0, distKm: 64, maxDbz: 38, intensity: "heavy" })],
+			{ agoraMs: T0 + min(JANELA_ABERTA_MIN + 10) },
+		);
+		expect(eps[0]?.desfecho).toBe("sumiu_antes_de_chegar");
+		expect(eps[0]?.emAberto).toBeFalsy();
+	});
+
+	test("sem `agoraMs` nada fica em aberto (compatível com o uso antigo)", () => {
+		const eps = agruparEpisodios([a({ medidoEm: T0, distKm: 64, maxDbz: 38 })]);
+		expect(eps[0]?.desfecho).not.toBe("em_aberto");
+	});
+
+	test("em aberto fica FORA das estatísticas do resumo", () => {
+		const aberto = marcarEpisodiosAbertos(
+			[fecharEpisodio([a({ medidoEm: T0, distKm: 150, maxDbz: 58 })])],
+			T0 + min(5),
+		);
+		const fechado = fecharEpisodio([
+			a({ medidoEm: T0 - min(600), distKm: 150, maxDbz: 58 }),
+			a({ medidoEm: T0 - min(590), distKm: 130, maxDbz: 58 }),
+		]);
+		const r = resumoDissipacao([...aberto, fechado]);
+		expect(r.episodios).toBe(2);
+		expect(r.emAberto).toBe(1);
+		expect(r.concluidos).toBe(1);
+		expect(r.sumiuAntes).toBe(1); // só o concluído conta
+	});
+
+	test("marcar é idempotente (reaplicar não muda o desfecho)", () => {
+		const uma = marcarEpisodiosAbertos(
+			[fecharEpisodio([a({ medidoEm: T0, distKm: 64 })])],
+			T0 + min(5),
+		);
+		const duas = marcarEpisodiosAbertos(uma, T0 + min(6));
+		expect(duas[0]?.desfecho).toBe("em_aberto");
+		expect(duas[0]?.emAberto).toBe(true);
+	});
+
+	test("o texto separa concluídos dos em aberto e explica", () => {
+		const eps = marcarEpisodiosAbertos(
+			[
+				fecharEpisodio([a({ medidoEm: T0 - min(600), distKm: 150 })]),
+				fecharEpisodio([a({ medidoEm: T0, distKm: 64 })]),
+			],
+			T0 + min(5),
+		);
+		const t = formatarRelatorioTexto(eps, 14);
+		expect(t).toContain("concluídos: 1 | em aberto: 1");
+		expect(t).toContain("EM ABERTO (⏳)");
+	});
+});
+
+describe("núcleo que regride para área de chuva = dissipação medida", () => {
+	test("amostra de ÁREA continua o episódio do núcleo e fecha como dissipou", () => {
+		const eps = agruparEpisodios([
+			// ciclo 1: núcleo forte a 60 km
+			a({ medidoEm: T0, distKm: 60, maxDbz: 43, intensity: "heavy" }),
+			// ciclo 2: o mesmo sistema agora é ÁREA moderada (33 dBZ) — o caso real
+			// das 15:50 de 29/09/2026, quando o app rebaixou para amarelo.
+			a({
+				medidoEm: T0 + min(10),
+				distKm: 58,
+				maxDbz: 33,
+				intensity: "moderate",
+				kind: "area",
+			}),
+		]);
+		expect(eps.length).toBe(1);
+		expect(eps[0]?.amostras).toBe(2);
+		expect(eps[0]?.kindFinal).toBe("area");
+		expect(eps[0]?.desfecho).toBe("dissipou_no_caminho");
+	});
+
+	test("área de chuva que NUNCA foi núcleo não abre episódio", () => {
+		expect(
+			agruparEpisodios([
+				a({ medidoEm: T0, kind: "area", intensity: "moderate", maxDbz: 30 }),
+				a({
+					medidoEm: T0 + min(10),
+					kind: "area",
+					intensity: "moderate",
+					maxDbz: 28,
+				}),
+			]),
+		).toEqual([]);
+	});
+
+	test("o relatório marca o episódio que regrediu a área", () => {
+		const eps = agruparEpisodios([
+			a({ medidoEm: T0, distKm: 60, maxDbz: 43, intensity: "heavy" }),
+			a({
+				medidoEm: T0 + min(10),
+				distKm: 58,
+				maxDbz: 33,
+				intensity: "moderate",
+				kind: "area",
+			}),
+		]);
+		expect(formatarRelatorioTexto(eps, 14)).toContain("[regrediu a área de chuva]");
 	});
 });

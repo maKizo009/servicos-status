@@ -65,12 +65,22 @@ export const CHEGADA_KM = 25;
 export const CHUVA_SIGNIFICATIVA_MM = 0.2;
 /** Queda de dBZ que conta como enfraquecimento relevante. */
 export const QUEDA_RELEVANTE_DBZ = 5;
+/**
+ * Um episódio cujo ÚLTIMO avistamento é mais recente que isto está EM ABERTO: o
+ * núcleo ainda pode chegar, dissipar ou sair do grid. Antes, um episódio de 1
+ * ciclo (a maioria!) entrava direto como "sumiu antes de chegar" — o balde dos
+ * "sumiu" virou 73 de 86 episódios misturando aparição única com desaparecimento
+ * real (revisão do dono, 29/09/2026).
+ */
+export const JANELA_ABERTA_MIN = 30;
 
 export type Desfecho =
 	| "chegou_e_molhou"
 	| "chegou_seco"
 	| "dissipou_no_caminho"
-	| "sumiu_antes_de_chegar";
+	| "sumiu_antes_de_chegar"
+	/** Ainda em curso no fim da janela: NÃO é desfecho, é observação incompleta */
+	| "em_aberto";
 
 export interface Episodio {
 	inicioEm: number;
@@ -96,6 +106,14 @@ export interface Episodio {
 	 */
 	chuvaNoEpisodioMm: number;
 	desfecho: Desfecho;
+	/**
+	 * Tipo da entidade no ÚLTIMO avistamento: um núcleo que regride para `area`
+	 * (chuva moderada) é dissipação medida — antes ele saía do livro sem virar
+	 * desfecho porque o relatório só alimentava amostras de núcleo.
+	 */
+	kindFinal: string;
+	/** Último avistamento recente: episódio ainda em curso (desfecho em_aberto) */
+	emAberto?: boolean;
 }
 
 function distanciaKm(
@@ -120,10 +138,23 @@ function distanciaKm(
  * Associação EXCLUSIVA (mesma lição do rastreador de frames): uma amostra entra
  * em NO MÁXIMO um episódio aberto, escolhendo o mais próximo dela. Sem isso, dois
  * núcleos vizinhos alimentariam o mesmo episódio e as estatísticas mentiriam.
+ *
+ * Duas correções de 29/09/2026:
+ *  - só amostra de NÚCLEO ABRE episódio — uma área de chuva moderada que nunca foi
+ *    núcleo não é um episódio do livro; mas uma amostra de ÁREA pode CONTINUAR um
+ *    episódio já aberto por um núcleo (é assim que a regressão núcleo → área vira
+ *    "dissipou no caminho" em vez de sumir do livro);
+ *  - com `agoraMs`, episódios cujo último avistamento é recente saem EM ABERTO
+ *    (não como "sumiu antes de chegar").
  */
 export function agruparEpisodios(
 	amostras: AmostraNucleo[],
-	opts: { janelaMin?: number; raioKm?: number } = {},
+	opts: {
+		janelaMin?: number;
+		raioKm?: number;
+		agoraMs?: number;
+		janelaAbertaMin?: number;
+	} = {},
 ): Episodio[] {
 	const janelaMin = opts.janelaMin ?? JANELA_EPISODIO_MIN;
 	const raioKm = opts.raioKm ?? RAIO_MESMO_NUCLEO_KM;
@@ -153,14 +184,38 @@ export function agruparEpisodios(
 		if (melhor) {
 			melhor.lista.push(a);
 			melhor.ultima = a;
-		} else {
+		} else if (a.kind === "nucleo") {
+			// Área de chuva NÃO abre episódio do livro (senão todo campo de chuva
+			// moderada viraria episódio e o denominador inflaria).
 			abertos.push({ lista: [a], ultima: a });
 		}
 	}
 
-	return abertos
+	const fechados = abertos
 		.map((ep) => fecharEpisodio(ep.lista))
 		.sort((a, b) => a.inicioEm - b.inicioEm);
+	return opts.agoraMs == null
+		? fechados
+		: marcarEpisodiosAbertos(fechados, opts.agoraMs, opts.janelaAbertaMin);
+}
+
+/**
+ * Marca como EM ABERTO os episódios cujo último avistamento está dentro da janela
+ * de observação — e recalcula o desfecho (que passa a ser "em_aberto").
+ * Idempotente: reaplicar sobre episódios já marcados não muda nada.
+ */
+export function marcarEpisodiosAbertos(
+	eps: Episodio[],
+	agoraMs: number,
+	janelaAbertaMin = JANELA_ABERTA_MIN,
+): Episodio[] {
+	const janela = janelaAbertaMin * 60_000;
+	return eps.map((ep) => {
+		if (agoraMs - ep.fimEm > janela) return ep;
+		const marcado: Episodio = { ...ep, emAberto: true };
+		marcado.desfecho = desfechoDoEpisodio(marcado);
+		return marcado;
+	});
 }
 
 /** Fecha um episódio: agrega e classifica o desfecho. */
@@ -192,6 +247,7 @@ export function fecharEpisodio(lista: AmostraNucleo[]): Episodio {
 		isoladoTotal: comIsolado.length,
 		chuvaNoEpisodioMm,
 		desfecho: "sumiu_antes_de_chegar",
+		kindFinal: ultima.kind,
 	};
 	ep.desfecho = desfechoDoEpisodio(ep);
 	return ep;
@@ -199,6 +255,7 @@ export function fecharEpisodio(lista: AmostraNucleo[]): Episodio {
 
 /**
  * Desfecho do episódio, por regra explícita:
+ *  - em aberto (último avistamento recente) → "em_aberto" (não é desfecho)
  *  - chegou (distMin ≤ CHEGADA_KM) + chuva ≥ CHUVA_SIGNIFICATIVA_MM → molhou
  *  - chegou sem chuva significativa → chegou_seco (o caso "virga")
  *  - não chegou e enfraqueceu (Δ ≤ −QUEDA_RELEVANTE_DBZ ou virou área moderada)
@@ -207,6 +264,7 @@ export function fecharEpisodio(lista: AmostraNucleo[]): Episodio {
  *    limiar de detecção OU saída do grid: o dado não distingue).
  */
 export function desfechoDoEpisodio(ep: Episodio): Desfecho {
+	if (ep.emAberto === true) return "em_aberto";
 	if (ep.distMinKm <= CHEGADA_KM) {
 		return ep.chuvaNoEpisodioMm >= CHUVA_SIGNIFICATIVA_MM
 			? "chegou_e_molhou"
@@ -221,6 +279,10 @@ export function desfechoDoEpisodio(ep: Episodio): Desfecho {
 
 export interface ResumoDissipacao {
 	episodios: number;
+	/** Episódios com desfecho conhecido (exclui os em aberto) */
+	concluidos: number;
+	/** Episódios ainda em curso no fim da janela (não entram nas estatísticas) */
+	emAberto: number;
 	chegaram: number;
 	chegouEMolhou: number;
 	chegouSeco: number;
@@ -253,7 +315,10 @@ export function formatarRelatorioTexto(eps: Episodio[], dias: number): string {
 		});
 	const linhas: string[] = [
 		`📕 Livro da dissipação — últimos ${dias} dias`,
-		`   episódios de núcleo: ${r.episodios}`,
+		`   episódios de núcleo: ${r.episodios}` +
+			(r.emAberto > 0
+				? ` (concluídos: ${r.concluidos} | em aberto: ${r.emAberto})`
+				: ""),
 	];
 	if (r.episodios === 0) {
 		linhas.push(
@@ -264,7 +329,7 @@ export function formatarRelatorioTexto(eps: Episodio[], dias: number): string {
 	}
 	linhas.push(
 		"",
-		"Desfecho:",
+		"Desfecho (só episódios CONCLUÍDOS; os em aberto ainda podem chegar):",
 		`   chegou e molhou a estação : ${r.chegouEMolhou}`,
 		`   chegou seco (eco em altura): ${r.chegouSeco}`,
 		`   dissipou no caminho      : ${r.dissipouNoCaminho}`,
@@ -290,11 +355,14 @@ export function formatarRelatorioTexto(eps: Episodio[], dias: number): string {
 					? "🌫️"
 					: e.desfecho === "dissipou_no_caminho"
 						? "📉"
-						: "❓";
+						: e.desfecho === "em_aberto"
+							? "⏳"
+							: "❓";
 		linhas.push(
 			`   ${marcador} ${fmtHora(e.inicioEm)} | ${e.amostras} ciclos (${e.duracaoMin} min) | ` +
 				`${e.dbzInicial}→${e.dbzFinal} dBZ (Δ${e.deltaDbz}) | chegou a ${e.distMinKm.toFixed(0)} km | ` +
-				`chuva ${e.chuvaNoEpisodioMm} mm | ${e.desfecho}`,
+				`chuva ${e.chuvaNoEpisodioMm} mm | ${e.desfecho}` +
+				(e.kindFinal === "area" ? " [regrediu a área de chuva]" : ""),
 		);
 	}
 	linhas.push(
@@ -302,36 +370,49 @@ export function formatarRelatorioTexto(eps: Episodio[], dias: number): string {
 		"⚠️  \"sumiu antes de chegar\" não distingue dissipação real, queda abaixo do",
 		"    limiar de detecção e saída do grid (radar mede eco em altura); a chuva é",
 		"    contada no PERÍODO do episódio, sem atribuição célula→estação.",
+		"    Episódios EM ABERTO (⏳) ficam fora das contas — são observação incompleta,",
+		"    não desfecho. Núcleo que regride a área de chuva conta como dissipação.",
 	);
 	return linhas.join("\n");
 }
 
 /** Números do livro. Função pura: recebe episódios, devolve o resumo. */
 export function resumoDissipacao(eps: Episodio[]): ResumoDissipacao {
-	const chegadas = eps.filter((e) => e.distMinKm <= CHEGADA_KM);
+	// Só episódios CONCLUÍDOS entram nas estatísticas: um episódio em aberto ainda
+	// pode chegar ou dissipar — contá-lo como desfecho é o que inflava o balde
+	// "sumiu antes de chegar" (73 de 86 episódios em 29/09/2026).
+	const concluidos = eps.filter((e) => e.desfecho !== "em_aberto");
+	const chegadas = concluidos.filter((e) => e.distMinKm <= CHEGADA_KM);
 	const pct = (n: number, total: number) =>
 		total === 0 ? 0 : Math.round((n / total) * 1000) / 10;
 	return {
 		episodios: eps.length,
+		concluidos: concluidos.length,
+		emAberto: eps.length - concluidos.length,
 		chegaram: chegadas.length,
-		chegouEMolhou: eps.filter((e) => e.desfecho === "chegou_e_molhou").length,
-		chegouSeco: eps.filter((e) => e.desfecho === "chegou_seco").length,
-		dissipouNoCaminho: eps.filter((e) => e.desfecho === "dissipou_no_caminho")
+		chegouEMolhou: concluidos.filter((e) => e.desfecho === "chegou_e_molhou")
 			.length,
-		sumiuAntes: eps.filter((e) => e.desfecho === "sumiu_antes_de_chegar").length,
+		chegouSeco: concluidos.filter((e) => e.desfecho === "chegou_seco").length,
+		dissipouNoCaminho: concluidos.filter(
+			(e) => e.desfecho === "dissipou_no_caminho",
+		).length,
+		sumiuAntes: concluidos.filter((e) => e.desfecho === "sumiu_antes_de_chegar")
+			.length,
 		pctEnfraqueceu: pct(
-			eps.filter((e) => e.deltaDbz <= -QUEDA_RELEVANTE_DBZ).length,
-			eps.length,
+			concluidos.filter((e) => e.deltaDbz <= -QUEDA_RELEVANTE_DBZ).length,
+			concluidos.length,
 		),
 		pctChegouMolhando: pct(
-			eps.filter((e) => e.desfecho === "chegou_e_molhou").length,
+			concluidos.filter((e) => e.desfecho === "chegou_e_molhou").length,
 			chegadas.length,
 		),
 		deltaDbzMedio:
-			eps.length === 0
+			concluidos.length === 0
 				? 0
 				: Math.round(
-						(eps.reduce((s, e) => s + e.deltaDbz, 0) / eps.length) * 10,
+						(concluidos.reduce((s, e) => s + e.deltaDbz, 0) /
+							concluidos.length) *
+							10,
 					) / 10,
 		dbzMedioNaChegada:
 			chegadas.length === 0
@@ -340,8 +421,9 @@ export function resumoDissipacao(eps: Episodio[]): ResumoDissipacao {
 						(chegadas.reduce((s, e) => s + e.dbzFinal, 0) / chegadas.length) *
 							10,
 					) / 10,
-		isolados: eps.filter((e) => e.isoladoTotal > 0 && e.isoladoEm === e.isoladoTotal)
-			.length,
-		isoladosComDado: eps.filter((e) => e.isoladoTotal > 0).length,
+		isolados: concluidos.filter(
+			(e) => e.isoladoTotal > 0 && e.isoladoEm === e.isoladoTotal,
+		).length,
+		isoladosComDado: concluidos.filter((e) => e.isoladoTotal > 0).length,
 	};
 }

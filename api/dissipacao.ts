@@ -1,5 +1,5 @@
 import { loadConfig } from "../src/config.js";
-import { initDb, lerAmostrasDissipacao } from "../src/db.js";
+import { initDb, lerAmostrasDissipacao, lerCiclosAlerta } from "../src/db.js";
 import {
 	agruparEpisodios,
 	formatarRelatorioTexto,
@@ -36,15 +36,25 @@ export default async function handler(req: any, res: any) {
 		await initDb();
 		const amostras = await lerAmostrasDissipacao(Date.now() - dias * 24 * 3600_000);
 		const nucleos = amostras.filter((a) => a.kind === "nucleo");
-		const episodios = agruparEpisodios(nucleos);
+		// Alimenta TODAS as amostras (não só núcleos): só NÚCLEO abre episódio, mas
+		// uma amostra de ÁREA continua o episódio aberto — é assim que a regressão
+		// núcleo → área de chuva vira "dissipou no caminho" em vez de sumir do livro
+		// (correção 29/09/2026). `agoraMs` marca os episódios ainda em curso.
+		const episodios = agruparEpisodios(amostras, { agoraMs: Date.now() });
+		// Persistência do alerta: os últimos ciclos de radar com a evidência severa
+		// e a decisão (confirmado? quantos ciclos?). É a auditoria de POR QUE o
+		// nível subiu/desceu — sem ela a persistência seria caixa-preta.
+		const ciclos = await lerCiclosAlerta(Date.now() - 6 * 3600_000);
 
 		return responder({
 			dias,
 			amostras: amostras.length,
 			nucleos: nucleos.length,
+			areas: amostras.length - nucleos.length,
 			primeiraEm: amostras[0]?.medidoEm ?? null,
 			ultimaEm: amostras[amostras.length - 1]?.medidoEm ?? null,
 			resumo: resumoDissipacao(episodios),
+			ciclos: ciclos.slice(-12),
 			texto: formatarRelatorioTexto(episodios, dias),
 		});
 	} catch (err) {

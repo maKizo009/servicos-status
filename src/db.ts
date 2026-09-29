@@ -3,6 +3,7 @@ import {
 	createClient as createWebClient,
 } from "@libsql/client/web";
 import type { AmostraNucleo } from "./dissipacao.js";
+import type { CicloEvidenciaSevera } from "./persistencia-alerta.js";
 import { logger } from "./logger.js";
 import type {
 	WeatherBulletin,
@@ -123,6 +124,31 @@ export async function initDb(): Promise<Client> {
 				)`,
 				`CREATE INDEX IF NOT EXISTS idx_radar_dissipacao_medido
 					ON radar_dissipacao (medido_em)`,
+				// Persistência da evidência severa entre ciclos (29/09/2026): uma
+				// linha por CICLO de radar (id = ts do frame analisado). Sem isto o
+				// alerta era recalculado do zero e uma aparição isolada de núcleo
+				// promovia laranja/push por 10 min. Ver src/persistencia-alerta.ts.
+				// Também é a memória do NÍVEL do ciclo anterior (o cache em memória
+				// morre no cold start da Vercel e a narração de subida/queda ficava
+				// sem referência).
+				`CREATE TABLE IF NOT EXISTS radar_alerta_ciclos (
+					ciclo_ts INTEGER PRIMARY KEY,
+					avaliado_em INTEGER NOT NULL,
+					nucleo_severo INTEGER NOT NULL,
+					imediato INTEGER NOT NULL,
+					severo_confirmado INTEGER NOT NULL,
+					ciclos_consecutivos INTEGER,
+					max_dbz REAL,
+					dist_km REAL,
+					tendencia TEXT,
+					kind TEXT,
+					lat REAL,
+					lon REAL,
+					nivel TEXT,
+					motivo TEXT
+				)`,
+				`CREATE INDEX IF NOT EXISTS idx_radar_alerta_ciclos_avaliado
+					ON radar_alerta_ciclos (avaliado_em)`,
 				`CREATE TABLE IF NOT EXISTS app_events (
 				id INTEGER PRIMARY KEY AUTOINCREMENT,
 				tipo TEXT NOT NULL,
@@ -446,6 +472,113 @@ export async function lerAmostrasDissipacao(
 			chuva6hMm: row.chuva_6h_mm === null ? null : Number(row.chuva_6h_mm),
 		};
 	});
+}
+
+/** Linha da persistência, com o que o ciclo decidiu (auditoria). */
+export interface RegistroCicloAlerta extends CicloEvidenciaSevera {
+	lat?: number | null;
+	lon?: number | null;
+	/** Evidência severa confirmada pela série de ciclos (libera laranja/push) */
+	severoConfirmado: boolean;
+	ciclosConsecutivos?: number | null;
+}
+
+/**
+ * Grava (ou regrava) a linha do CICLO de radar. O id é o timestamp do frame
+ * analisado: o cron pode rodar mais de uma vez no mesmo frame — nesse caso a
+ * linha é ATUALIZADA, não duplicada (senão a contagem de ciclos consecutivos
+ * mentiria). Nunca lança por si: quem chama trata.
+ */
+export async function salvarCicloAlerta(
+	registro: RegistroCicloAlerta,
+): Promise<void> {
+	const db = await getDbClient();
+	await db.execute({
+		sql: `INSERT INTO radar_alerta_ciclos
+			(ciclo_ts, avaliado_em, nucleo_severo, imediato, severo_confirmado,
+			 ciclos_consecutivos, max_dbz, dist_km, tendencia, kind, lat, lon, nivel, motivo)
+			VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+			ON CONFLICT(ciclo_ts) DO UPDATE SET
+				avaliado_em = excluded.avaliado_em,
+				nucleo_severo = excluded.nucleo_severo,
+				imediato = excluded.imediato,
+				severo_confirmado = excluded.severo_confirmado,
+				ciclos_consecutivos = excluded.ciclos_consecutivos,
+				max_dbz = excluded.max_dbz,
+				dist_km = excluded.dist_km,
+				tendencia = excluded.tendencia,
+				kind = excluded.kind,
+				lat = excluded.lat,
+				lon = excluded.lon,
+				nivel = excluded.nivel,
+				motivo = excluded.motivo`,
+		args: [
+			registro.ts,
+			Date.now(),
+			registro.nucleoSevero ? 1 : 0,
+			registro.imediato ? 1 : 0,
+			registro.severoConfirmado ? 1 : 0,
+			registro.ciclosConsecutivos ?? null,
+			registro.maxDbz ?? null,
+			registro.distKm ?? null,
+			registro.tendencia ?? null,
+			registro.kind ?? null,
+			registro.lat ?? null,
+			registro.lon ?? null,
+			registro.nivel ?? null,
+			registro.motivo ?? null,
+		],
+	});
+}
+
+/** Lê os ciclos desde `desdeMs` (ordem cronológica — o avaliador espera isso). */
+export async function lerCiclosAlerta(
+	desdeMs: number,
+	limite = 500,
+): Promise<CicloEvidenciaSevera[]> {
+	const db = await getDbClient();
+	const res = await db.execute({
+		sql: "SELECT * FROM radar_alerta_ciclos WHERE ciclo_ts >= ? ORDER BY ciclo_ts ASC LIMIT ?",
+		args: [desdeMs, limite],
+	});
+	return res.rows.map((r) => {
+		const row = r as Record<string, unknown>;
+		return {
+			ts: Number(row.ciclo_ts),
+			nucleoSevero: Number(row.nucleo_severo) === 1,
+			imediato: Number(row.imediato) === 1,
+			maxDbz: row.max_dbz === null ? null : Number(row.max_dbz),
+			distKm: row.dist_km === null ? null : Number(row.dist_km),
+			tendencia: row.tendencia === null ? null : String(row.tendencia),
+			kind: row.kind === null ? null : String(row.kind),
+			nivel: row.nivel === null ? null : String(row.nivel),
+			motivo: row.motivo === null ? null : String(row.motivo),
+		} satisfies CicloEvidenciaSevera;
+	});
+}
+
+/**
+ * Nível do alerta no último ciclo gravado. Substitui o cache em memória como
+ * referência da narração de subida/queda: em serverless o cache morre no cold
+ * start e o texto saía sem saber que o nível tinha descido.
+ */
+export async function lerUltimoNivelAlerta(): Promise<string | null> {
+	const db = await getDbClient();
+	const res = await db.execute(
+		"SELECT nivel FROM radar_alerta_ciclos WHERE nivel IS NOT NULL ORDER BY ciclo_ts DESC LIMIT 1",
+	);
+	return res.rows.length === 0 ? null : String(res.rows[0]?.nivel ?? "") || null;
+}
+
+/** Retenção dos ciclos (padrão 30 dias: serve à continuidade, não à auditoria). */
+export async function limparCiclosAlertaAntigos(dias = 30): Promise<number> {
+	const db = await getDbClient();
+	const limite = Date.now() - dias * 24 * 3600_000;
+	const res = await db.execute({
+		sql: "DELETE FROM radar_alerta_ciclos WHERE avaliado_em < ?",
+		args: [limite],
+	});
+	return res.rowsAffected ?? 0;
 }
 
 export async function getLatestRadarCache(): Promise<WeatherRadarData | null> {

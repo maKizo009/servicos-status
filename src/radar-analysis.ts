@@ -302,6 +302,68 @@ export function nucleoSeveroIminente(threats: ThreatCell[]): ThreatCell | null {
 }
 
 /**
+ * Piso de dBZ a partir do qual um núcleo da faixa "forte" (heavy) é forte o
+ * bastante para interromper o celular SEM depender da tendência. "Forte" começa
+ * em 38 dBZ, mas 38–42 é a metade fraca da faixa: um núcleo ali, ainda por cima
+ * ENFRAQUECENDO, é o caso que promoveu laranja por um único ciclo em 29/09/2026
+ * (38 dBZ, 43 → 38 dBZ no ciclo anterior, isolado, a 64 km).
+ */
+export const PISO_FORTE_CONFIRMADO_DBZ = 43;
+
+export interface VereditoNucleoSevero {
+	cell: ThreatCell;
+	/** Pode promover laranja/push (piso de intensidade OU tendência sustentando) */
+	severo: boolean;
+	/** Emergência local (extremo ≤ NUCLEO_EMERGENCIA_KM): não espera confirmação */
+	imediato: boolean;
+	motivo:
+		| "emergencia_proxima"
+		| "extreme"
+		| "intensidade_confirmada"
+		| "tendencia_ok"
+		| "piso_enfraquecendo"
+		| "piso_sem_tendencia";
+}
+
+/**
+ * Decide se o núcleo iminente merece INTERROMPER o celular (laranja/push),
+ * aplicando o piso de intensidade e a tendência — coisa que o gate de
+ * zona/tipo (`nucleoSeveroIminente`) não olhava.
+ *
+ * Regra: promove se
+ *  - é EXTREMO (48+ dBZ), ou
+ *  - é FORTE com ≥ PISO_FORTE_CONFIRMADO_DBZ (43), ou
+ *  - é FORTE na metade fraca da faixa (38–42) mas está `estavel`/`intensificando`.
+ * Núcleo na metade fraca ENFRAQUECENDO (ou sem tendência medida) fica no amarelo.
+ *
+ * Isto NÃO substitui a confirmação entre ciclos (`avaliarPersistencia`): as duas
+ * barreiras são complementares — o piso olha o ciclo, a persistência olha a série.
+ */
+export function avaliarNucleoSevero(
+	threats: ThreatCell[],
+): VereditoNucleoSevero | null {
+	const cell = nucleoSeveroIminente(threats);
+	if (!cell) return null;
+	const tendencia = cell.tendencia ?? cell.movement?.tendencia ?? null;
+	const imediato =
+		cell.intensity === "extreme" && cell.distToTargetKm <= NUCLEO_EMERGENCIA_KM;
+	if (imediato)
+		return { cell, severo: true, imediato: true, motivo: "emergencia_proxima" };
+	if (cell.intensity === "extreme")
+		return { cell, severo: true, imediato: false, motivo: "extreme" };
+	if (cell.maxDbz >= PISO_FORTE_CONFIRMADO_DBZ)
+		return { cell, severo: true, imediato: false, motivo: "intensidade_confirmada" };
+	if (tendencia === "estavel" || tendencia === "intensificando")
+		return { cell, severo: true, imediato: false, motivo: "tendencia_ok" };
+	return {
+		cell,
+		severo: false,
+		imediato: false,
+		motivo: tendencia === "enfraquecendo" ? "piso_enfraquecendo" : "piso_sem_tendencia",
+	};
+}
+
+/**
  * Zonas de relevância (raios e ETAs máximos). Configuráveis aqui —
  * valores baseados no incidente real 2026-08-12 (núcleo a 336 km/ETA 488 min
  * NÃO deve acender alerta).
@@ -328,6 +390,13 @@ export const RELEVANCE_ZONES = {
 	 */
 	nearStrongKm: 80,
 } as const;
+
+/**
+ * Raio da emergência local: núcleo EXTREMO já dentro disto NÃO espera
+ * confirmação entre ciclos (não faz sentido "esperar 10 min para confirmar" com a
+ * tempestade em cima da cidade). Mesmo valor do fallback de segurança de zona.
+ */
+export const NUCLEO_EMERGENCIA_KM = RELEVANCE_ZONES.extremeFallbackKm;
 
 /**
  * Classifica a zona de relevância de um núcleo em relação ao alvo.

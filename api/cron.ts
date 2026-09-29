@@ -129,10 +129,13 @@ export default async function handler(req: any, res: any) {
 		const nivelUnificado = weatherState.alertaUnificado?.nivel;
 		const unificadoJaAvisa =
 			nivelUnificado === "laranja" || nivelUnificado === "vermelho";
+		// Só interrompe o celular com evidência CONFIRMADA entre ciclos
+		// (29/09/2026): `radarSevero` sozinho promovia push por um único ciclo de
+		// um núcleo no piso da faixa "forte" já enfraquecendo.
 		const conteudoTemporal = unificadoJaAvisa
 			? null
 			: conteudoPushChuvaIminente({
-					radarSevero: weatherState.radarSevero === true,
+					radarSevero: weatherState.radarSeveroConfirmado === true,
 					textoRadar: weatherState.regionalRainAlert ?? null,
 				});
 		if (conteudoTemporal) {

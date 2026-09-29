@@ -130,6 +130,14 @@ export interface WeatherState {
 	 * zona de alerta; área e garoa ficam no amarelo do site.
 	 */
 	radarSevero?: boolean;
+	/**
+	 * A evidência severa se SUSTENTOU em ≥2 ciclos seguidos de radar
+	 * (`avaliarPersistencia`, 29/09/2026)? É ESTA flag que autoriza o push e a
+	 * laranja: núcleo severo de um ciclo só fica em vigilância no site.
+	 */
+	radarSeveroConfirmado?: boolean;
+	/** Ciclos consecutivos que sustentam a evidência severa (1 = surgiu agora). */
+	radarSeveroCiclos?: number;
 	/** Tipo da entidade que dirigiu o alerta: área de chuva contínua ou núcleo. */
 	radarKind?: "nucleo" | "area" | null;
 	regionalRainAlert: string;
