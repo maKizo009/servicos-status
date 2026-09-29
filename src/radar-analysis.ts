@@ -199,7 +199,18 @@ export function formatRainEntityAlert(opts: {
 	const rotulo = isArea
 		? `área de chuva ${label}`
 		: `núcleo de chuva ${label}`;
-	return `👁️ Vigilância: ${rotulo} detectad${isArea ? "a" : "o"} a ${km} de Ipiranga${eta}. Sem alerta iminente, acompanhe.${perfil ?? ressalva}`;
+	// NÚCLEO em vigilância TAMBÉM avisa de trovoada/rede elétrica. Antes esse
+	// aviso só existia no nível `alert` (iminente): um núcleo FORTE a 50–80 km,
+	// passando de lado, saía como "sem alerta iminente" e SEM nenhuma menção a
+	// raios — reclamação do dono em 29/09/2026 ("é bem estranho não ter um alerta
+	// de chuva moderada/forte com raios e trovoadas e risco de oscilações na rede
+	// elétrica"). Célula enfraquecendo não leva o aviso (o risco cai junto).
+	// Área de chuva contínua continua sem ele: não é trovoada.
+	const avisoTempestade =
+		isArea || dissipa
+			? ""
+			: " Célula de tempestade: pode trazer raios, rajadas e oscilações na rede elétrica (COPEL).";
+	return `👁️ Vigilância: ${rotulo} detectad${isArea ? "a" : "o"} a ${km} de Ipiranga${eta}. Sem alerta iminente, acompanhe.${perfil ?? ressalva}${avisoTempestade}`;
 }
 
 export function fmtEta(etaMin: number | null | undefined): string {

@@ -499,10 +499,52 @@ const txtNucleoWatch = formatRainEntityAlert({
 	etaMin: 113,
 });
 check(
-	"16c. Núcleo em watch = texto IDÊNTICO ao que a produção emitiu em 21/09 19:30",
+	"16c. Núcleo em watch = texto de produção de 21/09 + aviso de trovoada/rede (29/09)",
 	txtNucleoWatch ===
-		"👁️ Vigilância: núcleo de chuva forte detectado a ~153 km de Ipiranga (chegada em ~113 min). Sem alerta iminente, acompanhe.",
+		"👁️ Vigilância: núcleo de chuva forte detectado a ~153 km de Ipiranga (chegada em ~113 min). Sem alerta iminente, acompanhe. Célula de tempestade: pode trazer raios, rajadas e oscilações na rede elétrica (COPEL).",
 	txtNucleoWatch,
+);
+// Reclamação do dono (29/09/2026): núcleo FORTE em vigilância saía sem nenhuma
+// menção a raios/trovoada/rede elétrica — só o nível `alert` falava de COPEL.
+check(
+	"16c-2. Área de chuva em watch NÃO ganha aviso de tempestade (não é trovoada)",
+	formatRainEntityAlert({
+		level: "watch",
+		kind: "area",
+		intensity: "moderate",
+		distKm: 90,
+		approach: "approaching",
+		etaMin: 100,
+	}).includes("Célula de tempestade") === false,
+	formatRainEntityAlert({
+		level: "watch",
+		kind: "area",
+		intensity: "moderate",
+		distKm: 90,
+		approach: "approaching",
+		etaMin: 100,
+	}),
+);
+check(
+	"16c-3. Núcleo ENFRAQUECENDO em watch não leva aviso de tempestade",
+	formatRainEntityAlert({
+		level: "watch",
+		kind: "nucleo",
+		intensity: "heavy",
+		distKm: 90,
+		approach: "approaching",
+		etaMin: 100,
+		tendencia: "enfraquecendo",
+	}).includes("Célula de tempestade") === false,
+	formatRainEntityAlert({
+		level: "watch",
+		kind: "nucleo",
+		intensity: "heavy",
+		distKm: 90,
+		approach: "approaching",
+		etaMin: 100,
+		tendencia: "enfraquecendo",
+	}),
 );
 const txtAreaAlert = formatRainEntityAlert({
 	level: "alert",

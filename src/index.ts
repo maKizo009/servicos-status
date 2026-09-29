@@ -48,6 +48,7 @@ import {
 	fmtEta,
 	formatRainEntityAlert,
 	nearestStrongThreat,
+	RELEVANCE_ZONES,
 	type VereditoNucleoSevero,
 } from "./radar-analysis.js";
 import {
@@ -409,8 +410,27 @@ export async function syncWeatherCycle(): Promise<WeatherState> {
 			// a que chega primeiro (nearestAlert) > vigilância.
 			state.radarKind =
 				(nucleoSevero ?? nearestAlert ?? nearestWatch)?.kind ?? null;
+			// Núcleo FORTE perto mas com veredito `crossing` cai em `monitor`: não é
+			// risco iminente, mas também não é "sem chuva forte por perto". O leitor
+			// precisa saber que existe célula de tempestade na região e o que ela
+			// pode trazer (reclamação do dono 29/09/2026: "é bem estranho não ter um
+			// alerta de chuva moderada/forte com raios e trovoadas e risco de
+			// oscilações na rede elétrica"). O texto INFORMA; o nível não sobe por
+			// isso (segue amarelo/verde) e o celular não é interrompido.
+			const fortePerto =
+				nucleoProximo !== null &&
+				(nucleoProximo.intensity === "heavy" ||
+					nucleoProximo.intensity === "extreme") &&
+				nucleoProximo.distToTargetKm <= RELEVANCE_ZONES.nearStrongKm &&
+				nucleoProximo.threat?.approach !== "receding";
 			if (alertLevel === "monitor") {
-				state.regionalRainAlert = `ℹ️ Monitoramento: atividade de radar detectada a ${nucleoProximo ? `~${Math.round(nucleoProximo.distToTargetKm)} km` : "grande distância"} de Ipiranga. Sem risco iminente no momento.`;
+				state.regionalRainAlert = fortePerto && nucleoProximo
+					? `⛈️ Núcleo de chuva forte a ~${Math.round(nucleoProximo.distToTargetKm)} km de Ipiranga, medido ${
+							nucleoProximo.threat?.approach === "crossing"
+								? "passando ao lado"
+								: "em deslocamento"
+						}. Célula de tempestade: pode trazer raios, rajadas e oscilações na rede elétrica (COPEL). Sem rumo direto para a cidade.`
+					: `ℹ️ Monitoramento: atividade de radar detectada a ${nucleoProximo ? `~${Math.round(nucleoProximo.distToTargetKm)} km` : "grande distância"} de Ipiranga. Sem risco iminente no momento.`;
 			} else {
 				// Área de chuva (moderada) x núcleo (tempestade): o texto muda, o gate
 				// não. Texto montado em formatRainEntityAlert (testável). O núcleo
