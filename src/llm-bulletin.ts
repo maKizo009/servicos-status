@@ -46,13 +46,16 @@ export const LLM_TTL_MS = 30 * 60_000;
 // O boletim é gerado no CICLO (cron), não na requisição do usuário — o card serve
 // do cache — então esperar é aceitável. Estourou o timeout? Cai na heurística.
 const LLM_TIMEOUT_MS = 30_000;
-// Teto da CADEIA INTEIRA (todos os modelos somados). Motivo: o cron-job.org capa a
-// requisição em 30 s no plano atual e ciclo acima disso é registrado como FALHA —
-// e falha em série desabilita o job (foi assim que ele amanheceu desligado em
-// 12/08). O ciclo já gasta ~5-10 s em dados+radar, então a cadeia ganha 15 s: o 1º
-// modelo responde em 1-2 s (medido) e o NIM, último da fila, tem ~10 s. Estourou?
-// Heurística — que agora fala a verdade sobre a chuva.
-const LLM_ORCAMENTO_MS = 15_000;
+// Teto da CADEIA INTEIRA (todos os modelos somados). Motivo ORIGINAL: o
+// cron-job.org capa a requisição em 30 s e ciclo acima disso vira FALHA — e
+// falha em série desabilita o job (12/08). A partir de 22/09 a geração roda
+// FORA do caminho crítico (waitUntil em background; o ciclo serve o cache e
+// responde em ~4 s), então o que limita de verdade é o maxDuration=60 s da
+// função: ciclo ~10 s + cadeia ≤ 25 s dá folga. Medição em produção
+// (30/09/2026): muse-spark respondeu em 12,3 s (14:40) e estourou >15 s noutra
+// janela — 15 s para a cadeia INTEIRA matava o 1º modelo e o fallback rápido
+// (minimax-m3) nunca era chamado. 22 s + teto por modelo resolves.
+const LLM_ORCAMENTO_MS = 22_000;
 // Modelos de raciocínio (minimax-m3 etc.) gastam o budget PENSANDO: com 400
 // tokens o finish vinha "length" com content vazio. 2000 dá folga pro
 // raciocínio + ~150 tokens de boletim (custo segue irrelevante: ~US$0,0006).
@@ -407,13 +410,12 @@ export async function tryLlmBulletin(
 	// lentos davam 90 s de ciclo, falha registrada e risco de desabilitar o job.
 	const prazo = Date.now() + LLM_ORCAMENTO_MS;
 	// Teto por modelo DENTRO do orçamento: sem isto, um modelo lento (muse-spark
-	// medido entre 1 e 15 s, com o prompt real chegou a 12 s em produção)
-	// consumia os 15 s inteiros e o fallback rápido (minimax-m3, ~0,5-3 s)
-	// nunca era chamado — o boletim caía na heurística em série (30/09/2026,
-	// ciclos 14:30/14:40/16:00). 11 s pro 1º (cobre a latência observada) e a
-	// sobra ≥4 s garante a vez do 2º; a cadeia toda continua ≤15 s (o teto do
-	// cron-job.org de 30 s é intocável — histórico de auto-desabilitação).
-	const MODELO_TETO_MS = 11_000;
+	// medido 12,3 s com o prompt real de produção em 30/09) consumia a cadeia
+	// inteira e o fallback rápido (minimax-m3, ~0,5-3 s) nunca era chamado — o
+	// boletim caía na heurística em série (30/09/2026, ciclos 14:30/14:40/16:00).
+	// 13 s cobrem a latência observada do 1º com folga e ainda deixam ≥8 s p/
+	// o 2º; a cadeia toda continua ≤22 s (maxDuration da função = 60 s).
+	const MODELO_TETO_MS = 13_000;
 	let tentados = 0;
 	for (const entry of LLM_CHAIN) {
 		const { model, provider } = entry;
