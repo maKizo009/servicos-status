@@ -51,11 +51,13 @@ const LLM_TIMEOUT_MS = 30_000;
 // falha em série desabilita o job (12/08). A partir de 22/09 a geração roda
 // FORA do caminho crítico (waitUntil em background; o ciclo serve o cache e
 // responde em ~4 s), então o que limita de verdade é o maxDuration=60 s da
-// função: ciclo ~10 s + cadeia ≤ 25 s dá folga. Medição em produção
-// (30/09/2026): muse-spark respondeu em 12,3 s (14:40) e estourou >15 s noutra
-// janela — 15 s para a cadeia INTEIRA matava o 1º modelo e o fallback rápido
-// (minimax-m3) nunca era chamado. 22 s + teto por modelo resolves.
-const LLM_ORCAMENTO_MS = 22_000;
+// função. Medição com o prompt REAL de produção (30/09/2026): muse-spark
+// respondeu em 12,3 s (produção, 14:40) e 13,9-14,1 s (local, 2x) — o orçamento
+// antigo de 15 s para a cadeia INTEIRA matava o 1º modelo no timeout e o
+// fallback nunca era chamado. 30 s = 2 fatias cheias de 15 s; o caminho sem
+// cache (BD vazio, quase impossível em produção) ficaria ~40 s — um tick acima
+// do cap do cron-job.org, tolerável (falha isolada não desabilita o job).
+const LLM_ORCAMENTO_MS = 30_000;
 // Modelos de raciocínio (minimax-m3 etc.) gastam o budget PENSANDO: com 400
 // tokens o finish vinha "length" com content vazio. 2000 dá folga pro
 // raciocínio + ~150 tokens de boletim (custo segue irrelevante: ~US$0,0006).
@@ -405,17 +407,17 @@ export async function tryLlmBulletin(
 		return null;
 	}
 	const prompt = buildAnalystPrompt(ctx);
-	// Orçamento da CADEIA inteira (ver LLM_ORCAMENTO_MS): o ciclo precisa caber nos
-	// 30 s do cron-job.org. Antes, cada modelo tinha 30 s de folga — três modelos
-	// lentos davam 90 s de ciclo, falha registrada e risco de desabilitar o job.
+	// Orçamento da CADEIA inteira (ver LLM_ORCAMENTO_MS — 30 s desde 30/09, com
+	// geração em background via waitUntil; o cap de 30 s do cron-job.org vale
+	// só p/ a RESPOSTA, que volta em ~4 s servindo o cache).
 	const prazo = Date.now() + LLM_ORCAMENTO_MS;
-	// Teto por modelo DENTRO do orçamento: sem isto, um modelo lento (muse-spark
-	// medido 12,3 s com o prompt real de produção em 30/09) consumia a cadeia
-	// inteira e o fallback rápido (minimax-m3, ~0,5-3 s) nunca era chamado — o
-	// boletim caía na heurística em série (30/09/2026, ciclos 14:30/14:40/16:00).
-	// 13 s cobrem a latência observada do 1º com folga e ainda deixam ≥8 s p/
-	// o 2º; a cadeia toda continua ≤22 s (maxDuration da função = 60 s).
-	const MODELO_TETO_MS = 13_000;
+	// Teto por modelo DENTRO do orçamento: sem isto, um modelo lento consumia a
+	// cadeia inteira e o fallback nunca era chamado (30/09/2026, ciclos
+	// 14:30/14:40/16:00 → heurística em série). Calibrado com o prompt REAL:
+	// muse-spark respondeu em 12,3 s (produção) e 13,9-14,1 s (local, 2x) —
+	// teto de 13 s matava resposta válida no timeout; 15 s cobre a latência
+	// observada e ainda deixa ≥14 s pro 2º modelo na cadeia de 30 s.
+	const MODELO_TETO_MS = 15_000;
 	let tentados = 0;
 	for (const entry of LLM_CHAIN) {
 		const { model, provider } = entry;
