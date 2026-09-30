@@ -78,7 +78,6 @@ export function derivarFontes(
 		nome: string,
 		rotulo: string,
 		ok: boolean,
-		ultimoSucesso: number | null,
 		ultimoErro: string | null,
 		detalhe: string | null = null,
 	): void => {
@@ -87,7 +86,10 @@ export function derivarFontes(
 			rotulo,
 			ok,
 			ultimaTentativa: tentativa,
-			ultimoSucesso: ok ? tentativa : ultimoSucesso,
+			// Último sucesso REAL: null em falha (o SQL preserva o anterior).
+			// Passar `atualizadoEm` da tentativa aqui mentia "último sucesso há
+			// 1 min" num source fora — achado no 1º tick do vigia, 30/09/2026.
+			ultimoSucesso: ok ? tentativa : null,
 			ultimoErro: ok ? null : ultimoErro,
 			falhasConsecutivas: 0, // incrementado no upsert (SQL)
 			detalhe,
@@ -102,7 +104,6 @@ export function derivarFontes(
 			"radar_rainviewer",
 			"Radar RainViewer",
 			radarOk,
-			radar?.lastSuccessTime || null,
 			radar?.error ?? (radar ? `status=${radar.status}` : "sem dado de radar"),
 			radar && radar.status === "degraded"
 				? "servindo cache antigo (fallback)"
@@ -116,7 +117,6 @@ export function derivarFontes(
 			"open_meteo",
 			"Open-Meteo (ECMWF)",
 			omOk,
-			omOk ? tentativa : null,
 			om?.erro ??
 				(omOk ? "sem previsão horária" : "fetch falhou — defaults em uso"),
 			omOk ? null : "o site mostra temperatura PADRÃO, não medida",
@@ -131,7 +131,6 @@ export function derivarFontes(
 			"boletim_vlm",
 			"Boletim narrativo (VLM)",
 			!!nb && nbFonteOk && nbFresco,
-			nb?.generatedAt ?? null,
 			!nb
 				? "sem boletim no ciclo"
 				: !nbFonteOk
@@ -147,7 +146,6 @@ export function derivarFontes(
 			"cemaden",
 			"Pluviômetros CEMADEN",
 			cemOk,
-			cem?.atualizadoEm ?? null,
 			cem?.erro ?? "sem leitura CEMADEN",
 		);
 
@@ -160,7 +158,6 @@ export function derivarFontes(
 			"ana_hidro",
 			"ANA Hidro (telemetria)",
 			hidroOk,
-			hidro?.atualizadoEm ?? null,
 			hidro?.erro ??
 				(hidro?.desatualizado
 					? "ANA fora — mantendo última triangulação boa"
@@ -174,7 +171,6 @@ export function derivarFontes(
 			"alertas_oficiais",
 			"Avisos oficiais (INMET/Defesa Civil)",
 			!!oficiais && errosOficiais.length === 0,
-			oficiais?.atualizadoEm ?? null,
 			errosOficiais.length > 0
 				? errosOficiais.join("; ")
 				: "sem leitura de avisos oficiais",

@@ -102,6 +102,8 @@ describe("derivarFontes", () => {
 		const f = porNome(derivarFontes(e, undefined, AGORA), "open_meteo");
 		expect(f?.ok).toBe(false);
 		expect(f?.detalhe).toContain("PADRÃO");
+		// Falha não reivindica sucesso: o histórico real fica no SQL (preservado).
+		expect(f?.ultimoSucesso).toBeNull();
 	});
 
 	test("boletim heurístico = fallback do VLM, não ok", () => {
