@@ -126,17 +126,26 @@ O endpoint `/health` **não** tem rate limit (essencial para load balancers e Do
 
 Health check do monitor. **Sem rate limit.** Usado por Docker, load balancers e sistemas de orchestration.
 
+`status` é a saúde **do monitor** (ele está conseguindo ler as fontes?), não o
+estado do mundo — Copel sem luz é `level: "critical"`, não problema do monitor.
+O estado real vem do heartbeat por fonte (tabela `source_health`, gravada a cada
+ciclo), então sobrevive a cold start: instância fria sem histórico responde
+`"unknown"`, nunca `"degraded"` inventado.
+
 | Campo | Tipo | Descrição |
 |---|---|---|
-| `status` | string | `"healthy"` ou `"degraded"` |
-| `level` | string | Nível geral: `"ok"`, `"warn"`, `"critical"` |
-| `uptime` | number | Segundos desde a inicialização |
+| `status` | string | `"healthy"`, `"degraded"` (alguma fonte cega/ciclo parado) ou `"unknown"` (sem ciclo gravado) |
+| `level` | string | Estado do mundo: `"ok"`, `"warn"`, `"critical"` (pior serviço) |
+| `uptime` | number | Segundos desde a inicialização desta instância |
 | `serviceCount` | number | Quantidade de serviços monitorados (COPEL, Sanepar) |
 | `services[]` | array | `{ name, status }` de cada serviço monitorado |
 | `levels.critical` | number | Serviços em estado crítico |
 | `levels.warn` | number | Serviços em atenção |
 | `levels.ok` | number | Serviços normais |
-| `lastCheck` | number \| null | Timestamp do último ciclo |
+| `lastCheck` | number \| null | Timestamp do último relatório unificado |
+| `sources[]` | array | Heartbeat por fonte: `{ nome, rotulo, ok, idadeMin, ultimoSucesso, ultimoErro, falhasConsecutivas, detalhe }` |
+| `dataAgeSec` | number \| null | Idade do ciclo mais recente em segundos (sobe se o ciclo parar) |
+| `problemas[]` | array | Linhas legíveis do que está quebrado (vazio quando saudável) |
 | `timestamp` | number | Timestamp da resposta |
 
 ```json
@@ -144,12 +153,24 @@ Health check do monitor. **Sem rate limit.** Usado por Docker, load balancers e 
   "status": "healthy",
   "level": "ok",
   "uptime": 3600,
-  "operatorCount": 3,
-  "levels": { "critical": 0, "warn": 0, "ok": 3 },
+  "serviceCount": 2,
+  "services": [{ "name": "Copel", "status": "ok" }, { "name": "Sanepar", "status": "ok" }],
+  "levels": { "critical": 0, "warn": 0, "ok": 2 },
   "lastCheck": 1712345678000,
+  "sources": [
+    { "nome": "radar_rainviewer", "rotulo": "Radar RainViewer", "ok": true, "idadeMin": 3, "falhasConsecutivas": 0 },
+    { "nome": "open_meteo", "rotulo": "Open-Meteo (ECMWF)", "ok": true, "idadeMin": 3, "falhasConsecutivas": 0 }
+  ],
+  "dataAgeSec": 180,
+  "problemas": [],
   "timestamp": 1712345679000
 }
 ```
+
+Fontes monitoradas: `radar_rainviewer`, `open_meteo`, `boletim_vlm`, `cemaden`,
+`ana_hidro`, `alertas_oficiais`, `copel`, `sanepar`. Fallback com dado inventado
+(ex.: defaults do Open-Meteo, boletim heurístico, radar em cache) conta como
+**falha** — dado fabricado não é dado medido.
 
 ---
 

@@ -149,7 +149,22 @@ export async function initDb(): Promise<Client> {
 				)`,
 				`CREATE INDEX IF NOT EXISTS idx_radar_alerta_ciclos_avaliado
 					ON radar_alerta_ciclos (avaliado_em)`,
-				`CREATE TABLE IF NOT EXISTS app_events (
+				// Heartbeat por fonte (meta-monitoria, 30/09/2026): uma linha por
+			// fonte, atualizada a cada ciclo. É o que permite ao vigia externo
+			// dizer "a fonte X parou há N minutos" em vez de "o site tá velho".
+			// Ver src/source-health.ts.
+			`CREATE TABLE IF NOT EXISTS source_health (
+					nome TEXT PRIMARY KEY,
+					rotulo TEXT NOT NULL,
+					ok INTEGER NOT NULL,
+					ultima_tentativa INTEGER NOT NULL,
+					ultimo_sucesso INTEGER,
+					ultimo_erro TEXT,
+					falhas_consecutivas INTEGER NOT NULL DEFAULT 0,
+					detalhe TEXT,
+					atualizado_em INTEGER NOT NULL
+				)`,
+			`CREATE TABLE IF NOT EXISTS app_events (
 				id INTEGER PRIMARY KEY AUTOINCREMENT,
 				tipo TEXT NOT NULL,
 				session_id TEXT,

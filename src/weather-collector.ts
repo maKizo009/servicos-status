@@ -128,6 +128,9 @@ export async function fetchCurrentWeather(): Promise<{
 	windKmh: number;
 	humidityPct: number;
 	hourlyForecast: HourlyForecastPoint[];
+	/** O fetch REAL funcionou? false = valores abaixo são defaults inventados. */
+	ok: boolean;
+	erro: string | null;
 }> {
 	try {
 		const controller = new AbortController();
@@ -221,6 +224,8 @@ export async function fetchCurrentWeather(): Promise<{
 			windKmh,
 			humidityPct,
 			hourlyForecast,
+			ok: true,
+			erro: null,
 		};
 	} catch (err: unknown) {
 		logger.warn("Weather forecast fetch failed, using defaults", {
@@ -233,6 +238,10 @@ export async function fetchCurrentWeather(): Promise<{
 			windKmh: 14,
 			humidityPct: 68,
 			hourlyForecast: [],
+			// Defaults INVENTADOS — o source-health marca a fonte como fora
+			// para o vigia alertar em vez do site mentir em silêncio.
+			ok: false,
+			erro: String(err),
 		};
 	}
 }

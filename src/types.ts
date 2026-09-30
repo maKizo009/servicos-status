@@ -156,6 +156,13 @@ export interface WeatherState {
 	 */
 	nearestThreatApproach?: "approaching" | "receding" | "crossing" | null;
 	hourlyForecast: HourlyForecastPoint[];
+	/**
+	 * Resultado REAL do fetch do Open-Meteo (30/09/2026). O fallback de
+	 * `fetchCurrentWeather` inventa temperatura padrão quando a API falha —
+	 * sem esta flag o site mostrava dado fabricado como medido e nenhum
+	 * monitor conseguia ver a falha (ver src/source-health.ts).
+	 */
+	fonteOpenMeteo?: { ok: boolean; erro: string | null } | null;
 	radar: WeatherRadarData | null;
 	bulletin: WeatherBulletin | null;
 	/** Nowcast determinístico (Camada A) — núcleos + movimento do radar */

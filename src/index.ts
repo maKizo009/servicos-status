@@ -64,6 +64,12 @@ import {
 	SIGMA_RAIO_CIDADE_KM,
 	type SigmaResultado,
 } from "./sigma-feed.js";
+import {
+	avaliarSaudeMonitor,
+	derivarFontes,
+	lerSourceHealth,
+	salvarSourceHealth,
+} from "./source-health.js";
 import { EventTracker } from "./state.js";
 import {
 	sendCopelAlert,
@@ -160,6 +166,16 @@ async function runChecks(): Promise<void> {
 		data,
 		config.copelTotalConsumersCity,
 	);
+	// Heartbeat por fonte (meta-monitoria, 30/09/2026): grava o que este ciclo
+	// CONSEGUIU ler no Turso — é a base do /health (que sobrevive a cold start)
+	// e do alerta "fonte X parou há N min" do vigia externo. Nunca derruba o ciclo.
+	try {
+		await salvarSourceHealth(derivarFontes(getCachedWeatherState(), data));
+	} catch (err) {
+		logger.warn("Heartbeat de fontes falhou (não crítico)", {
+			error: String(err),
+		});
+	}
 	const now = Date.now();
 	if (
 		config.unifiedReportIntervalMs > 0 &&
@@ -182,30 +198,56 @@ async function runChecks(): Promise<void> {
 	});
 }
 
-function handleHealth(): Response {
+async function handleHealth(): Promise<Response> {
 	// ATENÇÃO: até 22/09/2026 este endpoint media o nível das OPERADORAS
 	// (checkResults). Com a remoção da telefonia/ISP esse mapa ficou sempre
 	// vazio e o /health responderia "healthy" para sempre — falha silenciosa
 	// para qualquer monitor de uptime apontado nele. Agora reflete os serviços
 	// monitorados de verdade (COPEL/Sanepar) pelo relatório unificado.
+	//
+	// 30/09/2026 (Plano 1 da meta-monitoria): `status` passa a ser a saúde DO
+	// MONITOR (ele está conseguindo enxergar as fontes?), não o estado do
+	// mundo. Instância fria sem relatório era "degraded" para sempre — hoje é
+	// "unknown" sem histórico e o estado real vem do Turso (source_health),
+	// que sobrevive a cold start. O estado do mundo continua em `level`/
+	// `services` (ex.: Copel com 58 UCs sem luz é `level: critical`, não
+	// problema do monitor).
 	const services = lastUnifiedReport?.services ?? [];
 	const levelCounts = {
 		critical: services.filter((s) => s.status === "critical").length,
 		warn: services.filter((s) => s.status === "warn").length,
 		ok: services.filter((s) => s.status === "ok").length,
 	};
-	// Sem relatório ainda (cold start) não é "saudável": é desconhecido.
-	const healthy =
-		services.length > 0 && levelCounts.critical === 0 && levelCounts.warn === 0;
+	const fontes = await lerSourceHealth();
+	const saude = avaliarSaudeMonitor(fontes);
 
 	return Response.json({
-		status: healthy ? "healthy" : "degraded",
+		status: saude.status,
 		level: lastUnifiedReport?.overallStatus ?? "ok",
 		uptime: Math.floor((Date.now() - startTime) / 1000),
 		serviceCount: services.length,
 		services: services.map((s) => ({ name: s.name, status: s.status })),
 		levels: levelCounts,
 		lastCheck: lastUnifiedReport?.generatedAt ?? null,
+		// Heartbeat por fonte (0-8 linhas). `idadeMin` = minutos desde o último
+		// sucesso; `falhasConsecutivas` conta seguidas. O vigia externo alerta
+		// por linha — "quem" morreu, não só "algo morreu".
+		sources: fontes.map((f) => ({
+			nome: f.nome,
+			rotulo: f.rotulo,
+			ok: f.ok,
+			idadeMin:
+				f.ultimoSucesso === null
+					? null
+					: Math.round((Date.now() - f.ultimoSucesso) / 60_000),
+			ultimaTentativa: f.ultimaTentativa,
+			ultimoSucesso: f.ultimoSucesso,
+			ultimoErro: f.ultimoErro,
+			falhasConsecutivas: f.falhasConsecutivas,
+			detalhe: f.detalhe,
+		})),
+		dataAgeSec: saude.dataAgeSec,
+		problemas: saude.problemas,
 		timestamp: Date.now(),
 	});
 }
@@ -323,6 +365,9 @@ export async function syncWeatherCycle(): Promise<WeatherState> {
 			? "🌩️ Núcleos de chuva detectados na região dos Campos Gerais. Atenção para potencial deslocamento de instabilidades e oscilações na rede elétrica (COPEL)."
 			: "Sem instabilidades ativas no radar regional.",
 		hourlyForecast: weatherInfo.hourlyForecast || [],
+		// Saúde da fonte Open-Meteo: o fallback de defaults é dado INVENTADO e
+		// precisa aparecer como falha no source-health (ver src/source-health.ts).
+		fonteOpenMeteo: { ok: weatherInfo.ok, erro: weatherInfo.erro },
 		radar,
 		bulletin: freshLegacyBulletin,
 		cemaden,

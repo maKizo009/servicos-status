@@ -12,6 +12,10 @@ import {
 } from "../src/push.js";
 import { EventTracker } from "../src/state.js";
 import {
+	derivarFontes,
+	salvarSourceHealth,
+} from "../src/source-health.js";
+import {
 	sendCopelAlert,
 	sendSaneparAlert,
 	sendTelegramAlert,
@@ -77,6 +81,16 @@ export default async function handler(req: any, res: any) {
 			syncWeatherCycle(),
 			runAllChecks(config, tracker),
 		]);
+
+		// Heartbeat por fonte (meta-monitoria, 30/09/2026): o ciclo completo é o
+		// único lugar que vê TODAS as fontes de uma vez — grava o que cada uma
+		// entregou no Turso (tabela source_health). É o que o /health expõe e o
+		// que o vigia externo usa para avisar "fonte X parou". Nunca derruba o ciclo.
+		try {
+			await salvarSourceHealth(derivarFontes(weatherState, data));
+		} catch (err) {
+			console.error("Heartbeat de fontes falhou (não crítico):", String(err));
+		}
 
 		for (const outage of data.newCopelOutages) {
 			await sendCopelAlert(
