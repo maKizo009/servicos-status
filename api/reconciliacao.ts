@@ -74,7 +74,7 @@ export default async function handler(req: any, res: any) {
 			resumo,
 			falsosNegativos: fn.slice(-10),
 			ultimasAvaliacoes: avaliacoes.slice(-12),
-			texto: formatarRelatorioAcuracia(resumo, dias),
+			texto: formatarRelatorioAcuracia(resumo, dias, medidas.length),
 		});
 	} catch (err) {
 		return responder({ error: String(err) }, 500);

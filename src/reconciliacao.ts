@@ -358,6 +358,7 @@ export function agregarAcuracia(
 export function formatarRelatorioAcuracia(
 	resumo: ResumoAcuracia,
 	dias: number,
+	medicoesChuva?: number,
 ): string {
 	const pct = (v: number | null) => (v == null ? "—" : `${v}%`);
 	const num = (v: number | null) => (v == null ? "—" : String(v));
@@ -366,36 +367,61 @@ export function formatarRelatorioAcuracia(
 	linhas.push(
 		`   apostas: ${resumo.apostas} · avaliadas: ${resumo.avaliadas} · precisão geral: ${pct(resumo.precisaoPct)} · pendentes: ${resumo.pendentes}`,
 	);
+	if (medicoesChuva != null) {
+		linhas.push(`   medições de pluviômetro (a verdade): ${medicoesChuva}`);
+	}
 	linhas.push("");
+	// Linha de seção: com desfecho mostra os números; sem desfecho diz que a
+	// janela ainda está aberta (0/0 não é número, é ausência de dado).
+	const secao = (
+		nome: string,
+		total: number,
+		avaliadas: number,
+		acertos: number,
+		corpo: string,
+	) => {
+		if (total === 0) return;
+		linhas.push(nome);
+		if (avaliadas === 0) {
+			linhas.push(
+				`   ainda sem desfecho (${total} aposta(s) com janela aberta)`,
+			);
+		} else {
+			linhas.push(corpo);
+		}
+	};
 	const rt = resumo.porTipo.radar_chuva;
-	if (rt) {
-		linhas.push("Alerta de chuva (radar × pluviômetro):");
-		linhas.push(
-			`   acertou (VP): ${rt.acertos} · errou (FP): ${rt.avaliadas - rt.acertos} · precisão: ${pct(rt.precisaoPct)}`,
-		);
-		linhas.push(`   chuva sem alerta (FN): ${resumo.falsosNegativos}`);
-	}
+	secao(
+		"Alerta de chuva (radar × pluviômetro):",
+		rt?.total ?? 0,
+		rt?.avaliadas ?? 0,
+		rt?.acertos ?? 0,
+		`   acertou (VP): ${rt?.acertos ?? 0} · errou (FP): ${(rt?.avaliadas ?? 0) - (rt?.acertos ?? 0)} · precisão: ${pct(rt?.precisaoPct ?? null)}\n   chuva sem alerta (FN): ${resumo.falsosNegativos}`,
+	);
 	const et = resumo.porTipo.eta_nucleo;
-	if (et) {
-		linhas.push("ETA do núcleo:");
-		linhas.push(
-			`   acertou na tolerância: ${et.acertos}/${et.avaliadas} · erro médio: ±${num(resumo.erroMedioEtaMin)} min`,
-		);
-	}
+	secao(
+		"ETA do núcleo:",
+		et?.total ?? 0,
+		et?.avaliadas ?? 0,
+		et?.acertos ?? 0,
+		`   acertou na tolerância: ${et?.acertos ?? 0}/${et?.avaliadas ?? 0} · erro médio: ±${num(resumo.erroMedioEtaMin)} min`,
+	);
 	const ec = resumo.porTipo.ecmwf_6h;
-	if (ec) {
-		linhas.push("Previsão ECMWF (6h):");
-		linhas.push(
-			`   acertou o evento: ${ec.acertos}/${ec.avaliadas} · erro médio: ${num(resumo.erroMedioMmEcmwf)} mm`,
-		);
-	}
+	secao(
+		"Previsão ECMWF (6h):",
+		ec?.total ?? 0,
+		ec?.avaliadas ?? 0,
+		ec?.acertos ?? 0,
+		`   acertou o evento: ${ec?.acertos ?? 0}/${ec?.avaliadas ?? 0} · erro médio: ${num(resumo.erroMedioMmEcmwf)} mm`,
+	);
 	const cp = resumo.porTipo.copel_restabelecimento;
-	if (cp) {
-		linhas.push("Copel (restabelecimento no prazo):");
-		linhas.push(
-			`   dentro do prazo: ${cp.acertos}/${cp.avaliadas} · atraso médio quando atrasou: ${num(resumo.atrasoMedioCopelMin)} min`,
-		);
-	}
+	secao(
+		"Copel (restabelecimento no prazo):",
+		cp?.total ?? 0,
+		cp?.avaliadas ?? 0,
+		cp?.acertos ?? 0,
+		`   dentro do prazo: ${cp?.acertos ?? 0}/${cp?.avaliadas ?? 0} · atraso médio quando atrasou: ${num(resumo.atrasoMedioCopelMin)} min`,
+	);
 	if (resumo.avaliadas === 0) {
 		linhas.push("");
 		linhas.push(
