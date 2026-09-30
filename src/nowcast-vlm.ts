@@ -604,11 +604,12 @@ export function validateBulletinAgainstVerdict(
 		 */
 		etasValidas?: number[];
 		/**
-		 * Distâncias REAIS dos núcleos (`distToTargetKm`) — valida cada "N km"
-		 * citado contra a referência certa (cidade OU núcleo). Ver
+		 * Distâncias REAIS das entidades (`distToTargetKm`), de preferência com
+		 * o MUNICÍPIO pareado (mesmo rótulo do prompt) — valida cada "N km"
+		 * citado contra a referência certa (cidade OU entidade). Ver
 		 * src/validacao-distancias.ts (falso alarme do watchdog, 30/09/2026).
 		 */
-		distanciasReaisKm?: number[];
+		distanciasReaisKm?: Array<number | import("./validacao-distancias.js").RefDistancia>;
 	},
 ): boolean {
 	// 1. Regurgitação de instruções do prompt: frases que NUNCA devem aparecer

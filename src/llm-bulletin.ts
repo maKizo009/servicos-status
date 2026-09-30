@@ -406,6 +406,12 @@ export async function tryLlmBulletin(
 	// 30 s do cron-job.org. Antes, cada modelo tinha 30 s de folga — três modelos
 	// lentos davam 90 s de ciclo, falha registrada e risco de desabilitar o job.
 	const prazo = Date.now() + LLM_ORCAMENTO_MS;
+	// Teto por modelo DENTRO do orçamento: sem isto, um modelo lento (muse-spark
+	// medido entre 1 e 15 s hoje) comia os 15 s inteiros e o fallback rápido
+	// (minimax-m3, medido ~2,5 s) nunca era chamado — o boletim caía na
+	// heurística em série (30/09/2026, ciclos 14:30 e 14:40). 8 s dão folga p/
+	// o 1º responder e sobram ≥6 s p/ o 2º; a cadeia toda continua ≤15 s.
+	const MODELO_TETO_MS = 8_000;
 	let tentados = 0;
 	for (const entry of LLM_CHAIN) {
 		const { model, provider } = entry;
@@ -421,7 +427,7 @@ export async function tryLlmBulletin(
 			break;
 		}
 		tentados++;
-		const teto = Math.min(LLM_TIMEOUT_MS, restante);
+		const teto = Math.min(LLM_TIMEOUT_MS, MODELO_TETO_MS, restante);
 		const text =
 			provider === "openrouter"
 				? await chamaOpenRouter(model, prompt, cfg.openRouterApiKey, teto)
@@ -451,10 +457,14 @@ export async function tryLlmBulletin(
 				etasValidas: (ctx.threats ?? [])
 					.map((t) => t.etaMin ?? 0)
 					.filter((n) => n > 0),
-				// Distâncias citadas × referência certa (cidade OU núcleo):
-				// rejeita alucinação de verdade sem reprovar o texto correto
-				// que cita a distância da cidade (ver validacao-distancias.ts).
-				distanciasReaisKm: (ctx.threats ?? []).map((t) => t.distKm),
+				// Distâncias citadas × referência certa (cidade OU entidade
+				// pareada): rejeita alucinação de distância sem reprovar o
+				// texto correto que segue o template ("área em X, a N km" —
+				// N é distToTargetKm da entidade, não o centróide da cidade).
+				distanciasReaisKm: (ctx.threats ?? []).map((t) => ({
+					km: t.distKm,
+					municipio: t.municipio,
+				})),
 			})
 		)
 			continue;

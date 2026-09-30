@@ -101,3 +101,52 @@ describe("avaliarDistanciasCitadas", () => {
 		).toBe(false);
 	});
 });
+
+describe("caso real 30/09/2026 14:40 — 'Santa Isabel do Ivaí a 333 km'", () => {
+	// O texto do muse-spark citava a distância da ÁREA (distToTargetKm=333,
+	// pareada com Santa Isabel do Ivaí no template) e o extrator antigo casava
+	// "Santa Isabel" — OUTRO município, centróide 481 km — rejeitando o
+	// boletim correto → heurística em série (falhas=4 no /health).
+	const texto =
+		"Choveu nas últimas horas em Ipiranga, com 22,6 mm acumulados em 24 horas. Não há núcleo de tempestade por perto no radar, mas há áreas de chuva moderada longe, como a de Ipumirim a 274 km e a de Santa Isabel do Ivaí a 333 km se aproximando.";
+
+	test("extrator resolve o nome MAIS LONGO (Santa Isabel do Ivaí, não Santa Isabel)", () => {
+		const dists = extrairDistanciasCitadas(texto);
+		expect(dists.length).toBe(2);
+		expect(dists[0]?.cidade).toBe("Ipumirim");
+		expect(dists[0]?.km).toBe(274);
+		expect(dists[1]?.cidade).toBe("Santa Isabel do Ivaí");
+		expect(dists[1]?.km).toBe(333);
+	});
+
+	test("validação passa com entidades pareadas (mesmo rótulo do prompt)", () => {
+		const refs = [
+			{ km: 274, municipio: "Ipumirim" },
+			{ km: 333, municipio: "Santa Isabel do Ivaí" },
+		];
+		const r = avaliarDistanciasCitadas(texto, refs);
+		expect(r.problemas).toEqual([]);
+		expect(r.ok).toBe(true);
+	});
+
+	test("alucinação continua reprova: número sem pareamento nem centróide", () => {
+		const textoRuim =
+			"há áreas de chuva em Ipumirim a 274 km e em Santa Isabel do Ivaí a 999 km.";
+		const refs = [
+			{ km: 274, municipio: "Ipumirim" },
+			{ km: 333, municipio: "Santa Isabel do Ivaí" },
+		];
+		const r = avaliarDistanciasCitadas(textoRuim, refs);
+		expect(r.ok).toBe(false);
+		expect(r.problemas.join(" ")).toContain("999 km");
+	});
+
+	test("entidade pareada salva texto cujo centróide diverge (métrica do template)", () => {
+		// Caso sintético: área na borda de São Mateus do Sul — distToTargetKm=150,
+		// centróide 101 km (Δ49 > tol cidade 25). Sem pareamento reprovaria.
+		const r = avaliarDistanciasCitadas("chuva em São Mateus do Sul a 150 km.", [
+			{ km: 150, municipio: "São Mateus do Sul" },
+		]);
+		expect(r.ok).toBe(true);
+	});
+});
