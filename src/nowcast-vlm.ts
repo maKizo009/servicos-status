@@ -14,6 +14,7 @@ import {
 	type RegionSpec,
 	type ThreatVerdict,
 } from "./radar-analysis.js";
+import { avaliarDistanciasCitadas } from "./validacao-distancias.js";
 
 /**
  * Camada B — Análise não-determinística (VLM Gemini 3.6 Flash Lite).
@@ -602,6 +603,12 @@ export function validateBulletinAgainstVerdict(
 		 * (área e núcleo), então validar contra uma só reprova boletim correto.
 		 */
 		etasValidas?: number[];
+		/**
+		 * Distâncias REAIS dos núcleos (`distToTargetKm`) — valida cada "N km"
+		 * citado contra a referência certa (cidade OU núcleo). Ver
+		 * src/validacao-distancias.ts (falso alarme do watchdog, 30/09/2026).
+		 */
+		distanciasReaisKm?: number[];
 	},
 ): boolean {
 	// 1. Regurgitação de instruções do prompt: frases que NUNCA devem aparecer
@@ -691,6 +698,24 @@ export function validateBulletinAgainstVerdict(
 			text,
 		});
 		return false;
+	}
+
+	// 2d. DISTÂNCIAS CITADAS INCONSISTENTES (gate 30/09/2026): cada "<n> km"
+	// citado precisa bater com a referência CERTA — distância do MUNICÍPIO
+	// citado (centróide da malha) ou distância medida do NÚCLEO
+	// (distToTargetKm). São métricas diferentes (o núcleo não fica no centro
+	// da cidade, 20-30 km de diferença são esperados) e comparar uma com a
+	// outra reprova boletim correto — era exatamente o falso alarme do
+	// watchdog de 30/09/2026 ("Guaporema a 294 km" era a cidade, e está certa).
+	if (opts?.distanciasReaisKm) {
+		const r = avaliarDistanciasCitadas(text, opts.distanciasReaisKm);
+		if (!r.ok) {
+			logger.warn("Camada B: texto rejeitado (distâncias não batem)", {
+				problemas: r.problemas,
+				text,
+			});
+			return false;
+		}
 	}
 
 	if (!verdict) return true;
@@ -895,10 +920,7 @@ export function buildHeuristicBulletin(
 	// narrado como ameaça a Ipiranga). Fallback para estado antigo sem zone.
 	const t0ForaDeAlcance =
 		t0?.relevanceZone === "monitor" ||
-		(t0?.relevanceZone == null &&
-			t0Km != null &&
-			t0Km > 250 &&
-			!t0Aproximando);
+		(t0?.relevanceZone == null && t0Km != null && t0Km > 250 && !t0Aproximando);
 	if (nowcast.threats.length === 0 || t0ForaDeAlcance) {
 		const nc = nowcast.nearestCell ?? t0 ?? null;
 		const kmDistante =

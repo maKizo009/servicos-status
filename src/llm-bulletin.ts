@@ -1,8 +1,8 @@
 import { loadConfig } from "./config.js";
 import {
 	getLatestNowcastBulletin,
-	saveNowcastBulletin,
 	type NowcastBulletinRecord,
+	saveNowcastBulletin,
 } from "./db.js";
 import { rotularLocalizacao } from "./geo-municipio.js";
 import { logger } from "./logger.js";
@@ -75,8 +75,8 @@ interface LlmEntry {
 	model: string;
 }
 
-import type { SoloCidade } from "./sigma-feed.js";
 import { passaCoerenciaAmeaca } from "./bulletin-coherence.js";
+import type { SoloCidade } from "./sigma-feed.js";
 
 export interface AnalystThreat {
 	municipio: string;
@@ -165,12 +165,16 @@ export function buildAnalystPrompt(ctx: AnalystContext): string {
 	}
 	linhas.push(
 		`PREVISÃO (ECMWF — é PREVISÃO, NÃO medição): ${
-			ctx.ecmwfPct != null ? `${Math.round(ctx.ecmwfPct)}% de chance de chuva` : "indisponível"
+			ctx.ecmwfPct != null
+				? `${Math.round(ctx.ecmwfPct)}% de chance de chuva`
+				: "indisponível"
 		}` +
 			(ctx.ecmwfProx6hMm != null
 				? `, ${ctx.ecmwfProx6hMm.toFixed(1)} mm nas próximas 6h`
 				: "") +
-			(ctx.condition ? `. Condição prevista pelo modelo: ${ctx.condition}` : ""),
+			(ctx.condition
+				? `. Condição prevista pelo modelo: ${ctx.condition}`
+				: ""),
 	);
 	if (ctx.hidroWatch)
 		linhas.push(
@@ -264,7 +268,10 @@ async function chamaOpenRouter(
 			error?: { message?: string };
 		};
 		if (json.error) {
-			logger.warn("LLM analista: erro do provedor", { model, error: json.error.message });
+			logger.warn("LLM analista: erro do provedor", {
+				model,
+				error: json.error.message,
+			});
 			return null;
 		}
 		return (json.choices?.[0]?.message?.content ?? "").trim() || null;
@@ -309,7 +316,10 @@ async function chamaNim(
 			error?: { message?: string };
 		};
 		if (json.error) {
-			logger.warn("LLM analista: erro do provedor", { model, error: json.error.message });
+			logger.warn("LLM analista: erro do provedor", {
+				model,
+				error: json.error.message,
+			});
 			return null;
 		}
 		return (json.choices?.[0]?.message?.content ?? "").trim() || null;
@@ -379,7 +389,11 @@ export async function tryLlmBulletin(
 		alertLevel?: "alert" | "watch" | "monitor" | "none";
 		nearestThreatKm?: number | null;
 	},
-): Promise<{ text: string; model: string; provider: "openrouter" | "gemini" | "nim" } | null> {
+): Promise<{
+	text: string;
+	model: string;
+	provider: "openrouter" | "gemini" | "nim";
+} | null> {
 	const cfg = loadConfig();
 	if (!cfg.openRouterApiKey && !cfg.geminiApiKey && !cfg.nvidiaNimApiKey) {
 		logger.warn(
@@ -437,6 +451,10 @@ export async function tryLlmBulletin(
 				etasValidas: (ctx.threats ?? [])
 					.map((t) => t.etaMin ?? 0)
 					.filter((n) => n > 0),
+				// Distâncias citadas × referência certa (cidade OU núcleo):
+				// rejeita alucinação de verdade sem reprovar o texto correto
+				// que cita a distância da cidade (ver validacao-distancias.ts).
+				distanciasReaisKm: (ctx.threats ?? []).map((t) => t.distKm),
 			})
 		)
 			continue;
@@ -447,7 +465,11 @@ export async function tryLlmBulletin(
 			});
 			continue;
 		}
-		logger.info("LLM analista: boletim aceito", { model, provider, len: text.length });
+		logger.info("LLM analista: boletim aceito", {
+			model,
+			provider,
+			len: text.length,
+		});
 		return { text, model, provider };
 	}
 	return null;
@@ -580,15 +602,15 @@ export function avaliarReuso(i: {
 		cached.source === "openrouter" ||
 		cached.source === "nvidia_nim" ||
 		cached.source === "gemini";
-	if (!fonteLlm) return { reusar: false, motivo: "último boletim é heurística" };
+	if (!fonteLlm)
+		return { reusar: false, motivo: "último boletim é heurística" };
 	const idadeMs = agora - cached.generatedAt;
 	if (idadeMs >= LLM_TTL_MS) return { reusar: false, motivo: "TTL vencido" };
 	// "Está chovendo agora" é MEDIÇÃO na ÚLTIMA HORA — acumulado de 6 h/24 h é
 	// chuva que já passou (fraseChuvaLocal também fala de acumulado).
 	const choveAgoraMedido = (local?.acc1hrMax ?? 0) >= 0.5;
-	const textoDizChoveAgora = /chove (em ipiranga )?agora|est[áa] chovendo/i.test(
-		cached.text,
-	);
+	const textoDizChoveAgora =
+		/chove (em ipiranga )?agora|est[áa] chovendo/i.test(cached.text);
 	if (choveAgoraMedido !== textoDizChoveAgora) {
 		return {
 			reusar: false,
@@ -601,7 +623,11 @@ export function avaliarReuso(i: {
 	// com pluviômetro zerado).
 	const mmTexto = /([\d]+(?:[.,]\d+)?)\s*mm na última hora/i.exec(cached.text);
 	const mmTextoNum = mmTexto ? Number(mmTexto[1].replace(",", ".")) : null;
-	if (mmTextoNum != null && mmTextoNum >= 0.5 && (local?.acc1hrMax ?? 0) < 0.5) {
+	if (
+		mmTextoNum != null &&
+		mmTextoNum >= 0.5 &&
+		(local?.acc1hrMax ?? 0) < 0.5
+	) {
 		return {
 			reusar: false,
 			motivo: "texto cita chuva na última hora e o pluviômetro está zerado",
