@@ -407,11 +407,13 @@ export async function tryLlmBulletin(
 	// lentos davam 90 s de ciclo, falha registrada e risco de desabilitar o job.
 	const prazo = Date.now() + LLM_ORCAMENTO_MS;
 	// Teto por modelo DENTRO do orçamento: sem isto, um modelo lento (muse-spark
-	// medido entre 1 e 15 s hoje) comia os 15 s inteiros e o fallback rápido
-	// (minimax-m3, medido ~2,5 s) nunca era chamado — o boletim caía na
-	// heurística em série (30/09/2026, ciclos 14:30 e 14:40). 8 s dão folga p/
-	// o 1º responder e sobram ≥6 s p/ o 2º; a cadeia toda continua ≤15 s.
-	const MODELO_TETO_MS = 8_000;
+	// medido entre 1 e 15 s, com o prompt real chegou a 12 s em produção)
+	// consumia os 15 s inteiros e o fallback rápido (minimax-m3, ~0,5-3 s)
+	// nunca era chamado — o boletim caía na heurística em série (30/09/2026,
+	// ciclos 14:30/14:40/16:00). 11 s pro 1º (cobre a latência observada) e a
+	// sobra ≥4 s garante a vez do 2º; a cadeia toda continua ≤15 s (o teto do
+	// cron-job.org de 30 s é intocável — histórico de auto-desabilitação).
+	const MODELO_TETO_MS = 11_000;
 	let tentados = 0;
 	for (const entry of LLM_CHAIN) {
 		const { model, provider } = entry;
