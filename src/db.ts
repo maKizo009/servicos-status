@@ -164,6 +164,38 @@ export async function initDb(): Promise<Client> {
 					detalhe TEXT,
 					atualizado_em INTEGER NOT NULL
 				)`,
+			// Livro de apostas (Plano 2, 30/09/2026): cada afirmação verificável
+			// do monitor (alerta de chuva, ETA, previsão ECMWF, restabelecimento
+			// Copel) vira aposta registrada com janela de desfecho; a
+			// reconciliação mede depois com dado independente (pluviômetro /
+			// fechamento real da ocorrência). Ver src/previsoes.ts e
+			// src/reconciliacao.ts.
+			`CREATE TABLE IF NOT EXISTS previsoes (
+					id INTEGER PRIMARY KEY AUTOINCREMENT,
+					tipo TEXT NOT NULL,
+					chave TEXT NOT NULL UNIQUE,
+					registrado_em INTEGER NOT NULL,
+					janela_fim INTEGER NOT NULL,
+					alvo TEXT NOT NULL,
+					desfecho TEXT,
+					avaliado_em INTEGER,
+					acertou INTEGER
+				)`,
+			`CREATE INDEX IF NOT EXISTS idx_previsoes_tipo ON previsoes(tipo)`,
+			`CREATE INDEX IF NOT EXISTS idx_previsoes_registrado ON previsoes(registrado_em)`,
+			// A VERDADE da reconciliação de chuva: 1 linha/estação/hora com o
+			// acumulado da última hora (acc1hr do CEMADEN). Sem esta série não
+			// existe "choveu mesmo?" depois da janela da aposta.
+			`CREATE TABLE IF NOT EXISTS chuva_medida (
+					id INTEGER PRIMARY KEY AUTOINCREMENT,
+					ts INTEGER NOT NULL,
+					estacao TEXT NOT NULL,
+					mm1h REAL,
+					stale INTEGER NOT NULL DEFAULT 0,
+					atualizado_em INTEGER NOT NULL,
+					UNIQUE(estacao, ts)
+				)`,
+			`CREATE INDEX IF NOT EXISTS idx_chuva_medida_ts ON chuva_medida(ts)`,
 			`CREATE TABLE IF NOT EXISTS app_events (
 				id INTEGER PRIMARY KEY AUTOINCREMENT,
 				tipo TEXT NOT NULL,

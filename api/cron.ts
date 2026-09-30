@@ -92,6 +92,21 @@ export default async function handler(req: any, res: any) {
 			console.error("Heartbeat de fontes falhou (não crítico):", String(err));
 		}
 
+		// Livro de apostas (Plano 2): registra o que o monitor está AFIRMANDO e
+		// fecha o que já tem desfecho. Nunca derruba o ciclo (módulo não lança).
+		try {
+			const { registrarMedicaoChuva, registrarPrevisoesDoCiclo, reconciliarFechamentosCopel } =
+				await import("../src/previsoes.js");
+			await registrarMedicaoChuva(weatherState.cemaden);
+			await registrarPrevisoesDoCiclo(weatherState, data);
+			await reconciliarFechamentosCopel(
+				data.copelOutages,
+				data.copelConsultaOk !== false,
+			);
+		} catch (err) {
+			console.error("Livro de apostas falhou (não crítico):", String(err));
+		}
+
 		for (const outage of data.newCopelOutages) {
 			await sendCopelAlert(
 				outage,
