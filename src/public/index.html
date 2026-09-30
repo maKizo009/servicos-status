@@ -4451,6 +4451,22 @@ function copyPrompt(provider, text) {
   } else { init(); }
 })();
 </script>
+<!-- ===== Card de ajuda de instalação (estático, design M3) =====
+     Antes era criado dinamicamente com estilos inline — frágil e inconsistente.
+     Agora é um card fixo no HTML, dispensável, com o design do site. -->
+<div id="installHelp" hidden style="position:fixed;left:50%;transform:translateX(-50%);bottom:18px;z-index:9999;width:min(92vw,440px);background:var(--md-sys-color-surface-container-high);border-radius:16px;box-shadow:0 12px 32px rgba(0,0,0,.3);padding:16px;font-size:13px;line-height:1.55;text-align:left" role="status" aria-label="Como instalar o Monitor Ipiranga">
+  <div style="display:flex;align-items:flex-start;gap:10px">
+    <div style="flex:1">
+      <strong style="font-size:14px;display:block;margin-bottom:6px">Como instalar o Monitor Ipiranga</strong>
+      <div style="margin-bottom:4px"><strong>Android (Chrome, Edge, Opera):</strong> toque nos <strong>⋮</strong> (três pontos) no topo da tela → <strong>Instalar app</strong> ou <strong>Adicionar à tela inicial</strong>.</div>
+      <div style="margin-bottom:4px"><strong>Android (Chrome antigo):</strong> se não vir "Instalar app", procure <strong>Adicionar à tela inicial</strong> no mesmo menu ⋮. Em alguns aparelhos Motorola mais antigos fica em <strong>Configurações → Tela inicial → Adicionar atalho</strong>.</div>
+      <div style="margin-bottom:4px"><strong>iPhone/iPad (Safari):</strong> toque no botão <strong>Compartilhar</strong> (quadrado com seta pra cima) → <strong>Adicionar à Tela de Início</strong>.</div>
+      <div style="margin-bottom:4px"><strong>Computador (Chrome, Edge):</strong> menu <strong>⋮</strong> → <strong>Salvar e compartilhar</strong> → <strong>Instalar página como app</strong>.</div>
+      <div style="color:var(--text2);font-size:12px;margin-top:6px">Firefox e Brave trazem o item "Instalar" direto no menu ⋮.</div>
+    </div>
+    <button id="installHelpClose" type="button" style="flex:none;border:none;background:none;cursor:pointer;color:var(--text3);font-size:20px;line-height:1;padding:4px 8px;border-radius:50%" aria-label="Fechar ajuda de instalação">&times;</button>
+  </div>
+</div>
 <script>
 /* ===== Service Worker + instalação do PWA ===== */
 (() => {
@@ -4489,33 +4505,30 @@ function copyPrompt(provider, text) {
   // (instalava no Brave e não no Chrome).
   setTimeout(mostrarEntradas, 2500);
 
-  var AJUDA_ID = 'mi-instalar-ajuda';
+  var ajudaEl = document.getElementById('installHelp');
+  var ajudaFechou = false;
+  try { ajudaFechou = localStorage.getItem('mi_install_help_x') === '1'; } catch (e) {}
   function fecharAjuda() {
-    var el = document.getElementById(AJUDA_ID);
-    if (el) el.style.display = 'none';
+    if (ajudaEl) ajudaEl.hidden = true;
   }
   function ajudaVisivel() {
-    var el = document.getElementById(AJUDA_ID);
-    return !!el && el.style.display !== 'none';
+    return !!ajudaEl && !ajudaEl.hidden;
   }
   function mostrarAjuda() {
-    var el = document.getElementById(AJUDA_ID);
-    if (!el) {
-      el = document.createElement('div');
-      el.id = AJUDA_ID;
-      el.setAttribute('role', 'status');
-      el.style.cssText = 'position:fixed;left:50%;transform:translateX(-50%);bottom:18px;z-index:9999;width:min(92vw,420px);background:var(--md-sys-color-surface-container-high,#fff);color:var(--text,#111);border-radius:16px;box-shadow:0 12px 32px rgba(0,0,0,.3);padding:14px 16px;font-size:13px;line-height:1.55;text-align:left';
-      el.innerHTML = '<strong style="font-size:13.5px">Instalar o Monitor Ipiranga</strong>' +
-        '<div style="margin-top:6px">Android (Chrome, Edge, Opera): menu <strong>⋮</strong> → <strong>Instalar app</strong> (em alguns aparelhos aparece como "Adicionar à tela inicial").</div>' +
-        '<div style="margin-top:5px">iPhone/iPad (Safari): botão <strong>Compartilhar</strong> → <strong>Adicionar à Tela de Início</strong>.</div>' +
-        '<div style="margin-top:5px">Computador (Chrome, Edge): menu <strong>⋮</strong> → <strong>Salvar e compartilhar</strong> → <strong>Instalar página como app</strong>.</div>' +
-        '<div style="margin-top:6px;color:var(--text2,#555)">Firefox e Brave trazem o item "Instalar" no próprio menu.</div>';
-      document.body.appendChild(el);
-    } else {
-      el.style.display = 'block';
+    if (!ajudaEl || ajudaFechou) return;
+    ajudaEl.hidden = false;
+    clearTimeout(ajudaEl._timer);
+    ajudaEl._timer = setTimeout(() => { ajudaEl.hidden = true; }, 30000);
+  }
+  if (ajudaEl) {
+    var btnFechar = document.getElementById('installHelpClose');
+    if (btnFechar) {
+      btnFechar.addEventListener('click', () => {
+        ajudaFechou = true;
+        try { localStorage.setItem('mi_install_help_x', '1'); } catch (e) {}
+        ajudaEl.hidden = true;
+      });
     }
-    clearTimeout(el._timer);
-    el._timer = setTimeout(() => { el.style.display = 'none'; }, 25000);
   }
   // Mesma ação para o card da página e para o item do menu: prompt nativo
   // quando o navegador oferece; passo a passo quando não oferece.
@@ -4595,6 +4608,7 @@ function copyPrompt(provider, text) {
     </div>
   </div>
 </div>
+
 <script>
 /* ===== Popup de ativação de push (novo visitante, 1x/30 dias) ===== */
 (() => {
