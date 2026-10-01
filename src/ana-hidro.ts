@@ -450,6 +450,99 @@ export function mesAtualSPagora(): number {
 	);
 }
 /** Posição do nível atual contra as faixas. */
+/**
+ * Projeta comportamento do Bitumirim com base no Uvaia e chuva local.
+ * Modelo empírico calibrado em OUT23 (7 dias fora) e DEZ24 (2 dias fora).
+ * Sempre retorna resultado — nunca lança exceção.
+ *
+ * ⚠️ DORMENTE POR DESIGN: só é chamada em períodos de CHEIA do rio. Fora
+ * disso não há chamador — não remover como "código morto" (caso real 01/10/2026,
+ * auditoria cegou por não saber disso).
+ */
+export function projetarBitumirim(
+	uvaiaCm: number | null,
+	taxaSubidaCmd24h: number | null,
+	chuvaLocalMm24h: number,
+): ProjecaoBitumirim {
+	const L = BITUMIRIM_LIMIARES;
+	const texto: string[] = [];
+	if (uvaiaCm == null) {
+		return {
+			nivelEstimadoM: null, saiuDaCalha: false, horasAteCalha: null,
+			horasAtePico: null, horasRecedencia: null, classificacao: "normal",
+			texto: "Uvaia sem dados — projeção indisponível.",
+		};
+	}
+	const taxa = taxaSubidaCmd24h ?? 0;
+	const riscoSaida =
+		uvaiaCm >= L.saidaCalhaUvaiaCm && chuvaLocalMm24h >= L.saidaCalhaChuvaMm;
+	const riscoSemSaida =
+		uvaiaCm >= L.riscoSemSaidaUvaiaCm && chuvaLocalMm24h >= L.riscoSemSaidaChuvaMm;
+	// Estimativa linear do nível do Bitumirim (m):
+	// OUT23: Uvaia 756 cm → ~2.5 m; Uvaia 1189 cm → 8 m
+	let nivelEstimadoM: number | null =
+		uvaiaCm > 400 ? Math.max(2, Math.min(8, (uvaiaCm - 400) / 120)) : null;
+	// Horas até sair da calha
+	let horasAteCalha: number | null = null;
+	if (!riscoSaida && uvaiaCm < L.saidaCalhaUvaiaCm && taxa > L.taxaModeradaCmd) {
+		horasAteCalha = Math.round(((L.saidaCalhaUvaiaCm - uvaiaCm) / taxa) * 24);
+	} else if (riscoSaida) {
+		horasAteCalha = 0;
+	}
+	// Horas até pico
+	let horasAtePico: number | null = null;
+	if (riscoSaida || riscoSemSaida) {
+		horasAtePico = taxa > L.taxaExplosivaCmd ? 24 : 48;
+	} else if (taxa > L.taxaModeradaCmd) {
+		horasAtePico = 72;
+	}
+	// Horas de recedência
+	let horasRecedencia: number | null = null;
+	if (riscoSaida || (nivelEstimadoM != null && nivelEstimadoM > 3)) {
+		// Solo saturado (chuva > 80mm) = OUT23 (7+ dias); drenado = DEZ24 (2 dias)
+		horasRecedencia = chuvaLocalMm24h > 80 ? 168 : 48;
+	}
+	// Classificação
+	let classificacao: ProjecaoBitumirim["classificacao"] = "normal";
+	if (nivelEstimadoM != null && nivelEstimadoM >= 6) classificacao = "critico";
+	else if (riscoSaida) classificacao = "alerta";
+	else if (riscoSemSaida || (nivelEstimadoM != null && nivelEstimadoM >= 4 && taxa > 0))
+		classificacao = "atencao";
+	// Texto
+	if (riscoSaida) {
+		texto.push(
+			`Bitumirim estimado ${nivelEstimadoM?.toFixed(1) ?? "?"} m — provável transbordamento ` +
+				`(Uvaia ${(uvaiaCm / 100).toFixed(2).replace(".", ",")} m + ${chuvaLocalMm24h.toFixed(0)} mm local)`,
+		);
+		if (horasAtePico != null) texto.push(`Pico estimado em ~${horasAtePico}h`);
+		if (horasRecedencia != null)
+			texto.push(
+				`Recedência: ~${Math.round(horasRecedencia / 24)} dias` +
+					(chuvaLocalMm24h > 80 ? " (solo saturado)" : ""),
+			);
+	} else if (riscoSemSaida) {
+		texto.push(
+			`Risco de transbordamento: Uvaia ${(uvaiaCm / 100).toFixed(2).replace(".", ",")} m + ${chuvaLocalMm24h.toFixed(0)} mm local`,
+		);
+	} else if (taxa > L.taxaExplosivaCmd) {
+		texto.push(
+			`Uvaia subindo ${taxa.toFixed(0)} cm/dia — cheia em 1-3 dias se chuva persistir`,
+		);
+	} else if (taxa > L.taxaModeradaCmd) {
+		texto.push(`Uvaia subindo ${taxa.toFixed(0)} cm/dia — monitorar`);
+	}
+	return {
+		nivelEstimadoM,
+		saiuDaCalha: riscoSaida,
+		horasAteCalha,
+		horasAtePico,
+		horasRecedencia,
+		classificacao,
+		texto:
+			texto.join(". ") ||
+			"Bitumirim dentro da calha, sem risco de cheia.",
+	};
+}
 export function faixaNivel(
 	codigo: string,
 	nivelCm: number | null,
