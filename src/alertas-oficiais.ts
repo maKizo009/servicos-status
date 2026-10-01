@@ -296,6 +296,48 @@ export interface ContextoTransicaoAlerta {
 	nucleoDissipando?: boolean;
 }
 
+
+/**
+ * Traduz a descrição técnica do alerta em texto pro público geral.
+ *
+ * A `descricao` original serve pro card (que tem "detalhes atrás de botão")
+ * e pra auditoria — mas a NOTIFICAÇÃO push vai pra gente comum no celular,
+ * onde "núcleo severo confirmado em 2 ciclos seguidos de radar (10 min cada)"
+ * não significa nada e ainda assusta mais do que a situação real.
+ *
+ * Regra do dono (01/10/2026): "núcleo de chuva forte" ≠ "núcleo severo".
+ * O primeiro é o que o radar vê (heavy/extreme); o segundo é o nome do nosso
+ * interno pra evidência que dispara push. Pro usuário, um só: chuva forte.
+ */
+export function descricaoParaPessoas(
+	a: Pick<AlertaUnificado, "nivel" | "titulo"> & {
+		motivos?: string[];
+		descricao?: string;
+	},
+): string {
+	const oQueTem: Record<string, string> = {
+		vermelho:
+			"Chuva muito forte na região — risco de alagamento e queda de energia.",
+		laranja: "Chuva forte se aproximando da região.",
+		amarelo: "Possibilidade de chuva na região.",
+		verde: "Tempo calmo por aqui.",
+	};
+	const partes = [oQueTem[a.nivel] ?? oQueTem.verde];
+	const mudou = /Alerta (subiu|rebaixado)/.exec(a.descricao ?? "")?.[0];
+	if (mudou) {
+		partes.push(
+			mudou.includes("subiu")
+				? "A situação piorou desde a última checagem."
+				: "A situação melhorou desde a última checagem.",
+		);
+	}
+	// Só alerta quem precisa agir: verde/amarelo não pedem olhar o radar.
+	if (a.nivel === "laranja" || a.nivel === "vermelho") {
+		partes.push("Acompanhe o radar do app — as condições podem mudar rápido.");
+	}
+	return partes.join(" ");
+}
+
 export function buildAlertaUnificado(
 	local: DadosLocaisAlerta,
 	oficiais: AlertasOficiaisState | null,
@@ -330,11 +372,14 @@ export function buildAlertaUnificado(
 		// e o título não pode afirmar "chuva forte" para uma área.
 		nivel = "laranja";
 		if (local.radarSevero) {
-			motivos.push("núcleo de chuva forte se aproximando no radar (≤80 km)");
+			motivos.push("chuva forte detectada no radar, se aproximando da região");
 			const ciclos = local.radarSeveroCiclos ?? 0;
+			// "Núcleo severo" é termo INTERNO (o que dispara push). No texto do
+			// usuário é só "chuva forte confirmada" — separar evita alarmismo
+			// (pedido do dono 01/10/2026: "núcleo de chuva forte ≠ núcleo severo").
 			if (ciclos >= 2)
 				motivos.push(
-					`núcleo severo confirmado em ${ciclos} ciclos seguidos de radar (10 min cada)`,
+					`chuva forte confirmada no radar há ${ciclos} checagens seguidas`,
 				);
 		}
 		if (c6 >= 25)
@@ -358,10 +403,10 @@ export function buildAlertaUnificado(
 		if (local.radarAlertLevel === "alert" || local.radarAlertLevel === "watch")
 			motivos.push(
 				local.radarSeveroNaoConfirmado === true
-					? "núcleo de chuva forte recém-detectado no radar (1º ciclo) — aguardando confirmação antes de interromper o celular"
+					? "chuva forte apareceu no radar — vamos confirmar nos próximos minutos antes de alertar"
 					: local.radarKind === "area"
-						? "área de chuva se aproximando no radar (sem núcleo de tempestade)"
-						: "núcleo de chuva em vigilância no radar",
+						? "área de chuva se aproximando (sem tempestade)"
+						: "chuva em vigilância no radar",
 			);
 		if (c24 >= 20)
 			motivos.push(

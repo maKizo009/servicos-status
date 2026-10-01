@@ -10,6 +10,7 @@
 import { waitUntil } from "@vercel/functions";
 import {
 	buildAlertaUnificado,
+	descricaoParaPessoas,
 	fetchAlertasOficiais,
 	logAlertaUnificado,
 } from "./alertas-oficiais.js";
@@ -694,12 +695,10 @@ export async function syncWeatherCycle(): Promise<WeatherState> {
 			if (regra) {
 				// O aviso de olhar o radar entra no corpo do push: o que se aproxima
 				// pode mudar de rumo/intensidade (pedido do dono, 27/09/2026).
-				const corpoPush = [
-					unificado.descricao,
-					avisoMovimentoNucleo(state.radarSevero === true),
-				]
-					.filter(Boolean)
-					.join(" ");
+				// Corpo do push em texto de gente (01/10/2026): a descrição
+				// técnica ("núcleo severo confirmado em 2 ciclos") vai pro CARD,
+				// não pro celular — lá ela só assusta e não informa.
+				const corpoPush = descricaoParaPessoas(unificado);
 				const enviado = await sendEventPush(
 					regra.evento,
 					`${regra.emoji} ${unificado.titulo}`,
