@@ -225,12 +225,7 @@ export async function passkeyRegisteredCount(): Promise<number> {
 	}
 }
 
-/** A senha sozinha abre sessão? */
-export async function passwordAloneAllowed(): Promise<boolean> {
-	const modo = passkeyMode();
-	if (modo === "off") return true;
-	return (await passkeyRegisteredCount()) === 0;
-}
+
 
 /** Depois da senha, é preciso passar pela passkey? */
 export async function passkeyRequired(): Promise<boolean> {

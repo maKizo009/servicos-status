@@ -646,23 +646,7 @@ export async function getLatestRadarCache(): Promise<WeatherRadarData | null> {
 	}
 }
 
-export async function saveWeatherBulletin(
-	bulletin: string,
-	source: "nvidia_nim" | "gemini" | "heuristic",
-): Promise<WeatherBulletin> {
-	const now = Date.now();
-	const db = await getDbClient();
-	const res = await db.execute({
-		sql: "INSERT INTO weather_bulletins (bulletin, source, generated_at) VALUES (?, ?, ?)",
-		args: [bulletin, source, now],
-	});
-	return {
-		id: Number(res.lastInsertRowid ?? Date.now()),
-		bulletin,
-		source,
-		generatedAt: now,
-	};
-}
+
 
 export async function getLatestWeatherBulletin(): Promise<WeatherBulletin | null> {
 	const db = await getDbClient();

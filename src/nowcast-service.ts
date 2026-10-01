@@ -105,7 +105,4 @@ export async function getRadarNowcast(): Promise<NowcastResult> {
 	}
 }
 
-/** Invalida o cache (chamado após novo sync de radar, se necessário) */
-export function invalidateNowcastCache(): void {
-	cached = null;
-}
+
