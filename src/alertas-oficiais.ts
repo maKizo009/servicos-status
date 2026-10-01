@@ -425,24 +425,47 @@ export function buildAlertaUnificado(
 	}
 
 	// --- Agravante oficial ---
-	const avisos = oficiais?.avisos ?? [];
-	const maxOficial: NivelAlerta = avisos.reduce<NivelAlerta>(
+	// REGRA (01/10/2026, falso positivo apontado pelo dono): só um aviso que
+	// (a) esteja VIGENTE e (b) tenha Ipiranga CONFIRMADO na lista de municípios
+	// do CAP pode subir o nível. Antes o reduce pegava o nível máximo de
+	// QUALQUER aviso — um laranja pra "Centro Ocidental Paranaense" (longe de
+	// Ipiranga) subia o alerta da cidade pra laranja com radar limpo. Aviso de
+	// região vizinha NÃO é aviso de Ipiranga.
+	const agoraMs = Date.now();
+	const todosAvisos = oficiais?.avisos ?? [];
+	const vigentes = todosAvisos.filter((a) => {
+		if (!a.fim) return true; // sem data de fim: assume vigente
+		const fim = Date.parse(a.fim.replace(" ", "T"));
+		return !Number.isFinite(fim) || fim > agoraMs;
+	});
+	const avisosIpiranga = vigentes.filter((a) => a.cobreIpiranga === true);
+	// Vermelho oficial sobe mesmo sem confirmação de município: é grave demais
+	// pra ignorar (segurança acima de precisão). Os demais exigem confirmação.
+	const vermelhoSemConfirmar = vigentes.filter(
+		(a) => a.nivel === "vermelho" && a.cobreIpiranga !== false,
+	);
+	const maxOficial: NivelAlerta = [
+		...avisosIpiranga,
+		...vermelhoSemConfirmar,
+	].reduce<NivelAlerta>(
 		(acc, a) => (ordem(a.nivel) > ordem(acc) ? a.nivel : acc),
 		"verde",
 	);
+	const fonteOficial =
+		[...avisosIpiranga, ...vermelhoSemConfirmar][0]?.fonte ?? "INMET";
 	if (maxOficial === "vermelho") {
 		if (nivel !== "vermelho")
 			motivos.push("aviso VERMELHO oficial (INMET/Defesa Civil) para a região");
 		nivel = "vermelho";
 	} else if (ordem(maxOficial) > ordem(nivel) && nivel !== "verde") {
 		motivos.push(
-			`aviso ${maxOficial} oficial (${avisos[0]?.fonte}) para a região`,
+			`aviso ${maxOficial} oficial (${fonteOficial}) atingindo Ipiranga`,
 		);
 		nivel = maxOficial;
 	} else if (maxOficial !== "verde" && nivel === "verde") {
 		// Oficial sozinho (sem chuva local) vira amarelo de atenção, não pânico.
 		motivos.push(
-			`aviso ${maxOficial} oficial (${avisos[0]?.fonte}) — sem chuva medida em Ipiranga no momento`,
+			`aviso ${maxOficial} oficial (${fonteOficial}) atingindo Ipiranga — sem chuva medida aqui no momento`,
 		);
 		nivel = "amarelo";
 	}
@@ -500,7 +523,7 @@ export function buildAlertaUnificado(
 		titulo,
 		descricao,
 		motivos,
-		avisosOficiais: avisos,
+		avisosOficiais: todosAvisos,
 		atualizadoEm: Date.now(),
 	};
 }

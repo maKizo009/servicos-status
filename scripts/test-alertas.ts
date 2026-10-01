@@ -29,12 +29,15 @@ function local(over: Partial<DadosLocaisAlerta> = {}): DadosLocaisAlerta {
 
 function oficiais(
 	niveis: Array<"amarelo" | "laranja" | "vermelho"> = [],
+	opts: { cobreIpiranga?: boolean } = {},
 ): AlertasOficiaisState {
 	return {
 		avisos: niveis.map((n, i) => ({
 			fonte: "INMET" as const,
 			titulo: `Aviso teste ${i}`,
 			nivel: n,
+			cobreIpiranga: opts.cobreIpiranga ?? true,
+			fim: new Date(Date.now() + 3600_000).toISOString().slice(0, 19).replace("T", " "),
 		})),
 		erros: [],
 		atualizadoEm: Date.now(),
@@ -138,6 +141,46 @@ describe("Alerta unificado próprio", () => {
 	test("oficial amarelo sozinho → amarelo de atenção, não pânico", () => {
 		const a = buildAlertaUnificado(local(), oficiais(["amarelo"]));
 		expect(a.nivel).toBe("amarelo");
+	});
+
+	test("laranja oficial de OUTRA região não sobe o nível (falso positivo 01/10/2026)", () => {
+		// Caso real: INMET publicou laranja pra "Centro Ocidental Paranaense"
+		// (longe de Ipiranga), radar limpo, e o alerta da cidade subiu pra
+		// laranja com push. Só aviso CONFIRMADO em Ipiranga pode agravar.
+		const a = buildAlertaUnificado(
+			local(),
+			oficiais(["laranja"], { cobreIpiranga: false }),
+		);
+		expect(a.nivel).toBe("verde");
+		expect(a.motivos.join(" ")).not.toMatch(/laranja oficial/i);
+	});
+
+	test("laranja oficial CONFIRMADO em Ipiranga sem chuva local → amarelo (não pânico)", () => {
+		// O INMET avisa risco FUTURO. Sem chuva medida no radar/pluviômetro,
+		// subir direto pra laranja (que interrompe o celular) seria alarmismo.
+		// Fica amarelo de atenção — quem quiser mais detalhe abre o card.
+		const a = buildAlertaUnificado(
+			local(),
+			oficiais(["laranja"], { cobreIpiranga: true }),
+		);
+		expect(a.nivel).toBe("amarelo");
+		expect(a.motivos.join(" ")).toMatch(/atingindo Ipiranga/);
+	});
+
+	test("laranja oficial CONFIRMADO + chuva forte local → laranja", () => {
+		const a = buildAlertaUnificado(
+			local({ acc6hrMax: 30, radarAlertLevel: "alert", radarSevero: true, radarKind: "nucleo" }),
+			oficiais(["laranja"], { cobreIpiranga: true }),
+		);
+		expect(a.nivel).toBe("laranja");
+	});
+
+	test("aviso VENCIDO não agravar mesmo confirmando Ipiranga", () => {
+		const vencido = oficiais(["laranja"]);
+		vencido.avisos[0]!.fim = "2026-09-22 23:59:00.0";
+		vencido.avisos[0]!.cobreIpiranga = true;
+		const a = buildAlertaUnificado(local(), vencido);
+		expect(a.nivel).toBe("verde");
 	});
 
 	test("oficial não rebaixa alerta local (laranja local + amarelo oficial)", () => {
