@@ -387,6 +387,38 @@ async function chamaGemini(
 }
 
 /**
+ * Teto de timeout (ms) do modelo na posição `idx` de uma fila de `total`
+ * dentro do orçamento da cadeia, ou null se ele nem deve ser tentado.
+ *
+ * Regra (01/10/2026): o ÚLTIMO modelo (reserva NIM) tem fatia GARANTIDA —
+ * sem ela, dois OpenRouter no teto de 15 s esgotavam os 30 s do orçamento e
+ * o NIM saudável nunca era chamado (heurística em série, ciclos 17:40-18:00
+ * de 01/10, com o OpenRouter degradado). Modelos não-finais podem consumir
+ * no máximo (restante - reserva); o último usa o que sobrar, com piso de 3 s.
+ */
+export function tetoDoModeloNaCadeia(
+	idx: number,
+	total: number,
+	restanteMs: number,
+	opts: {
+		tetoModeloMs: number;
+		reservaUltimoMs: number;
+		tetoGlobalMs: number;
+	},
+): number | null {
+	const ehUltimo = idx === total - 1;
+	if (ehUltimo) {
+		return restanteMs >= 3_000 ? Math.min(opts.tetoGlobalMs, restanteMs) : null;
+	}
+	if (restanteMs < opts.reservaUltimoMs + 3_000) return null;
+	return Math.min(
+		opts.tetoGlobalMs,
+		opts.tetoModeloMs,
+		restanteMs - opts.reservaUltimoMs,
+	);
+}
+
+/**
  * Tenta gerar o boletim via cadeia LLM (validado). Retorna null se nenhum
  * modelo entregar texto aceitável — o chamador cai na heurística.
  */
@@ -422,22 +454,39 @@ export async function tryLlmBulletin(
 	// teto de 13 s matava resposta válida no timeout; 15 s cobre a latência
 	// observada e ainda deixa ≥14 s pro 2º modelo na cadeia de 30 s.
 	const MODELO_TETO_MS = 15_000;
+	// Reserva para o ÚLTIMO modelo da cadeia (01/10/2026): nos ciclos 17:40-18:00
+	// o OpenRouter estava degradado — muse-spark E minimax-m3 estouraram o teto
+	// de 15 s nos 5 ciclos seguidos; os 30 s do orçamento acabavam antes do 3º
+	// modelo e o NIM (openai/gpt-oss-20b, SAUDÁVEL — testado ao vivo: 943 ms)
+	// nunca era chamado. Heurística em série com o reserva pronto. Fix: modelos
+	// não-finais perdem no máximo a fatia reservada do último; o último entra
+	// com o que sobrar (mínimo 3 s). A cadeia continua ≤30 s (o teto real é o
+	// maxDuration=60 s da função; o ciclo gasta ~23 s antes do LLM).
+	const RESERVA_ULTIMO_MS = 10_000;
+	// Só entra na fila quem tem chave — a posição "último" é da fila filtrada.
+	const fila = LLM_CHAIN.filter(
+		(e) =>
+			!(e.provider === "openrouter" && !cfg.openRouterApiKey) &&
+			!(e.provider === "gemini" && !cfg.geminiApiKey) &&
+			!(e.provider === "nim" && !cfg.nvidiaNimApiKey),
+	);
 	let tentados = 0;
-	for (const entry of LLM_CHAIN) {
-		const { model, provider } = entry;
-		if (provider === "openrouter" && !cfg.openRouterApiKey) continue;
-		if (provider === "gemini" && !cfg.geminiApiKey) continue;
-		if (provider === "nim" && !cfg.nvidiaNimApiKey) continue;
+	for (let i = 0; i < fila.length; i++) {
+		const { model, provider } = fila[i];
 		const restante = prazo - Date.now();
-		if (restante < 3_000) {
+		const teto = tetoDoModeloNaCadeia(i, fila.length, restante, {
+			tetoModeloMs: MODELO_TETO_MS,
+			reservaUltimoMs: RESERVA_ULTIMO_MS,
+			tetoGlobalMs: LLM_TIMEOUT_MS,
+		});
+		if (teto == null) {
 			logger.warn(
 				"LLM analista: orçamento da cadeia esgotado, indo para a heurística",
-				{ tentados, orcamentoMs: LLM_ORCAMENTO_MS },
+				{ tentados, orcamentoMs: LLM_ORCAMENTO_MS, restanteMs: restante },
 			);
 			break;
 		}
 		tentados++;
-		const teto = Math.min(LLM_TIMEOUT_MS, MODELO_TETO_MS, restante);
 		const text =
 			provider === "openrouter"
 				? await chamaOpenRouter(model, prompt, cfg.openRouterApiKey, teto)

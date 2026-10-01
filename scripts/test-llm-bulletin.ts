@@ -12,6 +12,7 @@ import {
 	buildAnalystPrompt,
 	LLM_CHAIN,
 	passaCoerenciaLocal,
+	tetoDoModeloNaCadeia,
 } from "../src/llm-bulletin.js";
 import type {
 	MovementVector,
@@ -410,5 +411,40 @@ describe("fraseChuvaLocal (tempo verbal)", () => {
 				condition: "Céu Limpo",
 			}),
 		).toBeNull();
+	});
+});
+
+describe("tetoDoModeloNaCadeia (reserva do último modelo)", () => {
+	const opts = {
+		tetoModeloMs: 15_000,
+		reservaUltimoMs: 10_000,
+		tetoGlobalMs: 30_000,
+	};
+
+	test("cenário real 01/10: 2 OpenRouter no teto → NIM ainda recebe fatia", () => {
+		// muse-spark estoura os 15 s; minimax herda 15 s restantes e estoura
+		// também; sobram 10 s — o NIM (último) entra com eles em vez de ser
+		// bloqueado pelo "restante < 3 s" antigo.
+		expect(tetoDoModeloNaCadeia(0, 3, 30_000, opts)).toBe(15_000);
+		expect(tetoDoModeloNaCadeia(1, 3, 15_000, opts)).toBe(5_000);
+		expect(tetoDoModeloNaCadeia(2, 3, 10_000, opts)).toBe(10_000);
+	});
+
+	test("último bloqueado só com < 3 s restantes", () => {
+		expect(tetoDoModeloNaCadeia(2, 3, 2_999, opts)).toBeNull();
+	});
+
+	test("não-último não invade a reserva do último", () => {
+		// restante 12,9 s: precisaria deixar 10 s + 3 s pro último → bloqueado
+		expect(tetoDoModeloNaCadeia(1, 3, 12_999, opts)).toBeNull();
+	});
+
+	test("modelo único = é o último, usa o que sobrar", () => {
+		expect(tetoDoModeloNaCadeia(0, 1, 22_000, opts)).toBe(22_000);
+	});
+
+	test("cadeia saudável: 1º responde rápido, 2º mantém teto cheio", () => {
+		// restante 29 s após resposta de 1 s → teto = min(30, 15, 29-10) = 15
+		expect(tetoDoModeloNaCadeia(1, 3, 29_000, opts)).toBe(15_000);
 	});
 });
