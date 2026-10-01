@@ -203,8 +203,12 @@ export function buildAnalystPrompt(ctx: AnalystContext): string {
 				partes.push(`${s.chuva1hMm.toFixed(1)} mm na última hora`);
 			if (s.chuva24hMm != null)
 				partes.push(`${s.chuva24hMm.toFixed(1)} mm em 24h`);
+			// A distância é da ESTAÇÃO ao centro da cidade (raio 40 km), NÃO de
+			// Ipiranga. O número colado no nome convidava o modelo a escrever
+			// "Castro, a 7 km" no boletim — o gate de distâncias rejeitava o
+			// texto e o ciclo caía na heurística (caso real 01/10/2026).
 			linhas.push(
-				`- ${s.cidade} (${s.distanciaKm.toFixed(0)} km, ${s.rede}): ${partes.join(", ") || "sem dado útil"}`,
+				`- ${s.cidade} (estação ${s.rede}): ${partes.join(", ") || "sem dado útil"}`,
 			);
 		}
 	}

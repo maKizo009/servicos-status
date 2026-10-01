@@ -124,6 +124,52 @@ describe("buildAnalystPrompt", () => {
 		const p = buildAnalystPrompt(analyst);
 		expect(p).toContain("nenhum núcleo");
 	});
+	/**
+	 * Caso real 01/10/2026 (ciclo 15:50): o prompt listava SOLO como
+	 * "Castro (7 km, INMET)" — a distância da ESTAÇÃO ao centro da cidade.
+	 * O modelo copiou para o boletim ("Em Castro, a 7 km") e o gate de
+	 * distâncias rejeitou o texto (Castro fica a 75 km de Ipiranga; nenhuma
+	 * entidade mede 7 km) → cadeia esgotou → heurística → watchdog alertou.
+	 * O número não deve aparecer no prompt: ele não é distância de Ipiranga.
+	 */
+	test("SOLO não expõe distância da estação como se fosse de Ipiranga", () => {
+		const { analyst } = buildAnalystContext(nowcast([threat()]), {
+			local: {
+				acc1hrMax: 0,
+				acc6hrMax: 7,
+				acc24hrMax: 13.6,
+				condition: "Encoberto",
+			},
+			condition: "Encoberto",
+			ecmwfPct: 67,
+			ecmwfProx6hMm: 1.8,
+			alertLevel: "monitor",
+			hidroWatch: false,
+			avisosOficiais: [],
+			solo: [
+				{
+					cidade: "Castro",
+					distanciaKm: 7,
+					estacao: "Castro",
+					rede: "INMET",
+					atualizacao: "01/10/26 12:00",
+					frescorMin: 30,
+					stale: false,
+					rajada1hKmh: null,
+					rajada24hKmh: null,
+					quedaPressao24Hpa: 1.8,
+					chuva1hMm: 0,
+					chuva24hMm: 26.2,
+					ventoKmh: null,
+					ventoDirDeg: null,
+				},
+			],
+		});
+		const p = buildAnalystPrompt(analyst);
+		expect(p).toContain("Castro (estação INMET)");
+		expect(p).not.toMatch(/Castro \(7 km/);
+		expect(p).toContain("pressão caiu 1.8 hPa");
+	});
 });
 
 describe("passaCoerenciaLocal", () => {
