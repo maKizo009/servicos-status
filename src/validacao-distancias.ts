@@ -156,6 +156,28 @@ export interface RefDistancia {
 }
 
 
+
+/**
+ * Converte entidades do nowcast (com lat/lon) em referências rotuladas pelo
+ * MESMO rótulo do prompt (`rotularLocalizacao`) — é o pareamento que o gate
+ * valida: "área em <municipio>, a <distToTargetKm> km".
+ *
+ * Usado pelo watchdog externo (/root/Scripts/BunJS/servicos-status-boletim-watchdog).
+ */
+export function refsDasAmeacas(
+	ameacas: Array<{ lat: number; lon: number; distToTargetKm?: number | null }>,
+): RefDistancia[] {
+	return ameacas
+		.filter(
+			(a) => typeof a.distToTargetKm === "number" && a.distToTargetKm > 0,
+		)
+		.map((a) => ({
+			km: a.distToTargetKm as number,
+			municipio:
+				rotularLocalizacao(a.lat, a.lon, haversineKm).municipio?.nome ?? null,
+		}));
+}
+
 /**
  * Valida cada distância citada contra as referências legítimas do texto.
  *
