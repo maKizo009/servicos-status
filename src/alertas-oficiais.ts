@@ -27,6 +27,8 @@ export interface AvisoOficial {
 	inicio?: string;
 	fim?: string;
 	link?: string;
+	/** Confirmado pelo CAP (campo `Municipios`) que Ipiranga/PR é afetado. */
+	cobreIpiranga?: boolean;
 }
 
 export interface AlertasOficiaisState {
@@ -76,56 +78,129 @@ function nivelCorInmet(cor: string): NivelAlerta {
 	return "verde";
 }
 
-/** INMET alertas2: tenta o endpoint JSON; filtra avisos que citam Ipiranga/PR. */
+/**
+ * Regiões de previsão do INMET no Paraná — usadas só como FILTRO GROSSO
+ * (o RSS é da América do Sul inteira). A confirmação de que Ipiranga é
+ * afetado vem do CAP XML (`/avisos/rss/<id>`, campo `Municipios`), que
+ * lista o código IBGE de cada município — NÃO se adivinha geografia aqui
+ * (caso 01/10/2026: tratei Ipiranga como "Norte Pioneiro" e estava errado;
+ * a mesorregião IPARDES não o inclui). Região aqui só reduz o número de
+ * CAPs que precisamos baixar.
+ */
+const REGIOES_PR = [
+	"Norte Pioneiro Paranaense",
+	"Centro Ocidental Paranaense",
+	"Centro Oriental Paranaense",
+	"Centro-Sul Paranaense",
+	"Metropolitana de Curitiba",
+	"Noroeste Paranaense",
+	"Norte Central Paranaense",
+	"Oeste Paranaense",
+	"Sudeste Paranaense",
+	"Sudoeste Paranaense",
+	"Campos Gerais",
+];
+
+/** Quantos CAPs baixar para confirmar Ipiranga por ciclo (custo de rede). */
+const MAX_CAPS_POR_CICLO = 8;
+
+/**
+ * Converte a "Severidade" do INMET em nível do monitor.
+ *
+ * Escala INMET (do mais grave pro menos):
+ *   "Perigo Extremo" / "Emergência" → vermelho
+ *   "Perigo"                        → laranja
+ *   "Perigo Potencial" / "Atenção"  → amarelo
+ * Cuidado: "Perigo Potencial" contém "Perigo" — testar o grau MAIS específico
+ * primeiro, senão tudo vira laranja (bug de primeira versão, 01/10/2026).
+ */
+function nivelSeveridadeInmet(txt: string): NivelAlerta {
+	const s = txt.toLowerCase();
+	if (s.includes("extremo") || s.includes("emerg")) return "vermelho";
+	if (s.includes("potencial")) return "amarelo";
+	if (s.includes("perigo")) return "laranja";
+	if (s.includes("aten")) return "amarelo";
+	return "verde";
+}
+
+/** INMET via RSS oficial (apiprevmet3) — filtra avisos que cobrem o PR. */
 async function fetchInmet(): Promise<{
 	avisos: AvisoOficial[];
 	erro?: string;
 }> {
-	const candidatos = [
-		"https://alertas2.inmet.gov.br/api/alertas",
-		"https://alertas2.inmet.gov.br/api/alertas/ativos",
-	];
-	for (const url of candidatos) {
-		const txt = await fetchText(url);
-		if (!txt || txt.length < 50) continue;
-		try {
-			const json = JSON.parse(txt) as unknown;
-			const lista: unknown[] = Array.isArray(json)
-				? json
-				: Array.isArray((json as Record<string, unknown>)?.alertas)
-					? ((json as Record<string, unknown>).alertas as unknown[])
-					: [];
-			const avisos: AvisoOficial[] = [];
-			for (const a of lista) {
-				const r = a as Record<string, unknown>;
-				const blob = JSON.stringify(r);
-				const citaIpiranga =
-					blob.includes(COD_IBGE_IPIRANGA) ||
-					/IPIRANGA/i.test(blob) ||
-					/Campos Gerais/i.test(blob) ||
-					/PARAN[AÁ]/i.test(blob);
-				if (!citaIpiranga) continue;
-				const titulo =
-					(typeof r.titulo === "string" && r.titulo) ||
-					(typeof r.evento === "string" && r.evento) ||
-					(typeof r.description === "string" &&
-						(r.description as string).slice(0, 120)) ||
-					"Aviso INMET para a região";
-				avisos.push({
-					fonte: "INMET",
-					titulo: titulo.slice(0, 200),
-					nivel: nivelCorInmet(
-						`${r.severidade ?? ""} ${r.nivel ?? ""} ${r.cor ?? ""} ${r.headline ?? ""}`,
-					),
-					areas:
-						typeof r.areas === "string" ? r.areas.slice(0, 200) : undefined,
-					link: "https://alertas2.inmet.gov.br/",
-				});
-			}
-			return { avisos };
-		} catch {}
+	const url = "https://apiprevmet3.inmet.gov.br/avisos/rss";
+	const txt = await fetchText(url);
+	if (!txt || txt.length < 200) {
+		return { avisos: [], erro: "INMET RSS indisponível (timeout/bloqueio)" };
 	}
-	return { avisos: [], erro: "INMET alertas2 indisponível (timeout/bloqueio)" };
+	try {
+		const itens = txt.split("<item>").slice(1);
+		const avisos: AvisoOficial[] = [];
+		let capsBaixados = 0;
+		for (const bruto of itens) {
+			const item = bruto.split("</item>")[0] ?? "";
+			const desc = /<description><!\[CDATA\[([\s\S]*?)\]\]>/.exec(item)?.[1] ?? "";
+			const titulo = /<title>([\s\S]*?)<\/title>/.exec(item)?.[1]?.trim() ?? "";
+			const link = /<link>([\s\S]*?)<\/link>/.exec(item)?.[1]?.trim();
+			if (!desc && !titulo) continue;
+			const limpo = desc
+				.replace(/<[^>]+>/g, " ")
+				.replace(/\s+/g, " ")
+				.trim();
+			// Área: as regiões do INMET são nomes de região de previsão.
+			// Só entra se alguma região do PR aparecer — o feed é da América
+			// do Sul inteira e o resto não interessa ao monitor.
+			const areas = /(?:Área|Ãrea)\s*(.*?)\s*$/i.exec(limpo)?.[1] ?? limpo;
+			const citouPR = REGIOES_PR.some((r) =>
+				limpo.toLowerCase().includes(r.toLowerCase()),
+			);
+			if (!citouPR) continue;
+			// Campos da tabela: Status / Evento / Severidade / Início / Fim
+			const campo = (nome: string) =>
+				new RegExp(
+					`${nome}\\s+(\\S[^|]{0,120}?)(?=\\s+[A-ZÁÉÍÓÚÃÕÇ][a-záéíóúãõç]+\\s+|$)`,
+					"i",
+				).exec(limpo)?.[1]?.trim();
+			const evento = campo("Evento") ?? titulo.replace(/^Aviso de\s+/i, "");
+			// O TÍTULO traz "Severidade Grau: <grau>" — mais confiável que o
+			// regex do campo, que cortava "Perigo Potencial" em "Perigo".
+			const grauDoTitulo =
+				/severidade\s+grau:\s*([^.,;]+)/i.exec(titulo)?.[1] ?? titulo;
+			avisos.push({
+				fonte: "INMET",
+				titulo: (titulo || `Aviso INMET: ${evento}`).slice(0, 200),
+				nivel: nivelSeveridadeInmet(`${grauDoTitulo} ${titulo}`),
+				areas: areas.slice(0, 240),
+				inicio: campo("Início") ?? campo("Inicio"),
+				fim: campo("Fim"),
+				link: link ?? "https://avisos.inmet.gov.br/",
+			});
+			// Confirmação por IBGE no CAP: o aviso só marca Ipiranga se o
+			// município (4110508) aparece na lista `Municipios` do CAP.
+			// Sem isso, "aviso no PR" virava "aviso em Ipiranga" — mentira.
+			const capId = /\/avisos\/rss\/(\d+)/.exec(link ?? "")?.[1];
+			if (capId && capsBaixados < MAX_CAPS_POR_CICLO) {
+				capsBaixados++;
+				const cap = await fetchText(
+					`https://apiprevmet3.inmet.gov.br/avisos/rss/${capId}`,
+				);
+				const cobre =
+					!!cap &&
+					(new RegExp(`Ipiranga\\s*-\\s*PR\\s*\\(${COD_IBGE_IPIRANGA}\\)`).test(cap) ||
+						cap.includes(COD_IBGE_IPIRANGA));
+				const u = avisos[avisos.length - 1];
+				if (u) {
+					u.cobreIpiranga = cobre;
+					if (cobre && !u.titulo.includes("Ipiranga")) {
+						u.titulo = `${u.titulo} — atinge Ipiranga`.slice(0, 200);
+					}
+				}
+			}
+		}
+		return { avisos };
+	} catch {
+		return { avisos: [], erro: "INMET RSS ilegível (parse falhou)" };
+	}
 }
 
 /** Defesa Civil PR: extrai menções de aviso meteorológico vigente da página. */
@@ -221,6 +296,48 @@ export interface ContextoTransicaoAlerta {
 	nucleoDissipando?: boolean;
 }
 
+
+/**
+ * Traduz a descrição técnica do alerta em texto pro público geral.
+ *
+ * A `descricao` original serve pro card (que tem "detalhes atrás de botão")
+ * e pra auditoria — mas a NOTIFICAÇÃO push vai pra gente comum no celular,
+ * onde "núcleo severo confirmado em 2 ciclos seguidos de radar (10 min cada)"
+ * não significa nada e ainda assusta mais do que a situação real.
+ *
+ * Regra do dono (01/10/2026): "núcleo de chuva forte" ≠ "núcleo severo".
+ * O primeiro é o que o radar vê (heavy/extreme); o segundo é o nome do nosso
+ * interno pra evidência que dispara push. Pro usuário, um só: chuva forte.
+ */
+export function descricaoParaPessoas(
+	a: Pick<AlertaUnificado, "nivel" | "titulo"> & {
+		motivos?: string[];
+		descricao?: string;
+	},
+): string {
+	const oQueTem: Record<string, string> = {
+		vermelho:
+			"Chuva muito forte na região — risco de alagamento e queda de energia.",
+		laranja: "Chuva forte se aproximando da região.",
+		amarelo: "Possibilidade de chuva na região.",
+		verde: "Tempo calmo por aqui.",
+	};
+	const partes = [oQueTem[a.nivel] ?? oQueTem.verde];
+	const mudou = /Alerta (subiu|rebaixado)/.exec(a.descricao ?? "")?.[0];
+	if (mudou) {
+		partes.push(
+			mudou.includes("subiu")
+				? "A situação piorou desde a última checagem."
+				: "A situação melhorou desde a última checagem.",
+		);
+	}
+	// Só alerta quem precisa agir: verde/amarelo não pedem olhar o radar.
+	if (a.nivel === "laranja" || a.nivel === "vermelho") {
+		partes.push("Acompanhe o radar do app — as condições podem mudar rápido.");
+	}
+	return partes.join(" ");
+}
+
 export function buildAlertaUnificado(
 	local: DadosLocaisAlerta,
 	oficiais: AlertasOficiaisState | null,
@@ -255,11 +372,14 @@ export function buildAlertaUnificado(
 		// e o título não pode afirmar "chuva forte" para uma área.
 		nivel = "laranja";
 		if (local.radarSevero) {
-			motivos.push("núcleo de chuva forte se aproximando no radar (≤80 km)");
+			motivos.push("chuva forte detectada no radar, se aproximando da região");
 			const ciclos = local.radarSeveroCiclos ?? 0;
+			// "Núcleo severo" é termo INTERNO (o que dispara push). No texto do
+			// usuário é só "chuva forte confirmada" — separar evita alarmismo
+			// (pedido do dono 01/10/2026: "núcleo de chuva forte ≠ núcleo severo").
 			if (ciclos >= 2)
 				motivos.push(
-					`núcleo severo confirmado em ${ciclos} ciclos seguidos de radar (10 min cada)`,
+					`chuva forte confirmada no radar há ${ciclos} checagens seguidas`,
 				);
 		}
 		if (c6 >= 25)
@@ -283,10 +403,10 @@ export function buildAlertaUnificado(
 		if (local.radarAlertLevel === "alert" || local.radarAlertLevel === "watch")
 			motivos.push(
 				local.radarSeveroNaoConfirmado === true
-					? "núcleo de chuva forte recém-detectado no radar (1º ciclo) — aguardando confirmação antes de interromper o celular"
+					? "chuva forte apareceu no radar — vamos confirmar nos próximos minutos antes de alertar"
 					: local.radarKind === "area"
-						? "área de chuva se aproximando no radar (sem núcleo de tempestade)"
-						: "núcleo de chuva em vigilância no radar",
+						? "área de chuva se aproximando (sem tempestade)"
+						: "chuva em vigilância no radar",
 			);
 		if (c24 >= 20)
 			motivos.push(
