@@ -39,6 +39,12 @@ describe("extrairDistanciasCitadas", () => {
 		expect(dists[1]?.km).toBe(294);
 	});
 
+	test("ignora velocidade em km/h, mas mantém distância em km", () => {
+		expect(extrairDistanciasCitadas("movimento a 40 km/h.")).toEqual([]);
+		expect(extrairDistanciasCitadas("velocidade 40 km/h, núcleo a 80 km.")).toEqual([
+			{ km: 80, cidade: null },
+		]);
+	});
 	test("distância sem cidade vem com cidade=null", () => {
 		const dists = extrairDistanciasCitadas(
 			"Radar mostra atividade a 477 km de Ipiranga.",
@@ -61,6 +67,21 @@ describe("avaliarDistanciasCitadas", () => {
 		expect(r.ok).toBe(true);
 	});
 
+	test("citação mantém distância da entidade quando o rótulo municipal muda na fronteira", () => {
+		// Ciclo real: texto ficou com Guarapuava (72 km); no ciclo seguinte,
+		// o mesmo núcleo andou e a malha passou a rotulá-lo Prudentópolis (67 km).
+		const r = avaliarDistanciasCitadas("Núcleo em Guarapuava a 72 km.", [
+			{ km: 67, municipio: "Prudentópolis" },
+		]);
+		expect(r.ok).toBe(true);
+	});
+
+	test("cidade com número que não bate com nenhum centróide nem entidade reprova", () => {
+		const r = avaliarDistanciasCitadas("Núcleo em Guarapuava a 150 km.", [
+			{ km: 67, municipio: "Prudentópolis" },
+		]);
+		expect(r.ok).toBe(false);
+	});
 	test("alucinação de verdade: número que não bate com nada reprova", () => {
 		const texto = "Núcleo violento se aproxima a 500 km de Ipiranga.";
 		const r = avaliarDistanciasCitadas(texto, [202, 270]);
@@ -84,7 +105,7 @@ describe("avaliarDistanciasCitadas", () => {
 	test("cidade citada com distância inventada reprova (mesmo com threats variados)", () => {
 		const r = avaliarDistanciasCitadas(
 			"Chuva em Guaporema a 100 km.",
-			[100, 270],
+			[202, 270],
 		);
 		expect(r.ok).toBe(false);
 		expect(r.problemas.join(" ")).toContain("Guaporema");

@@ -9,13 +9,10 @@
  *
  * Regra única (usada pelo gate do gerador E pelo watchdog):
  * - distância citada junto de um MUNICÍPIO da malha → aceita se bate com o
- *   CENTRÓIDE da cidade (tolerância máx(25 km, 12%)) OU com a distância da
- *   ENTIDADE pareada com essa cidade no nowcast (distToTargetKm, tolerância
- *   máx(20 km, 8%)) — o template do analista escreve "área em X, a N km" com
- *   N da ENTIDADE, então reprovar só pelo centróide derrubava boletim correto
- *   (30/09/2026, ciclos 14:40: "Santa Isabel do Ivaí a 333 km" é a distância
- *   da área, e o extrator antigo ainda casava o nome curto "Santa Isabel" —
- *   outro município, centróide 481 km);
+ *   CENTRÓIDE da cidade (tolerância máx(25 km, 12%)) OU com a distância de uma
+ *   ENTIDADE real do nowcast (tolerância máx(20 km, 8%)); primeiro tenta o
+ *   rótulo municipal pareado, mas mantém a distância medida se o núcleo cruzou
+ *   a fronteira e a malha mudou o rótulo entre ciclos;
  * - distância citada sem cidade → compara com as distâncias REAIS dos núcleos
  *   (`distToTargetKm`, tolerância máx(20 km, 8%)); sem referência nenhuma
  *   (radar limpo), aceita — não há o que contradizer.
@@ -97,7 +94,7 @@ export interface DistanciaCitada {
  */
 export function extrairDistanciasCitadas(text: string): DistanciaCitada[] {
 	const achados: DistanciaCitada[] = [];
-	const re = /(\d+(?:[.,]\d+)?)\s*km\b/gi;
+	const re = /(\d+(?:[.,]\d+)?)\s*km\b(?!\s*\/\s*h)/gi;
 	const malha = MALHA_SUL as unknown as EntradaMalha[];
 	let m: RegExpExecArray | null;
 	while ((m = re.exec(text)) !== null) {
@@ -182,10 +179,11 @@ export function refsDasAmeacas(
  *
  * Métricas (lição 30/09/2026: "qual é a métrica desta afirmação?"):
  * - "<cidade> a N km" pode citar a distância da CIDADE (centróide IBGE) OU a
- *   distância da ENTIDADE que o template pareia com essa cidade ("área em X,
- *   a N km" = distToTargetKm da área). Aceita as DUAS; reprova só se N bate
- *   com nenhuma. Entidade sem rótulo (número puro) NÃO valida citação com
- *   cidade — sem rótulo não dá pra confirmar o pareamento.
+ *   distância de qualquer ENTIDADE medida (distToTargetKm). Primeiro tenta
+ *   validar com entidade rotulada pelo mesmo município; se o rótulo mudou na
+ *   fronteira entre ciclos, a distância da entidade continua sendo evidência.
+ *   Entidade sem rótulo também serve neste fallback, mas nunca valida sozinha
+ *   uma citação com cidade se o número não bater com a entidade;
  * - "N km" sem cidade → compara com as distâncias das entidades; sem
  *   entidade nenhuma (radar limpo), aceita — não há o que contradizer.
  */
@@ -207,16 +205,23 @@ export function avaliarDistanciasCitadas(
 				dCidade != null && Math.abs(dCidade - citada.km) <= tolCidade;
 			const citadaNorm = semAcento(citada.cidade);
 			const tolEntidade = Math.max(20, citada.km * 0.08);
-			const bateEntidade = refs.some(
+			const bateEntidadePareada = refs.some(
 				(r) =>
 					r.municipio != null &&
 					semAcento(r.municipio) === citadaNorm &&
 					Math.abs(r.km - citada.km) <= tolEntidade,
 			);
-			if (bateCidade || bateEntidade) continue;
+			// A malha municipal pode mudar o rótulo de um mesmo núcleo quando
+			// ele cruza a fronteira entre municípios em ciclos consecutivos.
+			// Se a distância bate com uma entidade real, preserve a métrica mesmo
+			// quando o rótulo atual já não é o da cidade citado no boletim.
+			const bateAlgumaEntidade = refs.some(
+				(r) => Math.abs(r.km - citada.km) <= tolEntidade,
+			);
+			if (bateCidade || bateEntidadePareada || bateAlgumaEntidade) continue;
 			if (dCidade == null && reais.length === 0) continue; // sem nada p/ julgar
 			problemas.push(
-				`"${citada.cidade} a ${citada.km} km" não bate com a distância da cidade (${dCidade != null ? Math.round(dCidade) : "fora da malha"}) nem com nenhuma entidade pareada (${refs.filter((r) => r.municipio != null).map((r) => `${Math.round(r.km)} km@${r.municipio}`).join("; ") || "sem entidades rotuladas"})`,
+				`"${citada.cidade} a ${citada.km} km" não bate com a distância da cidade (${dCidade != null ? Math.round(dCidade) : "fora da malha"}) nem com nenhuma entidade medida (${refs.map((r) => `${Math.round(r.km)} km${r.municipio ? `@${r.municipio}` : ""}`).join("; ") || "nenhuma"})`,
 			);
 			continue;
 		}
