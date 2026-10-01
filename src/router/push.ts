@@ -1,22 +1,24 @@
 /**
- * Rotas de Push Web (PWA) — extraídas de index.ts (01/10/2026).
- * Retorna Response quando tratou a rota, null caso contrário.
+ * Rotas de Push Web (PWA) — extraídas de src/index.ts (01/10/2026).
+ *
+ * Retorna Response quando tratou a rota, null caso contrário. As funções de
+ * inscrição/push vivem em src/push.ts.
  */
 import {
 	getClientIp,
 	getHeader,
 	getReqJson,
 	type IncomingRequest,
-} from "./http-helpers.js";
-import { loadConfig } from "./config.js";
-import { logger } from "./logger.js";
-import type { RotaCtx } from "./rotas-admin.js";
+} from "../http-helpers.js";
+import { loadConfig } from "../config.js";
+import { logger } from "../logger.js";
+import type { RotaCtx } from "./admin.js";
 
 export async function handlePushRoutes(ctx: RotaCtx): Promise<Response | null> {
 	const { req, path, method, url } = ctx;
 	// ===== Push Web (PWA) — inscrições e teste =====
 	if (path === "/api/push/status") {
-		const { pushConfigured } = await import("./push.js");
+		const { pushConfigured } = await import("../push.js");
 		const config = loadConfig();
 		// Sem `subscribers`: era dado interno (quantas pessoas seguem os
 		// alertas) exposto em endpoint público e sem rate limit — achado
@@ -34,7 +36,7 @@ export async function handlePushRoutes(ctx: RotaCtx): Promise<Response | null> {
 				validatePushEndpoint,
 				countPushSubscriptions,
 				MAX_PUSH_SUBSCRIPTIONS,
-			} = await import("./push.js");
+			} = await import("../push.js");
 			const body = (await getReqJson(req)) as {
 				endpoint?: string;
 				keys?: { p256dh?: string; auth?: string };
@@ -84,7 +86,7 @@ export async function handlePushRoutes(ctx: RotaCtx): Promise<Response | null> {
 	}
 	if (path === "/api/push/unsubscribe" && method === "POST") {
 		try {
-			const { removePushSubscriptionIfOwned } = await import("./push.js");
+			const { removePushSubscriptionIfOwned } = await import("../push.js");
 			const body = (await getReqJson(req)) as {
 				endpoint?: string;
 				keys?: { p256dh?: string; auth?: string };
@@ -124,7 +126,7 @@ export async function handlePushRoutes(ctx: RotaCtx): Promise<Response | null> {
 		// Push para TODOS os inscritos do PWA: exige sessão admin
 		// (achado pentest: endpoint público spammava todos os usuários).
 		const { getSessionTokenFromCookie, verifySessionToken } = await import(
-			"./admin.js"
+			"../admin.js"
 		);
 		if (
 			!(await verifySessionToken(
@@ -137,7 +139,7 @@ export async function handlePushRoutes(ctx: RotaCtx): Promise<Response | null> {
 			});
 		}
 		// Envia um push de teste pra todos os inscritos (validar o fluxo).
-		const { sendPushAlert } = await import("./push.js");
+		const { sendPushAlert } = await import("../push.js");
 		const r = await sendPushAlert(
 			"🔔 Monitor Ipiranga",
 			"Teste de alerta — notificações funcionando!",

@@ -1,20 +1,19 @@
 /**
- * Rotas do painel admin + WebAuthn — extraídas de index.ts (01/10/2026).
+ * Rotas do painel admin + WebAuthn — extraídas de src/index.ts (01/10/2026).
+ *
  * Retorna Response quando tratou a rota, null caso contrário (o router
- * principal continua).
+ * principal continua). As funções de sessão/senha vivem em src/admin.ts —
+ * este arquivo só liga HTTP para elas.
  */
 import {
 	getClientIp,
 	getHeader,
 	getReqJson,
 	type IncomingRequest,
-} from "./http-helpers.js";
-import {
-	checkRateLimit,
-	checkRateLimitShared,
-} from "./rate-limiter.js";
-import { loadConfig } from "./config.js";
-import { logger } from "./logger.js";
+} from "../http-helpers.js";
+import { loadConfig } from "../config.js";
+import { logger } from "../logger.js";
+import { checkRateLimitShared } from "../rate-limiter.js";
 
 export interface RotaCtx {
 	req: IncomingRequest;
@@ -57,7 +56,7 @@ export async function handleAdminRoutes(ctx: RotaCtx): Promise<Response | null> 
 			createSessionToken,
 			sessionCookie,
 			verifyPassword,
-		} = await import("./admin.js");
+		} = await import("../admin.js");
 		if (!adminConfigured()) {
 			// Mensagem genérica: "Admin não configurado" confirmava ao
 			// visitante que existe painel e que falta configurar
@@ -93,7 +92,7 @@ export async function handleAdminRoutes(ctx: RotaCtx): Promise<Response | null> 
 			passkeyRequired,
 			createPendingToken,
 			pendingCookie,
-		} = await import("./admin.js");
+		} = await import("../admin.js");
 		if (await passkeyRequired()) {
 			const pend = await createPendingToken();
 			return new Response(JSON.stringify({ status: "passkey_required" }), {
@@ -119,7 +118,7 @@ export async function handleAdminRoutes(ctx: RotaCtx): Promise<Response | null> 
 			getSessionTokenFromCookie,
 			revokeAllSessions,
 			verifySessionToken,
-		} = await import("./admin.js");
+		} = await import("../admin.js");
 		// Revoga de verdade: só incrementa a epoch (que invalida todo token
 		// emitido antes) quando veio uma sessão VÁLIDA — assim um POST
 		// anônimo não derruba a sessão do dono, e um logout real mata o
@@ -147,7 +146,7 @@ export async function handleAdminRoutes(ctx: RotaCtx): Promise<Response | null> 
 			adminEmail,
 			getSessionTokenFromCookie,
 			verifySessionToken,
-		} = await import("./admin.js");
+		} = await import("../admin.js");
 		const token = getSessionTokenFromCookie(getHeader(req, "cookie"));
 		const authed = await verifySessionToken(token);
 		return Response.json({
@@ -161,7 +160,7 @@ export async function handleAdminRoutes(ctx: RotaCtx): Promise<Response | null> 
 	}
 	if (path === "/api/admin/stats" && method === "GET") {
 		const { getAdminStats, getSessionTokenFromCookie, verifySessionToken } =
-			await import("./admin.js");
+			await import("../admin.js");
 		const token = getSessionTokenFromCookie(getHeader(req, "cookie"));
 		if (!(await verifySessionToken(token))) {
 			return new Response(JSON.stringify({ error: "Não autenticado" }), {
@@ -176,7 +175,7 @@ export async function handleAdminRoutes(ctx: RotaCtx): Promise<Response | null> 
 	// inscrições sintéticas de teste). Autenticado como o resto do admin.
 	if (path === "/api/admin/push-subscriptions" && method === "GET") {
 		const { getSessionTokenFromCookie, verifySessionToken } = await import(
-			"./admin.js"
+			"../admin.js"
 		);
 		const token = getSessionTokenFromCookie(getHeader(req, "cookie"));
 		if (!(await verifySessionToken(token))) {
@@ -185,7 +184,7 @@ export async function handleAdminRoutes(ctx: RotaCtx): Promise<Response | null> 
 				headers: { "Content-Type": "application/json" },
 			});
 		}
-		const { listPushSubscriptionsMeta } = await import("./push.js");
+		const { listPushSubscriptionsMeta } = await import("../push.js");
 		return Response.json({
 			subscriptions: await listPushSubscriptionsMeta(),
 		});
@@ -193,7 +192,7 @@ export async function handleAdminRoutes(ctx: RotaCtx): Promise<Response | null> 
 	// ===== WebAuthn (impressão digital / passkey) =====
 	const authOk = await (async () => {
 		const { getSessionTokenFromCookie, verifySessionToken } = await import(
-			"./admin.js"
+			"../admin.js"
 		);
 		return await verifySessionToken(
 			getSessionTokenFromCookie(getHeader(req, "cookie")),
@@ -206,7 +205,7 @@ export async function handleAdminRoutes(ctx: RotaCtx): Promise<Response | null> 
 				headers: { "Content-Type": "application/json" },
 			});
 		}
-		const { webauthnRegisterBegin } = await import("./admin.js");
+		const { webauthnRegisterBegin } = await import("../admin.js");
 		const out = await webauthnRegisterBegin(getHeader(req, "host"));
 		if (!out) {
 			return new Response(
@@ -223,7 +222,7 @@ export async function handleAdminRoutes(ctx: RotaCtx): Promise<Response | null> 
 				headers: { "Content-Type": "application/json" },
 			});
 		}
-		const { webauthnRegisterComplete } = await import("./admin.js");
+		const { webauthnRegisterComplete } = await import("../admin.js");
 		const out = await webauthnRegisterComplete(
 			await getReqJson(req),
 			getHeader(req, "origin"),
@@ -245,7 +244,7 @@ export async function handleAdminRoutes(ctx: RotaCtx): Promise<Response | null> 
 			twoFactorRequired,
 			verifyPendingToken,
 			getPendingTokenFromCookie,
-		} = await import("./admin.js");
+		} = await import("../admin.js");
 		// No modo padrão a passkey é o SEGUNDO fator: sem a senha antes
 		// (cookie curto mi_admin_2fa) ela não inicia. Sem isso, a passkey
 		// sozinha abriria sessão e o 2FA seria decorativo.
@@ -267,7 +266,7 @@ export async function handleAdminRoutes(ctx: RotaCtx): Promise<Response | null> 
 	}
 	if (path === "/api/admin/webauthn/login/complete" && method === "POST") {
 		const { sessionCookie, webauthnLoginComplete } = await import(
-			"./admin.js"
+			"../admin.js"
 		);
 		const out = await webauthnLoginComplete(
 			await getReqJson(req),
@@ -287,7 +286,7 @@ export async function handleAdminRoutes(ctx: RotaCtx): Promise<Response | null> 
 				},
 			);
 		}
-		const { clearPendingCookie } = await import("./admin.js");
+		const { clearPendingCookie } = await import("../admin.js");
 		const headers = new Headers({ "Content-Type": "application/json" });
 		headers.append("Set-Cookie", sessionCookie(out.token));
 		// o token do 1º fator morre aqui (a passkey já cumpriu o papel)
