@@ -105,7 +105,25 @@ export function extrairDistanciasCitadas(text: string): DistanciaCitada[] {
 	while ((m = re.exec(text)) !== null) {
 		const km = Number(m[1]?.replace(",", "."));
 		if (!Number.isFinite(km) || km <= 0) continue;
-		const antes = text.slice(Math.max(0, m.index - 45), m.index);
+		// Janela ANTES também corta em fim de frase (espelho do corte da
+		// janela DEPOIS): a cidade da frase ANTERIOR não pareia com o
+		// número desta. Caso real 02/10/2026 (nvidia_nim): "Não há chuva
+		// registrada em Ipiranga. Há uma área de chuva moderada a 336 km
+		// em Álvaro de Carvalho/SP" — "Ipiranga" (frase anterior) entrava
+		// na janela de 45 chars e roubava o pareamento; a citação CORRETA
+		// (centróide de Álvaro de Carvalho = 337,9 km, Δ1,9) caía na
+		// comparação errada ("Ipiranga a 336 km" × centróide 3 km) →
+		// falso alarme distancia_inconsistente no vigia sempre que o
+		// texto era fresco e o núcleo citado já tinha saido da lista de
+		// threats (turnover de radar).
+		const antesBruto = text.slice(Math.max(0, m.index - 45), m.index);
+		let corteAntes = -1;
+		for (const fimDeFrase of [".", "!", "?", "…"]) {
+			const i = antesBruto.lastIndexOf(fimDeFrase);
+			if (i > corteAntes) corteAntes = i;
+		}
+		const antes =
+			corteAntes >= 0 ? antesBruto.slice(corteAntes + 1) : antesBruto;
 		const antesNorm = semAcento(antes);
 		// Vários nomes da malha podem casar na mesma janela (ex.: "Mangueirinha"
 		// e "Guaporema" antes de "294 km"; ou "Santa Isabel" DENTRO de "Santa

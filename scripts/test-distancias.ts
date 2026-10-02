@@ -229,3 +229,50 @@ describe("caso real 01/10/2026 — cidade DEPOIS do número ('a 327 km em Planal
 		expect(dists).toEqual([{ km: 100, cidade: null }]);
 	});
 });
+
+describe("caso real 02/10/2026 05:40 — '336 km em Álvaro de Carvalho' com Ipiranga na frase anterior", () => {
+	// Texto REAL do nvidia_nim: "Não há chuva registrada em Ipiranga. Há
+	// uma área de chuva moderada a 336 km em Álvaro de Carvalho/SP...".
+	// A janela ANTES de 45 chars de "336 km" continha "em Ipiranga." (frase
+	// ANTERIOR — o alvo, centróide 3 km) e o pareamento com "Álvaro de
+	// Carvalho" (depois do número, centróide 337,9 km, Δ1,9) era
+	// descartado porque a cidade já vinha preenchida. A comparação caía na
+	// métrica errada → falso alarme distancia_inconsistente no vigia
+	// (sempre que o texto era fresco e a célula de ~336 km já tinha saido
+	// da lista de threats — turnover de radar). Texto 100% correto.
+	const texto =
+		"Não há chuva registrada em Ipiranga. Há uma área de chuva moderada a 336 km em Álvaro de Carvalho/SP, seguindo trajetória tangencial, e outra a 475 km na região do SC, também tangencial. O modelo ECMWF indica 0 % de chance de precipitação nas próximas 6 h. O céu permanece encoberto.";
+
+	test("extrator corta a janela ANTES em fim de frase e pareia Álvaro de Carvalho, não Ipiranga", () => {
+		expect(
+			extrairDistanciasCitadas(texto).map((d) => [d.km, d.cidade]),
+		).toEqual([
+			[336, "Álvaro de Carvalho"],
+			[475, null],
+		]);
+	});
+
+	test("validação passa pela CIDADE mesmo sem entidade ~336 na lista de threats", () => {
+		// Threats do ciclo seguinte (turnover): só a de 475 km. A citação de
+		// 336 km se sustenta pela métrica da cidade (centróide 337,9 km).
+		const r = avaliarDistanciasCitadas(texto, [475.31]);
+		expect(r.problemas).toEqual([]);
+		expect(r.ok).toBe(true);
+	});
+
+	test("alucinação com cidade depois do número continua reprova", () => {
+		const r = avaliarDistanciasCitadas(
+			"chuva moderada a 999 km em Álvaro de Carvalho.",
+			[475.31],
+		);
+		expect(r.ok).toBe(false);
+		expect(r.problemas.join(" ")).toContain("999 km");
+	});
+
+	test("cidade da frase ANTERIOR não rouba o pareamento da atual", () => {
+		const dists = extrairDistanciasCitadas(
+			"Choveu em Cascavel ontem. Hoje há chuva moderada a 210 km em Mangueirinha.",
+		);
+		expect(dists).toEqual([{ km: 210, cidade: "Mangueirinha" }]);
+	});
+});
