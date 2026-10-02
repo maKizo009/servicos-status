@@ -591,3 +591,70 @@ console.log(
 	`\n${falhas === 0 ? "✅ TODOS OS CASOS PASSARAM" : `❌ ${falhas} CASO(S) FALHARAM`}`,
 );
 process.exit(falhas === 0 ? 0 : 1);
+
+describe("núcleo pontual não interrompe o celular (01/10/2026)", () => {
+	// Caso real: 222 px @512 (≈55 px @256, ~20 km²) a 31 km disparou laranja.
+	// No mesmo frame, núcleos reais tinham 1.633 a 18.869 px.
+	function threatPequeno(over: Record<string, unknown> = {}) {
+		return {
+			intensity: "heavy" as const,
+			maxDbz: 38,
+			meanDbz: 30,
+			pixelCount: 222,
+			centroidX: 0,
+			centroidY: 0,
+			lat: -25.18,
+			lon: -50.84,
+			distToTargetKm: 31,
+			kind: "nucleo" as const,
+			relevanceZone: "alert" as const,
+			isolado: true,
+			framesVivo: 3,
+			movement: {
+				directionDeg: 66,
+				speedKmh: 21.9,
+				intervalMin: 10,
+				dxPx: 6,
+				dyPx: -3,
+				fromLat: -25.19,
+				fromLon: -50.87,
+				toLat: -25.18,
+				toLon: -50.84,
+				dbzAnterior: 38,
+				deltaDbz: 0,
+				tendencia: "estavel" as const,
+				confirmed: true,
+			},
+			tendencia: "estavel" as const,
+			threat: {
+				bearingFromTargetDeg: 236,
+				radialKmh: -21.6,
+				radialFraction: -0.98,
+				approach: "approaching" as const,
+				etaMin: 86,
+			},
+			...over,
+		};
+	}
+
+	test("222 px (núcleo pontual) NÃO promove laranja, mesmo perto e estável", () => {
+		const v = avaliarNucleoSevero([threatPequeno() as never], 512);
+		expect(v?.severo).toBe(false);
+	});
+
+	test("1.633 px (núcleo de verdade) promove laranja", () => {
+		const v = avaliarNucleoSevero(
+			[threatPequeno({ pixelCount: 1633 }) as never],
+			512,
+		);
+		expect(v?.severo).toBe(true);
+	});
+
+	test("extreme pontual continua disparando (segurança)", () => {
+		const v = avaliarNucleoSevero(
+			[threatPequeno({ intensity: "extreme", maxDbz: 48 }) as never],
+			512,
+		);
+		expect(v?.severo).toBe(true);
+	});
+});

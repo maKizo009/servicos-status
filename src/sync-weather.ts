@@ -232,7 +232,7 @@ export async function syncWeatherCycle(): Promise<WeatherState> {
 			// Piso de severidade + tendência (29/09/2026): núcleo na METADE FRACA da
 			// faixa "forte" (38–42 dBZ), isolado e enfraquecendo, não é evidência
 			// para interromper o celular. Antes, só zona+tipo promoviam.
-			const veredito = avaliarNucleoSevero(nowcast.threats);
+			const veredito = avaliarNucleoSevero(nowcast.threats, 512);
 			vereditoSevero = veredito;
 			const nucleoSevero =
 				veredito?.severo === true ? veredito.cell : null;

@@ -321,6 +321,22 @@ export function nucleoSeveroIminente(threats: ThreatCell[]): ThreatCell | null {
  */
 export const PISO_FORTE_CONFIRMADO_DBZ = 43;
 
+/**
+ * Tamanho mínimo (px @256) para um núcleo PERTO do alvo interromper o
+ * celular (laranja/push). Abaixo disto é chuva pontual/isolada — pode até
+ * passar perto, mas não justifica acordar ninguém.
+ *
+ * Caso real 01/10/2026 (pedido do dono): núcleo de 222 px @512 (= 55 px
+ * @256, ~20 km² — "não dá nem um pixel no radar do Simepar") disparou
+ * laranja a 31 km. No MESMO frame, núcleos de verdade tinham 1.633 a
+ * 18.869 px. O piso antigo (12 px @256) só descartava microborrão.
+ *
+ * Escala com a resolução no assessAllThreats. Calibrável: se um temporal
+ * real pequeno passar batido, baixar — mas o padrão aqui é NÃO acordar
+ * gente por chuva pontual.
+ */
+export const NUCLEO_MIN_PX_PRA_ALERTA_AT_256 = 150;
+
 export interface VereditoNucleoSevero {
 	cell: ThreatCell;
 	/** Pode promover laranja/push (piso de intensidade OU tendência sustentando) */
@@ -352,9 +368,24 @@ export interface VereditoNucleoSevero {
  */
 export function avaliarNucleoSevero(
 	threats: ThreatCell[],
+	tileSize = 256,
 ): VereditoNucleoSevero | null {
 	const cell = nucleoSeveroIminente(threats);
 	if (!cell) return null;
+	// Núcleo PONTUAL (chuva de poucos km²) não interrompe o celular, mesmo
+	// sendo heavy e estando perto. Vira vigilância — o card continua mostrando.
+	const minPxAlerta = Math.max(
+		NUCLEO_MIN_PX_PRA_ALERTA_AT_256,
+		Math.round(NUCLEO_MIN_PX_PRA_ALERTA_AT_256 * (tileSize / 256) ** 2),
+	);
+	if (cell.intensity !== "extreme" && cell.pixelCount < minPxAlerta) {
+		return {
+			cell,
+			severo: false,
+			imediato: false,
+			motivo: "piso_sem_tendencia",
+		};
+	}
 	const tendencia = cell.tendencia ?? cell.movement?.tendencia ?? null;
 	const imediato =
 		cell.intensity === "extreme" && cell.distToTargetKm <= NUCLEO_EMERGENCIA_KM;
