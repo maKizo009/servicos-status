@@ -183,6 +183,37 @@ describe("Alerta unificado próprio", () => {
 		expect(a.nivel).toBe("verde");
 	});
 
+	// Caso real 02/10/2026: INMET publicou laranja válido só a partir de
+	// 04/10 00:00; com radar limpo e 0,2 mm, o filtro de vigência (que só
+	// olhava o FIM) deixou passar e subiu o alerta da cidade a laranja.
+	test("aviso FUTURO (começa em 2 dias) não agrava — caso real 02/10", () => {
+		const futuro = oficiais(["laranja"]);
+		const d = (ms: number) =>
+			new Date(ms).toISOString().slice(0, 19).replace("T", " ");
+		futuro.avisos[0]!.inicio = d(Date.now() + 48 * 3600_000);
+		futuro.avisos[0]!.fim = d(Date.now() + 72 * 3600_000);
+		futuro.avisos[0]!.cobreIpiranga = true;
+		const a = buildAlertaUnificado(local({ ecmwfPct: 84 }), futuro);
+		// Nada medido, aviso ainda não começou → no máximo amarelo de
+		// atenção pelo ECMWF, nunca laranja (que cutuca o celular).
+		expect(a.nivel).toBe("amarelo");
+		expect(a.motivos.join(" ")).not.toMatch(/atingindo Ipiranga/);
+	});
+
+	test("aviso que COMEÇOU agora continua agravando (não cortar o sinal)", () => {
+		const emAndamento = oficiais(["laranja"]);
+		const d = (ms: number) =>
+			new Date(ms).toISOString().slice(0, 19).replace("T", " ");
+		emAndamento.avisos[0]!.inicio = d(Date.now() - 2 * 3600_000);
+		emAndamento.avisos[0]!.fim = d(Date.now() + 22 * 3600_000);
+		emAndamento.avisos[0]!.cobreIpiranga = true;
+		const a = buildAlertaUnificado(
+			local({ radarAlertLevel: "alert", radarSevero: true, radarKind: "nucleo" }),
+			emAndamento,
+		);
+		expect(a.nivel).toBe("laranja");
+	});
+
 	test("oficial não rebaixa alerta local (laranja local + amarelo oficial)", () => {
 		const a = buildAlertaUnificado(
 			local({ radarAlertLevel: "alert", radarSevero: true, radarKind: "nucleo" }),

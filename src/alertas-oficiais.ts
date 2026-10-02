@@ -433,9 +433,23 @@ export function buildAlertaUnificado(
 	// região vizinha NÃO é aviso de Ipiranga.
 	const agoraMs = Date.now();
 	const todosAvisos = oficiais?.avisos ?? [];
+	// Vigente = JÁ COMEÇADO e AINDA NÃO TERMINADO. Bug ao vivo 02/10/2026:
+	// o filtro só olhava o FIM, então um aviso INMET laranja válido só a
+	// partir de 04/10 00:00 contava como vigente dois dias antes — com radar
+	// limpo e 0,2 mm, subiu o alerta da cidade a laranja e cutucou o celular.
+	// Aviso futuro é planejamento, não emergência de agora. Margem de 1 h
+	// tolera o fuso (INMET publica horário de Brasília; servidor em UTC).
+	const margemInicioMs = 60 * 60_000;
+	const parseDataAviso = (s?: string) => {
+		if (!s) return NaN;
+		return Date.parse(s.replace(" ", "T"));
+	};
 	const vigentes = todosAvisos.filter((a) => {
+		const inicio = parseDataAviso(a.inicio);
+		if (Number.isFinite(inicio) && inicio > agoraMs + margemInicioMs)
+			return false;
 		if (!a.fim) return true; // sem data de fim: assume vigente
-		const fim = Date.parse(a.fim.replace(" ", "T"));
+		const fim = parseDataAviso(a.fim);
 		return !Number.isFinite(fim) || fim > agoraMs;
 	});
 	const avisosIpiranga = vigentes.filter((a) => a.cobreIpiranga === true);
