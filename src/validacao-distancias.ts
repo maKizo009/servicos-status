@@ -84,7 +84,12 @@ export function distanciaMunicipioKm(
 
 export interface DistanciaCitada {
 	km: number;
-	/** Município da malha citado a até 45 chars antes do número (null = sem). */
+	/**
+	 * Município da malha pareado com a distância: citado ANTES do número
+	 * ("área em X, a N km" — ordem do template) ou DEPOIS com preposição
+	 * locativa ("a N km em X" — ordem livre do VLM, caso real 01/10/2026).
+	 * null = sem cidade (compara só com entidades medidas).
+	 */
 	cidade: string | null;
 }
 
@@ -133,6 +138,56 @@ export function extrairDistanciasCitadas(text: string): DistanciaCitada[] {
 				fimDoMatchMaisProximo = fimDoMatch;
 				nomeEscolhidoNorm = nomeNorm;
 				cidade = e.n;
+			}
+		}
+		// Cidade DEPOIS do número ("a 327 km em Planaltina do Paraná") — ordem
+		// comum no texto livre do VLM (o template usa "área em X, a N km", mas
+		// o modelo inverte). Causa raiz do falso alarme 01/10/2026: o extrator
+		// só olhava ANTES do número, a citação ficava "sem cidade" e caía na
+		// comparação com núcleos medidos — a chuva em Planaltina era moderada
+		// (fora do limiar de threat) e nenhum núcleo ficava a ~327 km. A
+		// métrica certa desta frase é a da CIDADE (centróide 320 km, Δ7 ≪
+		// tolerância). Só pareia com preposição LOCATIVA (em/no/na/nos/nas/
+		// até/próximo a/perto de): "477 km de Ipiranga" é referência do alvo,
+		// não local da chuva — vira null. Janela de 45 chars corta em fim de
+		// frase; vence o nome que COMEÇA mais perto do número (empate → mais
+		// longo, palavra inteira dos dois lados).
+		if (cidade === null) {
+			const depoisBruto = text.slice(
+				m.index + m[0].length,
+				m.index + m[0].length + 45,
+			);
+			const corte = depoisBruto.search(/[.!?…]/);
+			const depois = corte >= 0 ? depoisBruto.slice(0, corte) : depoisBruto;
+			const depoisNorm = semAcento(depois);
+			let inicioMaisProximo = Number.MAX_SAFE_INTEGER;
+			let nomeDepoisNorm = "";
+			for (const e of malha) {
+				const nomeNorm = semAcento(e.n);
+				if (nomeNorm.length < 4) continue; // "Cruz", "Ipa"... dão match frouxo
+				const idx = depoisNorm.indexOf(nomeNorm);
+				if (idx < 0) continue;
+				const antesDoIdx = depoisNorm.slice(Math.max(0, idx - 1), idx);
+				if (/[a-z0-9]/.test(antesDoIdx)) continue; // casa sufixo, não palavra
+				const fim = depoisNorm.slice(idx + nomeNorm.length);
+				if (/[a-z0-9]/.test(fim.slice(0, 1))) continue; // casa prefixo, não palavra
+				// preposição locativa imediatamente antes do nome ("em Piên")
+				const entre = depoisNorm.slice(Math.max(0, idx - 14), idx);
+				if (
+					!/(?:^|[^a-z])(?:nos|nas|no|na|em|ate|proximo a|perto de)\s+$/.test(
+						entre,
+					)
+				)
+					continue;
+				const vence =
+					idx < inicioMaisProximo ||
+					(idx === inicioMaisProximo &&
+						nomeNorm.length > nomeDepoisNorm.length);
+				if (vence) {
+					inicioMaisProximo = idx;
+					nomeDepoisNorm = nomeNorm;
+					cidade = e.n;
+				}
 			}
 		}
 		achados.push({ km, cidade });

@@ -171,3 +171,61 @@ describe("caso real 30/09/2026 14:40 — 'Santa Isabel do Ivaí a 333 km'", () =
 		expect(r.ok).toBe(true);
 	});
 });
+
+describe("caso real 01/10/2026 — cidade DEPOIS do número ('a 327 km em Planaltina do Paraná')", () => {
+	// O VLM (nvidia_nim) inverteu a ordem do template: cidade depois da
+	// distância. O extrator só olhava ANTES → cidade=null → a citação caía
+	// na comparação com núcleos medidos; a chuva em Planaltina era moderada
+	// (fora do limiar de threat) e nenhum núcleo ficava a ~327 km → falso
+	// alarme distancia_inconsistente. A métrica certa é a da CIDADE
+	// (centróide 320 km, Δ7 ≪ tolerância). Radar confirmava chuva real lá.
+	const texto =
+		"Não há chuva medida em Ipiranga. Pode haver um núcleo de chuva forte a 163 km em Piên, que pode se aproximar se mantiver o curso, e outro a 187 km em Rio Negrinho que se afasta. Há também uma área de chuva moderada a 327 km em Planaltina do Paraná, que pode chegar em cerca de 6 horas. O modelo ECMWF indica 0 % de chance de chuva nas próximas 6 h.";
+
+	test("extrator pareia a cidade que vem DEPOIS do número (preposição locativa)", () => {
+		const dists = extrairDistanciasCitadas(texto);
+		expect(dists.map((d) => [d.km, d.cidade])).toEqual([
+			[163, "Piên"],
+			[187, "Rio Negrinho"],
+			[327, "Planaltina do Paraná"],
+		]);
+	});
+
+	test("validação passa pela CIDADE mesmo sem entidade ~327 (chuva moderada fora do limiar de threat)", () => {
+		// Refs do ciclo real: nenhuma entidade entre 301-353 km — a citação
+		// só se sustenta pela métrica da cidade, que é a correta aqui.
+		const refs = [
+			{ km: 162.76, municipio: "Piên" },
+			{ km: 188.36, municipio: "Rio Negrinho" },
+			{ km: 280.93, municipio: "Sete Barras" },
+			{ km: 366.16, municipio: "Teodoro Sampaio" },
+		];
+		const r = avaliarDistanciasCitadas(texto, refs);
+		expect(r.problemas).toEqual([]);
+		expect(r.ok).toBe(true);
+	});
+
+	test("alucinação com cidade DEPOIS do número continua reprova", () => {
+		const r = avaliarDistanciasCitadas(
+			"chuva forte a 999 km em Planaltina do Paraná.",
+			[{ km: 280.93, municipio: "Sete Barras" }],
+		);
+		expect(r.ok).toBe(false);
+		expect(r.problemas.join(" ")).toContain("999 km");
+	});
+
+	test("preposição 'de' depois do número NÃO pareia (referência do alvo)", () => {
+		// "477 km de Ipiranga" = distância ATÉ o alvo, não chuva em X.
+		const dists = extrairDistanciasCitadas(
+			"Radar mostra atividade a 477 km de Ipiranga.",
+		);
+		expect(dists).toEqual([{ km: 477, cidade: null }]);
+	});
+
+	test("fim de frase corta a janela: '100 km. Em Cascavel choveu' não pareia", () => {
+		const dists = extrairDistanciasCitadas(
+			"Chuva a 100 km. Em Cascavel choveu 22 mm.",
+		);
+		expect(dists).toEqual([{ km: 100, cidade: null }]);
+	});
+});
