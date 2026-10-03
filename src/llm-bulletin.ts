@@ -122,7 +122,7 @@ export interface AnalystContext {
 export function buildAnalystPrompt(ctx: AnalystContext): string {
 	const linhas: string[] = [];
 	linhas.push(
-		`CHUVA MEDIDA EM IPIRANGA: ${ctx.fraseLocal ?? "sem chuva medida (pluviômetros zerados)"}`,
+		`CHUVA MEDIDA EM IPIRANGA: ${ctx.fraseLocal ?? "sem chuva"}`,
 	);
 	linhas.push(`NÍVEL DA CAMADA A: ${ctx.alertLevel}`);
 	const nucleos = ctx.threats.filter((t) => t.kind !== "area");

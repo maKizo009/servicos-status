@@ -18,42 +18,45 @@ import type { RainViewerFrame } from "./types.js";
  */
 
 // ============ Paleta oficial Universal Blue (Rain) ============
-// dBZ → RGBA. Amostrada a cada 5 dBZ da tabela oficial de 256 entradas.
-// (Os pontos intermediários são interpolados na classificação.)
-const PALETTE: ReadonlyArray<{
-	dbz: number;
-	r: number;
-	g: number;
-	b: number;
-	a: number;
-}> = [
-	{ dbz: -32, r: 0, g: 0, b: 0, a: 0 },
-	{ dbz: -27, r: 0, g: 0, b: 0, a: 0 },
-	{ dbz: -22, r: 0, g: 0, b: 0, a: 0 },
-	{ dbz: -17, r: 0, g: 0, b: 0, a: 0 },
-	{ dbz: -12, r: 0, g: 0, b: 0, a: 0 },
-	{ dbz: -7, r: 108, g: 104, b: 93, a: 36 },
-	{ dbz: -2, r: 124, g: 117, b: 101, a: 62 },
-	{ dbz: 3, r: 139, g: 130, b: 109, a: 89 },
-	{ dbz: 8, r: 182, g: 169, b: 126, a: 130 },
-	{ dbz: 13, r: 218, g: 204, b: 147, a: 180 },
-	{ dbz: 18, r: 54, g: 186, b: 229, a: 255 },
-	{ dbz: 23, r: 0, g: 136, b: 191, a: 255 },
-	{ dbz: 28, r: 0, g: 98, b: 149, a: 255 },
-	{ dbz: 33, r: 0, g: 74, b: 112, a: 255 },
-	{ dbz: 38, r: 255, g: 197, b: 0, a: 255 },
-	{ dbz: 43, r: 255, g: 139, b: 0, a: 255 },
-	{ dbz: 48, r: 217, g: 27, b: 0, a: 255 },
-	{ dbz: 53, r: 118, g: 0, b: 0, a: 255 },
-	{ dbz: 58, r: 255, g: 139, b: 255, a: 255 },
-	{ dbz: 63, r: 255, g: 88, b: 255, a: 255 },
-	{ dbz: 68, r: 255, g: 255, b: 255, a: 255 },
-	{ dbz: 73, r: 255, g: 255, b: 255, a: 255 },
-	{ dbz: 78, r: 0, g: 255, b: 0, a: 255 },
-	{ dbz: 83, r: 0, g: 255, b: 0, a: 255 },
-	{ dbz: 88, r: 0, g: 255, b: 0, a: 255 },
-	{ dbz: 93, r: 0, g: 255, b: 0, a: 255 },
-];
+// dBZ → RGBA. Coluna Universal Blue da tabela oficial CSV da RainViewer.
+const PALETTE_RGBA = `
+	00000000 00000000 00000000 00000000 00000000 00000000 00000000 00000000
+	00000000 00000000 00000000 00000000 00000000 00000000 00000000 00000000
+	00000000 00000000 00000000 00000000 00000000 00000000 63615914 66635a19
+	69665c1e 6c685d24 6f6b5f29 726e612e 75706234 78736439 7c75653e 7f786744
+	827b6949 857d6a4e 88806c54 8b826d59 8e856f5e 92887164 9e93756e aa9e7978
+	b6a97e82 c2b4828c cec08796 d2c48ba0 d6c88faa dacc93b4 ded097be 88ddeeff
+	6cd1ebff 51c5e8ff 36bae5ff 1baee2ff 00a3e0ff 009ad5ff 0091caff 0088bfff
+	007fb4ff 0077aaff 0070a3ff 00699cff 006295ff 005b8eff 005588ff 005180ff
+	004e78ff 004a70ff 004768ff ffee00ff ffe000ff ffd200ff ffc500ff ffb700ff
+	ffaa00ff ff9f00ff ff9500ff ff8b00ff ff8100ff ff4400ff f23600ff e62800ff
+	d91b00ff cd0d00ff c10000ff a80000ff 8f0000ff 760000ff 5d0000ff ffaaffff
+	ff9fffff ff95ffff ff8bffff ff81ffff ff77ffff ff6cffff ff62ffff ff58ffff
+	ff4effff ffffffff ffffffff ffffffff ffffffff ffffffff ffffffff ffffffff
+	ffffffff ffffffff ffffffff 00ff00ff 00ff00ff 00ff00ff 00ff00ff 00ff00ff
+	00ff00ff 00ff00ff 00ff00ff 00ff00ff 00ff00ff 00ff00ff 00ff00ff 00ff00ff
+	00ff00ff 00ff00ff 00ff00ff 00ff00ff 00ff00ff 00ff00ff 00ff00ff 00ff00ff
+`.trim().split(/\s+/);
+
+const PALETTE = PALETTE_RGBA.map((hex, index) => ({
+	dbz: index - 32,
+	r: Number.parseInt(hex.slice(0, 2), 16),
+	g: Number.parseInt(hex.slice(2, 4), 16),
+	b: Number.parseInt(hex.slice(4, 6), 16),
+	a: Number.parseInt(hex.slice(6, 8), 16),
+}));
+
+function rgbaKey(r: number, g: number, b: number, a: number): number {
+	return (((r << 24) | (g << 16) | (b << 8) | a) >>> 0);
+}
+
+const EXACT_PALETTE = new Map<number, { minDbz: number; maxDbz: number }>();
+for (const entry of PALETTE) {
+	const key = rgbaKey(entry.r, entry.g, entry.b, entry.a);
+	const range = EXACT_PALETTE.get(key);
+	if (range) range.maxDbz = entry.dbz;
+	else EXACT_PALETTE.set(key, { minDbz: entry.dbz, maxDbz: entry.dbz });
+}
 
 /** Limiares de intensidade (dBZ) — padrão meteorológico comum */
 export const INTENSITY_THRESHOLDS = {
@@ -209,8 +212,8 @@ export function formatRainEntityAlert(opts: {
 	const avisoTempestade =
 		isArea || dissipa
 			? ""
-			: " Célula de tempestade: pode trazer raios, rajadas e oscilações na rede elétrica (COPEL).";
-	return `👁️ Vigilância: ${rotulo} detectad${isArea ? "a" : "o"} a ${km} de Ipiranga${eta}. Sem alerta iminente, acompanhe.${perfil ?? ressalva}${avisoTempestade}`;
+			: " Célula de tempestade: pode trazer raios, rajadas e oscilações na rede elétrica.";
+	return `Vigilância: ${rotulo} detectad${isArea ? "a" : "o"} a ${km} de Ipiranga${eta}. Sem alerta iminente, acompanhe.${perfil ?? ressalva}${avisoTempestade}`;
 }
 
 export function fmtEta(etaMin: number | null | undefined): string {
@@ -547,8 +550,8 @@ export interface MovementVector {
 // ============ Classificação de pixel ============
 
 /**
- * Aproxima o dBZ de um pixel comparando com a paleta oficial.
- * Usa distância euclidiana RGB; alpha baixo (<40) = sem dados.
+ * Decodifica pixels exatos da paleta e aproxima cores interpoladas por RGBA.
+ * Alpha baixo (<40) = sem dados.
  */
 export function classifyPixel(
 	r: number,
@@ -557,26 +560,29 @@ export function classifyPixel(
 	a: number,
 ): ClassifiedPixel | null {
 	if (a < 40) return null;
-	let best: { dbz: number; r: number; g: number; b: number; a: number } | null =
-		null;
-	let bestDist = Infinity;
-	for (const entry of PALETTE) {
-		const dr = r - entry.r;
-		const dg = g - entry.g;
-		const db = b - entry.b;
-		const dist = dr * dr + dg * dg + db * db;
-		if (dist < bestDist) {
-			bestDist = dist;
-			best = entry;
+	const exact = EXACT_PALETTE.get(rgbaKey(r, g, b, a));
+	let dbz = exact ? Math.round((exact.minDbz + exact.maxDbz) / 2) : null;
+	if (dbz == null) {
+		let best: (typeof PALETTE)[number] | null = null;
+		let bestDist = Infinity;
+		for (const entry of PALETTE) {
+			const dr = r - entry.r;
+			const dg = g - entry.g;
+			const db = b - entry.b;
+			const da = a - entry.a;
+			const dist = dr * dr + dg * dg + db * db + da * da;
+			if (dist < bestDist) {
+				bestDist = dist;
+				best = entry;
+			}
 		}
+		dbz = best?.dbz ?? -32;
 	}
-	if (!best || best.dbz < INTENSITY_THRESHOLDS.light) {
+	if (dbz < INTENSITY_THRESHOLDS.light) {
 		// dBZ < 5 = chuva desprezível; conta como none
-		return best
-			? { x: 0, y: 0, dbz: best.dbz, intensity: "none" as const }
-			: null;
+		return { x: 0, y: 0, dbz, intensity: "none" };
 	}
-	return { x: 0, y: 0, dbz: best.dbz, intensity: intensityFromDbz(best.dbz) };
+	return { x: 0, y: 0, dbz, intensity: intensityFromDbz(dbz) };
 }
 
 export function intensityFromDbz(dbz: number): RainIntensity {
@@ -1342,7 +1348,7 @@ export async function analyzeRadarNowcast(
 	frameCount = 3,
 	target?: { lat: number; lon: number },
 	tileSize = 256,
-	smooth = true,
+	smooth = false,
 ): Promise<NowcastResult> {
 	// usa os últimos N frames (mais recentes)
 	const frames = pastFrames.slice(-frameCount);
