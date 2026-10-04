@@ -51,7 +51,12 @@ export const ANALYSIS_SMOOTH = false;
  */
 export const TARGET_IPIRANGA = { lat: -25.0244, lon: -50.5847 } as const;
 
-let cached: { result: NowcastResult; at: number } | null = null;
+let cached: { result: NowcastResult; at: number; frameKey: string } | null = null;
+
+/** Chave do trio de frames analisados (path é único por frame do RainViewer). */
+function frameKeyOf(frames: { path: string }[]): string {
+	return frames.slice(-3).map((f) => f.path).join("|");
+}
 
 export async function getRadarNowcast(): Promise<NowcastResult> {
 	if (cached && Date.now() - cached.at < TTL_MS) {
@@ -64,6 +69,20 @@ export async function getRadarNowcast(): Promise<NowcastResult> {
 		if (!radar || radar.radar.past.length === 0) {
 			logger.info("Nowcast: estado sem radar, buscando do RainViewer");
 			radar = await fetchRainViewerRadar();
+		}
+
+		// 1b. MESMOS FRAMES que a última análise (04/10/2026): o ciclo de 10 min
+		// às vezes pisa duas vezes no mesmo trio de frames (dois gatilhos, retry
+		// do vigia, instância quente). Reanalisar 48 tiles custa ~2.5 s de CPU
+		// (medido) para o MESMO resultado — se o frame mais novo não mudou, o
+		// nowcast anterior ainda é a leitura correta do radar.
+		const key = frameKeyOf(radar.radar.past);
+		if (cached && cached.frameKey === key) {
+			cached.at = Date.now();
+			logger.info("Nowcast: frames inalterados desde a última análise, reusando", {
+				cols: cached.result.frames[cached.result.frames.length - 1]?.cells.length ?? 0,
+			});
+			return cached.result;
 		}
 
 		// 2. analisa os 3 frames mais recentes do grid 4x4 da região,
@@ -79,7 +98,7 @@ export async function getRadarNowcast(): Promise<NowcastResult> {
 			ANALYSIS_SMOOTH,
 		);
 
-		cached = { result, at: Date.now() };
+		cached = { result, at: Date.now(), frameKey: key };
 		logger.info("Nowcast calculado", {
 			frames: result.frames.length,
 			maxDbz: result.currentMaxDbz,

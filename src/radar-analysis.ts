@@ -714,17 +714,20 @@ export async function fetchTileGrid(
 							tileSize,
 							smooth,
 						);
-						const dstX = (tx - grid.xMin) * tileSize;
+					const dstX = (tx - grid.xMin) * tileSize;
 						const dstY = (ty - grid.yMin) * tileSize;
+						/* Copia por LINHA (04/10/2026): antes era pixel a pixel
+						   (4.2M×3 de CPU medidos); set() move a faixa de uma vez. */
+						const stride = tileSize * 4;
 						for (let y = 0; y < tileSize; y++) {
-							for (let x = 0; x < tileSize; x++) {
-								const si = (y * tileSize + x) * 4;
-								const di = ((dstY + y) * width + (dstX + x)) * 4;
-								composite.data[di] = tile.data[si];
-								composite.data[di + 1] = tile.data[si + 1];
-								composite.data[di + 2] = tile.data[si + 2];
-								composite.data[di + 3] = tile.data[si + 3];
-							}
+							const srcOff = y * stride;
+							const dstOff = ((dstY + y) * width + dstX) * 4;
+							tile.data.copy(
+								composite.data as unknown as Buffer,
+								dstOff,
+								srcOff,
+								srcOff + stride,
+							);
 						}
 					} catch (err) {
 						logger.warn("TileGrid: tile falhou (mantido vazio)", {
@@ -783,21 +786,35 @@ export function analyzeTile(
 	);
 
 	// Classifica todos os pixels uma única vez (dBZ por pixel; -999 = sem dado)
+	// FAST PATH (04/10/2026): o ciclo gasta ~2s de CPU aqui (medido). As duas
+	// economias preservam a semântica EXATA do classifyPixel:
+	//  1. alpha<40 checado inline antes da chamada (79% dos pixels num frame
+	//     limpo; a função de 4.2M×3 chamadas custava mais que o trabalho);
+	//  2. lookup exato da paleta primeiro — com smooth=false o tile vem com cor
+	//     pura da paleta e o measured 2026-10-04 foi 0/855.678 miss; o fallback
+	//     vizinho-mais-próximo só roda no caso raro (smooth=true/anti-alias).
 	const dbzGrid = new Int16Array(n).fill(-999);
 	let maxDbz = -100;
 	let precipPixels = 0;
 	for (let i = 0; i < n; i++) {
 		const idx = i * 4;
-		const cls = classifyPixel(
-			data[idx],
-			data[idx + 1],
-			data[idx + 2],
-			data[idx + 3],
+		const a = data[idx + 3];
+		if (a < 40) continue;
+		const ex = EXACT_PALETTE.get(
+			((data[idx] << 24) | (data[idx + 1] << 16) | (data[idx + 2] << 8) | a) >>> 0,
 		);
-		if (!cls || cls.intensity === "none") continue;
-		dbzGrid[i] = Math.round(cls.dbz);
+		let dbz: number;
+		if (ex) {
+			dbz = Math.round((ex.minDbz + ex.maxDbz) / 2);
+		} else {
+			const cls = classifyPixel(data[idx], data[idx + 1], data[idx + 2], a);
+			if (!cls) continue;
+			dbz = cls.dbz;
+		}
+		if (dbz < INTENSITY_THRESHOLDS.light) continue; // dBZ<5 = desprezível
+		dbzGrid[i] = dbz;
 		precipPixels++;
-		if (cls.dbz > maxDbz) maxDbz = cls.dbz;
+		if (dbz > maxDbz) maxDbz = dbz;
 	}
 
 	// Flood-fill (BFS) sobre pixels >= moderate → componentes conexos

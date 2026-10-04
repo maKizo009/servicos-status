@@ -7,7 +7,6 @@
  * de index.ts junto do router — cada fix que tocava o ciclo relia 2 mil linhas.
  * Extraído sem mudar comportamento: só organização.
  */
-import { waitUntil } from "@vercel/functions";
 import {
 	buildAlertaUnificado,
 	descricaoParaPessoas,
@@ -28,6 +27,7 @@ import {
 	limparAmostrasDissipacaoAntigas,
 	limparCiclosAlertaAntigos,
 	salvarCicloAlerta,
+	saveNowcastBulletin,
 	saveWeatherStateCache,
 } from "./db.js";
 import { logger } from "./logger.js";
@@ -376,19 +376,14 @@ export async function syncWeatherCycle(): Promise<WeatherState> {
 				: null,
 		});
 
-		// Camada B: boletim narrativo (LLM analista → heurística).
-		// UM gate de reuso só (avaliarReuso, em llm-bulletin.js): compara a MEDIÇÃO e
-		// a impressão do cenário, não só a idade. Havia duas lógicas de cache aqui e
-		// elas divergiram — a de fora só olhava tempo + coerência com o radar, então
-		// "chove agora" com pluviômetro zerado era servido de novo a cada ciclo
-		// (incidente do Boletim IA, 22/09/2026).
+		// Camada B: boletim narrativo DETERMINÍSTICO (04/10/2026).
+		// A cadeia LLM saiu do ciclo a pedido do dono ("ninguém está lendo as
+		// análises de IA") e pela cota de CPU da Vercel. O texto é a heurística
+		// da Camada A (buildHeuristicBulletin): reconcilia radar + pluviômetro +
+		// ECMWF + rios sem rede, sem provedor, sem cota. Persistido no Turso
+		// como antes — /api/weather/bulletin, dashboard e watchdog leem daqui.
 		if (state.radar) {
-			const {
-				avaliarReuso,
-				buildAnalystContext,
-				chaveDoCenario,
-				generateSmartBulletin,
-			} = await import("./llm-bulletin.js");
+			const { buildHeuristicBulletin } = await import("./nowcast-vlm.js");
 			const ests = state.cemaden?.estacoes ?? [];
 			const maxAcc = (f: (e: (typeof ests)[number]) => number | null) =>
 				maxAcumuladoFresco(ests, f);
@@ -406,137 +401,22 @@ export async function syncWeatherCycle(): Promise<WeatherState> {
 				alertLevel: state.alertLevel ?? "monitor",
 				nearestThreatKm: state.nearestThreatKm ?? null,
 			} as const;
-			const prox6h = (weatherInfo.hourlyForecast || [])
-				.slice(0, 6)
-				.reduce((s, h) => s + (h.precipitationMm ?? 0), 0);
-			const built = buildAnalystContext(nowcast, {
-				local: localCtx,
-				condition: weatherInfo.condition,
-				ecmwfPct: weatherInfo.rainProbabilityPct,
-				ecmwfProx6hMm: prox6h,
-				alertLevel: state.alertLevel ?? "monitor",
-				// Leitura VELHA (ANA sem resposta) não dirige o alerta unificado: só
-				// estado fresco acende/segura push. Ver `preservarHidro`.
-				hidroWatch:
-					state.hidro?.riscoCheia === "watch" &&
-					state.hidro?.desatualizado !== true,
-				avisosOficiais: (state.alertasOficiais?.avisos ?? []).map(
-					(a) => `${a.fonte}: ${a.titulo}`,
-				),
-				solo: state.soloCidades ?? [],
-			});
-
-			const cachedBulletin = await getLatestNowcastBulletin();
-			const aval = avaliarReuso({
-				cached: cachedBulletin,
-				local: localCtx,
-				nowcast,
-				chaveCenario: chaveDoCenario(built.analyst),
-			});
-			if (aval.reusar && cachedBulletin) {
-				state.nowcastBulletin = cachedBulletin;
-				logger.info("Boletim nowcast reutilizado do cache persistido", {
-					ageMin: Math.round((Date.now() - cachedBulletin.generatedAt) / 60000),
-					source: cachedBulletin.source,
-					motivo: aval.motivo,
-				});
-			} else if (cachedBulletin) {
-				logger.info("Boletim nowcast stale no cache, regenerando", {
-					motivo: aval.motivo,
-				});
-			}
-			if (!state.nowcastBulletin) {
-				// GATE DE CRÉDITO (Dave, 21/09/2026): sem sinal REAL medido, não se
-				// gasta LLM. Sinal = chuva medida fresca, núcleo de radar perto, rio em
-				// atenção ou aviso oficial. Previsão do ECMWF SOZINHA não é sinal —
-				// foi ela que fez o boletim dizer que chovia sem chover.
-				const estsGate = state.cemaden?.estacoes ?? [];
-				const gAcc = (f: (e: (typeof estsGate)[number]) => number | null) =>
-					maxAcumuladoFresco(estsGate, f) ?? 0;
-				const sinalChuva =
-					gAcc((e) => e.acc1hr) >= 0.5 ||
-					gAcc((e) => e.acc6hr) >= 5 ||
-					gAcc((e) => e.acc24hr) >= 10;
-				const sinalRadar =
-					state.alertLevel === "alert" || state.alertLevel === "watch";
-				const sinalRio =
-					state.hidro?.riscoCheia === "watch" ||
-					state.hidro?.riscoCheia === "critical" ||
-					state.hidro?.previsao?.vaiSair === "sim";
-				const sinalOficial = (state.alertasOficiais?.avisos ?? []).length > 0;
-				if (!(sinalChuva || sinalRadar || sinalRio || sinalOficial)) {
-					const texto = [
-						"Sem chuva medida em Ipiranga",
-						"sem núcleo de chuva próximo no radar",
-						"rios em nível normal",
-					].join(", ");
-					state.nowcastBulletin = {
-						text: `${texto}. Nada a reportar agora.`,
-						source: "heuristic",
-						generatedAt: Date.now(),
-					};
-					logger.info(
-						"Boletim sem sinal real — LLM NÃO chamado (gate de crédito)",
-					);
+			const text = buildHeuristicBulletin(nowcast, ecmwfCtx, relevance, localCtx);
+			state.nowcastBulletin = { text, source: "heuristic", generatedAt: Date.now() };
+			// Grava só quando o texto MUDA (04/10/2026): o heurístico é regenerado
+			// a cada ciclo; persistir igual-igual incharia a tabela. O
+			// generatedAt do ESTADO é sempre agora — com boletim determinístico,
+			// "texto igual" significa que a LEITURA atual do radar/chuva continua
+			// a mesma, não texto velho servido de cache (era isso que o
+			// generatedAt antigo denunciava, no mundo LLM de 22/09).
+			try {
+				const ultimo = await getLatestNowcastBulletin();
+				if (!ultimo || ultimo.text !== text) {
+					await saveNowcastBulletin(text, "heuristic", null);
 				}
+			} catch (e) {
+				logger.warn("Boletim heurístico: persistência falhou", { error: String(e) });
 			}
-			if (!state.nowcastBulletin) {
-				// Boletim inteligente (10/09/2026): LLM analista (30 min) → heurística.
-				// O LLM reconcilia fontes contraditórias (template não sabe fazer
-				// isso); a heurística preenche intervalos e assume sem rede.
-				// O contexto do analista foi montado ACIMA (o gate de reuso usa a
-				// mesma impressão de cenário) — recalcular aqui só criaria divergência.
-				const paramsBoletim = {
-					nowcast,
-					ecmwf: ecmwfCtx,
-					relevance: {
-						alertLevel: relevance.alertLevel,
-						nearestThreatKm: relevance.nearestThreatKm,
-					},
-					local: localCtx,
-					fraseLocal: built.fraseLocal,
-					analyst: built.analyst,
-					verdict: built.verdict,
-				};
-				if (!cachedBulletin) {
-					// Sem NENHUM texto persistido (primeira execução, cache zerado):
-					// aqui vale esperar — senão o site fica sem boletim nenhum.
-					const bulletin = await generateSmartBulletin(paramsBoletim);
-					state.nowcastBulletin = bulletin;
-					logger.info("Boletim nowcast pronto (sem cache, aguardado)", {
-						source: bulletin.source,
-					});
-				} else {
-					// FORA DO CAMINHO CRÍTICO (22/09/2026): a cadeia de LLM pode gastar
-					// os 15 s do orçamento e o ciclo chegava a 27-30 s — acima dos 30 s
-					// que o cron-job.org capa (5 falhas em 50 execuções, cada uma virando
-					// e-mail de falha e risco de auto-desabilitar o job). O texto é
-					// persistido no Turso, então a geração pode terminar DEPOIS da
-					// resposta: o ciclo devolve rápido servindo o cache anterior, e o
-					// próximo ciclo já encontra o texto novo.
-					state.nowcastBulletin = cachedBulletin;
-					waitUntil(
-						generateSmartBulletin(paramsBoletim)
-							.then((b) => {
-								logger.info("Boletim nowcast pronto em background", {
-									source: b.source,
-									idadeMin: Math.round((Date.now() - b.generatedAt) / 60000),
-								});
-							})
-							.catch((err) => {
-								logger.warn("Boletim nowcast falhou em background", {
-									error: err instanceof Error ? err.message : String(err),
-								});
-							}),
-					);
-				}
-				// NÃO regravar aqui: generateSmartBulletin já persistiu o texto novo —
-				// e, quando reusa o cache, devolve o registro ANTIGO. Regravar um texto
-				// reusado renovava o generated_at, então o cache de 30 min nunca
-				// expirava e o boletim ficava congelado com horário "novo" a cada
-				// ciclo. Foi o incidente do "Boletim IA" (22/09/2026).
-			}
-
 			// O boletim principal do dashboard/llms.txt é o texto do VLM vision.
 			// O antigo "NIM texto" (Llama 8b) foi removido — um único boletim
 			// coeso, gerado a partir dos dados do radar + veredito de ameaça.

@@ -2158,7 +2158,7 @@ html.trocando-tema, html.trocando-tema *{transition:none !important}
           <div class="clima-oficiais" id="climaAvisosOficiais"></div>
           <div class="bulletin-meta-line">
             <span class="bulletin-when" id="bulletinWhen"></span>
-            <span class="bulletin-tag" id="bulletinSourceTag">IA</span>
+            <span class="bulletin-tag" id="bulletinSourceTag">Automático</span>
           </div>
         </details>
       </div>
@@ -3207,8 +3207,12 @@ async function fetchWeatherData() {
     if (bulletinText) {
       const bEl = document.getElementById('bulletinText');
       const sEl = document.getElementById('bulletinSourceTag');
+        const bulletinSrc = (data.bulletin?.source || data.nowcastBulletin?.source);
       if(bEl) bEl.textContent = bulletinText.replace(/\*\*/g, '');
-      const src = (data.bulletin?.source || data.nowcastBulletin?.source) === 'openrouter' ? 'IA' : 'IA local';
+      // Fonte: ciclo determinístico (04/10/2026) — heurística é a fonte oficial,
+      // não "IA". Se um dia voltar texto de LLM, o rótulo acompanha.
+      const src = bulletinSrc === 'heuristic' ? 'Automático'
+        : (bulletinSrc === 'openrouter' || bulletinSrc === 'gemini' || bulletinSrc === 'nvidia_nim') ? 'IA' : 'IA local';
       if(sEl) sEl.textContent = src;
     }
     // Quando o texto foi REALMENTE gerado. Sem isso o boletim pode estar congelado
