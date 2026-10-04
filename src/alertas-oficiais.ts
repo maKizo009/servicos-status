@@ -315,11 +315,25 @@ export function descricaoParaPessoas(
 		descricao?: string;
 	},
 ): string {
+	// O corpo do push NÃO pode afirmar mais do que o título (04/10/2026): a
+	// string fixa "Chuva forte se aproximando" saía mesmo com radar limpo e o
+	// laranja montado de acumulado+rio+aviso oficial — o morador olhava o
+	// radar depois do push e não via nada. A frase agora acompanha o QUE o
+	// título mediu.
+	const tituloLower = (a.titulo ?? "").toLowerCase();
 	const oQueTem: Record<string, string> = {
 		vermelho:
 			"Chuva muito forte na região — risco de alagamento e queda de energia.",
-		laranja: "Chuva forte se aproximando da região.",
-		amarelo: "Possibilidade de chuva na região.",
+		laranja: tituloLower.includes("risco de tempestade")
+			? "Condição de risco hoje (chuva acumulada, rio em atenção e aviso oficial ativo) — sem chuva forte caindo neste momento."
+			: tituloLower.includes("se aproximando")
+				? "Chuva forte se aproximando da região."
+				: "Chuva forte caindo agora na região.",
+		amarelo: tituloLower.includes("previsão")
+			? "Previsão de chuva para as próximas horas (nada medido ainda)."
+			: tituloLower.includes("já acumulada")
+				? "Chuva já acumulada hoje; nada forte caindo agora."
+				: "Possibilidade de chuva na região.",
 		verde: "Tempo calmo por aqui.",
 	};
 	const partes = [oQueTem[a.nivel] ?? oQueTem.verde];

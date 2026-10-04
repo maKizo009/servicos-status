@@ -9,6 +9,7 @@
 import { describe, expect, test } from "bun:test";
 import {
 	type AlertasOficiaisState,
+	descricaoParaPessoas,
 	buildAlertaUnificado,
 	type DadosLocaisAlerta,
 } from "../src/alertas-oficiais.js";
@@ -77,6 +78,16 @@ describe("Alerta unificado próprio", () => {
 		const a = buildAlertaUnificado(local({ acc24hrMax: 22 }), null);
 		expect(a.nivel).toBe("amarelo");
 		expect(a.titulo).toContain("já acumulada");
+	});
+
+	test("push do cenário 04/10: corpo não pode dizer 'chuva forte' sem chuva agora", () => {
+		const a = buildAlertaUnificado(
+			local({ acc24hrMax: 36.8, hidroWatch: true }),
+			oficiais(["laranja"]),
+		);
+		const corpo = descricaoParaPessoas(a);
+		expect(corpo).not.toContain("Chuva forte se aproximando");
+		expect(corpo).toContain("sem chuva forte caindo");
 	});
 
 	test("chuva medida 41,6mm/24h + ECMWF 100% → ao menos amarelo", () => {
