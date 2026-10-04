@@ -488,6 +488,13 @@ export function buildAlertaUnificado(
 	// fresco ou núcleo de radar perto). Previsão do ECMWF sozinha vira "previsão
 	// de chuva", nunca "chuva". Bug ao vivo 21/09/2026: o alerta dizia "chuva em
 	// Ipiranga/região" com o CEMADEN zerado e nenhum núcleo no radar.
+	//
+	// "FORTE em Ipiranga" é afirmação mais forte ainda — exige intensidade AGORA
+	// (regra 04/10/2026, print do dono: "Alerta laranja — chuva forte em
+	// Ipiranga/região" com 0 mm/h, 0 mm/6h e radar limpo; o laranja vinha do
+	// acumulado de 24h + rio + aviso oficial). Acumulado de ontem não é chuva
+	// forte agora. Quando o que sustenta o nível é RISCO (aviso oficial, chão
+	// molhado, rio), o título diz "risco", não "está caindo".
 	const medidoChuva =
 		c1 >= 0.5 ||
 		c6 >= 5 ||
@@ -495,23 +502,33 @@ export function buildAlertaUnificado(
 		local.radarAlertLevel === "alert" ||
 		local.radarAlertLevel === "watch";
 	const soPrevisao = nivel !== "verde" && !medidoChuva;
+	// Cai chuva forte AGORA? (medido no bico, ou núcleo de tempestade na zona
+	// de alerta iminente do radar)
+	const forteAgora =
+		c1 >= 10 || c6 >= 25 || local.radarAlertLevel === "alert";
 	// Chuva ainda NÃO caiu aqui: o radar vê a entidade chegando (sem pluviômetro).
 	// Título diz "se aproximando", nunca "chuva em Ipiranga" (que o leitor lê como
 	// chuva caindo agora).
-	const soRadar = medidoChuva && !(c1 >= 0.5 || c6 >= 5 || c24 >= 10);
+	const nucleoChegando =
+		local.radarAlertLevel === "alert" || local.radarAlertLevel === "watch";
+	const soRadar = medidoChuva && !(c1 >= 0.5 || c6 >= 5) && nucleoChegando;
 	const titulo =
 		nivel === "vermelho"
 			? "Alerta vermelho — risco alto de chuva forte em Ipiranga"
 			: nivel === "laranja"
-				? soRadar
-					? "Alerta laranja — chuva forte se aproximando de Ipiranga/região"
-					: "Alerta laranja — chuva forte em Ipiranga/região"
+				? forteAgora && !soRadar
+					? "Alerta laranja — chuva forte em Ipiranga/região"
+					: soRadar
+						? "Alerta laranja — chuva forte se aproximando de Ipiranga/região"
+						: "Alerta laranja — risco de tempestade para Ipiranga (avisos oficiais; sem chuva forte agora)"
 				: nivel === "amarelo"
 					? soPrevisao
 						? "Atenção — previsão de chuva para Ipiranga/região (nada medido ainda)"
 						: soRadar
 							? "Atenção — chuva se aproximando de Ipiranga/região"
-							: "Atenção — chuva em Ipiranga/região"
+							: forteAgora || c1 >= 0.5 || c6 >= 5
+								? "Atenção — chuva em Ipiranga/região"
+								: "Atenção — chuva já acumulada hoje em Ipiranga (sem chuva forte agora)"
 					: "Tempo sem alertas em Ipiranga";
 
 	// Maleabilidade do tom (pedido do dono 27/09/2026): quando o alerta DESCE, a

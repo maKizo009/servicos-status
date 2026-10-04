@@ -51,6 +51,34 @@ describe("Alerta unificado próprio", () => {
 		expect(a.motivos.length).toBe(0);
 	});
 
+	// Regra 04/10/2026 (print do dono): laranja montada de ACUMULADO de 24h +
+	// rio + aviso oficial NÃO pode titular "chuva forte em Ipiranga" com 0 mm
+	// agora e radar limpo — o leitor olha o radar vazio e vê a mentira.
+	test("cenário do print 04/10: 0mm/h, 0mm/6h, 36,8mm/24h, rio watch, oficial laranja, radar limpo", () => {
+		const a = buildAlertaUnificado(
+			local({ acc24hrMax: 36.8, hidroWatch: true }),
+			oficiais(["laranja"]),
+		);
+		expect(a.nivel).toBe("laranja");
+		expect(a.titulo).toContain("risco de tempestade");
+		expect(a.titulo).not.toContain("chuva forte em Ipiranga");
+	});
+
+	test("chuva forte MEDIDA agora (25mm/6h) → título afirma", () => {
+		const a = buildAlertaUnificado(
+			local({ acc6hrMax: 25, acc24hrMax: 30 }),
+			null,
+		);
+		expect(a.nivel).toBe("laranja");
+		expect(a.titulo).toContain("chuva forte em Ipiranga");
+	});
+
+	test("amarelo só com acumulado (24h) não afirma chuva em andamento", () => {
+		const a = buildAlertaUnificado(local({ acc24hrMax: 22 }), null);
+		expect(a.nivel).toBe("amarelo");
+		expect(a.titulo).toContain("já acumulada");
+	});
+
 	test("chuva medida 41,6mm/24h + ECMWF 100% → ao menos amarelo", () => {
 		const a = buildAlertaUnificado(
 			local({ acc1hrMax: 3, acc6hrMax: 25, acc24hrMax: 41.6, ecmwfPct: 100 }),
