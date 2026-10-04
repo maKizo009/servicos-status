@@ -1356,6 +1356,11 @@ details[open]::details-content{block-size:auto}
 .facts{display:flex;flex-direction:column;gap:8px;margin-top:12px}
 .fact{background:var(--md-sys-color-surface-container-low);border-radius:var(--md-shape-corner-medium);padding:10px 12px}
 .fact-bloco{background:var(--md-sys-color-surface-container-low);border-radius:var(--md-shape-corner-medium);padding:10px 12px}
+/* Uma linha por OCORRÊNCIA Copel (não por linha da API — ver renderCards). */
+.fact-outage{padding:6px 0;border-bottom:1px solid var(--md-sys-color-outline-variant)}
+.fact-outage:last-child{border-bottom:none}
+.fact-outage .fact-topo{margin-bottom:2px}
+.fact-uc{margin-left:auto;font-size:12px;font-weight:700;color:var(--text)}
 .fact-topo{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:6px}
 .fact-topo strong{font-size:13.5px;font-weight:600;color:var(--text)}
 .fact-chip{font-size:11px;font-weight:600;padding:2px 8px;border-radius:9999px;
@@ -2575,29 +2580,45 @@ function renderCards(services){
         avisos=`Avisos recentes (48 h): ${itens.join(' · ')}${recentes.length>2?` (+${recentes.length-2} avisos)`:''}`;
       }
 
-      /* Detalhes: só o que sobra (bairro por bairro, duração), atrás de um
-         <details> nativo — sem botão de expansor. */
+      /* Detalhes: só o que sobra (ocorrência por ocorrência, duração), atrás de
+         um <details> nativo — sem botão de expansor.
+
+         COPEL AGRUPADA POR OCORRÊNCIA (04/10/2026): a API manda UMA LINHA por
+         grupo de consumidores da MESMA ocorrência (mesmo id_ocorrencia, bairros
+         e UCs diferentes). Numa queda grande isso virava 26 cards para 6
+         ocorrências reais — o print do Dave. A soma de UCs continua sem dedupe
+         (paridade com o mapa oficial ANEEL); só a APRESENTAÇÃO agrupa. */
       const blocos=[];
       if(ativos.length){
-        blocos.push(ativos.map(ev=>{
-          if(name==='Copel'){
+        if(name==='Copel'){
+          const grupos=new Map();
+          for(const ev of ativos){
+            const k=ev.idOcorrencia||`${ev.bairro}|${ev.dataInicio}`;
+            let g=grupos.get(k);
+            if(!g){g={ev,bairros:new Set(),consum:0};grupos.set(k,g);}
+            g.bairros.add(sentenceCase(String(ev.bairro||'Ipiranga').toLowerCase()));
+            g.consum+=(ev.qtdConsumidores||0);
+          }
+          const linhas=[...grupos.values()].map(g=>{
+            const ev=g.ev;
+            const bs=[...g.bairros];
+            const btxt=bs.length===1?bs[0]:`${bs.slice(0,2).join(', ')}${bs.length>2?` +${bs.length-2}`:''}`;
             const isProg=ev.ehProgramada;
             const isSemEquipe=ev.equipeId==='SEM_EQUIPE';
-            const consum=ev.qtdConsumidores||0;
-            return `<div class="fact">
-              <div class="fact-topo"><strong>${esc(sentenceCase(String(ev.bairro||'Ipiranga').toLowerCase()))}</strong><span class="fact-chip">${esc(tipoCopel(ev.tipoPrincipal))}${isProg?' · programado':''}</span></div>
-              <div class="fact-linha"><span>Início</span><strong>${esc(tempoDesdeCopel(ev.dataInicio))}</strong></div>
-              <div class="fact-linha"><span>Previsão de volta</span><strong>${esc(formatCopelPrevisao(ev))}</strong></div>
-              <div class="fact-linha"><span>Equipe</span><strong>${isSemEquipe?'sem equipe despachada':esc(ev.statusEquipe||'em atendimento')}</strong></div>
-              ${consum?`<div class="fact-linha"><span>Consumidores</span><strong>${consumidores(consum)}</strong></div>`:''}
+            const equipe=isSemEquipe?'sem equipe':esc(ev.statusEquipe||'em atendimento');
+            return `<div class="fact-outage">
+              <div class="fact-topo"><strong>${esc(btxt)}</strong><span class="fact-chip">${esc(tipoCopel(ev.tipoPrincipal))}${isProg?' · programado':''}</span><span class="fact-uc">${consumidores(g.consum)} UCs</span></div>
+              <div class="fact-linha"><span>${esc(tempoDesdeCopel(ev.dataInicio))} → volta ${esc(formatCopelPrevisao(ev))}</span><strong>${equipe}</strong></div>
             </div>`;
-          }
-          return `<div class="fact">
+          }).join('');
+          blocos.push(`<div class="fact-bloco"><div class="fact-titulo">${plural(grupos.size,'ocorrência ativa','ocorrências ativas')}</div>${linhas}</div>`);
+        }else{
+          blocos.push(ativos.map(ev=>`<div class="fact">
             <div class="fact-topo"><strong>${esc(ev.bairro||ev.cidade||'Ipiranga')}</strong><span class="fact-chip">${esc(ev.motivo||'Manutenção')}</span></div>
             <div class="fact-linha"><span>Início</span><strong>${esc(ev.inicio||'—')}</strong></div>
             <div class="fact-linha"><span>Retorno</span><strong>${esc(ev.fim||'—')}</strong></div>
-          </div>`;
-        }).join(''));
+          </div>`).join(''));
+        }
       }
 
       if(name==='Copel' && totalConsumers>0){
