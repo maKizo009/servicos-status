@@ -3043,7 +3043,6 @@ let isPlaying = false;
 let playInterval = null;
 
 async function initWeatherMap() {
-});
   if (map || typeof L === 'undefined') return;
   const ipirangaLat = -25.0244;
   const ipirangaLng = -50.5847;
@@ -4261,9 +4260,9 @@ function initThemeToggle() {
     }
     syncThemeColor(getEffectiveTheme());
   });
-}
 
-// ==== Barra de progresso de rolagem (logo abaixo do app bar) ====
+//
+// ==== Barra de progresso de rolagem (logo abaixo do appbar) ====
 function initScrollIndicator() {
   const barra = document.getElementById('scrollIndicator');
   if (!barra) return;
