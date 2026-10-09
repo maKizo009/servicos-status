@@ -261,10 +261,10 @@ export async function syncWeatherCycle(): Promise<WeatherState> {
 					ameaca.threat?.approach !== "receding";
 			if (alertLevel === "monitor") {
 				state.regionalRainAlert = fortePerto && ameaca
-					? `⛈️ Núcleo de chuva forte a ~${Math.round(ameaca.distToTargetKm)} km de Ipiranga, medido ${`
+					? `⛈️ Núcleo de chuva forte a ~${Math.round(ameaca.distToTargetKm)} km de Ipiranga, medido ${
 							ameaca.threat?.approach === "crossing"
 								? "passando ao lado"
-								: "em deslocamento"`
+								: "em deslocamento"
 						}. Célula de tempestade: pode trazer raios, rajadas e oscilações na rede elétrica (COPEL). Sem rumo direto para a cidade.`
 					: `ℹ️ Monitoramento: atividade de radar detectada a ${ameaca ? `~${Math.round(ameaca.distToTargetKm)} km` : "grande distância"} de Ipiranga. Sem risco iminente no momento.`;
 			} else {

@@ -1395,6 +1395,10 @@ html.map-fs{overflow:hidden}
 
 /* ---------- Radar mais enxuto (o mapa é o herói, a moldura não) ----------
    A moldura comia altura demais para o pouco que informa (pedido 24/09/2026). */
+.share-btn-container{margin-left:auto}
+.share-btn{display:flex;align-items:center;justify-content:center;width:36px;height:36px;border:none;border-radius:var(--md-shape-corner-full,9999px);background:transparent;color:var(--text2);cursor:pointer}
+.share-btn:hover{background:var(--surface);color:var(--text)}
+.share-btn:active{transform:scale(.95)}
 .radar-card>.panel-head{padding:10px 14px}
 .radar-card .panel-title{font-size:15px}
 .radar-card .panel-sub{font-size:13px}
@@ -4199,8 +4203,24 @@ document.addEventListener('DOMContentLoaded', () => {
   // retângulo vazio até o /api/weather responder.
   initWeatherMap().then(() => { if (map) bootstrapRadar(); });
 });
+setTimeout(initWeatherMap, 600);
 
+// ==== Toggle de tema claro/escuro (Material Design 3) ====
 function initThemeToggle() {
+  const btn = document.getElementById('btnThemeToggle');
+  const icon = document.getElementById('themeToggleIcon');
+  const storedTheme = localStorage.getItem('theme');
+
+  function getEffectiveTheme() {
+    const attr = document.documentElement.getAttribute('data-theme');
+    if (attr) return attr;
+    return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+  }
+
+  /* A barra do navegador/PWA acompanha o app bar (o theme-color estava preso no
+     verde antigo #064E3B). Com tema MANUAL a meta do sistema é desligada
+     (media="not all") para não casarem duas metas ao mesmo tempo. */
+  function syncThemeColor(effective) {
     const base = document.getElementById('metaThemeColor');
     const sistema = document.getElementById('metaThemeColorDark');
     if (base) base.setAttribute('content', effective === 'dark' ? '#0E4A26' : '#1B6B3A');
@@ -4260,8 +4280,7 @@ function initThemeToggle() {
     }
     syncThemeColor(getEffectiveTheme());
   });
-
-//
+}
 // ==== Barra de progresso de rolagem (logo abaixo do appbar) ====
 function initScrollIndicator() {
   const barra = document.getElementById('scrollIndicator');
