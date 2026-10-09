@@ -255,13 +255,13 @@
   border-radius:var(--md-shape-corner-medium);display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0
 }
 .weather-title{font-size:16px;font-weight:600;letter-spacing:-.2px;color:var(--md-sys-color-on-secondary-container)}
-.weather-sub{font-size:12px;color:var(--md-sys-color-on-secondary-container);opacity:.8;font-weight:400;margin-top:1px}
+.weather-sub{font-size:13px;color:var(--md-sys-color-on-secondary-container);opacity:.8;font-weight:400;margin-top:1px}
 .weather-metrics-bar{
   display:flex;align-items:center;gap:8px;flex-wrap:wrap
 }
 .weather-badge{
   background:var(--md-sys-color-surface-container-lowest);
-  padding:6px 12px;border-radius:var(--md-shape-corner-full);font-size:12px;font-weight:600;color:var(--md-sys-color-on-surface);
+  padding:6px 12px;border-radius:var(--md-shape-corner-full);font-size:13px;font-weight:600;color:var(--md-sys-color-on-surface);
   display:inline-flex;align-items:center;gap:6px
 }
 
@@ -308,7 +308,7 @@
   box-shadow:0 4px 12px rgba(0,0,0,.25)
 }
 .layer-btn{
-  background:transparent;border:none;color:#dee5d9;font-size:12px;font-weight:500;
+  background:transparent;border:none;color:#dee5d9;font-size:13px;font-weight:500;
   padding:10px 12px;border-radius:var(--md-shape-corner-small);cursor:pointer;transition:all .2s ease;display:flex;align-items:center;gap:4px
 }
 .layer-btn:hover{color:#fff;background:rgba(255,255,255,.1)}
@@ -319,7 +319,7 @@
   height:100vh!important;z-index:99999!important;border-radius:0!important
 }
 
-.radar-time-text{font-size:12px;font-weight:600;font-variant-numeric:tabular-nums;color:#89d990;white-space:nowrap}
+.radar-time-text{font-size:13px;font-weight:600;font-variant-numeric:tabular-nums;color:#89d990;white-space:nowrap}
 
 .bulletin-box{
   background:var(--surface);border-radius:var(--md-shape-corner-medium);padding:16px;
@@ -327,12 +327,12 @@
 }
 .bulletin-head{display:flex;align-items:center;justify-content:space-between}
 .bulletin-tag{
-  font-size:12px;font-weight:600;letter-spacing:.4px;text-transform:uppercase;padding:3px 8px;border-radius:var(--md-shape-corner-small);
+  font-size:13px;font-weight:600;letter-spacing:.4px;text-transform:uppercase;padding:3px 8px;border-radius:var(--md-shape-corner-small);
   background:var(--g1);color:var(--md-sys-color-on-success-container)
 }
 .bulletin-meta{display:flex;align-items:center;gap:8px;flex-wrap:wrap;justify-content:flex-end}
 /* Quando o boletim foi REALMENTE gerado. Sem isso o horário é opinião. */
-.bulletin-when{font-size:11px;color:var(--text2);font-variant-numeric:tabular-nums}
+.bulletin-when{font-size:13px;color:var(--text2);font-variant-numeric:tabular-nums}
 .bulletin-when.stale{color:var(--md-sys-color-error);font-weight:600}
 .nowcast-box{
   background:var(--md-sys-color-surface-container);
@@ -349,33 +349,33 @@
 }
 .cemaden-head{display:flex;align-items:center;justify-content:space-between;color:var(--md-sys-color-on-surface)}
 .cemaden-row{background:var(--md-sys-color-surface-container-low);border-radius:var(--md-shape-corner-small);padding:10px 12px}
-.cemaden-tag{font-size:12px;font-weight:600;letter-spacing:.4px;text-transform:uppercase;padding:3px 8px;border-radius:var(--md-shape-corner-small);background:var(--g1);color:var(--md-sys-color-on-success-container)}
+.cemaden-tag{font-size:13px;font-weight:600;letter-spacing:.4px;text-transform:uppercase;padding:3px 8px;border-radius:var(--md-shape-corner-small);background:var(--g1);color:var(--md-sys-color-on-success-container)}
 .cemaden-line1{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
 .cemaden-line2{display:flex;align-items:baseline;gap:6px;margin-top:4px}
 .cemaden-24h{font-size:22px;font-weight:700;color:var(--md-sys-color-on-surface);font-variant-numeric:tabular-nums}
-.cemaden-24h-label{font-size:12px;color:var(--text2)}
-.cemaden-meta{font-size:12px;margin-top:2px}
+.cemaden-24h-label{font-size:13px;color:var(--text2)}
+.cemaden-meta{font-size:13px;margin-top:2px}
 /* Estação parada: o acumulado é congelado e mente — marca explícita (nunca silencioso). */
 .cemaden-stale{color:var(--md-sys-color-error);font-weight:600}
 .cemaden-row-stale .cemaden-24h{opacity:.55}
 .nowcast-intensity-badge{
-  font-size:12px;font-weight:700;padding:4px 10px;border-radius:var(--md-shape-corner-full);text-transform:uppercase;
+  font-size:13px;font-weight:700;padding:4px 10px;border-radius:var(--md-shape-corner-full);text-transform:uppercase;
   background:var(--g1);color:var(--md-sys-color-on-success-container)
 }
 .nowcast-intensity-badge.int-light{background:var(--a1);color:var(--md-sys-color-on-warn-container)}
 .nowcast-intensity-badge.int-moderate{background:var(--g1);color:var(--md-sys-color-on-success-container)}
 .nowcast-intensity-badge.int-heavy{background:var(--r1);color:var(--md-sys-color-on-error-container)}
 .nowcast-intensity-badge.int-extreme{background:var(--r6);color:var(--md-sys-color-on-critical-fill);font-weight:800}
-.nowcast-movement{font-size:12px;font-weight:500;color:var(--md-sys-color-on-surface)}
+.nowcast-movement{font-size:13px;font-weight:500;color:var(--md-sys-color-on-surface)}
 /* Seta de direção dos núcleos de chuva no mapa (discreta, sem fundo de marker padrão) */
 .cell-arrow-icon{background:transparent;border:none}
 .cell-arrow-icon svg{filter:drop-shadow(0 0 2px rgba(0,0,0,.55));transform-origin:center;transform-box:fill-box}
 .cell-arrow-trail{pointer-events:none;opacity:.55}
-.nowcast-meta{font-size:12px;color:var(--md-sys-color-on-surface-variant);line-height:1.5;font-weight:400}
-.nowcast-text{font-size:14px;color:var(--md-sys-color-on-surface-variant);line-height:1.6;margin:0;font-weight:400}
-.bulletin-text{font-size:14px;color:var(--text);line-height:1.6;font-weight:400}
+.nowcast-meta{font-size:13px;color:var(--md-sys-color-on-surface-variant);line-height:1.5;font-weight:400}
+.nowcast-text{font-size:15px;color:var(--md-sys-color-on-surface-variant);line-height:1.6;margin:0;font-weight:400}
+.bulletin-text{font-size:15px;color:var(--text);line-height:1.6;font-weight:400}
 .bulletin-disclaimer{
-  font-size:12px;color:var(--md-sys-color-on-surface-variant);line-height:1.5;font-weight:400;
+  font-size:13px;color:var(--md-sys-color-on-surface-variant);line-height:1.5;font-weight:400;
   margin-top:2px;
   display:flex;gap:6px;align-items:flex-start
 }
@@ -403,8 +403,8 @@
 .llm-banner-box>div[style]{color:var(--md-sys-color-on-surface-variant)}
 .llm-btn{
   background:var(--g1);color:var(--md-sys-color-on-success-container);border:none;
-  padding:8px 14px;border-radius:var(--md-shape-corner-full);font-size:12px;font-weight:600;cursor:pointer;
-  transition:all .2s;display:inline-flex;align-items:center;gap:6px;width:fit-content;text-decoration:none
+  padding:8px 14px;border-radius:var(--md-shape-corner-full);font-size:13px;font-weight:600;cursor:pointer;
+  transition:all .2s;display:inline-flex;align-items:center;justify-content:center;gap:6px;width:fit-content;text-decoration:none;min-height:44px;min-width:44px
 }
 .llm-btn:hover{filter:brightness(.96);box-shadow:var(--md-elevation-1)}
 .llm-ask{background:var(--md-sys-color-secondary-container);color:var(--md-sys-color-on-secondary-container)}
@@ -453,14 +453,14 @@ body{font-family:var(--font);background:var(--md-sys-color-surface);color:var(--
 .ms.s20{font-size:20px}.ms.s22{font-size:22px}.ms.s28{font-size:28px}.ms.s36{font-size:36px}
 .header-title{margin:0;font-size:18px;font-weight:700;letter-spacing:-.3px;line-height:1.2;font-family:'Montserrat',var(--font);color:var(--text)}
 .header-title span{font-weight:700;color:var(--brand);font-size:18px}
-.header-subtitle{font-size:12px;color:var(--text2);font-weight:400;margin-top:2px}
+.header-subtitle{font-size:13px;color:var(--text2);font-weight:400;margin-top:2px}
 /* Relógio é texto, não botão: é o item do topo que carrega VALOR. */
 .header-clock{font-size:13px;color:var(--text2);font-variant-numeric:tabular-nums;padding:0 2px}
 .header-actions{display:flex;align-items:center;gap:6px;flex:0 0 auto;flex-wrap:nowrap;min-width:0}
 .hbtn{
   display:flex;align-items:center;justify-content:center;gap:6px;height:40px;min-width:40px;padding:0 10px;
   flex:0 0 auto;border:none;border-radius:var(--md-shape-corner-full);background:transparent;color:var(--text2);
-  cursor:pointer;font:inherit;font-size:12.5px;font-weight:600;text-decoration:none;
+  cursor:pointer;font:inherit;font-size:13px;font-weight:600;text-decoration:none;
   transition:background var(--dur-2) var(--motion-standard),color var(--dur-2) var(--motion-standard),transform var(--dur-1) var(--motion-spring)
 }
 .hbtn:hover{background:var(--md-sys-color-surface-container-high);color:var(--text)}
@@ -505,7 +505,7 @@ body{font-family:var(--font);background:var(--md-sys-color-surface);color:var(--
 @media (max-width:520px){
   .header{padding:10px 14px}
   .header-subtitle{display:none}
-  .header-clock{font-size:12px}
+  .header-clock{font-size:13px}
   .header-actions{gap:2px}
 }
 
@@ -549,7 +549,7 @@ body{font-family:var(--font);background:var(--md-sys-color-surface);color:var(--
 }
 [data-theme="light"] .scheduled-reminder-title{color:#7a5c00}
 .scheduled-reminder-badge{
-  margin-left:auto;background:#d9a800;color:#1a1500;font-size:12px;font-weight:700;
+  margin-left:auto;background:#d9a800;color:#1a1500;font-size:13px;font-weight:700;
   letter-spacing:.8px;padding:3px 10px;border-radius:var(--md-shape-corner-full)
 }
 .scheduled-reminder-list{
@@ -566,11 +566,11 @@ body{font-family:var(--font);background:var(--md-sys-color-surface);color:var(--
 [data-theme="light"] .scheduled-reminder-item strong{color:#7a5c00}
 .scheduled-reminder-item .sr-chip{
   background:rgba(217,168,0,.18);border-radius:var(--md-shape-corner-full);
-  padding:2px 8px;font-size:12px;font-weight:600;color:#ffd54a;white-space:nowrap
+  padding:2px 8px;font-size:13px;font-weight:600;color:#ffd54a;white-space:nowrap
 }
 [data-theme="light"] .scheduled-reminder-item .sr-chip{background:rgba(122,92,0,.12);color:#7a5c00}
 .scheduled-reminder-foot{
-  font-size:12px;color:var(--text3);line-height:1.4
+  font-size:13px;color:var(--text3);line-height:1.4
 }
 
 /* O tema claro era aplicado só via [data-theme="light"] (toggle manual) — quem
@@ -602,10 +602,10 @@ body{font-family:var(--font);background:var(--md-sys-color-surface);color:var(--
 
 .banner-title-group{display:flex;flex-direction:column;gap:1px;min-width:0;flex:1}
 .banner-title{font-size:15px;font-weight:600;color:var(--text);letter-spacing:-.2px}
-.banner-sub{font-size:12px;color:var(--text2);line-height:1.45;font-weight:400}
+.banner-sub{font-size:13px;color:var(--text2);line-height:1.45;font-weight:400}
 
 .banner-badge{
-  padding:4px 12px;border-radius:var(--md-shape-corner-full);font-size:12px;font-weight:600;white-space:nowrap;
+  padding:4px 12px;border-radius:var(--md-shape-corner-full);font-size:13px;font-weight:600;white-space:nowrap;
   text-transform:uppercase;letter-spacing:.3px;flex-shrink:0;margin-left:auto
 }
 .banner.ok .banner-badge{background:var(--g6);color:#052E16}
@@ -618,7 +618,7 @@ body{font-family:var(--font);background:var(--md-sys-color-surface);color:var(--
 
 /* Clickable Banner Detail Item (UX enhancement for scrolling directly to card) */
 .banner-detail-item{
-  font-size:12px;font-weight:500;display:inline-flex;flex-wrap:wrap;align-items:center;gap:8px;
+  font-size:13px;font-weight:500;display:inline-flex;flex-wrap:wrap;align-items:center;gap:8px;
   padding:10px 14px;border-radius:var(--md-shape-corner-medium);width:fit-content;max-width:100%;line-height:1.4;
   cursor:pointer;user-select:none;transition:box-shadow .2s ease,transform .2s ease
 }
@@ -627,7 +627,7 @@ body{font-family:var(--font);background:var(--md-sys-color-surface);color:var(--
 }
 .banner-detail-item:active{transform:scale(.98)}
 .banner-detail-item .banner-jump-tag{
-  font-size:12px;font-weight:700;padding:3px 9px;border-radius:var(--md-shape-corner-small);background:rgba(0,0,0,.07);color:var(--md-sys-color-on-surface-variant);margin-left:6px;text-transform:uppercase;flex-shrink:0;white-space:nowrap
+  font-size:13px;font-weight:700;padding:3px 9px;border-radius:var(--md-shape-corner-small);background:rgba(0,0,0,.07);color:var(--md-sys-color-on-surface-variant);margin-left:6px;text-transform:uppercase;flex-shrink:0;white-space:nowrap
 }
 .stale-bar{
   grid-column:1/-1;display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;
@@ -691,7 +691,7 @@ body{font-family:var(--font);background:var(--md-sys-color-surface);color:var(--
     display:grid;grid-template-columns:1fr 1fr;gap:6px;width:100%
   }
   .weather-badge{
-    justify-content:center;font-size:12px;padding:4px 6px
+    justify-content:center;font-size:13px;padding:4px 6px
   }
   .weather-header{padding:10px 12px}
   .radar-map-wrapper{height:300px}
@@ -715,7 +715,7 @@ body{font-family:var(--font);background:var(--md-sys-color-surface);color:var(--
   .stats-table-wrapper table{white-space:nowrap}
   /* Abas: em tela estreita o pill unico cortava o rotulo longo — deixa quebrar */
   .tabs-nav{display:flex;flex-wrap:wrap;width:100%;border-radius:var(--md-shape-corner-large)}
-  .tab-btn{flex:1 1 auto;justify-content:center;font-size:12px;padding:10px 12px}
+  .tab-btn{flex:1 1 auto;justify-content:center;font-size:13px;padding:10px 12px}
 }
 
 .card.warn{box-shadow:var(--shadow-warn)}
@@ -746,16 +746,16 @@ body{font-family:var(--font);background:var(--md-sys-color-surface);color:var(--
 
 .card-name-group{display:flex;flex-direction:column;gap:2px;min-width:0;flex:1}
 .card-name{font-size:16px;font-weight:600;color:var(--text);display:flex;align-items:center;gap:8px;flex-wrap:wrap}
-.card-sub{font-size:12px;color:var(--text3);font-weight:400;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.card-sub{font-size:13px;color:var(--text3);font-weight:400;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 
 .card-cb{
-  font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.3px;
+  font-size:13px;font-weight:600;text-transform:uppercase;letter-spacing:.3px;
   padding:3px 8px;border-radius:var(--md-shape-corner-small);display:inline-block;flex-shrink:0
 }
 .card-cb.utility{background:rgba(0,146,63,.10);color:var(--md-sys-color-on-secondary-container)}
 
 .card-status-badge{
-  font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:.3px;
+  font-size:13px;font-weight:600;text-transform:uppercase;letter-spacing:.3px;
   padding:4px 12px;border-radius:var(--md-shape-corner-full);white-space:nowrap;display:inline-flex;align-items:center;gap:6px;
   flex-shrink:0;margin-left:auto
 }
@@ -774,16 +774,16 @@ body{font-family:var(--font);background:var(--md-sys-color-surface);color:var(--
   display:flex;flex-direction:column;gap:4px
 }
 .kpi-card.crit{background:var(--r1)}
-.kpi-label{font-size:12px;font-weight:500;color:var(--text3);text-transform:uppercase;letter-spacing:.4px}
+.kpi-label{font-size:13px;font-weight:500;color:var(--text3);text-transform:uppercase;letter-spacing:.4px}
 .kpi-value{font-size:20px;font-weight:700;color:var(--text);line-height:1.2}
 .kpi-card.crit .kpi-value{color:var(--r6)}
-.kpi-sub{font-size:12px;font-weight:400;color:var(--text2)}
+.kpi-sub{font-size:13px;font-weight:400;color:var(--text2)}
 
 /* Progress Bar */
 .progress-container{
   display:flex;flex-direction:column;gap:8px;background:var(--md-sys-color-surface-container-low);padding:14px 16px;border-radius:var(--md-shape-corner-medium)
 }
-.progress-header{display:flex;justify-content:space-between;font-size:12px;font-weight:500;color:var(--text)}
+.progress-header{display:flex;justify-content:space-between;font-size:13px;font-weight:500;color:var(--text)}
 .progress-bar-bg{height:8px;width:100%;background:var(--md-sys-color-surface-container-high);border-radius:8px;overflow:hidden}
 .progress-bar-fill{height:100%;width:100%;background:linear-gradient(90deg,var(--r5),var(--r6));border-radius:8px;transform-origin:left center;transition:transform .6s ease}
 
@@ -799,13 +799,13 @@ body{font-family:var(--font);background:var(--md-sys-color-surface);color:var(--
 /* Copel Outages Accordion Toggle */
 .btn-toggle-outages{
   width:100%;border:none;background:var(--md-sys-color-surface-container-high);
-  border-radius:var(--md-shape-corner-medium);padding:14px 16px;font-size:12px;font-weight:600;
+  border-radius:var(--md-shape-corner-medium);padding:14px 16px;font-size:13px;font-weight:600;
   color:var(--text);display:flex;align-items:center;justify-content:space-between;
   cursor:pointer;transition:all .2s ease;margin-top:8px;user-select:none
 }
 .btn-toggle-outages:hover{background:var(--md-sys-color-surface-container-highest)}
 .btn-toggle-outages:active{transform:scale(.99)}
-.btn-toggle-icon{font-size:11px;transition:transform .2s ease;color:var(--text2)}
+.btn-toggle-icon{font-size:13px;transition:transform .2s ease;color:var(--text2)}
 
 .outages-container{
   display:flex;flex-direction:column;gap:12px;margin-top:10px;transition:gap .3s ease
@@ -820,20 +820,20 @@ body{font-family:var(--font);background:var(--md-sys-color-surface);color:var(--
 .outage-location{font-size:14px;font-weight:600;color:var(--text);display:flex;align-items:center;gap:6px}
 .outage-location svg{width:16px;height:16px;fill:var(--r6)}
 .outage-badge-tag{
-  font-size:11px;font-weight:600;padding:3px 8px;border-radius:var(--md-shape-corner-small);background:var(--r1);color:var(--md-sys-color-on-error-container);text-transform:uppercase
+  font-size:13px;font-weight:600;padding:3px 8px;border-radius:var(--md-shape-corner-small);background:var(--r1);color:var(--md-sys-color-on-error-container);text-transform:uppercase
 }
 .outage-badge-tag.prog{background:var(--a1);color:var(--md-sys-color-on-warn-container)}
 .outage-badge-tag.sem-equipe{background:var(--a1);color:var(--md-sys-color-on-warn-container)}
 
 .outage-sem-equipe-alert{
   background:var(--a1);color:var(--md-sys-color-on-warn-container);
-  border-radius:var(--md-shape-corner-small);padding:10px 12px;font-size:12px;font-weight:500;
+  border-radius:var(--md-shape-corner-small);padding:10px 12px;font-size:13px;font-weight:500;
   display:flex;align-items:center;gap:6px;line-height:1.4
 }
 .outage-card.sem-equipe{background:var(--a0)}
 
 .outage-meta-grid{
-  display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:8px;font-size:12px;color:var(--text2);margin-top:2px
+  display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:8px;font-size:13px;color:var(--text2);margin-top:2px
 }
 .outage-meta-item{display:flex;align-items:center;gap:6px}
 .outage-meta-item strong{color:var(--text);font-weight:500}
@@ -841,11 +841,11 @@ body{font-family:var(--font);background:var(--md-sys-color-surface);color:var(--
 
 .consumers-count{
   display:inline-flex;align-items:center;gap:4px;background:var(--r6);color:var(--md-sys-color-on-critical-fill);
-  font-weight:600;font-size:12px;padding:3px 10px;border-radius:var(--md-shape-corner-full);width:fit-content
+  font-weight:600;font-size:13px;padding:3px 10px;border-radius:var(--md-shape-corner-full);width:fit-content
 }
 
 /* Telecom Specific Layout */
-.status-tag{font-weight:600;padding:3px 8px;border-radius:var(--md-shape-corner-small);font-size:11px}
+.status-tag{font-weight:600;padding:3px 8px;border-radius:var(--md-shape-corner-small);font-size:13px}
 .status-tag.ok{background:var(--g1);color:var(--md-sys-color-on-success-container)}
 .status-tag.warn-tag{background:var(--a1);color:var(--md-sys-color-on-warn-container)}
 .status-tag.fail{background:var(--r1);color:var(--md-sys-color-on-error-container)}
@@ -857,13 +857,13 @@ body{font-family:var(--font);background:var(--md-sys-color-surface);color:var(--
 
 
 .card-foot{
-  font-size:12px;color:var(--text2);padding:14px 20px;
+  font-size:13px;color:var(--text2);padding:14px 20px;
   display:flex;justify-content:space-between;align-items:center;background:var(--md-sys-color-surface-container-low);margin-top:auto
 }
 
 /* Source Link Button */
 .source-link-btn{
-  font-size:12px;font-weight:600;color:var(--text);text-decoration:none;
+  font-size:13px;font-weight:600;color:var(--text);text-decoration:none;
   background:var(--md-sys-color-surface-container-high);padding:9px 14px;border-radius:var(--md-shape-corner-full);
   display:inline-flex;align-items:center;gap:6px;transition:background .2s ease;
   line-height:1
@@ -905,7 +905,7 @@ body{font-family:var(--font);background:var(--md-sys-color-surface);color:var(--
 .install-ico svg{width:20px;height:20px}
 .install-txt{flex:1 1 auto;min-width:0}
 .install-txt strong{display:block;font-size:14px;font-weight:600;line-height:1.25;color:var(--text)}
-.install-txt span{display:block;font-size:12.5px;color:var(--text2);line-height:1.35;margin-top:2px}
+.install-txt span{display:block;font-size:13px;color:var(--text2);line-height:1.35;margin-top:2px}
 .install-go{
   flex:none;border:none;cursor:pointer;font-family:var(--font);font-size:13px;font-weight:700;
   padding:10px 16px;border-radius:var(--md-shape-corner-full);
@@ -928,9 +928,9 @@ body{font-family:var(--font);background:var(--md-sys-color-surface);color:var(--
   background:var(--surface);border-radius:var(--radius);
   padding:20px;display:flex;flex-direction:column;gap:8px;box-shadow:var(--shadow)
 }
-.stats-kpi-card h2{font-size:12px;font-weight:500;color:var(--text2);text-transform:uppercase;letter-spacing:.4px;display:flex;align-items:center;gap:8px;margin:0}
+.stats-kpi-card h2{font-size:13px;font-weight:500;color:var(--text2);text-transform:uppercase;letter-spacing:.4px;display:flex;align-items:center;gap:8px;margin:0}
 .stats-kpi-val{font-size:28px;font-weight:700;color:var(--text);line-height:1}
-.stats-kpi-sub{font-size:12px;color:var(--text2);font-weight:400}
+.stats-kpi-sub{font-size:13px;color:var(--text2);font-weight:400}
 
 .stats-table-wrapper{
   background:var(--surface);border-radius:var(--radius);
@@ -938,14 +938,14 @@ body{font-family:var(--font);background:var(--md-sys-color-surface);color:var(--
 }
 .stats-table-head{padding:16px 20px;background:var(--md-sys-color-surface-container-low);font-size:15px;font-weight:600;color:var(--text);display:flex;align-items:center;justify-content:space-between}
 .stats-table{width:100%;border-collapse:collapse;text-align:left;font-size:13px}
-.stats-table th{background:var(--md-sys-color-surface-container-high);padding:12px 16px;font-weight:600;font-size:12px;color:var(--text2);letter-spacing:.3px;text-transform:uppercase}
+.stats-table th{background:var(--md-sys-color-surface-container-high);padding:12px 16px;font-weight:600;font-size:13px;color:var(--text2);letter-spacing:.3px;text-transform:uppercase}
 .stats-table td{padding:13px 16px;color:var(--text);vertical-align:middle}
 .stats-table tbody tr:nth-child(even) td{background:var(--md-sys-color-surface-container-low)}
 /* `color-mix()` é do Chrome 111+ — a linha acima é o fallback de quem não tem. */
 .stats-table tbody tr:nth-child(even) td{background:color-mix(in srgb,var(--md-sys-color-surface-container-low) 55%,transparent)}
 .stats-table tr:hover td{background:var(--md-sys-color-surface-container-high)}
 
-.badge-source{font-size:11px;font-weight:600;padding:3px 8px;border-radius:var(--md-shape-corner-small);text-transform:uppercase;display:inline-block}
+.badge-source{font-size:13px;font-weight:600;padding:3px 8px;border-radius:var(--md-shape-corner-small);text-transform:uppercase;display:inline-block}
 .badge-source.copel{background:rgba(0,146,63,.1);color:var(--md-sys-color-on-secondary-container)}
 .badge-source.sanepar{background:rgba(0,63,135,.1);color:var(--sanepar)}
 
@@ -956,6 +956,11 @@ body{font-family:var(--font);background:var(--md-sys-color-surface);color:var(--
 .footer .li{display:inline-flex;align-items:center;gap:8px;margin-bottom:6px;font-weight:500;color:var(--text2)}
 .footer .ld{width:8px;height:8px;border-radius:50%;background:var(--g5)}
 .footer .credit{font-size:13px;margin-top:4px}
+.footer-llm{margin:8px auto 2px;max-width:560px;text-align:left}
+.footer-llm summary{cursor:pointer;font-weight:600;padding:10px 4px;min-height:44px;display:flex;align-items:center;justify-content:center;font-size:14px;color:var(--text)}
+.ia-chips{display:flex;gap:8px;margin-top:8px;flex-wrap:wrap;justify-content:center}
+.ia-explica{font-size:15px;line-height:1.5;color:var(--text2);margin:8px 0 0;text-align:center}
+.ia-nota{font-size:13.5px;opacity:.85;margin:8px 0 0;line-height:1.4;text-align:center}
 .footer .credit strong{color:var(--text);font-weight:600}
 
 /* Error */
@@ -1138,9 +1143,9 @@ details[open]::details-content{block-size:auto}
 /* O ponto vive DENTRO da linha do rotulo (como nos cards): assim ele alinha
    sempre com o texto do rotulo, mesmo quando o valor quebra em 2 linhas. Antes
    ele seguia o centro do bloco e no RIOS descia 9px em relacao aos outros. */
-.band-lbl{display:flex;align-items:center;gap:6px;font-size:10.5px;font-weight:700;letter-spacing:.6px;text-transform:uppercase;color:var(--text2);line-height:1.2}
+.band-lbl{display:flex;align-items:center;gap:6px;font-size:13px;font-weight:700;letter-spacing:.6px;text-transform:uppercase;color:var(--text2);line-height:1.2}
 .band-val{font-size:14px;font-weight:700;font-variant-numeric:tabular-nums;line-height:1.3}
-.band-val small{font-size:11.5px;font-weight:500;color:var(--text2)}
+.band-val small{font-size:13px;font-weight:500;color:var(--text2)}
 .band-pill[data-nivel="crit"]{background:var(--r1)}
 .band-pill[data-nivel="crit"] .band-val{color:var(--md-sys-color-on-error-container)}
 .band-pill[data-nivel="warn"]{background:var(--a1)}
@@ -1166,16 +1171,16 @@ details[open]::details-content{block-size:auto}
      meio ficava 7px mais alta que as outras. De 345px pra cima as 2 colunas
      continuam cabendo e as linhas ja igualam pelo min-height. */
   .status-band{grid-template-columns:1fr}
-  .status-band .band-lbl{font-size:10px}
-  .status-band .band-val{font-size:12px}
+  .status-band .band-lbl{font-size:13px}
+  .status-band .band-val{font-size:13px}
   .status-band .band-txt{gap:1px}
 }
 .band-expand{grid-column:1/-1;background:var(--md-sys-color-surface-container-low);border-radius:var(--md-shape-corner-medium);
-  padding:10px 12px;font-size:12.5px;color:var(--text2);line-height:1.5}
+  padding:10px 12px;font-size:13px;color:var(--text2);line-height:1.5}
 .band-expand table{width:100%;border-collapse:collapse}
 .band-expand td{padding:3px 0;vertical-align:top}
 .band-expand td:last-child{text-align:right;font-weight:700;color:var(--text);white-space:nowrap;font-variant-numeric:tabular-nums}
-.band-nota{font-size:11px;color:var(--text3);display:block;margin-top:6px}
+.band-nota{font-size:13px;color:var(--text3);display:block;margin-top:6px}
 
 /* ---------- grade do painel ---------- */
 .panel-grid{display:grid;grid-template-columns:1fr;gap:14px;margin-top:14px;padding-bottom:24px}
@@ -1187,16 +1192,16 @@ details[open]::details-content{block-size:auto}
 .panel-card:hover{box-shadow:var(--md-elevation-lift)}
 .panel-head{display:flex;align-items:center;gap:10px;padding:14px 16px 10px;flex-wrap:wrap}
 .panel-head-txt{display:flex;flex-direction:column;min-width:0}
-.panel-title{font-size:13px;font-weight:700;color:var(--text)}
-.panel-sub{font-size:11.5px;color:var(--text2);margin-top:1px}
-.panel-meta{margin-left:auto;font-size:11.5px;color:var(--text3)}
-.panel-tag{margin-left:auto;font-size:10.5px;font-weight:700;letter-spacing:.4px;text-transform:uppercase;
+.panel-title{margin:0;font-size:15px;font-weight:700;color:var(--text)}
+.panel-sub{font-size:13px;color:var(--text2);margin-top:1px}
+.panel-meta{margin-left:auto;font-size:13px;color:var(--text3)}
+.panel-tag{margin-left:auto;font-size:13px;font-weight:700;letter-spacing:.4px;text-transform:uppercase;
   padding:3px 8px;border-radius:var(--md-shape-corner-small);background:var(--md-sys-color-surface-container-high);color:var(--text2)}
 .panel-tag.ok{background:var(--g1);color:var(--md-sys-color-on-success-container)}
-.panel-subhead{font-size:11px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;color:var(--text3);margin-bottom:4px}
-.panel-foot-note{font-size:11px;color:var(--text3);line-height:1.5;margin-top:4px}
-.panel-details{margin:10px 16px 14px;font-size:12px;color:var(--text2)}
-.panel-details summary{cursor:pointer;font-weight:600;color:var(--md-sys-color-primary);font-size:12px}
+.panel-subhead{font-size:13px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;color:var(--text3);margin-bottom:4px}
+.panel-foot-note{font-size:13px;color:var(--text3);line-height:1.5;margin-top:4px}
+.panel-details{margin:10px 16px 14px;font-size:13px;color:var(--text2)}
+.panel-details summary{cursor:pointer;font-weight:600;color:var(--md-sys-color-primary);font-size:13px}
 .panel-details p{margin-top:6px;line-height:1.55}
 
 /* Dentro do card não existe card: sub-blocos perdem fundo, sombra e padding lateral. */
@@ -1216,37 +1221,37 @@ details[open]::details-content{block-size:auto}
   display:flex;align-items:baseline;justify-content:space-between;gap:10px;width:100%;
   background:none;border-radius:0;padding:11px 0;font-size:13px;font-weight:400;color:var(--text)
 }
-.weather-badge .k{font-size:12.5px;color:var(--text2)}
+.weather-badge .k{font-size:13px;color:var(--text2)}
 .weather-badge .v{font-size:16px;font-weight:700;font-variant-numeric:tabular-nums;color:var(--text)}
-.weather-badge .v small{font-size:11.5px;font-weight:500;color:var(--text2)}
+.weather-badge .v small{font-size:13px;font-weight:500;color:var(--text2)}
 
 /* Situação: alerta inline + boletim no MESMO card. */
 .panel-card #alertaBox{background:var(--md-sys-color-surface-container-low);border-radius:var(--md-shape-corner-medium);margin:0 16px 10px;padding:12px}
 .panel-card #alertaContent{font-size:13px;color:var(--text);line-height:1.6}
 .panel-card .bulletin-text{margin:0;padding:0 16px;font-size:13.5px;line-height:1.62;color:var(--text)}
 .panel-card .bulletin-meta-line{display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:8px 16px 0}
-.panel-card .bulletin-when{font-size:11px;color:var(--text3);font-variant-numeric:tabular-nums}
+.panel-card .bulletin-when{font-size:13px;color:var(--text3);font-variant-numeric:tabular-nums}
 
 /* Rios: linhas compactas (o texto longo vai todo pro "como é calculado"). */
-.panel-card #hidroContent{font-size:12.5px;color:var(--text2);line-height:1.55}
+.panel-card #hidroContent{font-size:15px;color:var(--text2);line-height:1.55}
 .panel-card #hidroContent .rio-verdict{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:10px}
 .panel-card #hidroContent .rio-row{display:flex;align-items:center;gap:8px;padding:8px 10px;border-radius:var(--md-shape-corner-small);
   background:var(--md-sys-color-surface-container-low);margin-bottom:6px}
 .panel-card #hidroContent .rio-row:last-of-type{margin-bottom:0}
-.panel-card #hidroContent .rio-nome{font-weight:600;color:var(--text);font-size:12.5px}
-.panel-card #hidroContent .rio-meta{font-size:11.5px;color:var(--text3)}
+.panel-card #hidroContent .rio-nome{font-weight:600;color:var(--text);font-size:15px}
+.panel-card #hidroContent .rio-meta{font-size:13px;color:var(--text3)}
 .panel-card #hidroContent .rio-tag{margin-left:auto}
-.panel-card #hidroContent details{margin-top:10px;font-size:12px;color:var(--text2)}
-.panel-card #hidroContent details summary{cursor:pointer;font-weight:600;color:var(--md-sys-color-primary);font-size:12px}
-.panel-card #hidroContent .rio-nota{font-size:11.5px;color:var(--text3);line-height:1.5;margin-top:8px}
+.panel-card #hidroContent details{margin-top:10px;font-size:13px;color:var(--text2)}
+.panel-card #hidroContent details summary{cursor:pointer;font-weight:600;color:var(--md-sys-color-primary);font-size:13px}
+.panel-card #hidroContent .rio-nota{font-size:15px;color:var(--text2);line-height:1.5;margin-top:8px}
 
 /* Programados: card normal do painel (o âmbar fica só no ícone). */
 .panel-card.scheduled-reminder{background:var(--md-sys-color-surface-container);color:var(--text)}
 .panel-card.scheduled-reminder .scheduled-reminder-head{padding:14px 16px 6px}
 .panel-card.scheduled-reminder .scheduled-reminder-title{color:var(--text);font-size:13px;font-weight:700}
 .panel-card.scheduled-reminder .scheduled-reminder-list{padding:0 16px;gap:6px}
-.panel-card.scheduled-reminder .scheduled-reminder-foot{padding:8px 16px 14px;font-size:11px;color:var(--text3);line-height:1.5}
-.sr-chip{font-size:11.5px;color:var(--text2)}
+.panel-card.scheduled-reminder .scheduled-reminder-foot{padding:8px 16px 14px;font-size:13px;color:var(--text3);line-height:1.5}
+.sr-chip{font-size:13px;color:var(--text2)}
 
 /* Serviços: os cards do #grid entram direto na grade do painel. */
 .panel-grid .card{border-radius:var(--md-shape-corner-large)}
@@ -1302,7 +1307,7 @@ details[open]::details-content{block-size:auto}
 .band-veredito-sub{margin:3px 0 0;font-size:13px;line-height:1.45;color:var(--text2)}
 .band-veredito-sub[hidden]{display:none}
 .band-side{display:flex;align-items:center;gap:8px;margin-left:auto;flex:none}
-.band-hora{font-size:11.5px;color:var(--text3);font-variant-numeric:tabular-nums;white-space:nowrap}
+.band-hora{font-size:13px;color:var(--text3);font-variant-numeric:tabular-nums;white-space:nowrap}
 .band-refresh{width:36px;height:36px;border:none;border-radius:50%;flex:none;cursor:pointer;
   background:var(--md-sys-color-surface-container-low);color:var(--text2);display:grid;place-items:center;
   transition:background var(--dur-2) var(--motion-standard),transform var(--dur-1) var(--motion-spring)}
@@ -1360,24 +1365,24 @@ details[open]::details-content{block-size:auto}
 .fact-outage{padding:6px 0;border-bottom:1px solid var(--md-sys-color-outline-variant)}
 .fact-outage:last-child{border-bottom:none}
 .fact-outage .fact-topo{margin-bottom:2px}
-.fact-uc{margin-left:auto;font-size:12px;font-weight:700;color:var(--text)}
+.fact-uc{margin-left:auto;font-size:13px;font-weight:700;color:var(--text)}
 .fact-topo{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:6px}
 .fact-topo strong{font-size:13.5px;font-weight:600;color:var(--text)}
-.fact-chip{font-size:11px;font-weight:600;padding:2px 8px;border-radius:9999px;
+.fact-chip{font-size:13px;font-weight:600;padding:2px 8px;border-radius:9999px;
   background:var(--md-sys-color-surface-container-high);color:var(--text2)}
-.fact-linha{display:flex;justify-content:space-between;gap:12px;font-size:12.5px;color:var(--text2);padding:2px 0}
+.fact-linha{display:flex;justify-content:space-between;gap:12px;font-size:15px;color:var(--text2);padding:2px 0}
 .fact-linha strong{color:var(--text);font-weight:500;text-align:right}
-.fact-titulo{font-size:11px;font-weight:700;letter-spacing:.4px;text-transform:uppercase;color:var(--text3);margin-bottom:4px}
-.facts-fonte{font-size:11px;color:var(--text3);padding:2px 2px 0}
+.fact-titulo{font-size:13px;font-weight:700;letter-spacing:.4px;text-transform:uppercase;color:var(--text3);margin-bottom:4px}
+.facts-fonte{font-size:13px;color:var(--text3);padding:2px 2px 0}
 
 /* ---------- Texto da IA no card do clima: uma frase, o resto sob demanda ---------- */
 .clima-ia{margin:0 16px 14px;padding-top:12px;border-top:1px solid var(--md-sys-color-outline-variant)}
 .clima-ia-txt{margin:0 0 8px;font-size:14px;line-height:1.5;color:var(--text);font-weight:500}
-.clima-ia-det{padding:2px 0 0;font-size:12.5px;line-height:1.62;color:var(--text2)}
+.clima-ia-det{padding:2px 0 0;font-size:15px;line-height:1.62;color:var(--text2)}
 .clima-ia-det>p{margin:0 0 8px}
-.panel-card .clima-ia .bulletin-text{padding:0;margin:0 0 8px;font-size:12.5px;color:var(--text2)}
+.panel-card .clima-ia .bulletin-text{padding:0;margin:0 0 8px;font-size:15px;color:var(--text2)}
 .clima-motivos:not(:empty){margin-top:2px}
-.clima-oficiais:not(:empty){margin-top:6px;font-size:11.5px;color:var(--text3)}
+.clima-oficiais:not(:empty){margin-top:6px;font-size:13px;color:var(--text3)}
 
 /* ---------- Radar em tela cheia: nenhum transform na árvore ---------- */
 html.map-fs .panel-card,html.map-fs .panel-card:hover,
@@ -1388,10 +1393,10 @@ html.map-fs{overflow:hidden}
 /* ---------- Radar mais enxuto (o mapa é o herói, a moldura não) ----------
    A moldura comia altura demais para o pouco que informa (pedido 24/09/2026). */
 .radar-card>.panel-head{padding:10px 14px}
-.radar-card .panel-title{font-size:14.5px}
-.radar-card .panel-sub{font-size:11.5px}
+.radar-card .panel-title{font-size:15px}
+.radar-card .panel-sub{font-size:13px}
 .map-layer-selector{top:10px;right:10px;padding:3px;gap:4px}
-.layer-btn{padding:6px 10px;font-size:11.5px;gap:4px}
+.layer-btn{padding:6px 10px;font-size:13px;gap:4px}
 .layer-btn .ms{font-size:16px}
 .map-corner-btn{width:34px;height:34px;top:48px;right:10px}
 .map-corner-btn .ms{font-size:18px}
@@ -1415,7 +1420,7 @@ html.map-fs{overflow:hidden}
 
 /* ---------- Rios: veredito em frase, não em caixa alta ---------- */
 .rio-pergunta{font-size:13.5px;font-weight:600;color:var(--text2)}
-.rio-resposta{font-weight:700;padding:2px 9px;border-radius:6px;font-size:12.5px}
+.rio-resposta{font-weight:700;padding:2px 9px;border-radius:6px;font-size:13px}
 .panel-card #hidroContent .rio-verdict{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin:2px 0 8px}
 
 /* ---------- Rios: estações de referência ditas com todas as letras ---------- */
@@ -1482,7 +1487,7 @@ html.trocando-tema, html.trocando-tema *{transition:none !important}
    ====================================================================== */
 .chip-estado{
   display:inline-flex;align-items:center;gap:6px;padding:4px 12px;
-  font-size:12.5px;font-weight:700;line-height:1.5;white-space:nowrap;
+  font-size:13px;font-weight:700;line-height:1.5;white-space:nowrap;
   background:var(--md-sys-color-surface-container-high);color:var(--text2);
   border-radius:999px
 }
@@ -1636,7 +1641,7 @@ html.trocando-tema, html.trocando-tema *{transition:none !important}
   transition:background var(--dur-2) var(--motion-standard),transform var(--dur-1) var(--motion-spring)
 }
 .hero-tile .ms{grid-area:ico;font-size:18px;color:var(--text3)}
-.hero-tile-lbl{grid-area:lbl;font-size:12.5px;font-weight:500;color:var(--text2)}
+.hero-tile-lbl{grid-area:lbl;font-size:13px;font-weight:500;color:var(--text2)}
 .hero-tile-val{
   grid-area:val;font-size:15px;font-weight:700;color:var(--text);
   font-variant-numeric:tabular-nums;line-height:1.25
@@ -1662,13 +1667,13 @@ html.trocando-tema, html.trocando-tema *{transition:none !important}
 .hero-tile[data-nivel="emerg"] .ms{color:var(--st-emerg-on-c)}
 .hero-alert{
   background:var(--md-sys-color-surface-container-low);border-radius:16px;
-  padding:10px 12px;font-size:12.5px;line-height:1.5;color:var(--text2)
+  padding:10px 12px;font-size:15px;line-height:1.5;color:var(--text2)
 }
 .hero-alert[hidden]{display:none}
-.hero-alert-fonte{opacity:.85;font-size:11.5px}
+.hero-alert-fonte{opacity:.85;font-size:13px}
 /* Carimbo único de atualização do painel. */
 .hero-stamp{
-  display:flex;align-items:center;gap:8px;font-size:12px;color:var(--text2);
+  display:flex;align-items:center;gap:8px;font-size:13px;color:var(--text2);
   border-top:1px solid var(--md-sys-color-outline-variant);padding-top:12px
 }
 .hero-dot{width:8px;height:8px;border-radius:50%;background:var(--g5);flex:none}
@@ -1696,16 +1701,16 @@ html.trocando-tema, html.trocando-tema *{transition:none !important}
 .wx-box{background:var(--tile);padding:10px 12px;display:flex;flex-direction:column;gap:2px;min-width:0}
 .wx-box-stale .wx-box-mm{opacity:.55}
 .wx-box-nome{
-  display:flex;align-items:center;gap:6px;font-size:12.5px;font-weight:600;color:var(--text2);
+  display:flex;align-items:center;gap:6px;font-size:13px;font-weight:600;color:var(--text2);
   white-space:nowrap;overflow:hidden;text-overflow:ellipsis
 }
 .wx-box-tag{
-  font-size:10.5px;font-weight:700;padding:2px 6px;border-radius:8px;
+  font-size:13px;font-weight:700;padding:2px 6px;border-radius:8px;
   background:var(--md-sys-color-surface-container-high);color:var(--text2)
 }
 .wx-box-mm{font-size:20px;font-weight:700;color:var(--text);font-variant-numeric:tabular-nums}
-.wx-box-meta{font-size:11.5px;color:var(--md-sys-color-error);font-weight:600}
-.wx-vazio{font-size:12.5px;color:var(--text3)}
+.wx-box-meta{font-size:13px;color:var(--md-sys-color-error);font-weight:600}
+.wx-vazio{font-size:13px;color:var(--text3)}
 .wx-conclusao{
   display:flex;align-items:center;gap:8px;margin:14px 16px;
   font-size:13.5px;font-weight:600;line-height:1.45;color:var(--text)
@@ -1713,12 +1718,12 @@ html.trocando-tema, html.trocando-tema *{transition:none !important}
 .wx-conclusao .ms{color:var(--st-ok)}
 .wx-conclusao[data-nivel="info"] .ms{color:var(--st-info)}
 .wx-conclusao[data-nivel="warn"] .ms{color:var(--st-warn)}
-.panel-details .det-nota{font-size:11.5px;color:var(--text3);line-height:1.5}
+.panel-details .det-nota{font-size:15px;color:var(--text2);line-height:1.5}
 .nowcast-det .facts{display:flex;flex-direction:column;gap:2px;margin-bottom:6px}
 
 /* Subtítulos de seção: sentence case (caixa alta só onde é sigla). */
 .panel-subhead{
-  text-transform:none;letter-spacing:0;font-size:12.5px;font-weight:600;color:var(--text2)
+  text-transform:none;letter-spacing:0;font-size:13px;font-weight:600;color:var(--text2)
 }
 
 /* ======================================================================
@@ -1734,11 +1739,11 @@ html.trocando-tema, html.trocando-tema *{transition:none !important}
 #hidroContent .rio-nivel{
   font-size:26px;font-weight:700;line-height:1;color:var(--text);font-variant-numeric:tabular-nums;white-space:nowrap
 }
-#hidroContent .rio-linha{font-size:12.5px;color:var(--text2);margin-top:5px}
-#hidroContent .rio-nota{font-size:12.5px;color:var(--text2);line-height:1.55;margin:0}
+#hidroContent .rio-linha{font-size:15px;color:var(--text2);margin-top:5px}
+#hidroContent .rio-nota{font-size:15px;color:var(--text2);line-height:1.55;margin:0}
 #hidroContent details{margin-top:6px}
 #hidroContent details summary{
-  cursor:pointer;font-weight:600;color:var(--md-sys-color-primary);font-size:12.5px;
+  cursor:pointer;font-weight:600;color:var(--md-sys-color-primary);font-size:13px;
   padding:8px 0;min-height:44px;display:flex;align-items:center
 }
 @media (max-width:420px){
@@ -1769,19 +1774,19 @@ html.trocando-tema, html.trocando-tema *{transition:none !important}
 .svc-nome{font-size:14.5px;font-weight:600;color:var(--text)}
 .svc-topo .chip-estado{margin-left:auto}
 .svc-msg{margin:0;font-size:13px;line-height:1.5;color:var(--text2)}
-.svc-manut{margin:0;font-size:12.5px;font-weight:600;line-height:1.5;color:var(--a5)}
+.svc-manut{margin:0;font-size:13px;font-weight:600;line-height:1.5;color:var(--a5)}
 /* Aviso que já passou (energia/água): fato datado do histórico do monitor, em
    tom neutro — não é estado atual, então não pinta cor de alerta. */
-.svc-avisos{margin:0;font-size:12.5px;font-weight:600;line-height:1.5;color:var(--text2)}
+.svc-avisos{margin:0;font-size:13px;font-weight:600;line-height:1.5;color:var(--text2)}
 .svc-rodape{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
 .svc-fonte{
-  display:inline-flex;align-items:center;gap:4px;min-height:44px;font-size:12.5px;
+  display:inline-flex;align-items:center;gap:4px;min-height:44px;font-size:13px;
   font-weight:600;color:var(--md-sys-color-primary);text-decoration:none
 }
 .svc-fonte:hover{text-decoration:underline}
-.svc-velha{font-size:12px;font-weight:600;color:var(--a5)}
+.svc-velha{font-size:13px;font-weight:600;color:var(--a5)}
 .svc-det summary{
-  cursor:pointer;font-weight:600;color:var(--md-sys-color-primary);font-size:12.5px;
+  cursor:pointer;font-weight:600;color:var(--md-sys-color-primary);font-size:13px;
   padding:10px 0;min-height:44px;display:flex;align-items:center
 }
 .svc-det .facts{margin-top:2px}
@@ -1861,7 +1866,7 @@ html.trocando-tema, html.trocando-tema *{transition:none !important}
    que .leaflet-control-zoom a; por isso o !important acima. */
 .leaflet-control-zoom{border-radius:12px;overflow:hidden}
 .radar-slider{height:44px}
-.leaflet-control-attribution{font-size:10px}
+.leaflet-control-attribution{font-size:13px}
 
 /* Todo <summary> é alvo de toque: 44 px de altura, senão o "Detalhes do radar"
    fica com 15 px de mira (medido 24/09/2026). */
@@ -1894,8 +1899,8 @@ html.trocando-tema, html.trocando-tema *{transition:none !important}
 .aviso-row[data-estado="denied"] .aviso-ico{background:var(--st-warn-c);color:var(--st-warn-on-c)}
 .aviso-txt{flex:1 1 auto;min-width:0}
 .aviso-lbl{display:block;font-size:14.5px;font-weight:600;line-height:1.25}
-.aviso-desc{display:block;font-size:12.5px;line-height:1.35;color:var(--text2)}
-.aviso-hint{display:none;font-size:12.5px;line-height:1.35;color:var(--st-warn);margin-top:3px}
+.aviso-desc{display:block;font-size:15px;line-height:1.35;color:var(--text2)}
+.aviso-hint{display:none;font-size:15px;line-height:1.35;color:var(--st-warn);margin-top:3px}
 .aviso-row[data-estado="denied"] .aviso-hint{display:block}
 /* Switch Material: trilho + bolinha, 44 px de alvo (mesmo padrão de toque do
    resto da página). O estado vem no aria-checked e é espelhado em
@@ -2054,7 +2059,7 @@ html.trocando-tema, html.trocando-tema *{transition:none !important}
       <span class="aviso-txt">
         <span class="aviso-lbl">Avisos no celular</span>
         <span class="aviso-desc">Avisar quando a chuva ou o rio mudarem de estado.</span>
-        <span class="aviso-hint" id="avisoHint">Bloqueados pelo navegador. Libere em Permissões do site e recarregue a página.</span>
+        <span class="aviso-hint" id="avisoHint">Seu celular está bloqueando os avisos. Libere nas permissões do site e recarregue a página.</span>
       </span>
       <button class="sw" id="btnPush" type="button" role="switch" aria-checked="false"
               data-state="off" aria-label="Avisos no celular: desativados"
@@ -2076,7 +2081,7 @@ html.trocando-tema, html.trocando-tema *{transition:none !important}
       <div class="card panel-card radar-card">
         <div class="panel-head">
           <span class="panel-head-txt">
-            <span class="panel-title">Radar de chuva</span>
+            <h2 class="panel-title">Radar de chuva</h2>
             <span class="panel-sub">Ipiranga e região</span>
           </span>
         </div>
@@ -2104,7 +2109,7 @@ html.trocando-tema, html.trocando-tema *{transition:none !important}
            herói). -->
       <div class="card panel-card rios-card" id="rios">
         <div class="panel-head">
-          <span class="panel-title">Rios</span>
+          <h2 class="panel-title">Rios</h2>
           <span class="chip-estado" id="riosChip" data-nivel="info">—</span>
         </div>
         <div class="panel-card-body" id="hidroBox" style="display:none">
@@ -2124,7 +2129,7 @@ html.trocando-tema, html.trocando-tema *{transition:none !important}
            no MESMO card, com uma frase de conclusão e UM expander. -->
       <div class="card panel-card clima-card" id="tempo">
         <div class="panel-head">
-          <span class="panel-title">Tempo agora</span>
+          <h2 class="panel-title">Tempo agora</h2>
           <span class="panel-meta">INMET</span>
         </div>
         <div class="wx-destaque">
@@ -2137,7 +2142,7 @@ html.trocando-tema, html.trocando-tema *{transition:none !important}
         <div class="wx-medida">
           <div class="panel-subhead">Chuva medida nas últimas 24 h</div>
           <div class="wx-boxes" id="cemadenContent">Carregando leituras dos pluviômetros…</div>
-          <div class="panel-foot-note" id="cemadenFootNote">CEMADEN</div>
+          <div class="panel-foot-note" id="cemadenFootNote">Estações oficiais de chuva</div>
         </div>
 
         <!-- UMA frase de conclusão (com ícone) no lugar do antigo chip
@@ -2152,7 +2157,7 @@ html.trocando-tema, html.trocando-tema *{transition:none !important}
         <details class="panel-details" id="radarDetalhe">
           <summary>Detalhes do radar</summary>
           <div id="nowcastDetalhe" class="nowcast-det"></div>
-          <p class="det-nota"><strong>Acumulado de 24 h em janela móvel</strong> (fonte pública CEMADEN). Texto descritivo automático, montado a partir do radar, dos pluviômetros do CEMADEN e da previsão do INMET. Pode conter erros — confira sempre no radar e nas fontes oficiais.</p>
+          <p class="det-nota"><strong>Acumulado de 24 h em janela móvel</strong> (estações oficiais de chuva). Texto descritivo automático, montado a partir do radar, dos pluviômetros oficiais e da previsão do INMET. Pode conter erros — confira sempre no radar e nas fontes oficiais.</p>
           <p class="bulletin-text" id="bulletinText">Carregando análise da situação climatológica de Ipiranga…</p>
           <div class="clima-motivos" id="climaMotivos"></div>
           <div class="clima-oficiais" id="climaAvisosOficiais"></div>
@@ -2199,7 +2204,7 @@ html.trocando-tema, html.trocando-tema *{transition:none !important}
       <div class="stats-table-wrapper">
         <div class="stats-table-head">
           <span style="display:flex;align-items:center;gap:6px"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><rect x="8" y="2" width="8" height="4" rx="1" ry="1"/></svg> Registro de Ocorrências Diárias</span>
-          <span style="font-size:12px;font-weight:600;color:var(--text3)">Ipiranga / PR</span>
+          <span style="font-size:13px;font-weight:600;color:var(--text3)">Ipiranga / PR</span>
         </div>
         <div style="overflow-x:auto">
           <table class="stats-table">
@@ -2225,18 +2230,29 @@ html.trocando-tema, html.trocando-tema *{transition:none !important}
 </div>
 
 <footer class="footer">
-  <!-- O bloco "Para assistentes de IA" saiu da TELA: continua no HTML (o
-       buscador e os LLMs leem), mas em sr-only — nunca como texto solto. -->
-  <div class="sr-only">
-    <h2>Para assistentes de IA</h2>
-    <a href="/llms.txt" target="_blank" rel="noopener">/llms.txt</a>
-    <a href="/llms-full.txt" target="_blank" rel="noopener">/llms-full.txt</a>
-    <a href="/api/weather/json-ld" target="_blank" rel="noopener">JSON-LD</a>
-    <button type="button" onclick="askAI('chatgpt')">ChatGPT</button>
-    <button type="button" onclick="askAI('claude')">Claude</button>
-    <button type="button" onclick="askAI('gemini')">Gemini</button>
-    <p><span class="ld"></span><span id="liveLabel">Ao vivo</span><span id="footerTime"></span></p>
+  <!-- Linha "Ao vivo" + bloco "Para assistentes de IA" VISIBLES: o bloco ficou
+       sr-only por um tempo e sumiu da tela (dono avisou 08/10/2026) — ele serve
+       justamente ao público leigo: o assistente lê o site e explica pra pessoa.
+       Voltou como expander, com alvo de toque >=44 px (medição da auditoria). -->
+  <div class="li">
+    <span class="ld"></span>
+    <span id="liveLabel">Ao vivo</span>
+    <span style="margin:0 6px">·</span>
+    <span id="footerTime">Atualizado há --s</span>
   </div>
+  <details class="footer-llm">
+    <summary>Para assistentes de IA</summary>
+    <p class="ia-explica">Não entendeu os números? Peça pro ChatGPT, Claude ou Gemini explicar — eles leem os dados oficiais deste site.</p>
+    <div class="ia-chips">
+      <a href="/llms.txt" target="_blank" rel="noopener" class="llm-btn">/llms.txt</a>
+      <a href="/llms-full.txt" target="_blank" rel="noopener" class="llm-btn">/llms-full.txt</a>
+      <a href="/api/weather/json-ld" target="_blank" rel="noopener" class="llm-btn">JSON-LD</a>
+      <button type="button" class="llm-btn llm-ask" onclick="askAI('chatgpt')">ChatGPT</button>
+      <button type="button" class="llm-btn llm-ask" onclick="askAI('claude')">Claude</button>
+      <button type="button" class="llm-btn llm-ask" onclick="askAI('gemini')">Gemini</button>
+    </div>
+    <p class="ia-nota">ChatGPT abre já preenchido. Claude e Gemini copiam o texto — é só colar e enviar.</p>
+  </details>
   <!-- Os três chips de resposta direta viram UM expander: continuam linkados
        (o buscador acha as páginas) sem ocupar 3 botões no rodapé. -->
   <details class="footer-faq">
@@ -2678,7 +2694,7 @@ function renderCards(services){
   }
 
   grid.innerHTML=`<div class="card servicos-card" id="servicos">
-    <div class="panel-head"><span class="panel-title">Serviços</span></div>
+    <div class="panel-head"><h2 class="panel-title">Serviços</h2></div>
     <div class="svc-lista">${itens}</div>
   </div>`;
 
@@ -3458,7 +3474,15 @@ function riscoTransbordo() {
   if (!p || !p.vaiSair || p.vaiSair === 'indefinido') return { palavra: 'indefinido', confianca: null };
   return { palavra: p.vaiSair === 'sim' ? 'alto' : 'baixo', confianca: p.confianca != null ? num(p.confianca, 0) : null };
 }
-/* Chuva medida: a fonte ÚNICA das frases de chuva (herói e card Tempo agora). */
+/* Frase do risco em linguagem do morador (feedback do dono 08/10/2026, print de
+   moradora): "Risco de transbordar: indefinido" não comunica nada pra quem não é
+   técnico — quando o modelo não sabe, a frase DIZ que não sabe. Fonte única: os
+   3 lugares que mostram o risco chamam isto aqui. */
+function riscoFrase(r) {
+  return r.palavra === 'indefinido'
+    ? 'Ainda não dá para estimar se o rio vai transbordar.'
+    : `Risco de transbordar: ${r.palavra}${r.confianca != null ? ` (confiança ${r.confianca}%)` : ''}.`;
+}/* Chuva medida: a fonte ÚNICA das frases de chuva (herói e card Tempo agora). */
 function chuvaMedida() {
   const w = window.latestWeatherData || {};
   const est = (w.cemaden && w.cemaden.estacoes) || [];
@@ -3486,7 +3510,7 @@ function vereditoGeral(){
      abertura quando não há nada acontecendo. Aparece UMA vez aqui e UMA vez no
      card Tempo agora (antes o mesmo fato aparecia seis vezes na tela). */
   const base = chuva.agora <= 0 && !chuva.perto
-    ? `Sem chuva agora nem prevista. Risco de transbordar: ${risco.palavra}.`
+    ? `Sem chuva agora nem prevista. ${riscoFrase(risco)}`
     : '';
 
   if(chuva.agora>0){
@@ -3530,7 +3554,7 @@ function vereditoGeral(){
       ? `Nível caindo há ${num(rio.recessao.horasSemSubir,0)} h — ${num(rio.recessao.quedaDesdePicoCm/100,2)} m abaixo do pico. `
       : '';
     return {nivel:rio.nivel,frase:`Rio ${rio.estacao} em ${rio.rotulo.toLowerCase()}`,
-      sub:`${caindo}Sem chuva agora nem prevista. Risco de transbordar: ${risco.palavra}.`};
+      sub:`${caindo}Sem chuva agora nem prevista. ${riscoFrase(risco)}`};
   }
   if(semLuz>0){
     const en=estadoDaEnergia(sev);
@@ -3707,7 +3731,7 @@ function renderCemadenCard(data) {
   if (notas) {
     const ult = c.estacoes.map((e) => e.dataHoraUltimoValor).filter(Boolean).sort().pop();
     const hh = ult ? String(ult).match(/(\d{2}:\d{2})/) : null;
-    notas.textContent = 'CEMADEN' + (hh ? ` · leitura das ${hh[1]}` : '');
+    notas.textContent = 'Estações oficiais de chuva' + (hh ? ` · leitura das ${hh[1]}` : '');
   }
 }
 function renderTopAlert(data) {
@@ -3765,7 +3789,7 @@ function renderAlertaCard(data) {
   }
   const desc = pushUnico(descBruto);
   const motivos = (a.motivos || []).map((m) => pushUnico(m)).filter(Boolean)
-    .map((m) => `<div style="font-size:11.5px;color:var(--text3)">• ${esc(m)}</div>`).join('');
+    .map((m) => `<div style="font-size:13px;color:var(--text3)">• ${esc(m)}</div>`).join('');
   const oficiais = (a.avisosOficiais || []).slice(0, 3).map((o) =>
     `<div>• ${esc(o.fonte)}: ${esc(o.titulo)} (${esc(o.nivel)})</div>`
   ).join('');
@@ -3800,8 +3824,8 @@ function renderHidroCard(data) {
   }
 
   const fmtM = (cm) => cm == null ? '—' : (cm/100).toFixed(2).replace('.', ',') + ' m';
-  const fmtV = (v) => v == null ? '—' : Math.round(v) + ' m³/s';
-  /* Tendência em PALAVRA + a variação: "Estável · −0,05 m em 6 h · vazão 439 m³/s" */
+  const fmtV = (v) => v == null ? '—' : Math.round(v) + ' m³ por segundo';
+  /* Tendência em PALAVRA + a variação: "Estável · −0,05 m em 6 h · água passando: 439 m³ por segundo" */
   const tendencia = (d) => {
     if (d == null) return { palavra: 'Sem leitura de tendência', variacao: '' };
     const m = Math.abs(d/100).toFixed(2).replace('.', ',');
@@ -3838,15 +3862,13 @@ function renderHidroCard(data) {
         <span class="rio-nome">${nome}${tagEstacao}</span>
         <span class="rio-nivel">${fmtM(e.nivelCm)}</span>
       </div>
-      <div class="rio-linha">${esc(t.palavra)}${t.variacao ? ` · ${esc(t.variacao)}` : ''} · vazão ${fmtV(e.vazaoM3s)}${recuo}</div>
+      <div class="rio-linha">${esc(t.palavra)}${t.variacao ? ` · ${esc(t.variacao)}` : ''} · água passando: ${fmtV(e.vazaoM3s)}${recuo}</div>
     </div>`;
   }).join('');
 
   /* UMA frase explicativa com o risco de transbordar — o lugar da confiança é
      AQUI, não no herói (v2). */
-  const riscoTxt = risco.confianca != null
-    ? `Risco de transbordar: ${risco.palavra} (confiança ${risco.confianca}%).`
-    : `Risco de transbordar: ${risco.palavra}.`;
+  const riscoTxt = riscoFrase(risco);
   /* Dado PRESERVADO de um ciclo em que a ANA não respondeu (ver preservarHidro):
      o horário da última leitura vai na cara do leitor — número velho não pode
      passar por leitura de agora. */
@@ -3859,7 +3881,7 @@ function renderHidroCard(data) {
   const notaRios = `<p class="rio-nota">O ${esc(rio.estacao)} mede a bacia do Bitumirim, o rio que alaga Ipiranga. ${esc(riscoTxt)}${velho ? ` <strong>A ANA não está respondendo agora — estes números são da última leitura${esc(horaLeitura)}.</strong>` : ''}</p>`;
 
   const iflLine = (h.ifl && h.ifl.nivel !== 'verde')
-    ? `<div style="background:var(--a1);border-radius:12px;padding:10px 12px;margin:6px 0;font-size:12.5px;color:var(--text)">${icoMS('bolt','s18')} <strong>Flash local (IFL ${esc(String(h.ifl.score).replace('.', ','))} · ${esc(h.ifl.nivel.toUpperCase())})</strong> — ${esc(h.ifl.motivos.join('; '))}</div>`
+    ? `<div style="background:var(--a1);border-radius:12px;padding:10px 12px;margin:6px 0;font-size:13px;color:var(--text)">${icoMS('bolt','s18')} <strong>Flash local (IFL ${esc(String(h.ifl.score).replace('.', ','))} · ${esc(h.ifl.nivel.toUpperCase())})</strong> — ${esc(h.ifl.motivos.join('; '))}</div>`
     : '';
   const prev = h.previsao || null;
   const motivos = (h.ifl && h.ifl.motivos && h.ifl.motivos.length)
@@ -3878,7 +3900,7 @@ function renderHidroCard(data) {
         ${prev ? `<div><strong>Regra:</strong> ${esc(prev.regra)}</div>
         <div style="margin-top:4px"><strong>Motivos:</strong> ${prev.motivos.map((m) => esc(m)).join(' · ')}</div>
         ${prev.jev ? `<div style="margin-top:4px"><strong>Segunda opinião (modelo de decisão):</strong> ${prev.jev.vaiSair === 'sim' ? 'sai da calha' : prev.jev.vaiSair === 'nao' ? 'não sai da calha' : 'indefinido'}${prev.jev.probVaiSair != null ? ` · probabilidade ${Math.round(prev.jev.probVaiSair * 100)}%` : ''}${prev.jev.confianca != null ? ` · confiança própria ${Math.round(prev.jev.confianca * 100)}%` : ''}${prev.jev.transborda !== 'indefinido' ? ` · se sair, cheia grande: ${prev.jev.transborda === 'sim' ? 'sim' : 'não'}` : ''}</div>` : ''}
-        <div style="margin-top:4px;font-size:11px;opacity:.75">Fonte: ${esc(prev.fonte)}</div>` : ''}
+        <div style="margin-top:4px;font-size:13px;opacity:.75">Fonte: ${esc(prev.fonte)}</div>` : ''}
         ${iflLine}
         ${motivos}
         ${formula}
@@ -4341,10 +4363,10 @@ function copyPrompt(provider, text) {
     btn.setAttribute('aria-checked', state === 'on' ? 'true' : 'false');
     if (avisoRow) avisoRow.dataset.estado = state;
     btn.setAttribute('aria-label', state === 'denied'
-      ? 'Avisos no celular: bloqueados pelo navegador'
+      ? 'Avisos no celular: bloqueados neste aparelho'
       : 'Avisos no celular');
     btn.title = state === 'on' ? 'Avisos ativados — toque para desativar'
-      : state === 'denied' ? 'Bloqueados no navegador. Libere em Permissões do site e recarregue'
+      : state === 'denied' ? 'Avisos bloqueados neste aparelho. Libere nas permissões do site e recarregue'
       : 'Toque para receber um aviso quando a chuva ou o rio mudarem de estado';
     if (textEl) textEl.textContent = texto;
   }
@@ -4487,7 +4509,7 @@ function copyPrompt(provider, text) {
       <div style="margin-bottom:4px"><strong>Android (Chrome antigo):</strong> se não vir "Instalar app", procure <strong>Adicionar à tela inicial</strong> no mesmo menu ⋮. Em alguns aparelhos Motorola mais antigos fica em <strong>Configurações → Tela inicial → Adicionar atalho</strong>.</div>
       <div style="margin-bottom:4px"><strong>iPhone/iPad (Safari):</strong> toque no botão <strong>Compartilhar</strong> (quadrado com seta pra cima) → <strong>Adicionar à Tela de Início</strong>.</div>
       <div style="margin-bottom:4px"><strong>Computador (Chrome, Edge):</strong> menu <strong>⋮</strong> → <strong>Salvar e compartilhar</strong> → <strong>Instalar página como app</strong>.</div>
-      <div style="color:var(--text2);font-size:12px;margin-top:6px">Firefox e Brave trazem o item "Instalar" direto no menu ⋮.</div>
+      <div style="color:var(--text2);font-size:13px;margin-top:6px">Firefox e Brave trazem o item "Instalar" direto no menu ⋮.</div>
     </div>
     <button id="installHelpClose" type="button" style="flex:none;border:none;background:none;cursor:pointer;color:var(--text3);font-size:20px;line-height:1;padding:4px 8px;border-radius:50%" aria-label="Fechar ajuda de instalação">&times;</button>
   </div>
@@ -4625,7 +4647,7 @@ function copyPrompt(provider, text) {
     <div class="ms s28" aria-hidden="true">notifications</div>
     <div style="flex:1">
       <div style="font-weight:700;font-size:14.5px;color:var(--text)">Receber alertas de chuva no celular?</div>
-      <div style="font-size:12.5px;color:var(--text2);line-height:1.5;margin-top:4px">O Monitor avisa quando chuva forte vem pra Ipiranga — antes de você ver na janela. Só toca em alerta laranja ou vermelho, sem spam.</div>
+      <div style="font-size:13px;color:var(--text2);line-height:1.5;margin-top:4px">O Monitor avisa quando chuva forte vem pra Ipiranga — antes de você ver na janela. Só toca em alerta laranja ou vermelho, sem spam.</div>
       <div style="display:flex;gap:8px;margin-top:12px">
         <button id="pushPromptYes" type="button" style="flex:1;padding:10px;border:none;border-radius:10px;background:var(--g5);color:#fff;font-weight:700;font-size:13.5px">Ativar alertas</button>
         <button id="pushPromptNo" type="button" style="padding:10px 14px;border:none;border-radius:9999px;background:var(--md-sys-color-surface-container);color:var(--text2);font-size:13px">Agora não</button>
