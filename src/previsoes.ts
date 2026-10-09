@@ -231,7 +231,7 @@ export async function registrarPrevisoesDoCiclo(
 		nivel === "vermelho" ||
 		estado.radarSeveroConfirmado === true;
 	if (afirmandoChuva) {
-		const ameaca = estado.nowcast?.threats?.[0] ?? null;
+		const ameaca = estado.ameaca ?? null;
 		const etaMin = ameaca?.threat?.etaMin ?? null;
 		const janelaMin = Math.min(
 			240,
@@ -245,15 +245,15 @@ export async function registrarPrevisoesDoCiclo(
 			alvo: {
 				nivel: nivel ?? "laranja",
 				janelaMin,
-				distKm: estado.nearestThreatKm ?? null,
+				distKm: ameaca?.distToTargetKm ?? null,
 				etaMin,
-				approach: estado.nearestThreatApproach ?? null,
+				approach: ameaca?.threat?.approach ?? null,
 				maxDbz: ameaca?.maxDbz ?? null,
 				tendencia: ameaca?.tendencia ?? null,
 				motivos: estado.alertaUnificado?.motivos ?? [],
 			},
 		});
-		if (estado.nearestThreatApproach === "approaching" && etaMin != null) {
+		if (ameaca?.threat?.approach === "approaching" && etaMin != null) {
 			await registrarPrevisao({
 				tipo: "eta_nucleo",
 				chave: `eta_nucleo:${hora}`,
@@ -261,7 +261,7 @@ export async function registrarPrevisoesDoCiclo(
 				janelaFim: agora + Math.round(etaMin * 2.5 + 60) * 60_000,
 				alvo: {
 					etaMin,
-					distKm: estado.nearestThreatKm ?? null,
+					distKm: ameaca?.distToTargetKm ?? null,
 					maxDbz: ameaca?.maxDbz ?? null,
 				},
 			});
