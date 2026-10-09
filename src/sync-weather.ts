@@ -42,7 +42,6 @@ import {
 	fmtEta,
 	formatRainEntityAlert,
 	nearestStrongThreat,
-	pickAmeaca,
 	RELEVANCE_ZONES,
 	type VereditoNucleoSevero,
 } from "./radar-analysis.js";
@@ -200,19 +199,28 @@ export async function syncWeatherCycle(): Promise<WeatherState> {
 			const m = nowcast.movement;
 			// Núcleos por zona de relevância (Camada A). threats já vem
 			// ordenado por perigo (aproximando com menor ETA primeiro).
-
-
+			const nearestAlert =
+				nowcast.threats.find((t) => t.relevanceZone === "alert") ?? null;
+			const nearestWatch =
+				nowcast.threats.find((t) => t.relevanceZone === "watch") ?? null;
+			const topThreat = nowcast.threats[0] ?? null;
+			const alertLevel: RainAlertLevel = nearestAlert
+				? "alert"
+				: nearestWatch
+					? "watch"
+					: "monitor";
+			state.alertLevel = alertLevel;
 			// A distância anunciada é a do núcleo FORTE MAIS PRÓXIMO — não a do
 			// primeiro da lista, que vem ordenada por PERIGO (aproximando com
 			// menor ETA). Com `threats[0]` o card dizia "núcleo de chuva forte a
 			// ~222 km" com um extreme a 74 km (incidente 27/09/2026). O verbo do
 			// card ("vindo para a região") segue o veredito de movimento MEDIDO.
-			const ameaca = pickAmeaca(nowcast.threats);
-			state.ameaca = ameaca;
-			state.nearestThreatKm = ameaca ? Math.round(ameaca.distToTargetKm) : null;
-			state.nearestThreatApproach = ameaca?.threat?.approach ?? null;
-			const alertLevel: RainAlertLevel = ameaca?.relevanceZone ?? "none";
-			state.alertLevel = alertLevel;
+			const nucleoProximo = nearestStrongThreat(nowcast.threats);
+			state.nearestThreatKm = nucleoProximo
+				? Math.round(nucleoProximo.distToTargetKm)
+				: null;
+			state.nearestThreatApproach = nucleoProximo?.threat?.approach ?? null;
+
 			state.hasRegionalRain = alertLevel === "alert";
 			// SEVERIDADE (push) ≠ RELEVÂNCIA (site). Área de chuva moderada é
 			// relevante para o card e irrelevante para interromper o celular
@@ -228,9 +236,6 @@ export async function syncWeatherCycle(): Promise<WeatherState> {
 			vereditoSevero = veredito;
 			const nucleoSevero =
 				veredito?.severo === true ? veredito.cell : null;
-			const nucleoProximo = nowcast.threats[0] ?? null;
-			const nearestAlert = nowcast.threats.find(t => t.relevanceZone === "alert") ?? null;
-			const nearestWatch = nowcast.threats.find(t => t.relevanceZone === "watch") ?? null;
 			// Id do ciclo = timestamp do FRAME de radar analisado (não o relógio):
 			// o cron pode rodar várias vezes no mesmo frame e a contagem de ciclos
 			// consecutivos tem que refletir o radar, não a frequência do cron.
@@ -254,47 +259,41 @@ export async function syncWeatherCycle(): Promise<WeatherState> {
 			// oscilações na rede elétrica"). O texto INFORMA; o nível não sobe por
 			// isso (segue amarelo/verde) e o celular não é interrompido.
 			const fortePerto =
-				ameaca !== null &&
-					(ameaca.intensity === "heavy" ||
-					 ameaca.intensity === "extreme") &&
-					ameaca.distToTargetKm <= RELEVANCE_ZONES.nearStrongKm &&
-					ameaca.threat?.approach !== "receding";
+				nucleoProximo !== null &&
+				(nucleoProximo.intensity === "heavy" ||
+					nucleoProximo.intensity === "extreme") &&
+				nucleoProximo.distToTargetKm <= RELEVANCE_ZONES.nearStrongKm &&
+				nucleoProximo.threat?.approach !== "receding";
 			if (alertLevel === "monitor") {
-				state.regionalRainAlert = fortePerto && ameaca
-					? `⛈️ Núcleo de chuva forte a ~${Math.round(ameaca.distToTargetKm)} km de Ipiranga, medido ${
-							ameaca.threat?.approach === "crossing"
+				state.regionalRainAlert = fortePerto && nucleoProximo
+					? `⛈️ Núcleo de chuva forte a ~${Math.round(nucleoProximo.distToTargetKm)} km de Ipiranga, medido ${
+							nucleoProximo.threat?.approach === "crossing"
 								? "passando ao lado"
 								: "em deslocamento"
 						}. Célula de tempestade: pode trazer raios, rajadas e oscilações na rede elétrica (COPEL). Sem rumo direto para a cidade.`
-					: `ℹ️ Monitoramento: atividade de radar detectada a ${ameaca ? `~${Math.round(ameaca.distToTargetKm)} km` : "grande distância"} de Ipiranga. Sem risco iminente no momento.`;
+					: `ℹ️ Monitoramento: atividade de radar detectada a ${nucleoProximo ? `~${Math.round(nucleoProximo.distToTargetKm)} km` : "grande distância"} de Ipiranga. Sem risco iminente no momento.`;
 			} else {
 				// Área de chuva (moderada) x núcleo (tempestade): o texto muda, o gate
 				// não. Texto montado em formatRainEntityAlert (testável). O núcleo
 				// severo manda no texto: dizer "área sem núcleo de tempestade" com um
 				// núcleo extreme chegando é mentira (incidente 27/09/2026).
-				// Determine the entity to display in the COPEL card
-				const displayEntity =
+				const t =
 					alertLevel === "alert"
 						? (nucleoSevero ?? nearestAlert)
-						: ((alertLevel as string) === "watch" || (alertLevel as string) === "monitor" || (alertLevel as string) === "none")
-							? nearestWatch
-							: null;
-
-				if (displayEntity) {
-					state.regionalRainAlert = formatRainEntityAlert({
-						level: alertLevel === "alert" || alertLevel === "watch" ? alertLevel : "watch",
-						kind: displayEntity.kind,
-						intensity: displayEntity.intensity,
-						distKm: displayEntity.distToTargetKm,
-						approach: displayEntity.threat?.approach ?? null,
-						etaMin: displayEntity.threat?.etaMin ?? null,
-						tendencia: displayEntity.tendencia ?? displayEntity.movement?.tendencia ?? null,
-						isolado: displayEntity.isolado === true,
-						framesVivo: displayEntity.framesVivo ?? null,
-					});
-				} else {
-					state.regionalRainAlert = `ℹ️ Monitoramento: sem chuva relevante no radar a caminho de Ipiranga.`;
-				}
+						: nearestWatch;
+				state.regionalRainAlert = t
+					? formatRainEntityAlert({
+							level: alertLevel,
+							kind: t.kind,
+							intensity: t.intensity,
+							distKm: t.distToTargetKm,
+							approach: t.threat?.approach ?? null,
+							etaMin: t.threat?.etaMin ?? null,
+							tendencia: t.tendencia ?? t.movement?.tendencia ?? null,
+							isolado: t.isolado === true,
+							framesVivo: t.framesVivo ?? null,
+						})
+					: `ℹ️ Monitoramento: sem chuva relevante no radar a caminho de Ipiranga.`;
 			}
 			// Livro da dissipação: só entidades RELEVANTES (alert/watch) — monitor
 			// não interessa para medir chuva que chega. O nível unificado do ciclo é

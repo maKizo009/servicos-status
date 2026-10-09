@@ -1395,10 +1395,6 @@ html.map-fs{overflow:hidden}
 
 /* ---------- Radar mais enxuto (o mapa é o herói, a moldura não) ----------
    A moldura comia altura demais para o pouco que informa (pedido 24/09/2026). */
-.share-btn-container{margin-left:auto}
-.share-btn{display:flex;align-items:center;justify-content:center;width:36px;height:36px;border:none;border-radius:var(--md-shape-corner-full,9999px);background:transparent;color:var(--text2);cursor:pointer}
-.share-btn:hover{background:var(--surface);color:var(--text)}
-.share-btn:active{transform:scale(.95)}
 .radar-card>.panel-head{padding:10px 14px}
 .radar-card .panel-title{font-size:15px}
 .radar-card .panel-sub{font-size:13px}
@@ -2090,11 +2086,6 @@ html.trocando-tema, html.trocando-tema *{transition:none !important}
           <span class="panel-head-txt">
             <h2 class="panel-title">Radar de chuva</h2>
             <span class="panel-sub">Ipiranga e região</span>
-            <div class="share-btn-container" style="align-self:flex-end;margin-top:4px;">
-              <button type="button" class="share-btn" onclick="shareData()" aria-label="Compartilhar dados do site">
-                <span class="ms s20" aria-hidden="true">share</span>
-              </button>
-            </div>
           </span>
         </div>
         <div class="radar-map-wrapper">
@@ -4176,24 +4167,6 @@ document.getElementById('radarSlider')?.addEventListener('input', (e) => {
   showRadarFrame(parseInt(e.target.value, 10));
 });
 
-window.shareData = function() {
-  const siteUrl = window.location.href;
-  const llmsUrl = `${location.origin || 'https://servicos-status.vercel.app'}/llms.txt`;
-
-  // Create message for Meta AI on WhatsApp
-  const message = `📊 Dados do Monitor Ipiranga para análise:
-
-🔗 Site: ${siteUrl}
-📋 Dados estruturados: ${llmsUrl}
-
-💡 Use estes dados com Meta AI no WhatsApp para obter análise detalhada do clima, rios e serviços em Ipiranga/PR.`;
-
-  // WhatsApp share URL
-  const whatsappUrl = `https://wa.me/?text=${encodeURIComponent(message)}`;
-
-  // Open WhatsApp
-  window.open(whatsappUrl, '_blank');
-}
 document.addEventListener('DOMContentLoaded', () => {
   initThemeToggle();
   initScrollIndicator();
@@ -4281,7 +4254,8 @@ function initThemeToggle() {
     syncThemeColor(getEffectiveTheme());
   });
 }
-// ==== Barra de progresso de rolagem (logo abaixo do appbar) ====
+
+// ==== Barra de progresso de rolagem (logo abaixo do app bar) ====
 function initScrollIndicator() {
   const barra = document.getElementById('scrollIndicator');
   if (!barra) return;

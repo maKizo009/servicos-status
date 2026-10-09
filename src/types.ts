@@ -1,5 +1,4 @@
 import type { NowcastResult } from "./radar-analysis.js";
-import type { ThreatCell } from "./radar-analysis.js";
 
 // Tipos de OPERADORA removidos em 22/09/2026 junto com o monitoramento de
 // telefonia/ISP: OperatorName, OperatorConfig, ProbeStatus, ConnectivityResult,
@@ -181,9 +180,7 @@ export interface WeatherState {
 		generatedAt: number;
 	} | null;
 	/** Chuva em tempo real dos pluviômetros CEMADEN de Ipiranga (fonte pública). */
-	  cemaden?: import("./cemaden.js").CemadenState | null;
-	  /** Entidade que dirige a tela inteira (herói, box, boletim, push) — fonte da verdade da ameaça. */
-	  ameaca?: ThreatCell | null;
+	cemaden?: import("./cemaden.js").CemadenState | null;
 	/**
 	 * Solo sob demanda (feed do Sigma): rajada, queda de pressão e acumulado
 	 * das cidades do corredor. Só é preenchido quando há núcleo de chuva perto

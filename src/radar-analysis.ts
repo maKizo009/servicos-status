@@ -291,32 +291,6 @@ export function nearestStrongThreat(threats: ThreatCell[]): ThreatCell | null {
 }
 
 /**
- * A entidade que DIRIGE a tela inteira — FONTE DA VERDADE da ameaça (09/10/2026).
- * Herói, box do tempo, boletim e push narram ESTA entidade com o MESMO veredito.
- *
- * Regra: o núcleo forte mais próximo (regra do card, incidente 27/09) — mas, se
- * ele estiver se AFANDO e existir outro forte se APROXIMANDO com ETA ≤ 6 h,
- * quem manda é o que CHEGA. Narrar "se afastando" enquanto outro núcleo vem
- * chegando é exatamente a incoerência que o dono apontou no print de 09/10/2026
- * (herói "se afastando" x boletim "se aproximando, chegada ~97 min").
- */
-export function pickAmeaca(threats: ThreatCell[]): ThreatCell | null {
-	const forte = nearestStrongThreat(threats);
-	if (!forte) return null;
-	if (forte.threat?.approach === "receding") {
-		const chegando = threats.find(
-			(t) =>
-				t !== forte &&
-				(t.intensity === "heavy" || t.intensity === "extreme") &&
-				t.threat?.approach === "approaching" &&
-				(t.threat?.etaMin ?? Number.POSITIVE_INFINITY) <= 360,
-		);
-		if (chegando) return chegando;
-	}
-	return forte;
-}
-
-/**
  * NÚCLEO de tempestade (heavy/extreme) já na zona IMINENTE — a evidência que
  * promove o alerta a laranja (interrompe o celular). Devolve a entidade MAIS
  * SEVERA primeiro (extreme antes de heavy) e, entre iguais, a mais próxima.
