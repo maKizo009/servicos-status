@@ -133,7 +133,9 @@ check(
 	invertida?.quedaPressao24Hpa === null && invertida?.pressaoMax24Hpa === null,
 	`queda=${invertida?.quedaPressao24Hpa}`,
 );
-check("2d. frescor máximo = 90 min", SIGMA_FRESCOR_MAX_MIN === 90);
+// Política 08/10/2026 (pedido do dono): 60 min — dado mais fresco que isso
+// não vale decisão. Teste atualizado junto com a constante.
+check("2d. frescor máximo = 60 min", SIGMA_FRESCOR_MAX_MIN === 60);
 check(
 	"2e. estação de 3 meses atrás = stale",
 	parseSigmaLinha(
@@ -192,7 +194,7 @@ check(
 if (wu.estacoes.length > 0) {
 	const frescos = wu.estacoes.filter((e) => !e.stale);
 	check(
-		"5b. maioria das estações WU fresca (<90 min)",
+		"5b. maioria das estações WU fresca (<60 min)",
 		frescos.length > wu.estacoes.length * 0.5,
 		`${frescos.length}/${wu.estacoes.length}`,
 	);

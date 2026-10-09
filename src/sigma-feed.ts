@@ -71,13 +71,13 @@ const COL = {
 } as const;
 
 /** Frescor máximo aceitável para DECISÃO (mesma lógica do CEMADEN: stale ≠ sem chuva). */
-export const SIGMA_FRESCOR_MAX_MIN = 90;
+export const SIGMA_FRESCOR_MAX_MIN = 60;
 
 /**
  * Raio (km) para considerar que um núcleo de chuva está "na cidade" — dispara
- * a consulta ao feed. 40 km ≈ uma hora de deslocamento típico de célula.
+ * a consulta ao feed. 70 km ≈ cerca de 1h40 de deslocamento típico de célula.
  */
-export const SIGMA_RAIO_CIDADE_KM = 40;
+export const SIGMA_RAIO_CIDADE_KM = 70;
 
 export interface SigmaEstacao {
 	lat: number;
@@ -358,9 +358,9 @@ export function estacoesProximas(
  * "quentes" — vazio = nenhuma requisição ao site deles.
  */
 export function cidadesComNucleo(
-	nucleos: { lat: number; lon: number }[],
-	cidades: { nome: string; lat: number; lon: number }[],
-	raioKm = 40,
+    nucleos: { lat: number; lon: number }[],
+    cidades: { nome: string; lat: number; lon: number }[],
+    raioKm = SIGMA_RAIO_CIDADE_KM,
 ): { nome: string; lat: number; lon: number; distanciaKm: number }[] {
 	const quentes: {
 		nome: string;
@@ -423,9 +423,9 @@ export interface SoloCidade {
  * Prioriza quem tem rajada/pressão/chuva e não está parada.
  */
 export function resumoSolo(
-	quentes: { nome: string; lat: number; lon: number; distanciaKm: number }[],
-	porRede: SigmaResultado[],
-	raioKm = 40,
+    quentes: { nome: string; lat: number; lon: number; distanciaKm: number }[],
+    porRede: SigmaResultado[],
+    raioKm = SIGMA_RAIO_CIDADE_KM,
 ): SoloCidade[] {
 	const todas = porRede.flatMap((r) => r.estacoes);
 	const out: SoloCidade[] = [];

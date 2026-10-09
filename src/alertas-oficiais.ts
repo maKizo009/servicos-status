@@ -282,6 +282,10 @@ export interface DadosLocaisAlerta {
 	/** Entidade que dirigiu o alerta, p/ o texto não chamar área de "chuva forte". */
 	radarKind?: "nucleo" | "area" | null;
 	hidroWatch: boolean;
+	/** Direção do núcleo detectado pelo radar (graus, 0=N, 90=E, etc.) – se disponível. */
+	nucleoDirecaoGraus?: number;
+	/** Velocidade do núcleo (km/h) – se disponível. */
+	nucleoVelocidadeKmh?: number;
 }
 
 /**
@@ -387,6 +391,7 @@ export function buildAlertaUnificado(
 		nivel = "laranja";
 		if (local.radarSevero) {
 			motivos.push("chuva forte detectada no radar, se aproximando da região");
+		// TODO: considerar direção do núcleo (se houver campo de trajetória) para evitar alerta quando núcleo não se dirige a Ipiranga;
 			const ciclos = local.radarSeveroCiclos ?? 0;
 			// "Núcleo severo" é termo INTERNO (o que dispara push). No texto do
 			// usuário é só "chuva forte confirmada" — separar evita alarmismo

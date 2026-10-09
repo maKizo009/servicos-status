@@ -297,7 +297,9 @@ describe("nível do alerta com a persistência (ponta a ponta determinística)",
 			null,
 		);
 		expect(a.nivel).toBe("amarelo");
-		expect(a.motivos.join(" ")).toContain("1º ciclo");
+		// Copy atual (revisão do dono): o motivo diz que vamos confirmar antes
+		// de alertar — o teste antigo esperava "1º ciclo" (termo interno antigo).
+		expect(a.motivos.join(" ")).toContain("vamos confirmar nos próximos minutos");
 		// O ponto da mudança: o celular NÃO é interrompido.
 		expect(pushParaAlerta(a.nivel)).toBeNull();
 	});
@@ -308,7 +310,8 @@ describe("nível do alerta com a persistência (ponta a ponta determinística)",
 			null,
 		);
 		expect(a.nivel).toBe("laranja");
-		expect(a.motivos.join(" ")).toContain("confirmado em 2 ciclos");
+		// Copy atual: "confirmada no radar há 2 checagens seguidas".
+		expect(a.motivos.join(" ")).toContain("confirmada no radar há 2 checagens");
 		expect(pushParaAlerta(a.nivel)?.evento).toBe("alerta:laranja");
 	});
 
