@@ -961,6 +961,9 @@ body{font-family:var(--font);background:var(--md-sys-color-surface);color:var(--
 .ia-chips{display:flex;gap:8px;margin-top:8px;flex-wrap:wrap;justify-content:center}
 .ia-explica{font-size:15px;line-height:1.5;color:var(--text2);margin:8px 0 0;text-align:center}
 .ia-nota{font-size:13.5px;opacity:.85;margin:8px 0 0;line-height:1.4;text-align:center}
+/* Links inline do "Como é calculado" (Dados crus / Sugerir melhoria) tinham
+   16px de altura — alvo de toque minimo de 44px em tudo que e clicavel. */
+#hidroContent a{min-height:44px;display:inline-flex;align-items:center}
 .footer .credit strong{color:var(--text);font-weight:600}
 
 /* Error */
