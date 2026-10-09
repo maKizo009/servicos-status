@@ -2086,7 +2086,7 @@ html.trocando-tema, html.trocando-tema *{transition:none !important}
           <span class="panel-head-txt">
             <h2 class="panel-title">Radar de chuva</h2>
             <span class="panel-sub">Ipiranga e região</span>
-            <div class="share-btn-container">
+            <div class="share-btn-container" style="align-self:flex-end;margin-top:4px;">
               <button type="button" class="share-btn" onclick="shareData()" aria-label="Compartilhar dados do site">
                 <span class="ms s20" aria-hidden="true">share</span>
               </button>
@@ -3043,6 +3043,7 @@ let isPlaying = false;
 let playInterval = null;
 
 async function initWeatherMap() {
+});
   if (map || typeof L === 'undefined') return;
   const ipirangaLat = -25.0244;
   const ipirangaLng = -50.5847;
@@ -4172,6 +4173,24 @@ document.getElementById('radarSlider')?.addEventListener('input', (e) => {
   showRadarFrame(parseInt(e.target.value, 10));
 });
 
+window.shareData = function() {
+  const siteUrl = window.location.href;
+  const llmsUrl = `${location.origin || 'https://servicos-status.vercel.app'}/llms.txt`;
+
+  // Create message for Meta AI on WhatsApp
+  const message = `📊 Dados do Monitor Ipiranga para análise:
+
+🔗 Site: ${siteUrl}
+📋 Dados estruturados: ${llmsUrl}
+
+💡 Use estes dados com Meta AI no WhatsApp para obter análise detalhada do clima, rios e serviços em Ipiranga/PR.`;
+
+  // WhatsApp share URL
+  const whatsappUrl = `https://wa.me/?text=${encodeURIComponent(message)}`;
+
+  // Open WhatsApp
+  window.open(whatsappUrl, '_blank');
+}
 document.addEventListener('DOMContentLoaded', () => {
   initThemeToggle();
   initScrollIndicator();
@@ -4181,24 +4200,8 @@ document.addEventListener('DOMContentLoaded', () => {
   // retângulo vazio até o /api/weather responder.
   initWeatherMap().then(() => { if (map) bootstrapRadar(); });
 });
-setTimeout(initWeatherMap, 600);
 
-// ==== Toggle de tema claro/escuro (Material Design 3) ====
 function initThemeToggle() {
-  const btn = document.getElementById('btnThemeToggle');
-  const icon = document.getElementById('themeToggleIcon');
-  const storedTheme = localStorage.getItem('theme');
-
-  function getEffectiveTheme() {
-    const attr = document.documentElement.getAttribute('data-theme');
-    if (attr) return attr;
-    return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
-  }
-
-  /* A barra do navegador/PWA acompanha o app bar (o theme-color estava preso no
-     verde antigo #064E3B). Com tema MANUAL a meta do sistema é desligada
-     (media="not all") para não casarem duas metas ao mesmo tempo. */
-  function syncThemeColor(effective) {
     const base = document.getElementById('metaThemeColor');
     const sistema = document.getElementById('metaThemeColorDark');
     if (base) base.setAttribute('content', effective === 'dark' ? '#0E4A26' : '#1B6B3A');
