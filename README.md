@@ -476,4 +476,4 @@ Para evitar latência desnecessária e interferência de verificação bot/chall
    - **Valor**: `/api/`
    - **Ação**: `Bypass` -> selecione `WAF Managed Rules` e `JS Challenge / Interactive Challenge`.
 3. Para a página principal HTML, mantenha apenas a proteção DDoS passiva ativada.
-4. O arquivo `src/public/_headers` já define os cabeçalhos de controle de cache (`no-store, no-cache`) para requisições de API.
+4. O arquivo `src/public/_headers` já define os cabeçalhos de controle de cache (`no-store, no-cache`) para requisições de API.Last update: 2026-10-14 14:34 UTC
