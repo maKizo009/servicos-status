@@ -46,6 +46,7 @@ export default async function handler(req: any, res: any) {
 			const body = await response.text();
 			const contentType = response.headers.get("content-type") || "application/json; charset=utf-8";
 			const cacheControl = response.headers.get("cache-control");
+			const vercelCacheControl = response.headers.get("vercel-cdn-cache-control");
 
 			res.setHeader("Content-Type", contentType);
 			applyCors(res, origin);
@@ -62,6 +63,7 @@ export default async function handler(req: any, res: any) {
 			if (cacheControl) {
 				res.setHeader("Cache-Control", cacheControl);
 			}
+			if (vercelCacheControl) res.setHeader("Vercel-CDN-Cache-Control", vercelCacheControl);
 			return res.status(status).send(body);
 		}
 		return response;

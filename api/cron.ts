@@ -1,8 +1,10 @@
-import { runAllChecks } from "../src/checker.js";
+import { runAllChecks, buildUnifiedReport } from "../src/checker.js";
+import { randomUUID } from "node:crypto";
 import { loadConfig } from "../src/config.js";
 import { formatCopelPrevisao } from "../src/copel-format.js";
 import {
 	initDb,
+	getDbClient,
 	saveEventLog,
 } from "../src/db.js";
 import { syncWeatherCycle } from "../src/index.js";
@@ -22,6 +24,8 @@ import {
 } from "../src/telegram.js";
 
 export default async function handler(req: any, res: any) {
+	let lockOwner: string | null = null;
+	let completed = false;
 	try {
 		// ===== Auth do cron — SÓ Bearer do CRON_SECRET (pentest 26/09/2026) =====
 		// ANTES: `x-vercel-cron: 1` valia como identidade (header que qualquer um
@@ -71,6 +75,26 @@ export default async function handler(req: any, res: any) {
 		}
 
 		await initDb();
+		// Uma trava compartilhada protege contra disparadores simultâneos. A
+		// expiração permite recuperação mesmo se a função for interrompida.
+		const db = await getDbClient();
+		await db.execute(`CREATE TABLE IF NOT EXISTS cron_cycle_lock (
+			id INTEGER PRIMARY KEY, owner TEXT NOT NULL, expires_at INTEGER NOT NULL
+		)`);
+		const owner = randomUUID();
+		const now = Date.now();
+		const lock = await db.execute({
+			sql: `INSERT INTO cron_cycle_lock (id, owner, expires_at) VALUES (1, ?, ?)
+			ON CONFLICT(id) DO UPDATE SET owner=excluded.owner, expires_at=excluded.expires_at
+			WHERE cron_cycle_lock.expires_at <= ? RETURNING owner`,
+			args: [owner, now + 120_000, now],
+		});
+		if (!lock.rows.length) {
+			const result = { status: "skipped", reason: "cycle already running or recently completed" };
+			if (res && typeof res.status === "function") return res.status(200).json(result);
+			return Response.json(result);
+		}
+		lockOwner = owner;
 		const tracker = new EventTracker();
 		await tracker.init();
 
@@ -81,6 +105,11 @@ export default async function handler(req: any, res: any) {
 			syncWeatherCycle(),
 			runAllChecks(config, tracker),
 		]);
+		try {
+			const report = await buildUnifiedReport(data, config.copelTotalConsumersCity);
+			await db.execute("CREATE TABLE IF NOT EXISTS services_snapshot (id INTEGER PRIMARY KEY, payload TEXT NOT NULL)");
+			await db.execute({ sql: "INSERT OR REPLACE INTO services_snapshot (id, payload) VALUES (1, ?)", args: [JSON.stringify(report)] });
+		} catch (error) { console.error("Falha ao salvar serviços", error); }
 
 		// Heartbeat por fonte (meta-monitoria, 30/09/2026): o ciclo completo é o
 		// único lugar que vê TODAS as fontes de uma vez — grava o que cada uma
@@ -204,6 +233,7 @@ export default async function handler(req: any, res: any) {
 			},
 		};
 
+		completed = true;
 		if (res && typeof res.status === "function") {
 			return res.status(200).json(result);
 		}
@@ -224,5 +254,17 @@ export default async function handler(req: any, res: any) {
 			{ error: "Erro interno", timestamp: Date.now() },
 			{ status: 500 },
 		);
+	} finally {
+		if (lockOwner) {
+			try {
+				const db = await getDbClient();
+				await db.execute({
+					sql: completed
+						? "UPDATE cron_cycle_lock SET expires_at = ? WHERE id = 1 AND owner = ?"
+						: "DELETE FROM cron_cycle_lock WHERE id = 1 AND owner = ?",
+					args: completed ? [Date.now() + 120_000, lockOwner] : [lockOwner],
+				});
+			} catch (error) { console.error("Falha ao liberar trava do cron", error); }
+		}
 	}
 }

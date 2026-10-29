@@ -24,6 +24,7 @@ import { handlePushRoutes } from "./push.js";
 import { getCachedWeatherState } from "../weather-collector.js";
 import {
 	getDailyStatsSummary,
+	getDbClient,
 	getLatestNowcastBulletin,
 	saveEventLog,
 } from "../db.js";
@@ -238,17 +239,21 @@ let weatherInterval: ReturnType<typeof setInterval> | null = null;
  * que a análise, o boletim e o push consomem) — o recorte é só na saída HTTP.
  */
 
-function enxugarPayloadParaCliente(state: WeatherState | null): unknown {
+function enxugarPayloadParaCliente(state: WeatherState | null, dashboard = false): unknown {
 	if (!state || !state.nowcast) return state;
 	const nc = state.nowcast;
 	const frames = nc.frames ?? [];
-	if (frames.length <= 1) return state;
+	const duplicateBulletin = dashboard && state.bulletin?.bulletin &&
+		state.bulletin.bulletin === state.nowcastBulletin?.text &&
+		state.bulletin.source === state.nowcastBulletin?.source &&
+		state.bulletin.generatedAt === state.nowcastBulletin?.generatedAt;
 	return {
 		...state,
+		...(duplicateBulletin ? { bulletin: null } : {}),
 		nowcast: {
 			...nc,
-			frames: [frames[frames.length - 1]],
-			framesTotal: frames.length,
+			frames: frames.length > 1 ? [frames[frames.length - 1]] : frames,
+			framesTotal: nc.framesTotal ?? frames.length,
 		},
 	};
 }
@@ -257,7 +262,8 @@ function enxugarPayloadParaCliente(state: WeatherState | null): unknown {
 export async function handleRequest(
 	reqIn: IncomingRequest | string,
 ): Promise<Response> {
-	await ensureInitialized();
+	// O schema é preparado pelo cron ou pela inicialização do servidor local.
+	// Leitores serverless não devem executar migrações a cada cold start.
 
 	// Normaliza: string (URL) vira objeto; Request nativo já é IncomingRequest
 	const req: IncomingRequest =
@@ -355,9 +361,7 @@ export async function handleRequest(
 		// compartilhado no Turso (cron de 10 min) cobre instâncias frias sem
 		// regenerar o ciclo VLM inline (achado 2026-08-15).
 		let state = await loadWeatherState();
-		if (!state) {
-			state = await syncWeatherCycle();
-		}
+		if (!state) state = await loadWeatherState(24 * 60 * 60_000);
 		const text = renderLlmsTxt(state, lastUnifiedReport);
 		return new Response(text, {
 			headers: {
@@ -486,7 +490,11 @@ export async function handleRequest(
 		}
 		if (path === "/health" || path === "/health/") return handleHealth();
 		if (path === "/api/services" || path === "/api/report") {
-			if (!lastUnifiedReport) await runChecks();
+			try {
+				const db = await getDbClient();
+				const snapshot = await db.execute("SELECT payload FROM services_snapshot WHERE id = 1");
+				if (snapshot.rows.length) return Response.json(JSON.parse(String(snapshot.rows[0].payload)));
+			} catch (error) { logger.warn("Snapshot de serviços indisponível", { error: String(error) }); }
 			return handleServices();
 		}
 		if (path === "/api/weather" || path === "/api/weather/radar") {
@@ -508,9 +516,9 @@ export async function handleRequest(
 					});
 				}
 			}
-			if (!state) state = await syncWeatherCycle();
+			if (!state) return Response.json({ error: "Dados indisponíveis; aguarde a atualização" }, { status: 503 });
 			return Response.json(
-				enxugarPayloadParaCliente(state) ?? {
+				enxugarPayloadParaCliente(state, url.searchParams.get("view") === "dashboard") ?? {
 					error: "Sem dados climatológicos no momento",
 				},
 				{
@@ -527,7 +535,9 @@ export async function handleRequest(
 			);
 		}
 		if (path === "/api/weather/nowcast") {
-			const nowcast = await getRadarNowcast();
+			const state = await loadWeatherState(24 * 60 * 60_000);
+			const nowcast = state?.nowcast;
+			if (!nowcast) return Response.json({ error: "Dados indisponíveis; aguarde a atualização" }, { status: 503 });
 			return Response.json(nowcast, {
 				headers: { "Cache-Control": "public, max-age=240" },
 			});
