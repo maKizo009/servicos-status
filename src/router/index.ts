@@ -239,17 +239,21 @@ let weatherInterval: ReturnType<typeof setInterval> | null = null;
  * que a análise, o boletim e o push consomem) — o recorte é só na saída HTTP.
  */
 
-function enxugarPayloadParaCliente(state: WeatherState | null): unknown {
+function enxugarPayloadParaCliente(state: WeatherState | null, dashboard = false): unknown {
 	if (!state || !state.nowcast) return state;
 	const nc = state.nowcast;
 	const frames = nc.frames ?? [];
-	if (frames.length <= 1) return state;
+	const duplicateBulletin = dashboard && state.bulletin?.bulletin &&
+		state.bulletin.bulletin === state.nowcastBulletin?.text &&
+		state.bulletin.source === state.nowcastBulletin?.source &&
+		state.bulletin.generatedAt === state.nowcastBulletin?.generatedAt;
 	return {
 		...state,
+		...(duplicateBulletin ? { bulletin: null } : {}),
 		nowcast: {
 			...nc,
-			frames: [frames[frames.length - 1]],
-			framesTotal: frames.length,
+			frames: frames.length > 1 ? [frames[frames.length - 1]] : frames,
+			framesTotal: nc.framesTotal ?? frames.length,
 		},
 	};
 }
@@ -258,7 +262,8 @@ function enxugarPayloadParaCliente(state: WeatherState | null): unknown {
 export async function handleRequest(
 	reqIn: IncomingRequest | string,
 ): Promise<Response> {
-	await ensureInitialized();
+	// O schema é preparado pelo cron ou pela inicialização do servidor local.
+	// Leitores serverless não devem executar migrações a cada cold start.
 
 	// Normaliza: string (URL) vira objeto; Request nativo já é IncomingRequest
 	const req: IncomingRequest =
@@ -513,7 +518,7 @@ export async function handleRequest(
 			}
 			if (!state) return Response.json({ error: "Dados indisponíveis; aguarde a atualização" }, { status: 503 });
 			return Response.json(
-				enxugarPayloadParaCliente(state) ?? {
+				enxugarPayloadParaCliente(state, url.searchParams.get("view") === "dashboard") ?? {
 					error: "Sem dados climatológicos no momento",
 				},
 				{
