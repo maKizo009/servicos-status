@@ -365,7 +365,7 @@ export async function getAdminStats(): Promise<AdminStats> {
 	const now = Date.now();
 	const hoje = dayStartBr(0, now);
 	const semana = dayStartBr(7, now);
-	const ativoAgora = now - 3 * 60_000;
+	const ativoAgora = now - 7 * 60_000;
 	const ativo24h = now - 24 * 60 * 60_000;
 
 	const count = async (

@@ -14,6 +14,8 @@ import type { WeatherState } from "./types.js";
 
 let isInitialized = false;
 let tracker: EventTracker;
+let lastDbReadAt = 0;
+let lastDbReadState: WeatherState | null = null;
 
 /** TTL da cópia de estado servida pelo Turso (cache de read). */
 const TURSO_STATE_TTL_MS = 15 * 60_000;
@@ -22,10 +24,10 @@ export function getTracker(): EventTracker {
 	return tracker;
 }
 
-export async function ensureInitialized(): Promise<void> {
+export async function ensureInitialized(preinitializedTracker?: EventTracker): Promise<void> {
 	if (!isInitialized) {
-		await initDb();
-		tracker = new EventTracker();
+		if (!preinitializedTracker) await initDb();
+		tracker = preinitializedTracker ?? new EventTracker();
 		await tracker.init();
 		isInitialized = true;
 	}
@@ -36,12 +38,16 @@ export async function loadWeatherState(
 ): Promise<WeatherState | null> {
 	const mem = getCachedWeatherState();
 	if (mem && Date.now() - mem.updatedAt <= 600_000) return mem;
+	if (lastDbReadAt && Date.now() - lastDbReadAt < 30_000 && lastDbReadState && Date.now() - lastDbReadState.updatedAt <= maxAgeMs) return lastDbReadState;
 	try {
 		const cached = await getWeatherStateCache();
+		lastDbReadAt = Date.now();
+		lastDbReadState = null;
 		if (cached && Date.now() - cached.updatedAt <= maxAgeMs) {
 			const parsed = JSON.parse(cached.payload) as WeatherState;
 			if (parsed && typeof parsed.updatedAt === "number") {
 				setCachedWeatherState(parsed);
+				lastDbReadState = parsed;
 				return parsed;
 			}
 		}

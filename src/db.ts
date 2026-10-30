@@ -98,6 +98,10 @@ export async function initDb(): Promise<Client> {
 					evento TEXT PRIMARY KEY,
 					enviado_at INTEGER NOT NULL
 				)`,
+				`CREATE TABLE IF NOT EXISTS radar_frame_cache (
+					cache_key TEXT PRIMARY KEY, payload TEXT NOT NULL, created_at INTEGER NOT NULL
+				)`,
+				`CREATE INDEX IF NOT EXISTS idx_radar_frame_cache_created ON radar_frame_cache(created_at)`,
 				// Livro da dissipação: uma linha por núcleo relevante por ciclo.
 				// Serve para medir a hipótese do dono ("essas chuvas se dissipam
 				// conforme chegam aqui") com dado do próprio radar, em vez de

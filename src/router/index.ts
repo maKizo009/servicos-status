@@ -493,7 +493,7 @@ export async function handleRequest(
 			try {
 				const db = await getDbClient();
 				const snapshot = await db.execute("SELECT payload FROM services_snapshot WHERE id = 1");
-				if (snapshot.rows.length) return Response.json(JSON.parse(String(snapshot.rows[0].payload)));
+				if (snapshot.rows.length) return Response.json(JSON.parse(String(snapshot.rows[0].payload)), { headers: { "Cache-Control": "public, max-age=0, s-maxage=60, stale-while-revalidate=540", "Vercel-CDN-Cache-Control": "public, s-maxage=60, stale-while-revalidate=540" } });
 			} catch (error) { logger.warn("Snapshot de serviços indisponível", { error: String(error) }); }
 			return handleServices();
 		}
@@ -502,20 +502,9 @@ export async function handleRequest(
 			// o estado compartilhado no Turso (cron de 10 min) cobre instâncias
 			// frias SEM regenerar o ciclo VLM inline (achado 2026-08-15 — antes,
 			// instância fria rodava o sync completo e o visitante esperava 60s+).
-			let state = await loadWeatherState();
-			if (!state) {
-				// NUNCA faça o VISITANTE pagar o ciclo completo (12,5 s medidos em
-				// instância fria — era o "radar demora pra aparecer"): serve o último
-				// estado persistido, mesmo velho, e deixa o cron de 10 min atualizar.
-				// O payload carrega updatedAt, então a UI continua honesta sobre a
-				// idade do dado; sync inline só se o Turso não tiver NADA.
-				state = await loadWeatherState(3 * 60 * 60_000);
-				if (state) {
-					logger.warn("Servindo estado PERSISTIDO mais velho que o TTL", {
-						idadeMin: Math.round((Date.now() - state.updatedAt) / 60_000),
-					});
-				}
-			}
+			// Uma única leitura cobre estado fresco e fallback stale de até 3 h.
+			let state = await loadWeatherState(3 * 60 * 60_000);
+			if (state && Date.now() - state.updatedAt > 15 * 60_000) logger.warn("Servindo estado PERSISTIDO mais velho que o TTL", { idadeMin: Math.round((Date.now() - state.updatedAt) / 60_000) });
 			if (!state) return Response.json({ error: "Dados indisponíveis; aguarde a atualização" }, { status: 503 });
 			return Response.json(
 				enxugarPayloadParaCliente(state, url.searchParams.get("view") === "dashboard") ?? {
@@ -626,7 +615,21 @@ export async function handleRequest(
 					headers: { "Content-Type": "application/json" },
 				});
 			}
-			await runChecks();
+			const db = await getDbClient();
+			await db.execute("CREATE TABLE IF NOT EXISTS cron_cycle_lock (id INTEGER PRIMARY KEY, owner TEXT NOT NULL, expires_at INTEGER NOT NULL, last_completed_at INTEGER NOT NULL DEFAULT 0)");
+			const owner = crypto.randomUUID();
+			const now = Date.now();
+			const lock = await db.execute({ sql: `INSERT INTO cron_cycle_lock (id, owner, expires_at, last_completed_at) VALUES (1, ?, ?, 0)
+				ON CONFLICT(id) DO UPDATE SET owner=excluded.owner, expires_at=excluded.expires_at
+				WHERE cron_cycle_lock.expires_at <= ? AND cron_cycle_lock.last_completed_at <= ? RETURNING owner`, args: [owner, now + 120_000, now, now - 9 * 60_000] });
+			if (!lock.rows.length) return Response.json({ status: "skipped", reason: "cycle already running or recently completed" });
+			try {
+				await runChecks();
+				await db.execute({ sql: "UPDATE cron_cycle_lock SET expires_at = ?, last_completed_at = ? WHERE id = 1 AND owner = ?", args: [Date.now() + 120_000, Date.now(), owner] });
+			} catch (error) {
+				await db.execute({ sql: "DELETE FROM cron_cycle_lock WHERE id = 1 AND owner = ?", args: [owner] }).catch(() => {});
+				throw error;
+			}
 			return Response.json({ status: "ok", timestamp: Date.now() });
 		}
 		// ===== Telemetria de uso (acessos, instalações, sessões) =====
