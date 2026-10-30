@@ -6,9 +6,9 @@ mock.module("../src/db.js", () => ({
   getDbClient: async () => ({
     execute: async (q: any) => {
       if (typeof q === "string") return { rows: [] };
-      if (q.sql.startsWith("SELECT payload")) {
-        const value = entries.get(q.args[0]);
-        return { rows: value ? [{ payload: value }] : [] };
+      if (q.sql.startsWith("SELECT cache_key, payload")) {
+        const rows = q.args.flatMap((key: string) => entries.has(key) ? [{ cache_key: key, payload: entries.get(key) }] : []);
+        return { rows };
       }
       if (q.sql.startsWith("INSERT OR REPLACE")) entries.set(q.args[0], q.args[1]);
       return { rows: [] };

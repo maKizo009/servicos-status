@@ -1375,26 +1375,26 @@ export async function analyzeRadarNowcast(
 	const norm = normalizeRegion(region, tileSize);
 	const analyses: FrameAnalysis[] = [];
 	let db: Awaited<ReturnType<typeof getDbClient>> | null = null;
+	const keys = frames.map((frame) => JSON.stringify(["v1", host, frame.path, frame.time, region, tileSize, smooth]));
+	const cachedFrames = new Map<string, FrameAnalysis>();
 	try {
 		db = await getDbClient();
-		await db.execute(`CREATE TABLE IF NOT EXISTS radar_frame_cache (
-			cache_key TEXT PRIMARY KEY, payload TEXT NOT NULL, created_at INTEGER NOT NULL
-		)`);
+		if (keys.length) {
+			const placeholders = keys.map(() => "?").join(",");
+			const hits = await db.execute({ sql: `SELECT cache_key, payload FROM radar_frame_cache WHERE cache_key IN (${placeholders})`, args: keys });
+			for (const row of hits.rows) {
+				try { cachedFrames.set(String(row.cache_key), JSON.parse(String(row.payload)) as FrameAnalysis); } catch {}
+			}
+		}
 	} catch { db = null; }
+	let wroteFrame = false;
 
 	for (const frame of frames) {
 		try {
 			// Versionar a chave sempre que a análise de pixels mudar.
-			const key = JSON.stringify(["v1", host, frame.path, frame.time, region, tileSize, smooth]);
-			if (db) {
-				try {
-					const hit = await db.execute({ sql: "SELECT payload FROM radar_frame_cache WHERE cache_key = ?", args: [key] });
-					if (hit.rows.length) {
-						const cached = JSON.parse(String(hit.rows[0].payload)) as FrameAnalysis;
-						if (Array.isArray(cached.cells)) { analyses.push(cached); continue; }
-					}
-				} catch (err) { logger.warn("Cache de frame indisponível", { error: String(err) }); }
-			}
+				const key = keys[frames.indexOf(frame)];
+				const cached = cachedFrames.get(key);
+				if (cached && Array.isArray(cached.cells)) { analyses.push(cached); continue; }
 			const mosaic = await fetchTileGrid(
 				host,
 				frame.path,
@@ -1412,8 +1412,8 @@ export async function analyzeRadarNowcast(
 			// Salvar antes de associateMovements, que modifica as células.
 			if (db && mosaic.complete) {
 				try {
-					await db.execute({ sql: "INSERT OR REPLACE INTO radar_frame_cache (cache_key, payload, created_at) VALUES (?, ?, ?)", args: [key, JSON.stringify(analysis), Date.now()] });
-					await db.execute({ sql: "DELETE FROM radar_frame_cache WHERE created_at < ?", args: [Date.now() - 24 * 3600_000] });
+						await db.execute({ sql: "INSERT OR REPLACE INTO radar_frame_cache (cache_key, payload, created_at) VALUES (?, ?, ?)", args: [key, JSON.stringify(analysis), Date.now()] });
+						wroteFrame = true;
 				} catch (err) { logger.warn("Falha ao salvar frame", { error: String(err) }); }
 			}
 			analyses.push(analysis);
@@ -1423,6 +1423,10 @@ export async function analyzeRadarNowcast(
 				error: String(err),
 			});
 		}
+	}
+	if (db && wroteFrame) {
+		try { await db.execute({ sql: "DELETE FROM radar_frame_cache WHERE created_at < ?", args: [Date.now() - 24 * 3600_000] }); }
+		catch (err) { logger.warn("Limpeza do cache de frames falhou", { error: String(err) }); }
 	}
 
 	if (analyses.length === 0) {

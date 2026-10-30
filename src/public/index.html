@@ -4624,7 +4624,7 @@ function copyPrompt(provider, text) {
       try { fetch('/api/track', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ event, sessionId: sid }) }).catch(() => {}); } catch {}
     };
     track('pageview');
-    setInterval(() => { if (document.visibilityState === 'visible') track('heartbeat'); }, 60000);
+    setInterval(() => { if (document.visibilityState === 'visible') track('heartbeat'); }, 180000);
     window.addEventListener('appinstalled', () => {
       localStorage.setItem('mi_installed', '1');
       track('install');

@@ -8,6 +8,7 @@ import {
 	saveEventLog,
 } from "../src/db.js";
 import { syncWeatherCycle } from "../src/index.js";
+import { ensureInitialized } from "../src/runtime-state.js";
 import {
 	conteudoPushChuvaIminente,
 	sendEventPush,
@@ -74,20 +75,22 @@ export default async function handler(req: any, res: any) {
 			);
 		}
 
-		await initDb();
-		// Uma trava compartilhada protege contra disparadores simultâneos. A
-		// expiração permite recuperação mesmo se a função for interrompida.
+		// Preparação leve antes da trava: disparos descartados não executam migrações.
 		const db = await getDbClient();
 		await db.execute(`CREATE TABLE IF NOT EXISTS cron_cycle_lock (
-			id INTEGER PRIMARY KEY, owner TEXT NOT NULL, expires_at INTEGER NOT NULL
+			id INTEGER PRIMARY KEY, owner TEXT NOT NULL, expires_at INTEGER NOT NULL,
+			last_completed_at INTEGER NOT NULL DEFAULT 0
 		)`);
+		try { await db.execute("ALTER TABLE cron_cycle_lock ADD COLUMN last_completed_at INTEGER NOT NULL DEFAULT 0"); } catch { /* já migrado */ }
+		// Uma trava compartilhada protege contra disparadores simultâneos. A
+		// expiração permite recuperação mesmo se a função for interrompida.
 		const owner = randomUUID();
 		const now = Date.now();
 		const lock = await db.execute({
-			sql: `INSERT INTO cron_cycle_lock (id, owner, expires_at) VALUES (1, ?, ?)
+			sql: `INSERT INTO cron_cycle_lock (id, owner, expires_at, last_completed_at) VALUES (1, ?, ?, 0)
 			ON CONFLICT(id) DO UPDATE SET owner=excluded.owner, expires_at=excluded.expires_at
-			WHERE cron_cycle_lock.expires_at <= ? RETURNING owner`,
-			args: [owner, now + 120_000, now],
+			WHERE cron_cycle_lock.expires_at <= ? AND cron_cycle_lock.last_completed_at <= ? RETURNING owner`,
+			args: [owner, now + 120_000, now, now - 9 * 60_000],
 		});
 		if (!lock.rows.length) {
 			const result = { status: "skipped", reason: "cycle already running or recently completed" };
@@ -95,8 +98,10 @@ export default async function handler(req: any, res: any) {
 			return Response.json(result);
 		}
 		lockOwner = owner;
+		await initDb();
 		const tracker = new EventTracker();
 		await tracker.init();
+		await ensureInitialized(tracker);
 
 		// Ciclo completo: clima + radar + nowcast (Camada A) + boletim NIM (Camada B),
 		// em paralelo com os checks de serviços. O texto da Camada B é persistido no
@@ -259,10 +264,10 @@ export default async function handler(req: any, res: any) {
 			try {
 				const db = await getDbClient();
 				await db.execute({
-					sql: completed
-						? "UPDATE cron_cycle_lock SET expires_at = ? WHERE id = 1 AND owner = ?"
+						sql: completed
+							? "UPDATE cron_cycle_lock SET expires_at = ?, last_completed_at = ? WHERE id = 1 AND owner = ?"
 						: "DELETE FROM cron_cycle_lock WHERE id = 1 AND owner = ?",
-					args: completed ? [Date.now() + 120_000, lockOwner] : [lockOwner],
+						args: completed ? [Date.now() + 120_000, Date.now(), lockOwner] : [lockOwner],
 				});
 			} catch (error) { console.error("Falha ao liberar trava do cron", error); }
 		}
