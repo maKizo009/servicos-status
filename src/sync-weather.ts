@@ -161,6 +161,7 @@ export async function syncWeatherCycle(): Promise<WeatherState> {
 			? "🌩️ Núcleos de chuva detectados na região dos Campos Gerais. Atenção para potencial deslocamento de instabilidades e oscilações na rede elétrica (COPEL)."
 			: "Sem instabilidades ativas no radar regional.",
 		hourlyForecast: weatherInfo.hourlyForecast || [],
+		instabilidade: weatherInfo.instabilidade ?? null,
 		// Saúde da fonte Open-Meteo: o fallback de defaults é dado INVENTADO e
 		// precisa aparecer como falha no source-health (ver src/source-health.ts).
 		fonteOpenMeteo: { ok: weatherInfo.ok, erro: weatherInfo.erro },
