@@ -118,6 +118,15 @@ export async function syncWeatherCycle(): Promise<WeatherState> {
 		fetchCurrentWeather(),
 		fetchCemadenIpiranga(),
 	]);
+	if (weatherInfo.instabilidade) {
+		try {
+			const { saveInstabilidadeSample } = await import("./db.js");
+			await saveInstabilidadeSample(weatherInfo.instabilidade);
+		} catch (err) {
+			logger.warn("Falha ao registrar instabilidade atmosférica", { error: String(err) });
+		}
+	}
+
 
 	// Triangulação hidro — mesmo ciclo (chuva CEMADEN alimenta IBR/IFL).
 	// Só estações FRESCAS: pluviômetro parado não pode virar "sem chuva" aqui.
