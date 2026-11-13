@@ -2754,9 +2754,11 @@ function showStaleNotice(ts){
  * Usado pelo boot (imagem ANTES da API) e pelo refresh de 5 min (frames NOVOS
  * sem esperar o TTL do estado, que só muda a cada ~10 min).
  */
+let radarIndexRequest = null;
+
 function montarRadarDoIndice(idx, substituir) {
   const past = idx && idx.radar && idx.radar.past;
-  if (!past || !past.length) return false;
+  if (!map || !past || !past.length) return false;
   // Quem manda é o frame MAIS NOVO, não quem chamou por último (22/09/2026).
   // O estado do /api/weather pode estar horas atrás — o cron que o atualiza é
   // agendado no GitHub Actions, que entrega a cada 2-3 h em vez de 10 min — e o
@@ -2764,10 +2766,14 @@ function montarRadarDoIndice(idx, substituir) {
   // resposta da API rebaixava o loop para um frame velho e o rótulo travava
   // (caso real: site exibindo 22:20 com a fonte publicando 23:10).
   const maisNovo = (lista) => Number((lista && lista.length ? lista[lista.length - 1] : {}).time) || 0;
-  if (substituir && radarFrames.length && maisNovo(radarFrames.slice(0, radarPastCount)) > maisNovo(past)) {
+  if (radarFrames.length && maisNovo(radarFrames.slice(0, radarPastCount)) > maisNovo(past)) {
     window._radarIgnorouEstadoVelho = maisNovo(past);
     return false;
   }
+  const ultimo = past[past.length - 1];
+  if (radarFrames.length && window._radarUltimoFrame === ultimo.path) return false;
+  const seguirAoVivo = !substituir || !radarFrames.length || currentFrameIndex === radarPastCount - 1;
+  const selecionado = radarFrames[currentFrameIndex]?.time;
   const host = idx.host || 'https://tilecache.rainviewer.com';
   radarFrames = [...past, ...(idx.radar.nowcast || [])];
   radarPastCount = past.length;
@@ -2785,8 +2791,9 @@ function montarRadarDoIndice(idx, substituir) {
   // requisições disputando a mesma banda, e a imagem que o cidadão realmente
   // olha (o frame mais recente) chegava atrás de 12 frames que ele nem vê. Agora
   // só o frame atual entra; o resto do loop entra quando ele já está na tela.
-  const alvoIdx = Math.max(0, Math.min(radarFrames.length - 1,
-    substituir ? Number(document.getElementById('radarSlider')?.value ?? 0) : radarPastCount - 1));
+  const anteriorIdx = radarFrames.findIndex((frame) => frame.time === selecionado);
+  const alvoIdx = seguirAoVivo ? radarPastCount - 1 : Math.max(0, anteriorIdx);
+  currentFrameIndex = alvoIdx;
   radarTileLayers[alvoIdx].addTo(map);
   const carregarLoop = () => {
     radarTileLayers.forEach((layer) => { if (!map.hasLayer(layer)) layer.addTo(map); });
@@ -2807,7 +2814,7 @@ function montarRadarDoIndice(idx, substituir) {
     carregarLoop();
   };
   window._dispararLoopRadar = dispararLoop;
-  camadaAtual.once('tileload', () => {
+  camadaAtual.on('tileload', () => {
     if (window._mostrarBaseMap) window._mostrarBaseMap();
     // 250 ms: o fade do Leaflet termina em ~200 ms e pode reescrever o tile com
     // 0. Reaplicar depois disso é o que garante a chuva visível (medido).
@@ -2832,14 +2839,11 @@ function montarRadarDoIndice(idx, substituir) {
   }
   const slider = document.getElementById('radarSlider');
   if (slider) {
-    const anterior = Number(slider.value);
     slider.max = Math.max(0, radarFrames.length - 1);
-    const novo = substituir ? anterior : Math.max(0, radarPastCount - 1);
-    currentFrameIndex = Math.min(radarFrames.length - 1, novo);
     slider.value = currentFrameIndex;
-    showRadarFrame(currentFrameIndex);
   }
-  window._radarUltimoFrame = past[past.length - 1].path;
+  showRadarFrame(currentFrameIndex);
+  window._radarUltimoFrame = ultimo.path;
   return true;
 }
 
@@ -2848,22 +2852,23 @@ function montarRadarDoIndice(idx, substituir) {
  * CORS *), sem esperar por /api/weather. Medição 21/09/2026: primeiro tile aos
  * 13,3 s em instância fria (a API regenerava o estado, 12,5 s) contra 0,43 s com
  * API quente — o radar nunca foi lento, ele esperava a API. Aqui a imagem
- * aparece primeiro; a ANÁLISE continua vindo da API, que ao chegar remove estas
- * camadas e monta as dela (frames alinhados com o boletim/alertas).
+ * aparece primeiro. A análise continua vindo da API; as imagens só aceitam
+ * índices iguais ou mais novos, mesmo quando o ciclo do backend está atrasado.
  */
 async function baixarIndiceRainViewer() {
-  const r = await fetch('https://api.rainviewer.com/public/weather-maps.json', { cache: 'no-store', priority: 'high' });
-  if (!r.ok) return null;
-  return await r.json();
+  if (!radarIndexRequest) {
+    radarIndexRequest = fetch('https://api.rainviewer.com/public/weather-maps.json', {
+      cache: 'no-store', priority: 'high', signal: AbortSignal.timeout(15000)
+    }).then((r) => r.ok ? r.json() : null).finally(() => { radarIndexRequest = null; });
+  }
+  return radarIndexRequest;
 }
 
 async function bootstrapRadar() {
   try {
-    if (radarTileLayers.length > 0) return; // a API já montou: não mexer
     const idx = await baixarIndiceRainViewer();
     if (!idx) return;
-    if (radarTileLayers.length > 0) return; // corrida com a API: quem chegou primeiro fica
-    if (montarRadarDoIndice(idx, false)) window._radarBootstrap = true;
+    if (montarRadarDoIndice(idx, radarTileLayers.length > 0)) window._radarBootstrap = true;
   } catch (e) {
     console.warn('bootstrap do radar falhou (a API segue como fonte da análise)', e);
   }
@@ -2877,18 +2882,16 @@ window.bootstrapRadar = bootstrapRadar;
 async function refreshRadar() {
   try {
     const idx = await baixarIndiceRainViewer();
-    const past = idx && idx.radar && idx.radar.past;
-    if (!past || !past.length) return;
-    const novo = past[past.length - 1].path;
-    if (window._radarUltimoFrame === novo) return; // sem frame novo: no-op
+    if (!idx) return;
     montarRadarDoIndice(idx, true);
-    window._radarUltimoFrame = novo;
   } catch (e) {
     console.warn('refresh do radar falhou', e);
   }
 }
 window.refreshRadar = refreshRadar;
-setInterval(refreshRadar, 5 * 60 * 1000);
+setInterval(() => {
+  if (document.visibilityState === 'visible') refreshRadar();
+}, 5 * 60 * 1000);
 
 async function fetchData(){
   const ri=$('#refreshIcon');
@@ -2995,7 +2998,9 @@ async function fetchStats(){
   }
 }
 
-document.getElementById('btnRefresh').addEventListener('click',fetchData);
+document.getElementById('btnRefresh').addEventListener('click', () => {
+  fetchData(); fetchWeatherData(); refreshRadar();
+});
 // Menu do topo: fecha ao clicar fora e no Esc (padrão de menu M3).
 (function(){
   const btn=document.getElementById('btnMenu'), pop=document.getElementById('menuPop');
@@ -3028,7 +3033,10 @@ setInterval(() => {
   if (document.visibilityState === 'visible') { fetchData(); fetchWeatherData(); }
 }, REFRESH_MS);
 document.addEventListener('visibilitychange', () => {
-  if (document.visibilityState === 'visible') { fetchData(); fetchWeatherData(); }
+  if (document.visibilityState === 'visible') { fetchData(); fetchWeatherData(); refreshRadar(); }
+});
+window.addEventListener('pageshow', (event) => {
+  if (event.persisted) refreshRadar();
 });
 
 // Weather & RainViewer Radar Map Logic
@@ -3269,78 +3277,9 @@ async function fetchWeatherData() {
     window._cargaPainel.clima = true;
     entradaPainel();
 
-    if (data.radar?.radar?.past && data.radar.radar.past.length > 0) {
-      const host = data.radar.host || 'https://tilecache.rainviewer.com';
-      const pastFrames = data.radar.radar.past;
-      const nowcastFrames = data.radar.radar.nowcast || [];
-      radarFrames = [...pastFrames, ...nowcastFrames];
-      radarPastCount = pastFrames.length;
-
-      radarTileLayers.forEach(l => map.removeLayer(l));
-      radarTileLayers = [];
-
-      // Só o frame que o cidadão olha entra agora; o resto do loop entra depois
-      // (rede folgada) ou quando ele PEDIR play/slider. Medição 22/09/2026:
-      // 13 frames × 4 tiles = 52 requisições, e o loop inteiro competia com a
-      // imagem que aparece primeiro. A animação é manual — dado baixado que
-      // ninguém olha é banda (e bateria) jogada fora em rede de celular.
-      const idxAlvo = Math.max(0, Math.min(radarFrames.length - 1, radarPastCount - 1));
-      radarFrames.forEach((frame, i) => {
-        // Display: esquema de cor 6 (o padrão de radar meteorológico). A análise
-        // determinística do backend (radar-analysis.ts) continua no esquema 2,
-        // que é o que o decodificador de paleta espera — não mexer.
-        const tileUrl = `${host}${frame.path}/256/{z}/{x}/{y}/6/1_1.png`;
-        const layer = L.tileLayer(tileUrl, {
-          pane: 'radarPane',
-          tileSize: 256,
-          opacity: 0,
-          maxNativeZoom: 7,
-          maxZoom: 14,
-          className: 'rain-tile'
-        });
-        radarTileLayers.push(layer);
-        if (i === idxAlvo) layer.addTo(map);
-      });
-
-      const camadaAtual = radarTileLayers[idxAlvo];
-      // Mesmo motivo do caminho do bootstrap: reaplica o frame depois do fade
-      // (cobre também tiles novos criados por pan/zoom).
-      camadaAtual.on('tileload', () => setTimeout(() => showRadarFrame(currentFrameIndex), 250));
-      let loopDisparado = false;
-      const dispararLoop = () => {
-        if (loopDisparado) return;
-        loopDisparado = true;
-        radarTileLayers.forEach((layer) => { if (!map.hasLayer(layer)) layer.addTo(map); });
-      };
-      // O slider e o botão ▶ chamam este mesmo carregador: pedido do usuário
-      // vence qualquer adiamento.
-      window._carregarLoopRadar = dispararLoop;
-      window._dispararLoopRadar = dispararLoop;
-      const conn =
-        navigator.connection || navigator.mozConnection || navigator.webkitConnection || {};
-      const redeFolgada =
-        !conn.saveData && (!conn.effectiveType || conn.effectiveType === '4g');
-      window._radarLoopAdiado = !redeFolgada;
-      if (redeFolgada) {
-        camadaAtual.once('load', () => {
-          const s = map.getSize ? map.getSize() : null;
-          if (s && s.x > 0 && s.y > 0) dispararLoop();
-        });
-        setTimeout(dispararLoop, 12000); // rede de segurança (rede ruim/erro de tile)
-      }
-
-      const slider = document.getElementById('radarSlider');
-      if(slider) {
-        slider.max = Math.max(0, radarFrames.length - 1);
-        // Frame padrão = último frame REAL (past), NÃO a previsão (nowcast):
-        // o nowcast do RainViewer pode estar vazio ou com tiles sem dados na
-        // região — com a previsão selecionada o radar "some" do mapa
-        // (incidente 2026-08-12: mapa limpo com '10:30 (Previsão)' ativo).
-        currentFrameIndex = Math.max(0, radarPastCount - 1);
-        slider.value = currentFrameIndex;
-        showRadarFrame(currentFrameIndex);
-      }
-    }
+    // Todas as fontes passam pela mesma guarda: a resposta persistida da API
+    // nunca pode desfazer uma atualização mais recente obtida do RainViewer.
+    if (data.radar) montarRadarDoIndice(data.radar, true);
   } catch (e) {
     console.error("Weather fetch error", e);
   }
@@ -3951,7 +3890,7 @@ function renderNowcastCard(data) {
   const ultima = passados.length ? passados[passados.length - 1].time : (nc.frames[nc.frames.length - 1]||{}).time || null;
   const linhas = [];
   if (ultima) {
-    linhas.push(`<div class="fact-linha"><span>Última varredura do radar</span><strong>${new Date(ultima * 1000).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}</strong></div>`);
+    linhas.push(`<div class="fact-linha"><span>Varredura usada na análise</span><strong>${new Date(ultima * 1000).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}</strong></div>`);
   }
   if (perto) {
     linhas.push(`<div class="fact-linha"><span>Chuva no radar</span><strong>${esc(intensityMap[dom] || dom)}</strong></div>`);
