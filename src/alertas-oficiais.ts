@@ -265,6 +265,8 @@ export interface DadosLocaisAlerta {
 	pluviometroSemDado?: boolean;
 	ecmwfPct: number | null;
 	ecmwfProx6hMm: number | null;
+	/** CAPE previsto para a hora atual, em J/kg; somente contexto. */
+	capeJkg?: number | null;
 	radarAlertLevel: "alert" | "watch" | "monitor" | "none";
 	/**
 	 * Núcleo de tempestade (heavy/extreme) na zona de alerta — é o que PODE
@@ -563,10 +565,16 @@ export function buildAlertaUnificado(
 			? ` Alerta subiu de ${anterior} para ${nivel}.`
 			: "";
 
+	const cape = local.capeJkg;
+	// Referência experimental: contextualiza radar ativo sem alterar nível ou push.
+	const contextoInstabilidade = (local.radarAlertLevel === "watch" || local.radarAlertLevel === "alert") &&
+		typeof cape === "number" && Number.isFinite(cape) && cape >= 1000
+		? ` Modelo indica ambiente favorável à convecção (CAPE ${Math.round(cape)} J/kg); isso não confirma tempestade.`
+		: "";
 	const descricao =
-		motivos.length > 0
+		(motivos.length > 0
 			? `${titulo}. Motivos: ${motivos.join("; ")}.${mudanca}`
-			: `${desceu ? titulo : "Sem chuva relevante medida nem avisos oficiais para Ipiranga no momento."}${mudanca}`;
+			: `${desceu ? titulo : "Sem chuva relevante medida nem avisos oficiais para Ipiranga no momento."}${mudanca}`) + contextoInstabilidade;
 
 	return {
 		nivel,
