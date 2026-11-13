@@ -10,8 +10,10 @@ import type {
 const RAINVIEWER_API_URL =
 	"https://api.rainviewer.com/public/weather-maps.json";
 // Modelo Europeu ECMWF IFS ("O Rei" da meteorologia)
-const OPEN_METEO_API_URL =
+const OPEN_METEO_BASE_URL =
 	"https://api.open-meteo.com/v1/forecast?latitude=-25.0244&longitude=-50.5847&current=temperature_2m,relative_humidity_2m,precipitation,wind_speed_10m,weather_code&hourly=temperature_2m,relativehumidity_2m,precipitation_probability,precipitation,cloudcover&models=ecmwf_ifs025&timezone=America%2FSao_Paulo";
+
+const OPEN_METEO_API_URL = OPEN_METEO_BASE_URL.replace("cloudcover&models=", "cloudcover,cape,convective_inhibition&models=");
 
 let cachedWeatherState: WeatherState | null = null;
 
@@ -128,6 +130,7 @@ export async function fetchCurrentWeather(): Promise<{
 	windKmh: number;
 	humidityPct: number;
 	hourlyForecast: HourlyForecastPoint[];
+	instabilidade: WeatherState["instabilidade"];
 	/** O fetch REAL funcionou? false = valores abaixo são defaults inventados. */
 	ok: boolean;
 	erro: string | null;
@@ -136,8 +139,10 @@ export async function fetchCurrentWeather(): Promise<{
 		const controller = new AbortController();
 		const timeoutId = setTimeout(() => controller.abort(), 6_000);
 
-		const res = await fetch(OPEN_METEO_API_URL, { signal: controller.signal });
+		let res = await fetch(OPEN_METEO_API_URL, { signal: controller.signal });
 		clearTimeout(timeoutId);
+		// Preserve o clima existente caso as novas variáveis não sejam aceitas.
+		if (!res.ok) res = await fetch(OPEN_METEO_BASE_URL, { signal: AbortSignal.timeout(6000) });
 
 		if (!res.ok) {
 			throw new Error(`OpenMeteo HTTP ${res.status}`);
@@ -145,6 +150,7 @@ export async function fetchCurrentWeather(): Promise<{
 
 		const data = (await res.json()) as {
 			current?: {
+				time?: string;
 				temperature_2m?: number;
 				wind_speed_10m?: number;
 				weather_code?: number;
@@ -153,6 +159,8 @@ export async function fetchCurrentWeather(): Promise<{
 			};
 			hourly?: {
 				time?: string[];
+				cape?: (number | null)[];
+				convective_inhibition?: (number | null)[];
 				temperature_2m?: number[];
 				precipitation_probability?: number[];
 				precipitation?: number[];
@@ -168,6 +176,19 @@ export async function fetchCurrentWeather(): Promise<{
 		const hourlyForecast: HourlyForecastPoint[] = [];
 		const times = data.hourly?.time || [];
 		const temps = data.hourly?.temperature_2m || [];
+		// O horário da resposta já está no fuso solicitado; compare data e hora completas.
+		const horaAtual = data.current?.time?.slice(0, 13);
+		const indiceInstabilidade = horaAtual ? times.findIndex((t) => t.slice(0, 13) === horaAtual) : -1;
+		const valorValido = (v: number | null | undefined): number | null =>
+			typeof v === "number" && Number.isFinite(v) ? v : null;
+		const instabilidade = indiceInstabilidade < 0 ? null : {
+			cape: valorValido(data.hourly?.cape?.[indiceInstabilidade]),
+			cin: valorValido(data.hourly?.convective_inhibition?.[indiceInstabilidade]),
+			validoPara: times[indiceInstabilidade],
+			fuso: "America/Sao_Paulo",
+			fonte: "Open-Meteo / ECMWF IFS 0.25°",
+			consultadoEm: Date.now(),
+		};
 		const probs = data.hourly?.precipitation_probability || [];
 		const precips = data.hourly?.precipitation || [];
 
@@ -224,6 +245,7 @@ export async function fetchCurrentWeather(): Promise<{
 			windKmh,
 			humidityPct,
 			hourlyForecast,
+			instabilidade,
 			ok: true,
 			erro: null,
 		};
@@ -238,6 +260,7 @@ export async function fetchCurrentWeather(): Promise<{
 			windKmh: 14,
 			humidityPct: 68,
 			hourlyForecast: [],
+			instabilidade: null,
 			// Defaults INVENTADOS — o source-health marca a fonte como fora
 			// para o vigia alertar em vez do site mentir em silêncio.
 			ok: false,

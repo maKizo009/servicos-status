@@ -156,6 +156,8 @@ export interface WeatherState {
 	 */
 	nearestThreatApproach?: "approaching" | "receding" | "crossing" | null;
 	hourlyForecast: HourlyForecastPoint[];
+	/** Previsão horária do ambiente, informativa; não integra os alertas. */
+	instabilidade?: { cape: number | null; cin: number | null; validoPara: string; fuso: string; fonte: string; consultadoEm: number } | null;
 	/**
 	 * Resultado REAL do fetch do Open-Meteo (30/09/2026). O fallback de
 	 * `fetchCurrentWeather` inventa temperatura padrão quando a API falha —

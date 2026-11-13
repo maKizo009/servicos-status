@@ -118,6 +118,15 @@ export async function syncWeatherCycle(): Promise<WeatherState> {
 		fetchCurrentWeather(),
 		fetchCemadenIpiranga(),
 	]);
+	if (weatherInfo.instabilidade) {
+		try {
+			const { saveInstabilidadeSample } = await import("./db.js");
+			await saveInstabilidadeSample(weatherInfo.instabilidade);
+		} catch (err) {
+			logger.warn("Falha ao registrar instabilidade atmosférica", { error: String(err) });
+		}
+	}
+
 
 	// Triangulação hidro — mesmo ciclo (chuva CEMADEN alimenta IBR/IFL).
 	// Só estações FRESCAS: pluviômetro parado não pode virar "sem chuva" aqui.
@@ -161,6 +170,7 @@ export async function syncWeatherCycle(): Promise<WeatherState> {
 			? "🌩️ Núcleos de chuva detectados na região dos Campos Gerais. Atenção para potencial deslocamento de instabilidades e oscilações na rede elétrica (COPEL)."
 			: "Sem instabilidades ativas no radar regional.",
 		hourlyForecast: weatherInfo.hourlyForecast || [],
+		instabilidade: weatherInfo.instabilidade ?? null,
 		// Saúde da fonte Open-Meteo: o fallback de defaults é dado INVENTADO e
 		// precisa aparecer como falha no source-health (ver src/source-health.ts).
 		fonteOpenMeteo: { ok: weatherInfo.ok, erro: weatherInfo.erro },
@@ -499,6 +509,7 @@ export async function syncWeatherCycle(): Promise<WeatherState> {
 				pluviometroSemDado: !temEstacaoFresca(estsA),
 				ecmwfPct: weatherInfo.rainProbabilityPct,
 				ecmwfProx6hMm: prox6h,
+				capeJkg: weatherInfo.instabilidade?.cape ?? null,
 				radarAlertLevel: state.alertLevel ?? "monitor",
 				// Laranja/push exige evidência CONFIRMADA entre ciclos; o 1º ciclo
 				// de um núcleo severo fica no amarelo com motivo explícito.
