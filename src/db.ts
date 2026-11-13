@@ -773,3 +773,14 @@ export function closeDb(): void {
 		client = null;
 	}
 }
+
+/** Amostra horária para validação posterior; não participa dos alertas. */
+export async function saveInstabilidadeSample(sample: NonNullable<import("./types.js").WeatherState["instabilidade"]>): Promise<void> {
+	if (sample.cape === null && sample.cin === null) return;
+	const db = await getDbClient();
+	await db.execute("CREATE TABLE IF NOT EXISTS instability_samples (sample_hour INTEGER PRIMARY KEY, valid_time TEXT NOT NULL, timezone TEXT NOT NULL, source TEXT NOT NULL, fetched_at INTEGER NOT NULL, cape REAL, cin REAL)");
+	await db.execute({
+		sql: "INSERT OR IGNORE INTO instability_samples (sample_hour, valid_time, timezone, source, fetched_at, cape, cin) VALUES (?, ?, ?, ?, ?, ?, ?)",
+		args: [Math.floor(sample.consultadoEm / 3600000), sample.validoPara, sample.fuso, sample.fonte, sample.consultadoEm, sample.cape, sample.cin],
+	});
+}
