@@ -509,6 +509,7 @@ export async function syncWeatherCycle(): Promise<WeatherState> {
 				pluviometroSemDado: !temEstacaoFresca(estsA),
 				ecmwfPct: weatherInfo.rainProbabilityPct,
 				ecmwfProx6hMm: prox6h,
+				capeJkg: weatherInfo.instabilidade?.cape ?? null,
 				radarAlertLevel: state.alertLevel ?? "monitor",
 				// Laranja/push exige evidência CONFIRMADA entre ciclos; o 1º ciclo
 				// de um núcleo severo fica no amarelo com motivo explícito.
