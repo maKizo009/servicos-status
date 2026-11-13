@@ -2141,6 +2141,7 @@ html.trocando-tema, html.trocando-tema *{transition:none !important}
           <span class="wx-wind" id="wxWindBadge">-- km/h</span>
         </div>
         <p class="wx-chance" id="wxRainBadge">Chance de chuva nas próximas 6 h: --%</p>
+        <p class="wx-chance" id="wxInstabilidade">Instabilidade atmosférica: aguardando previsão.</p>
 
         <div class="wx-medida">
           <div class="panel-subhead">Chuva medida nas últimas 24 h</div>
@@ -3207,6 +3208,12 @@ async function fetchWeatherData() {
     if (!resp.ok) return;
     const data = await resp.json();
     window.latestWeatherData = data;
+    const instEl = document.getElementById("wxInstabilidade");
+    if (instEl) {
+      const inst = data.instabilidade;
+      const fmt = (v) => typeof v === "number" && Number.isFinite(v) ? `${Math.round(v)} J/kg` : "indisponível";
+      instEl.textContent = inst ? `Previsão de instabilidade (${inst.validoPara.replace("T", " ")} · horário de Brasília): CAPE ${fmt(inst.cape)} · CIN ${fmt(inst.cin)} · ${inst.fonte}. Não é alerta.` : "Previsão de instabilidade indisponível.";
+    }
 
     if (data.tempC !== undefined) {
       const tEl = document.getElementById('wxTempBadge');
