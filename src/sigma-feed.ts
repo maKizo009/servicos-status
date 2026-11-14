@@ -272,6 +272,7 @@ export async function fetchSigmaRede(
 	agora: Date = new Date(),
 ): Promise<SigmaResultado> {
 	const tentativas: string[] = [];
+	const falhas: string[] = [];
 	let cookie = await obterCookie();
 	for (let atras = 0; atras <= 2; atras++) {
 		const quando = new Date(agora.getTime() - atras * 60 * 60_000);
@@ -301,13 +302,19 @@ export async function fetchSigmaRede(
 					signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
 				});
 			}
-			if (!r.ok) continue;
+			if (!r.ok) {
+				falhas.push(`${caminho}: HTTP ${r.status}`);
+				continue;
+			}
 			const texto = await r.text();
 			const estacoes = texto
 				.split("\n")
 				.map((l) => parseSigmaLinha(l, agora.getTime()))
 				.filter((e): e is SigmaEstacao => e != null);
-			if (estacoes.length === 0) continue;
+			if (estacoes.length === 0) {
+				falhas.push(`${caminho}: sem estações reconhecidas`);
+				continue;
+			}
 			return { rede, arquivo: caminho, estacoes };
 		} catch (err) {
 			return { rede, arquivo: null, estacoes: [], erro: String(err) };
@@ -317,7 +324,7 @@ export async function fetchSigmaRede(
 		rede,
 		arquivo: null,
 		estacoes: [],
-		erro: `nenhum arquivo disponível (tentei ${tentativas.join(", ")})`,
+		erro: `nenhum arquivo disponível (${falhas.join("; ") || tentativas.join(", ")})`,
 	};
 }
 

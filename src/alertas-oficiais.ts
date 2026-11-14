@@ -330,7 +330,9 @@ export function descricaoParaPessoas(
 	const oQueTem: Record<string, string> = {
 		vermelho:
 			"Chuva muito forte na região — risco de alagamento e queda de energia.",
-		laranja: tituloLower.includes("risco de tempestade")
+		laranja: tituloLower.includes("chuva acumulada")
+			? "Chuva acumulada recentemente — atenção a alagamentos e ao nível dos córregos."
+			: tituloLower.includes("risco de tempestade")
 			? "Condição de risco hoje (chuva acumulada, rio em atenção e aviso oficial ativo) — sem chuva forte caindo neste momento."
 			: tituloLower.includes("se aproximando")
 				? "Chuva forte se aproximando da região."
@@ -385,7 +387,7 @@ export function buildAlertaUnificado(
 		motivos.push(
 			`chuva forte medida em Ipiranga (${c1.toFixed(1).replace(".", ",")} mm/1h, ${c6.toFixed(1).replace(".", ",")} mm/6h)`,
 		);
-	} else if (c6 >= 25 || c24 >= 50 || local.radarSevero) {
+	} else if ((c6 >= 25 && c1 >= 0.5) || c24 >= 50 || local.radarSevero) {
 		// Laranja = interrompe o celular. Exige SEVERIDADE: chuva medida acima do
 		// limiar OU núcleo de tempestade na zona de alerta. Área de chuva moderada
 		// NÃO promove a laranja (regra do dono 21/09/2026) — ela fica no amarelo,
@@ -403,7 +405,7 @@ export function buildAlertaUnificado(
 					`chuva forte confirmada no radar há ${ciclos} checagens seguidas`,
 				);
 		}
-		if (c6 >= 25)
+		if (c6 >= 25 && c1 >= 0.5)
 			motivos.push(
 				`${c6.toFixed(1).replace(".", ",")} mm em 6h nos pluviômetros`,
 			);
@@ -526,13 +528,13 @@ export function buildAlertaUnificado(
 	// Cai chuva forte AGORA? (medido no bico, ou núcleo de tempestade na zona
 	// de alerta iminente do radar)
 	const forteAgora =
-		c1 >= 10 || c6 >= 25 || local.radarAlertLevel === "alert";
+		c1 >= 10;
 	// Chuva ainda NÃO caiu aqui: o radar vê a entidade chegando (sem pluviômetro).
 	// Título diz "se aproximando", nunca "chuva em Ipiranga" (que o leitor lê como
 	// chuva caindo agora).
 	const nucleoChegando =
 		local.radarAlertLevel === "alert" || local.radarAlertLevel === "watch";
-	const soRadar = medidoChuva && !(c1 >= 0.5 || c6 >= 5) && nucleoChegando;
+	const soRadar = medidoChuva && c1 < 0.5 && nucleoChegando;
 	const titulo =
 		nivel === "vermelho"
 			? "Alerta vermelho — risco alto de chuva forte em Ipiranga"
@@ -541,7 +543,9 @@ export function buildAlertaUnificado(
 					? "Alerta laranja — chuva forte em Ipiranga/região"
 					: soRadar
 						? "Alerta laranja — chuva forte se aproximando de Ipiranga/região"
-						: "Alerta laranja — risco de tempestade para Ipiranga (avisos oficiais; sem chuva forte agora)"
+						: c6 >= 25 || c24 >= 50
+							? "Alerta laranja — chuva acumulada em Ipiranga; atenção a alagamentos"
+							: "Alerta laranja — risco de tempestade para Ipiranga (avisos oficiais; sem chuva forte agora)"
 				: nivel === "amarelo"
 					? soPrevisao
 						? "Atenção — previsão de chuva para Ipiranga/região (nada medido ainda)"

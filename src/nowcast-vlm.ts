@@ -881,8 +881,7 @@ export function buildHeuristicBulletin(
 ): string {
 	const m = nowcast.movement;
 	const dirs = ["N", "NE", "L", "SE", "S", "SO", "O", "NO"];
-	const dirLabel = m ? dirs[Math.round(m.directionDeg / 45) % 8] : null;
-	const intensityLabel: Record<string, string> = {
+		const intensityLabel: Record<string, string> = {
 		light: "fraca",
 		moderate: "moderada",
 		heavy: "forte",
@@ -938,7 +937,8 @@ export function buildHeuristicBulletin(
 	// Núcleo mais ameaçador (já avaliado pela Camada A contra Ipiranga).
 	// -> município real (malha IBGE) + distância.
 	const cell = nowcast.threats[0];
-	const cellMovement = cell.movement ?? m;
+	const cellMovement = cell.movement ?? null;
+	const dirLabel = cellMovement ? dirs[Math.round(cellMovement.directionDeg / 45) % 8] : null;
 	let verdict: ThreatVerdict | null = cell.threat ?? null;
 	if (cellMovement && !verdict) {
 		verdict = assessThreat(
@@ -1023,10 +1023,10 @@ export function buildHeuristicBulletin(
 	// Frases por nível de alerta (proporcionalidade determinística).
 	// ⚠️ Só descreve movimento com speedKmh > 1; velocidade ~0 = estacionário
 	// (não dizer "se deslocando a 0 km/h" — frase sem sentido, pitfall skill).
-	const temMovimento = Boolean(m && m.speedKmh > 1);
+	const temMovimento = Boolean(cellMovement && cellMovement.speedKmh > 1);
 	const movimentoTxt = temMovimento
-		? `${dirLabel ? `, deslocando-se para ${dirLabel}` : ", em movimento"} a ${Math.round(m!.speedKmh)} km/h`
-		: ", sem movimento significativo (estacionário)";
+		? `${dirLabel ? `, deslocando-se para ${dirLabel}` : ", em movimento"} a ${Math.round(cellMovement!.speedKmh)} km/h`
+		: cellMovement ? ", sem movimento significativo (estacionário)" : ", sem deslocamento confirmado";
 	const baseLoc = `${sujeitoLoc} ${intensity} em ${rotulo.nome}${rotUf}${rotulo.metodo}, a ${ipirangaKm} km de Ipiranga${movimentoTxt}.`;
 
 	let corpo: string;

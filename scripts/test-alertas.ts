@@ -65,13 +65,19 @@ describe("Alerta unificado próprio", () => {
 		expect(a.titulo).not.toContain("chuva forte em Ipiranga");
 	});
 
-	test("chuva forte MEDIDA agora (25mm/6h) → título afirma", () => {
+	test("25mm/6h com chuva recente gera laranja", () => {
 		const a = buildAlertaUnificado(
-			local({ acc6hrMax: 25, acc24hrMax: 30 }),
+			local({ acc1hrMax: 10, acc6hrMax: 25, acc24hrMax: 30 }),
 			null,
 		);
 		expect(a.nivel).toBe("laranja");
 		expect(a.titulo).toContain("chuva forte em Ipiranga");
+	});
+
+	test("25,8 mm em 6h sem chuva recente nem radar confirmado fica amarelo", () => {
+		const a = buildAlertaUnificado(local({ acc1hrMax: 0, acc6hrMax: 25.8, acc24hrMax: 25.8, radarAlertLevel: "alert", radarSeveroNaoConfirmado: true }), null);
+		expect(a.nivel).toBe("amarelo");
+		expect(pushParaAlerta(a.nivel)).toBeNull();
 	});
 
 	test("amarelo só com acumulado (24h) não afirma chuva em andamento", () => {
@@ -113,6 +119,7 @@ describe("Alerta unificado próprio", () => {
 	test("núcleo severo COM chuva medida aqui → laranja 'em Ipiranga'", () => {
 		const a = buildAlertaUnificado(
 			local({
+				acc1hrMax: 10,
 				acc6hrMax: 26,
 				radarAlertLevel: "alert",
 				radarSevero: true,
@@ -160,7 +167,7 @@ describe("Alerta unificado próprio", () => {
 	});
 
 	test("chuva MEDIDA acima do limiar gera push mesmo sem radar", () => {
-		const a = buildAlertaUnificado(local({ acc6hrMax: 30 }), oficiais());
+		const a = buildAlertaUnificado(local({ acc1hrMax: 1, acc6hrMax: 30 }), oficiais());
 		expect(pushParaAlerta(a.nivel)).not.toBeNull();
 	});
 

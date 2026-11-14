@@ -71,6 +71,13 @@ function nowcastCom(
 }
 
 describe("Heurística determinística (sem LLM)", () => {
+	test("movimento descrito pertence à célula ameaçadora", () => {
+		const cell = threatCell({movement: mov(10, 42.5)});
+		const b = buildHeuristicBulletin(nowcastCom(cell, {movement: mov(63, 16.6)}), undefined, {alertLevel: "alert"});
+		expect(b).toContain("43 km/h");
+		expect(b).not.toContain("17 km/h");
+	});
+
 	test("aproximando em zona ALERT → cita alerta real + município + distância", () => {
 		const b = buildHeuristicBulletin(
 			nowcastCom(threatCell({ lat: -25.2, lon: -50.7, distToTargetKm: 30 })),

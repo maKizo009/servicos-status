@@ -359,6 +359,7 @@ export async function syncWeatherCycle(): Promise<WeatherState> {
 					cidades: quentes.map((c) => c.nome).join(", "),
 					redes: porRede.map((r) => `${r.rede}=${r.estacoes.length}`).join(" "),
 					noResumo: state.soloCidades.length,
+					erros: porRede.filter((r) => r.erro).map((r) => ({ rede: r.rede, erro: r.erro })),
 				});
 			}
 		} catch (err) {
