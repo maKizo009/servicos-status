@@ -156,6 +156,7 @@ export interface WeatherState {
 	 */
 	nearestThreatApproach?: "approaching" | "receding" | "crossing" | null;
 	hourlyForecast: HourlyForecastPoint[];
+	previsaoCincoDias?: import("./previsao-cinco-dias.js").PrevisaoCincoDias | null;
 	/** Previsão horária do ambiente, informativa; não integra os alertas. */
 	instabilidade?: { cape: number | null; cin: number | null; validoPara: string; fuso: string; fonte: string; consultadoEm: number } | null;
 	/**

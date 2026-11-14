@@ -64,6 +64,7 @@ import {
 	ensureInitialized,
 	loadWeatherState,
 } from "./runtime-state.js";
+import { prepararPrevisao } from "./previsao-cinco-dias.js";
 import type { RainAlertLevel, WeatherState } from "./types.js";
 
 export async function syncWeatherCycle(): Promise<WeatherState> {
@@ -158,6 +159,9 @@ export async function syncWeatherCycle(): Promise<WeatherState> {
 			? existingBulletin
 			: null;
 
+	const previsaoAnterior = (await loadWeatherState(24 * 3600_000))?.previsaoCincoDias ?? null;
+	const previsaoCincoDias = await prepararPrevisao(weatherInfo.previsaoDiaria, previsaoAnterior, config.openRouterApiKey);
+
 	const state: WeatherState = {
 		municipio: config.municipio || "Ipiranga",
 		tempC: weatherInfo.tempC,
@@ -170,6 +174,7 @@ export async function syncWeatherCycle(): Promise<WeatherState> {
 			? "🌩️ Núcleos de chuva detectados na região dos Campos Gerais. Atenção para potencial deslocamento de instabilidades e oscilações na rede elétrica (COPEL)."
 			: "Sem instabilidades ativas no radar regional.",
 		hourlyForecast: weatherInfo.hourlyForecast || [],
+		previsaoCincoDias,
 		instabilidade: weatherInfo.instabilidade ?? null,
 		// Saúde da fonte Open-Meteo: o fallback de defaults é dado INVENTADO e
 		// precisa aparecer como falha no source-health (ver src/source-health.ts).
