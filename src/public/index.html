@@ -3500,6 +3500,17 @@ function vereditoGeral(){
       sub:`Núcleo de chuva forte${km} da cidade, ${vindo?'vindo para a região'
         :ap==='receding'?'se afastando da região':'passando perto da região'}.`};
   }
+  /* Uma interrupção ativa tem prioridade sobre atenção hidrológica; alerta e
+     emergência de cheia continuam prioritários. */
+  if(semLuz>0 && rio.chave!=='alerta' && rio.chave!=='emergencia'){
+    const en=estadoDaEnergia(sev);
+    const detalheRio=rio.recessao
+      ? ` Rio ${rio.estacao}: nível sem subir há ${num(rio.recessao.horasSemSubir,0)} h.`
+      : '';
+    return {nivel:en==='alerta'?'crit':en==='atencao'?'warn':'info',
+      frase:`${consumidores(semLuz)} sem luz`,
+      sub:`Ocorrência ativa da COPEL no município.${detalheRio}`};
+  }
   if(rio.chave!=='normal'){
     /* O rio em ATTENÇÃO porque está DESCENDO precisa DIZER que está descendo —
        senão o leitor vê "atenção" com nível alto e não entende por que o alerta
