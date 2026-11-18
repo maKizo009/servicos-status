@@ -92,7 +92,7 @@ export async function handlePushRoutes(ctx: RotaCtx): Promise<Response | null> {
 			}
 			const { salvarLocalidadePush } = await import("../push.js");
 			const salvo = await salvarLocalidadePush({ endpoint: body.endpoint, keys: { p256dh: body.keys.p256dh, auth: body.keys.auth } }, body.localidade);
-			return salvo ? Response.json({ status: "ok" }) : Response.json({ error: "Inscrição não encontrada" }, { status: 400 });
+			return salvo ? Response.json({ status: "ok" }) : Response.json({ error: "Inscrição não encontrada", code: "SUBSCRIPTION_NOT_FOUND" }, { status: 400 });
 		} catch {
 			return Response.json({ error: "Requisição inválida" }, { status: 400 });
 		}

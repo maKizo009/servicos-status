@@ -265,61 +265,96 @@
   display:inline-flex;align-items:center;gap:6px
 }
 
+.radar-card>.panel-head{padding:4px 12px 0 14px;flex-wrap:nowrap}
+.radar-head-actions{margin-left:auto;display:flex}
+.radar-products,.radar-player,.radar-footer{display:flex;align-items:center;gap:8px;padding:0 14px}
+.radar-products{padding-bottom:4px}
+.radar-segments{display:flex}
+.radar-action,.radar-segment{
+  display:grid;place-items:center;min-height:48px;min-width:48px;
+  background:none;border:0;color:var(--text);font:inherit;cursor:pointer
+}
+.radar-action-face,.radar-segment span{
+  display:grid;place-items:center;border-radius:var(--md-shape-corner-full);
+  background:var(--md-sys-color-surface-container-highest);color:var(--text);
+  transition:background var(--dur-2) var(--motion-standard),color var(--dur-2) var(--motion-standard)
+}
+.radar-action-face{width:36px;height:36px}
+.radar-segment span{height:32px;padding:0 14px;font-size:13px;font-weight:600}
+.radar-segment:first-child span{border-start-end-radius:0;border-end-end-radius:0}
+.radar-segment:last-child span{border-start-start-radius:0;border-end-start-radius:0}
+.radar-action:hover .radar-action-face,.radar-segment:hover span{
+  background:var(--md-sys-color-secondary-container);color:var(--md-sys-color-on-secondary-container)
+}
+.radar-action[aria-pressed="true"] .radar-action-face,
+.radar-segment[aria-pressed="true"] span,.radar-play-btn .radar-action-face{
+  background:var(--brand);color:var(--on-brand)
+}
+.radar-play-btn .radar-action-face{width:40px;height:40px}
+.radar-play-btn:enabled:hover .radar-action-face{background:var(--brand);color:var(--on-brand);filter:brightness(1.08)}
+.radar-card :disabled{cursor:default}
+.radar-play-btn:disabled .radar-action-face{background:var(--md-sys-color-surface-container-highest);color:var(--text3)}
+.radar-card :is(button,input,a):focus-visible{outline:2px solid var(--brand);outline-offset:0;border-radius:var(--md-shape-corner-small)}
+.radar-card [hidden]{display:none}
 .radar-map-wrapper{
-  position:relative;background:#090d16;height:380px;width:100%;
-  /* `z-index` + `isolation` fecham um contexto de empilhamento AQUI, de propósito:
-     o Leaflet usa z-index 400 (panes) e 800/1000 (botões de zoom, barra de play)
-     por dentro. Sem este contexto, eles subiam por cima do cabeçalho sticky
-     (z-index 70) enquanto o card do radar passava por baixo dele ao rolar —
-     no celular a barra do radar "colava" no topo da tela. Com o contexto,
-     tudo do mapa fica preso dentro do wrapper (z-index 0, abaixo do cabeçalho).
-     A tela cheia continua funcionando: a regra .is-fullscreen põe z-index 99999
-     no PRÓPRIO wrapper, então a subárvore inteira sobe junto. */
-  z-index:0;isolation:isolate
+  position:relative;isolation:isolate;min-height:0;
+  height:clamp(252px,38vw,428px);background:var(--md-sys-color-surface-container-lowest)
 }
-/* O wrapper nasceu como flex item do card (`flex:1 1 auto;height:auto`) e a altura
-   usada dele vem de `min-height` — com o pai em `height:auto`, `height:100%` aqui
-   resolvia para `auto` e o contêiner do mapa ficava com 0 px de altura: o radar
-   aparecia PRETO no modo normal (tela cheia funcionava porque lá o wrapper vira
-   `height:100vh`, altura definida). Preencher por posicionamento absoluto não
-   depende dessa resolução: o mapa ocupa a caixa usada do wrapper sempre. */
-#weatherMap{position:absolute;inset:0;width:100%;height:100%;z-index:1}
-
-.radar-controls-overlay{
-  position:absolute;bottom:16px;left:16px;right:16px;z-index:1000;
-  background:rgba(15,23,42,.88);backdrop-filter:blur(16px);
-  border-radius:var(--md-shape-corner-full);padding:10px 16px;
-  display:flex;align-items:center;gap:14px;color:#fff;flex-wrap:wrap;
-  box-shadow:0 8px 24px rgba(0,0,0,.25)
+#weatherMap{position:absolute;inset:0;background:inherit}
+#weatherMap .radar-neutral{filter:saturate(.35)}
+#weatherMap .radar-aerial{filter:brightness(.65)}
+#weatherMap .radar-city-halo{stroke:var(--appbar-on)}
+#weatherMap .radar-city-line{stroke:var(--st-info)}
+#weatherMap .radar-neighbor-line{stroke:var(--text3)}
+.radar-map-status{
+  position:absolute;inset:auto 10px 10px;z-index:650;display:flex;justify-content:center;pointer-events:none
 }
-.radar-play-btn{
-  background:var(--brand);border:none;color:var(--on-brand);width:44px;height:44px;border-radius:var(--md-shape-corner-medium);
-  cursor:pointer;display:flex;align-items:center;justify-content:center;font-weight:600;
-  transition:all .2s ease;flex-shrink:0
+.radar-map-status span{
+  background:var(--surface);color:var(--text);padding:6px 10px;text-align:center;
+  border-radius:var(--md-shape-corner-small);box-shadow:var(--md-elevation-1);font-size:13px
 }
-.radar-play-btn:hover{filter:brightness(1.08);transform:scale(1.03)}
-.radar-play-btn:active{transform:scale(.97)}
-/* No dark o --g6 é verde claro (#4ADE80) — ícone escuro mantém WCAG AA */
-:root[data-theme="dark"] .radar-play-btn,
-.radar-slider{flex:1;min-width:120px;accent-color:var(--brand);cursor:pointer}
-.map-layer-selector{
-  position:absolute;top:14px;right:14px;z-index:600;display:flex;gap:6px;
-  background:rgba(15,23,42,.88);backdrop-filter:blur(12px);padding:4px;border-radius:var(--md-shape-corner-full);
-  box-shadow:0 4px 12px rgba(0,0,0,.25)
+.radar-player{gap:4px;padding-inline:10px}
+.radar-slider{
+  appearance:none;flex:1;min-width:48px;height:48px;padding:0 3px;
+  background:none;cursor:pointer;
+  --radar-track:linear-gradient(to right,var(--brand) var(--radar-progress,0%),var(--text3) var(--radar-progress,0%))
 }
-.layer-btn{
-  background:transparent;border:none;color:#dee5d9;font-size:13px;font-weight:500;
-  padding:10px 12px;border-radius:var(--md-shape-corner-small);cursor:pointer;transition:all .2s ease;display:flex;align-items:center;gap:4px
+.radar-slider::-webkit-slider-runnable-track{height:4px;border-radius:var(--md-shape-corner-full);background:var(--radar-track)}
+.radar-slider::-moz-range-track{height:4px;border-radius:var(--md-shape-corner-full);background:var(--radar-track)}
+.radar-slider::-webkit-slider-thumb{
+  appearance:none;width:16px;height:16px;margin-top:-6px;border:0;
+  border-radius:var(--md-shape-corner-full);background:var(--brand)
 }
-.layer-btn:hover{color:#fff;background:rgba(255,255,255,.1)}
-.layer-btn.active{background:var(--brand);color:var(--on-brand);font-weight:600}
-
-.radar-map-wrapper.is-fullscreen{
-  position:fixed!important;top:0!important;left:0!important;width:100vw!important;
-  height:100vh!important;z-index:99999!important;border-radius:0!important
+.radar-slider::-moz-range-thumb{width:16px;height:16px;border:0;border-radius:var(--md-shape-corner-full);background:var(--brand)}
+.radar-slider:disabled{--radar-track:var(--text3)}
+.radar-slider:disabled::-webkit-slider-thumb{background:var(--text3)}
+.radar-slider:disabled::-moz-range-thumb{background:var(--text3)}
+.radar-time-text{font-size:12px;font-variant-numeric:tabular-nums;color:var(--text2);white-space:nowrap}
+.radar-live{
+  color:var(--md-sys-color-on-primary-container);background:var(--brand-c);
+  border-radius:var(--md-shape-corner-small);padding:3px 5px;font-weight:700;font-size:11px;white-space:nowrap
 }
-
-.radar-time-text{font-size:13px;font-weight:600;font-variant-numeric:tabular-nums;color:#89d990;white-space:nowrap}
+.radar-footer{justify-content:space-between;flex-wrap:wrap;padding-bottom:8px;font-size:12px;color:var(--text2)}
+.radar-legend{width:132px;line-height:1.3}
+.radar-legend::before{
+  content:'';display:block;height:4px;margin-bottom:3px;border-radius:var(--md-shape-corner-full);
+  background:linear-gradient(to right,var(--st-info),var(--a5),var(--r6))
+}
+.radar-legend-labels{display:flex;justify-content:space-between}
+.radar-credits{display:flex;gap:5px;align-items:center;flex-wrap:wrap}
+.radar-credits a{color:var(--text2);display:inline-flex;align-items:center;justify-content:center;min-width:48px;min-height:48px}
+.radar-direction{display:inline-flex;align-items:center;gap:2px}
+.radar-retry{border:0;background:none;color:var(--brand);min-height:48px;padding:0 6px;font:inherit;font-weight:700;cursor:pointer}
+html.map-fs{overflow:hidden}
+html.map-fs .radar-card.is-fullscreen{
+  position:fixed;inset:0;z-index:99999;border-radius:0;
+  transform:none;animation:none;transition:none;max-height:100dvh;overflow:auto
+}
+.radar-card.is-fullscreen .radar-map-wrapper{flex:1 0 96px;height:auto}
+.radar-card.is-fullscreen>:not(.radar-map-wrapper){flex-shrink:0}
+@media (prefers-reduced-motion:reduce){
+  .radar-card .radar-action-face,.radar-card .radar-segment span{transition:none}
+}
 
 .bulletin-box{
   background:var(--surface);border-radius:var(--md-shape-corner-medium);padding:16px;
@@ -694,9 +729,6 @@ body{font-family:var(--font);background:var(--md-sys-color-surface);color:var(--
     justify-content:center;font-size:13px;padding:4px 6px
   }
   .weather-header{padding:10px 12px}
-  .radar-map-wrapper{height:300px}
-  .map-layer-selector{top:8px;right:8px}
-  .radar-controls-overlay{padding:8px 12px}
   .header{padding:10px 14px}
   .banner,.scheduled-reminder{padding:12px 14px}
   .container{padding:0 12px}
@@ -1041,7 +1073,7 @@ body{font-family:var(--font);background:var(--md-sys-color-surface);color:var(--
 /* Botoes e alvos clicaveis: state layer do M3. O ::before fica ABAIXO do texto
    (::after ficaria por cima e escureceria o rotulo). */
 .btn-toggle-outages,.source-link-btn,.llm-btn,.banner-detail-item,.tab-btn,
-.radar-play-btn,.layer-btn,.theme-toggle-btn,.push-btn{
+.theme-toggle-btn,.push-btn{
   position:relative;
   transition:background var(--dur-2) var(--motion-standard),
              box-shadow var(--dur-2) var(--motion-standard),
@@ -1059,11 +1091,9 @@ body{font-family:var(--font);background:var(--md-sys-color-surface);color:var(--
 .btn-toggle-outages:active::before,.source-link-btn:active::before,.llm-btn:active::before,
 .banner-detail-item:active::before,.tab-btn:active::before{opacity:.13}
 .btn-toggle-outages:active,.source-link-btn:active,.llm-btn:active,.banner-detail-item:active,
-.tab-btn:active,.radar-play-btn:active{transform:scale(.965);transition-duration:var(--dur-1)}
-/* Mesmo "levantar" dos cards, na escala de um botao. O .radar-play-btn fica
-   fora: ele ja tem scale proprio e por cima do mapa ficaria tremendo. */
+.tab-btn:active{transform:scale(.965);transition-duration:var(--dur-1)}
 .btn-toggle-outages:hover,.source-link-btn:hover,.llm-btn:hover,.banner-detail-item:hover,
-.tab-btn:hover,.layer-btn:hover,.theme-toggle-btn:hover,.push-btn:hover{
+.tab-btn:hover,.theme-toggle-btn:hover,.push-btn:hover{
   transform:translateY(-2px);box-shadow:var(--md-elevation-2)
 }
 
@@ -1082,7 +1112,7 @@ details[open]::details-content{block-size:auto}
   .card:hover,.bulletin-box:hover,.nowcast-box:hover,.cemaden-box:hover,.kpi-card:hover,
   .outage-card:hover,.stats-kpi-card:hover,.stats-table-wrapper:hover,
   .band-pill:hover,.band-pill:active,.tab-btn:active,.btn-toggle-outages:active,
-  .source-link-btn:active,.llm-btn:active,.banner-detail-item:active,.radar-play-btn:active{transform:none}
+  .source-link-btn:active,.llm-btn:active,.banner-detail-item:active{transform:none}
   .entra,.banner.alert-takeover,.band-dot.pop,.band-val.trocou{animation:none}
 }
 
@@ -1212,12 +1242,6 @@ details[open]::details-content{block-size:auto}
   background:none;box-shadow:none;border-radius:0;padding:8px 16px 14px;gap:8px
 }
 .panel-card .cemaden-head{display:none}
-.panel-card .radar-map-wrapper{border-radius:0}
-/* 540px = altura que casa com o card de clima (8 col x 4 col fecham a linha
-   sem vazio). Leaflet fica com altura definida — nada de flex, que exigiria
-   invalidateSize depois do stretch da grade. */
-@media(min-width:992px){.panel-card .radar-map-wrapper{height:540px}}
-
 /* Clima: os badges viram linhas label/valor (mesma info, sem chip solto). */
 .panel-card .weather-metrics-bar{display:flex;flex-direction:column;gap:0;padding:0 16px;width:100%}
 .panel-card .weather-badge{
@@ -1386,40 +1410,6 @@ details[open]::details-content{block-size:auto}
 .panel-card .clima-ia .bulletin-text{padding:0;margin:0 0 8px;font-size:15px;color:var(--text2)}
 .clima-motivos:not(:empty){margin-top:2px}
 .clima-oficiais:not(:empty){margin-top:6px;font-size:13px;color:var(--text3)}
-
-/* ---------- Radar em tela cheia: nenhum transform na árvore ---------- */
-html.map-fs .panel-card,html.map-fs .panel-card:hover,
-html.map-fs .radar-card,html.map-fs .radar-card:hover,
-html.map-fs .entra{transform:none !important;animation:none !important}
-html.map-fs{overflow:hidden}
-
-/* ---------- Radar mais enxuto (o mapa é o herói, a moldura não) ----------
-   A moldura comia altura demais para o pouco que informa (pedido 24/09/2026). */
-.radar-card>.panel-head{padding:10px 14px}
-.radar-card .panel-title{font-size:15px}
-.radar-card .panel-sub{font-size:13px}
-.map-layer-selector{top:10px;right:10px;padding:3px;gap:4px}
-.layer-btn{padding:6px 10px;font-size:13px;gap:4px}
-.layer-btn .ms{font-size:16px}
-.map-corner-btn{width:34px;height:34px;top:48px;right:10px}
-.map-corner-btn .ms{font-size:18px}
-.radar-controls-overlay{padding:6px 10px}
-/* O mapa acompanha a altura do card (flex) em vez de fixar 380px: nunca sobra
-   faixa vazia dentro do card nem o mapa vira uma tira. */
-.radar-map-wrapper{flex:1 1 auto;height:auto;min-height:260px}
-@media (max-width:640px){.radar-map-wrapper{min-height:230px}}
-
-/* ---------- Radar: tela cheia no canto, como ação ---------- */
-.map-corner-btn{
-  position:absolute;top:62px;right:14px;z-index:600;width:40px;height:40px;
-  display:grid;place-items:center;border:none;cursor:pointer;border-radius:50%;
-  background:rgba(9,16,9,.88);backdrop-filter:blur(12px);color:#dee5d9;
-  box-shadow:0 4px 12px rgba(0,0,0,.25);
-  transition:background var(--dur-2) var(--motion-standard),color var(--dur-2) var(--motion-standard),transform var(--dur-1) var(--motion-spring)
-}
-.map-corner-btn:hover{background:rgba(15,23,42,.98);color:#fff}
-.map-corner-btn:active{transform:scale(.94)}
-.map-layer-selector .layer-btn .ms{font-size:18px;line-height:1}
 
 /* ---------- Rios: veredito em frase, não em caixa alta ---------- */
 .rio-pergunta{font-size:13.5px;font-weight:600;color:var(--text2)}
@@ -1854,22 +1844,7 @@ html.trocando-tema, html.trocando-tema *{transition:none !important}
   .hero-tile-val{text-align:right}
 }
 
-/* Controles do mapa: 44 px de área de toque (as camadas, o zoom e a tela cheia
-   são os únicos alvos pequenos que sobraram do Leaflet). */
-.layer-btn{min-height:44px}
-.map-layer-selector{padding:3px 4px}
-.map-corner-btn{width:44px;height:44px}
-/* Zoom do Leaflet nasce com 34 px e o slider do radar com 16 px: com dedo na
-   tela isso é alvo errado. Em desktop o ganho é só de mira. */
-.leaflet-control-zoom a.leaflet-control-zoom-in,
-.leaflet-control-zoom a.leaflet-control-zoom-out{
-  width:44px !important;height:44px !important;line-height:44px !important;font-size:20px
-}
-/* Leaflet declara .leaflet-touch .leaflet-bar a {width:30px} — mais específico
-   que .leaflet-control-zoom a; por isso o !important acima. */
-.leaflet-control-zoom{border-radius:12px;overflow:hidden}
-.radar-slider{height:44px}
-.leaflet-control-attribution{font-size:13px}
+.clima-card #radarDetalhe summary{min-height:48px}
 
 /* Todo <summary> é alvo de toque: 44 px de altura, senão o "Detalhes do radar"
    fica com 15 px de mira (medido 24/09/2026). */
@@ -1893,6 +1868,7 @@ html.trocando-tema, html.trocando-tema *{transition:none !important}
   display:flex;align-items:center;gap:12px;margin-top:14px;padding-top:14px;
   border-top:1px solid var(--md-sys-color-outline-variant)
 }
+.aviso-row[hidden]{display:none}
 .aviso-ico{
   width:38px;height:38px;flex:none;border-radius:50%;display:flex;align-items:center;justify-content:center;
   background:var(--md-sys-color-surface-container);color:var(--brand)
@@ -1925,6 +1901,26 @@ html.trocando-tema, html.trocando-tema *{transition:none !important}
 .sw[aria-checked="true"] .sw-trilho{background:var(--md-sys-color-primary);border-color:var(--md-sys-color-primary)}
 .sw[aria-checked="true"] .sw-bola{transform:translateX(18px);background:var(--md-sys-color-on-primary)}
 .aviso-row[data-estado="denied"] .sw{opacity:.55}
+.push-localidade{
+  grid-column:1 / -1;margin-top:10px;display:grid;gap:6px;
+  color:var(--text2);font-size:13px
+}
+.push-localidade[hidden]{display:none}
+.push-localidade label{color:var(--text);font-size:14px;font-weight:600}
+.push-localidade-controles{display:flex;gap:8px;max-width:420px}
+.push-localidade select,.push-localidade button{
+  min-height:48px;border:0;border-radius:var(--md-shape-corner-small);font:inherit
+}
+.push-localidade select{
+  flex:1;min-width:0;padding:0 10px;background:var(--md-sys-color-surface-container-highest);color:var(--text)
+}
+.push-localidade button{
+  padding:0 16px;background:var(--brand);color:var(--on-brand);font-weight:700;cursor:pointer
+}
+.push-localidade button:disabled{cursor:wait}
+.push-localidade :focus-visible{outline:2px solid var(--brand);outline-offset:2px}
+.push-localidade-status{min-height:1.35em}
+.push-localidade-status[data-estado="erro"]{color:var(--md-sys-color-error)}
 @media (min-width:992px){
   .aviso-row{grid-column:1 / -1;grid-row:4}
 }
@@ -2071,14 +2067,24 @@ html.trocando-tema, html.trocando-tema *{transition:none !important}
         <span class="sr-only" id="pushBtnText">Avisos desativados</span>
       </button>
     </div>
-    <div id="pushLocalidadeRow" hidden style="margin-top:12px">
+    <form class="push-localidade" id="pushLocalidadeRow" hidden>
       <label for="pushLocalidade">Localidade para avisos de pequenas quedas de energia</label>
-      <div style="display:flex;gap:8px;margin-top:6px">
-        <input id="pushLocalidade" maxlength="100" placeholder="Nome informado pela Copel" style="flex:1;min-width:0">
-        <button id="pushLocalidadeSalvar" type="button">Salvar</button>
+      <div class="push-localidade-controles">
+        <!-- Bairros de Ipiranga no catálogo do mapa oficial da Copel. -->
+        <select id="pushLocalidade" aria-describedby="pushLocalidadeStatus">
+          <option value="">Sem preferência</option>
+          <option value="AVENCAL">Avencal</option>
+          <option value="CENTRO">Centro</option>
+          <option value="DESCALVADO">Descalvado</option>
+          <option value="IPIRANGA">Ipiranga</option>
+          <option value="PROGRESSO">Progresso</option>
+          <option value="RURAL">Rural</option>
+          <option value="TABOAO">Taboão</option>
+        </select>
+        <button id="pushLocalidadeSalvar" type="submit">Salvar</button>
       </div>
-      <small>Use o nome da localidade que aparece no painel da Copel. Deixe vazio para cancelar essa preferência.</small>
-    </div>
+      <p class="push-localidade-status" id="pushLocalidadeStatus" role="status"></p>
+    </form>
   </section>
 
   <div id="statusView">
@@ -2089,31 +2095,58 @@ html.trocando-tema, html.trocando-tema *{transition:none !important}
       <div class="panel-col panel-col-a">
 
       <!-- 1) RADAR (8 colunas no desktop) -->
-      <div class="card panel-card radar-card">
+      <section class="card panel-card radar-card" id="radarCard" aria-labelledby="radarTitle">
         <div class="panel-head">
-          <span class="panel-head-txt">
-            <h2 class="panel-title">Radar de chuva</h2>
+          <div class="panel-head-txt">
+            <h2 class="panel-title" id="radarTitle">Radar de chuva</h2>
             <span class="panel-sub">Ipiranga e região</span>
-          </span>
+          </div>
+          <div class="radar-head-actions">
+            <button type="button" class="radar-action" id="radarRecenter" aria-label="Recentralizar em Ipiranga" title="Recentralizar em Ipiranga">
+              <span class="radar-action-face"><span class="ms s20" aria-hidden="true">location_on</span></span>
+            </button>
+            <button type="button" class="radar-action" id="btnFullscreen" aria-label="Ver em tela cheia" title="Tela cheia">
+              <span class="radar-action-face"><span class="ms s20" aria-hidden="true">fullscreen</span></span>
+            </button>
+          </div>
+        </div>
+        <div class="radar-products">
+          <div class="radar-segments" role="group" aria-label="Imagem meteorológica">
+            <button type="button" class="radar-segment" id="radarProduct" aria-label="Radar" aria-pressed="true"><span>Radar</span></button>
+            <button type="button" class="radar-segment" id="satelliteProduct" aria-label="Satélite" aria-pressed="false"><span>Satélite</span></button>
+          </div>
+          <button type="button" class="radar-action" id="radarLayers" aria-label="Foto aérea" aria-pressed="false" title="Usar foto aérea">
+            <span class="radar-action-face"><span class="ms s20" aria-hidden="true">layers</span></span>
+          </button>
         </div>
         <div class="radar-map-wrapper">
-          <div class="map-layer-selector">
-            <button type="button" class="layer-btn" id="layerStreetBtn"><span class="ms s18" aria-hidden="true">map</span> Mapa</button>
-            <button type="button" class="layer-btn active" id="layerSatBtn"><span class="ms s18" aria-hidden="true">satellite_alt</span> Satélite</button>
-          </div>
-          <!-- Tela cheia é AÇÃO, não modo de camada: sai da barra e vira ícone
-               no canto do mapa (crítica 24/09/2026). -->
-          <button type="button" class="map-corner-btn" id="btnFullscreen" aria-label="Ver o mapa em tela cheia" title="Tela cheia">
-            <span class="ms s20" aria-hidden="true">fullscreen</span>
-          </button>
-          <div id="weatherMap"></div>
-          <div class="radar-controls-overlay">
-            <button type="button" class="radar-play-btn" id="radarPlayBtn" aria-label="Play / Pause radar"><span class="ms fill">play_arrow</span></button>
-            <input type="range" class="radar-slider" id="radarSlider" min="0" max="0" value="0" />
-            <span class="radar-time-text" id="radarTimeLabel">Ao vivo</span>
-          </div>
+          <div id="weatherMap" role="region" aria-label="Mapa de radar de Ipiranga"></div>
+          <div class="radar-map-status" id="radarMapStatus" role="status"><span>Carregando imagem…</span></div>
         </div>
-      </div>
+        <div class="radar-player">
+          <button type="button" class="radar-action radar-play-btn" id="radarPlayBtn" aria-label="Reproduzir animação" disabled>
+            <span class="radar-action-face"><span class="ms fill" aria-hidden="true">play_arrow</span></span>
+          </button>
+          <input type="range" class="radar-slider" id="radarSlider" min="0" max="0" value="0" aria-label="Horário da imagem" aria-valuetext="Sem quadros" disabled />
+          <span class="radar-time-text" id="radarTimeLabel">—</span>
+          <span class="radar-live" id="radarLiveLabel" hidden>Ao vivo</span>
+        </div>
+        <div class="radar-footer">
+          <div class="radar-legend" id="radarLegend" role="group" aria-label="Intensidade da chuva">
+            <div class="radar-legend-labels"><span>Leve</span><span>Moderada</span><span>Forte</span></div>
+          </div>
+          <span class="radar-direction" id="radarDirection" hidden><span class="ms s18" aria-hidden="true">north_east</span> Direção da chuva</span>
+          <div class="radar-credits" id="radarCredits">
+            <a href="https://www.rainviewer.com/">RainViewer</a>
+            <span aria-hidden="true">·</span>
+            <a href="https://www.openstreetmap.org/copyright" id="radarMapCredit">OpenStreetMap</a>
+          </div>
+          <div class="radar-credits" id="satelliteCredits" hidden>
+            <a href="https://www.nesdis.noaa.gov/imagery/satellite-maps">NOAA · GOES-19</a>
+          </div>
+          <button type="button" class="radar-retry" id="radarRetry" aria-label="Tentar de novo" hidden>Tentar de novo</button>
+        </div>
+      </section>
 
       <!-- 3) RIOS: uma linha por estação — nome, nível grande, tendência em
            palavras e o risco de transbordar (a confiança vive AQUI, não no
@@ -2167,7 +2200,8 @@ html.trocando-tema, html.trocando-tema *{transition:none !important}
         <!-- UM expander: dado técnico do radar + como o texto é gerado. Antes
              eram dois blocos com o mesmo assunto empilhados na tela. -->
         <details class="panel-details" id="radarDetalhe">
-          <summary>Detalhes do radar</summary>
+          <summary>Detalhes</summary>
+          <p class="det-nota" id="wxInstabilidadeDetalhe" hidden></p>
           <div id="nowcastDetalhe" class="nowcast-det"></div>
           <p class="det-nota"><strong>Acumulado de 24 h em janela móvel</strong> (estações oficiais de chuva). Texto descritivo automático, montado a partir do radar, dos pluviômetros oficiais e da previsão do INMET. Pode conter erros — confira sempre no radar e nas fontes oficiais.</p>
           <p class="bulletin-text" id="bulletinText">Carregando análise da situação climatológica de Ipiranga…</p>
@@ -2758,112 +2792,56 @@ function showStaleNotice(ts){
 }
 
 
-/**
- * Monta as camadas de radar a partir de um índice do RainViewer.
- * Usado pelo boot (imagem ANTES da API) e pelo refresh de 5 min (frames NOVOS
- * sem esperar o TTL do estado, que só muda a cada ~10 min).
- */
+/* O quadro do navegador tem prioridade sobre o estado persistido da análise. */
 let radarIndexRequest = null;
 
 function montarRadarDoIndice(idx, substituir) {
-  const past = idx && idx.radar && idx.radar.past;
-  if (!map || !past || !past.length) return false;
-  // Quem manda é o frame MAIS NOVO, não quem chamou por último (22/09/2026).
-  // O estado do /api/weather pode estar horas atrás — o cron que o atualiza é
-  // agendado no GitHub Actions, que entrega a cada 2-3 h em vez de 10 min — e o
-  // navegador já baixou o índice fresco por conta própria. Sem esta guarda a
-  // resposta da API rebaixava o loop para um frame velho e o rótulo travava
-  // (caso real: site exibindo 22:20 com a fonte publicando 23:10).
-  const maisNovo = (lista) => Number((lista && lista.length ? lista[lista.length - 1] : {}).time) || 0;
-  if (radarFrames.length && maisNovo(radarFrames.slice(0, radarPastCount)) > maisNovo(past)) {
-    window._radarIgnorouEstadoVelho = maisNovo(past);
-    return false;
-  }
-  const ultimo = past[past.length - 1];
-  if (radarFrames.length && window._radarUltimoFrame === ultimo.path) return false;
-  const seguirAoVivo = !substituir || !radarFrames.length || currentFrameIndex === radarPastCount - 1;
+  const past = idx?.radar?.past;
+  if (!map || !past?.length) return false;
+  const ultimo = past.at(-1);
+  const anterior = radarFrames[radarPastCount - 1];
+  if (anterior?.time > ultimo.time || anterior?.path === ultimo.path) return false;
+
+  const seguirAoVivo = !substituir || !anterior || currentFrameIndex === radarPastCount - 1;
   const selecionado = radarFrames[currentFrameIndex]?.time;
   const host = idx.host || 'https://tilecache.rainviewer.com';
   radarFrames = [...past, ...(idx.radar.nowcast || [])];
   radarPastCount = past.length;
-  radarTileLayers.forEach((l) => map.removeLayer(l));
-  radarTileLayers = [];
-  // Display: esquema 6 (o padrão de radar meteorológico). A análise do backend segue
-  // no esquema 2 — não mexer nisso.
-  radarTileLayers = radarFrames.map((frame) =>
-    L.tileLayer(host + frame.path + '/256/{z}/{x}/{y}/6/1_1.png', {
-      pane: 'radarPane', tileSize: 256, opacity: 0, maxNativeZoom: 7, maxZoom: 14, className: 'rain-tile'
-    })
-  );
-  // ← Aqui mora a velocidade percebida (medido 22/09/2026 em rede de celular).
-  // Antes TODAS as camadas entravam de uma vez: ~13 frames × 4-6 tiles = 52+
-  // requisições disputando a mesma banda, e a imagem que o cidadão realmente
-  // olha (o frame mais recente) chegava atrás de 12 frames que ele nem vê. Agora
-  // só o frame atual entra; o resto do loop entra quando ele já está na tela.
-  const anteriorIdx = radarFrames.findIndex((frame) => frame.time === selecionado);
-  const alvoIdx = seguirAoVivo ? radarPastCount - 1 : Math.max(0, anteriorIdx);
-  currentFrameIndex = alvoIdx;
-  radarTileLayers[alvoIdx].addTo(map);
-  const carregarLoop = () => {
-    radarTileLayers.forEach((layer) => { if (!map.hasLayer(layer)) layer.addTo(map); });
-  };
-  window._carregarLoopRadar = carregarLoop;
-  // Prioridade de banda: o frame que o cidadão olha termina ANTES do loop entrar.
-  // Medição 22/09/2026 (rede de celular + CPU 4x mais lenta): com o loop disparando
-  // no 1º tile, as 13 camadas (64 requisições) disputavam a banda e a última imagem
-  // só chegava aos 10,3 s. A animação é MANUAL (▶ + slider, sem auto-play), então
-  // não há motivo para baixar o loop antes de o usuário pedir: agora ele espera o
-  // frame atual COMPLETAR (evento 'load' da camada — que só vale com o mapa medido,
-  // a ressalva do comentário antigo), a interação do usuário, ou a rede de segurança.
-  const camadaAtual = radarTileLayers[alvoIdx];
-  let loopDisparado = false;
-  const dispararLoop = () => {
-    if (loopDisparado) return;
-    loopDisparado = true;
-    carregarLoop();
-  };
-  window._dispararLoopRadar = dispararLoop;
-  camadaAtual.on('tileload', () => {
-    if (window._mostrarBaseMap) window._mostrarBaseMap();
-    // 250 ms: o fade do Leaflet termina em ~200 ms e pode reescrever o tile com
-    // 0. Reaplicar depois disso é o que garante a chuva visível (medido).
-    setTimeout(() => showRadarFrame(currentFrameIndex), 250);
-  });
-  // A animação é MANUAL (▶ + slider) e o loop custa ~50 requisições de tile. Em
-  // rede folgada ele entra logo depois do frame atual; em rede de celular/saveData
-  // ele espera o usuário PEDIR (play ou slider), que é quando o dado vira imagem.
-  // Medição 22/09/2026: mesmo com o frame atual na frente, o loop inteiro baixado
-  // em 3G custa banda que a maioria das visitas nunca usa.
-  const conn =
-    navigator.connection || navigator.mozConnection || navigator.webkitConnection || {};
-  const redeFolgada =
-    !conn.saveData && (!conn.effectiveType || conn.effectiveType === '4g');
-  window._radarLoopAdiado = !redeFolgada;
-  if (redeFolgada) {
-    camadaAtual.once('load', () => {
-      const s = map.getSize ? map.getSize() : null;
-      if (s && s.x > 0 && s.y > 0) dispararLoop();
+  radarEmpty = false;
+  radarIndexError = false;
+  radarTileLayers.forEach((layer) => map.removeLayer(layer));
+  const validPaths = new Set(past.map((frame) => host + frame.path));
+  for (const path of radarEchoes.keys()) {
+    if (!validPaths.has(path)) radarEchoes.delete(path);
+  }
+  radarTileLayers = radarFrames.map((frame) => {
+    const layer = L.tileLayer(radarTileUrl(host + frame.path), {
+      pane: 'radarPane', tileSize: 256, opacity: 0, maxNativeZoom: 7, maxZoom: 14,
+      className: 'rain-tile', crossOrigin: true
     });
-    setTimeout(dispararLoop, 12000); // rede de segurança (rede ruim/erro de tile)
-  }
-  const slider = document.getElementById('radarSlider');
-  if (slider) {
-    slider.max = Math.max(0, radarFrames.length - 1);
-    slider.value = currentFrameIndex;
-  }
-  showRadarFrame(currentFrameIndex);
+    layer.once('tileload', enableRadarBackground);
+    layer.on('loading', () => radarTileErrors.delete(layer));
+    layer.on('tileerror', () => {
+      radarTileErrors.add(layer);
+      if (mapProduct === 'radar' && layer === radarTileLayers[currentFrameIndex]) {
+        pauseWeatherPlayer();
+        updateMapStatus();
+      }
+    });
+    layer.on('load', () => {
+      if (mapProduct !== 'radar') return;
+      updateMapStatus();
+      if (layer === radarTileLayers[radarPastCount - 1]) checkRadarEmpty(host, past);
+    });
+    return layer;
+  });
+
+  const anteriorIdx = radarFrames.findIndex((frame) => frame.time === selecionado);
+  showRadarFrame(seguirAoVivo ? radarPastCount - 1 : Math.max(0, anteriorIdx));
   window._radarUltimoFrame = ultimo.path;
   return true;
 }
 
-/**
- * Radar instantâneo: o índice do RainViewer vem DIRETO no navegador (~1 KB,
- * CORS *), sem esperar por /api/weather. Medição 21/09/2026: primeiro tile aos
- * 13,3 s em instância fria (a API regenerava o estado, 12,5 s) contra 0,43 s com
- * API quente — o radar nunca foi lento, ele esperava a API. Aqui a imagem
- * aparece primeiro. A análise continua vindo da API; as imagens só aceitam
- * índices iguais ou mais novos, mesmo quando o ciclo do backend está atrasado.
- */
 async function baixarIndiceRainViewer() {
   if (!radarIndexRequest) {
     radarIndexRequest = fetch('https://api.rainviewer.com/public/weather-maps.json', {
@@ -2874,33 +2852,34 @@ async function baixarIndiceRainViewer() {
 }
 
 async function bootstrapRadar() {
-  try {
-    const idx = await baixarIndiceRainViewer();
-    if (!idx) return;
-    if (montarRadarDoIndice(idx, radarTileLayers.length > 0)) window._radarBootstrap = true;
-  } catch (e) {
-    console.warn('bootstrap do radar falhou (a API segue como fonte da análise)', e);
-  }
+  if (await refreshRadar()) window._radarBootstrap = true;
 }
 window.bootstrapRadar = bootstrapRadar;
 
-/**
- * Refresh do radar a cada 5 min: o frame mais novo do RainViewer aparece sem
- * depender do TTL do /api/weather (~10 min). Só refaz quando muda de verdade.
- */
 async function refreshRadar() {
   try {
     const idx = await baixarIndiceRainViewer();
-    if (!idx) return;
-    montarRadarDoIndice(idx, true);
+    if (idx?.radar?.past?.length) return montarRadarDoIndice(idx, true);
   } catch (e) {
-    console.warn('refresh do radar falhou', e);
+    console.warn('Atualização do radar indisponível', e);
   }
+  if (!radarFrames.length) {
+    radarIndexError = true;
+    updateMapStatus();
+  }
+  return false;
 }
 window.refreshRadar = refreshRadar;
+
+function refreshMapProducts() {
+  if (mapProduct === 'satellite') refreshSatellite();
+  refreshRadar();
+}
 setInterval(() => {
-  if (document.visibilityState === 'visible') refreshRadar();
+  if (document.visibilityState === 'visible') refreshMapProducts();
 }, 5 * 60 * 1000);
+
+
 
 async function fetchData(){
   const ri=$('#refreshIcon');
@@ -3008,7 +2987,7 @@ async function fetchStats(){
 }
 
 document.getElementById('btnRefresh').addEventListener('click', () => {
-  fetchData(); fetchWeatherData(); refreshRadar();
+  fetchData(); fetchWeatherData(); refreshMapProducts();
 });
 // Menu do topo: fecha ao clicar fora e no Esc (padrão de menu M3).
 (function(){
@@ -3042,170 +3021,408 @@ setInterval(() => {
   if (document.visibilityState === 'visible') { fetchData(); fetchWeatherData(); }
 }, REFRESH_MS);
 document.addEventListener('visibilitychange', () => {
-  if (document.visibilityState === 'visible') { fetchData(); fetchWeatherData(); refreshRadar(); }
+  if (document.visibilityState === 'visible') { fetchData(); fetchWeatherData(); refreshMapProducts(); }
 });
 window.addEventListener('pageshow', (event) => {
-  if (event.persisted) refreshRadar();
+  if (event.persisted) refreshMapProducts();
 });
 
-// Weather & RainViewer Radar Map Logic
+const ipiranga = [-25.0244, -50.5847];
+const noaaInfrared = 'https://satellitemaps.nesdis.noaa.gov/arcgis/rest/services/ABI13_Last_24hr/ImageServer';
+const brasilia = 'America/Sao_Paulo';
+const weatherClock = new Intl.DateTimeFormat('pt-BR', { timeZone: brasilia, hour: '2-digit', minute: '2-digit' });
+const weatherDay = new Intl.DateTimeFormat('pt-BR', { timeZone: brasilia, day: '2-digit', month: '2-digit', year: 'numeric' });
+
 let map = null;
-let streetLayer = null;
-let satLayer = null;
+let radarArea;
+let streetLayer;
+let aerialLayer;
+let photoBackground = false;
+let radarBackgroundReady = false;
+let mapProduct = 'radar';
 let radarFrames = [];
 let radarTileLayers = [];
 let radarPastCount = 0;
 let currentFrameIndex = 0;
-let isPlaying = false;
-let playInterval = null;
+let radarIndexError = false;
+const radarTileErrors = new WeakSet();
+const radarEchoes = new Map();
+let radarCoverage;
+let radarEmpty = false;
+let satelliteFrames = [];
+let satelliteIndex = 0;
+let satelliteRequest;
+let satelliteIndexError = false;
+let satelliteView;
+let satelliteLayer;
+let satelliteVisibleLayer;
+let satelliteDisplayedTime;
+let satelliteImageTimer;
+let satelliteImageStatus;
+let playInterval;
 
-async function initWeatherMap() {
-  if (map || typeof L === 'undefined') return;
-  const ipirangaLat = -25.0244;
-  const ipirangaLng = -50.5847;
+function localDateLabel(day) {
+  return day === weatherDay.format(new Date()) ? 'Hoje' : day.slice(0, 5);
+}
 
-  map = L.map('weatherMap', {
-    center: [ipirangaLat, ipirangaLng],
-    zoom: 8,
-    minZoom: 6,
-    maxZoom: 14,
-    zoomControl: true,
-    attributionControl: false,
-  });
+function fullWeatherTime(date) {
+  return `${localDateLabel(weatherDay.format(date))} ${weatherClock.format(date)}`;
+}
 
-  // Base map tile layers (Street & High-Res Satellite)
-  streetLayer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-    maxNativeZoom: 14,
-    opacity: 0.85
-  });
+function fitIpiranga(recenter) {
+  const size = map.getSize();
+  if (!size.x || !size.y) return;
+  const span = map.project(radarArea.getSouthEast(), 0).subtract(map.project(radarArea.getNorthWest(), 0));
+  const scale = Math.min(size.x / span.x, size.y / span.y);
+  const snap = map.options.zoomSnap;
+  const zoom = Math.min(map.getMaxZoom(), Math.floor(Math.log2(scale) / snap) * snap);
+  const wasAtMinimum = map.getZoom() === map.getMinZoom();
+  map.setMinZoom(zoom);
+  if (recenter || wasAtMinimum) map.setView(recenter ? ipiranga : map.getCenter(), zoom, { animate: false });
+}
 
-  satLayer = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
-    maxNativeZoom: 17,
-    maxZoom: 17,
-    opacity: 0.95
-  });
-
-  // Mapa de satélite HD como padrão (mais fácil de visualizar — pedido do usuário).
-  // Só que ele entra DEPOIS do radar: medido em rede de celular (22/09/2026), os
-  // tiles de fundo entravam junto com os do radar e o primeiro tile de chuva só
-  // fechava aos 3,0 s. O fundo é enfeite; o radar é a informação.
-  const mostrarBaseMap = () => {
-    if (!map.hasLayer(satLayer) && !map.hasLayer(streetLayer)) satLayer.addTo(map);
-  };
-  window._mostrarBaseMap = mostrarBaseMap;
-  setTimeout(mostrarBaseMap, 3000);
-
-  // Toggle Map Base Layers
-  const btnStreet = document.getElementById('layerStreetBtn');
-  const btnSat = document.getElementById('layerSatBtn');
-
-  btnStreet?.addEventListener('click', () => {
-    if (map.hasLayer(satLayer)) map.removeLayer(satLayer);
-    if (!map.hasLayer(streetLayer)) map.addLayer(streetLayer);
-    btnStreet.classList.add('active');
-    btnSat?.classList.remove('active');
-  });
-
-  btnSat?.addEventListener('click', () => {
-    if (map.hasLayer(streetLayer)) map.removeLayer(streetLayer);
-    if (!map.hasLayer(satLayer)) map.addLayer(satLayer);
-    btnSat.classList.add('active');
-    btnStreet?.classList.remove('active');
-  });
-
-  const btnFs = document.getElementById('btnFullscreen');
-  const mapWrapper = document.querySelector('.radar-map-wrapper');
-
-  btnFs?.addEventListener('click', () => {
-    const isFs = mapWrapper?.classList.toggle('is-fullscreen');
-    // Com transform em um ancestral (o lift de :hover do card) o position:fixed
-    // passa a se resolver CONTRA O CARD, e o overflow:hidden dele recorta o
-    // overlay: o botão ia para x=1526 e não tinha como sair da tela cheia
-    // (medido 24/09/2026). A classe no <html> zera a árvore de transform.
-    document.documentElement.classList.toggle('map-fs', !!isFs);
-    btnFs.innerHTML = icoMS(isFs ? 'fullscreen_exit' : 'fullscreen', 's20');
-    btnFs.setAttribute('aria-label', isFs ? 'Sair da tela cheia' : 'Ver o mapa em tela cheia');
-    btnFs.classList.toggle('active', isFs);
-    setTimeout(() => {
-      if (map) map.invalidateSize();
-    }, 100);
-  });
-
-  // A altura do wrapper agora vem do card (flex). Sem avisar o Leaflet, ele
-  // desenha com o tamanho antigo e sobra faixa cinza nas bordas.
-  if (window.ResizeObserver && mapWrapper) {
-    new ResizeObserver(() => { try { map.invalidateSize(); } catch (e) {} }).observe(mapWrapper);
-  }
-
-  document.addEventListener('keydown', (ev) => {
-    if (ev.key === 'Escape' && mapWrapper?.classList.contains('is-fullscreen')) {
-      mapWrapper.classList.remove('is-fullscreen');
-      document.documentElement.classList.remove('map-fs');
-      btnFs.innerHTML = icoMS('fullscreen', 's20');
-      btnFs.setAttribute('aria-label', 'Ver o mapa em tela cheia');
-      btnFs.classList.remove('active');
-      setTimeout(() => { if (map) map.invalidateSize(); }, 100);
-    }
-  });
-
-  // Dedicated Panes for Z-Index layering
-  map.createPane('radarPane');
-  map.getPane('radarPane').style.zIndex = 430;
-
-  map.createPane('ibgePane');
-  map.getPane('ibgePane').style.zIndex = 500;
-  map.getPane('ibgePane').style.pointerEvents = 'none';
-
-  // Fetch & Render Official IBGE Municipal Boundaries GeoJSON (Clean tooltips on hover)
-  try {
-    const geoResp = await fetch('/ibge-ipiranga-region.json');
-    if (geoResp.ok) {
-      const geoJson = await geoResp.json();
-      L.geoJSON(geoJson, {
-        pane: 'ibgePane',
-        style: (feature) => {
-          const isCenter = feature.properties?.isCenter;
-          return {
-            color: isCenter ? '#38bdf8' : '#64748b',
-            weight: isCenter ? 2.5 : 1.2,
-            dashArray: isCenter ? null : '4, 4',
-            fill: true,
-            fillColor: isCenter ? '#0284c7' : '#1e293b',
-            fillOpacity: isCenter ? 0.05 : 0.01
-          };
-        },
-        onEachFeature: (feature, layer) => {
-          const name = feature.properties?.name || 'Município';
-          const isCenter = feature.properties?.isCenter;
-          layer.bindTooltip(`<strong>${name}</strong>${isCenter ? ' (Sede)' : ''}`, {
-            permanent: false,
-            direction: 'center',
-            sticky: true
-          });
-        }
-      }).addTo(map);
-    }
-  } catch (err) {
-    console.warn("IBGE GeoJSON load error", err);
+function syncMapBackground() {
+  const radar = mapProduct === 'radar';
+  const base = photoBackground ? aerialLayer : streetLayer;
+  for (const layer of [streetLayer, aerialLayer]) {
+    if (radar && radarBackgroundReady && layer === base) layer.addTo(map);
+    else map.removeLayer(layer);
   }
 }
 
-/**
- * A condição do topo vem do MODELO meteorológico; a chuva medida vem dos
- * pluviômetros. Quando as duas divergem — "Garoa Moderada" no badge com 0,0 mm
- * medido na última hora nos cards — a página se contradiz sozinha. É a mesma
- * classe de defeito corrigida nas páginas de conteúdo (22/09/2026): aqui o
- * rótulo diz de onde vem a informação, e SÓ quando há divergência real.
- * Estação parada (stale) fica fora da conta: o acumulado dela é congelado.
- */
-function rotuloCondicao(data) {
-  const cond = String(data && data.condition ? data.condition : 'Nublado');
-  const indicaChuva = /chuva|garoa|chuvis|pancada|trovoad|tempestade|precipita/i.test(cond);
-  if (!indicaChuva) return sentenceCase(cond);
-  const estacoes = ((data && data.cemaden && data.cemaden.estacoes) || []).filter((e) => e && !e.stale);
-  if (!estacoes.length) return cond;
-  const medida = Math.max.apply(null, estacoes.map((e) => Number(e.acc1hr) || 0));
-  return medida > 0 ? sentenceCase(cond) : sentenceCase(cond) + ' (previsão)';
+function enableRadarBackground() {
+  if (radarBackgroundReady) return;
+  radarBackgroundReady = true;
+  syncMapBackground();
+}
+
+function initWeatherMap() {
+  if (map || typeof L === 'undefined') return;
+  const card = document.getElementById('radarCard');
+  const mapElement = document.getElementById('weatherMap');
+  const mapWrapper = mapElement.parentElement;
+  radarArea = L.latLng(ipiranga).toBounds(70000);
+  map = L.map(mapElement, {
+    center: ipiranga, zoom: 8, zoomSnap: .125, maxZoom: 14,
+    zoomControl: false, attributionControl: false, keyboard: false,
+    doubleClickZoom: false, boxZoom: false, tapHold: false,
+    fadeAnimation: false, zoomAnimation: false,
+    inertia: !matchMedia('(prefers-reduced-motion: reduce)').matches
+  });
+
+  const panes = { radarPane: 430, weatherDirection: 460, ibgePane: 650 };
+  for (const [name, zIndex] of Object.entries(panes)) {
+    const pane = map.createPane(name);
+    pane.style.zIndex = zIndex;
+    pane.style.pointerEvents = 'none';
+  }
+
+  streetLayer = L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    maxNativeZoom: 14, className: 'radar-neutral'
+  });
+  aerialLayer = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+    maxNativeZoom: 17, maxZoom: 17, className: 'radar-aerial'
+  });
+  fitIpiranga(true);
+  // O primeiro tile do radar tem prioridade sobre o fundo.
+  setTimeout(enableRadarBackground, 2000);
+
+  document.getElementById('radarRecenter').addEventListener('click', () => fitIpiranga(true));
+  document.getElementById('radarProduct').addEventListener('click', () => selectMapProduct('radar'));
+  document.getElementById('satelliteProduct').addEventListener('click', () => selectMapProduct('satellite'));
+  document.getElementById('radarLayers').addEventListener('click', (event) => {
+    photoBackground = !photoBackground;
+    radarBackgroundReady = true;
+    event.currentTarget.setAttribute('aria-pressed', String(photoBackground));
+    event.currentTarget.title = photoBackground ? 'Usar mapa neutro' : 'Usar foto aérea';
+    const credit = document.getElementById('radarMapCredit');
+    credit.textContent = photoBackground ? 'Esri' : 'OpenStreetMap';
+    credit.href = photoBackground ? 'https://www.esri.com/en-us/arcgis/products/arcgis-world-imagery/overview'
+      : 'https://www.openstreetmap.org/copyright';
+    syncMapBackground();
+  });
+
+  const fullscreen = document.getElementById('btnFullscreen');
+  function setFullscreen(active) {
+    card.classList.toggle('is-fullscreen', active);
+    document.documentElement.classList.toggle('map-fs', active);
+    fullscreen.querySelector('.ms').textContent = active ? 'fullscreen_exit' : 'fullscreen';
+    fullscreen.setAttribute('aria-label', active ? 'Sair da tela cheia' : 'Ver em tela cheia');
+    fullscreen.title = active ? 'Sair da tela cheia' : 'Tela cheia';
+    if (active) {
+      card.setAttribute('role', 'dialog');
+      card.setAttribute('aria-modal', 'true');
+    } else {
+      card.removeAttribute('role');
+      card.removeAttribute('aria-modal');
+    }
+    fullscreen.focus({ preventScroll: true });
+    resizeWeatherMap();
+  }
+  fullscreen.addEventListener('click', () => setFullscreen(!card.classList.contains('is-fullscreen')));
+  document.addEventListener('keydown', (event) => {
+    if (!card.classList.contains('is-fullscreen')) return;
+    if (event.key === 'Escape') {
+      setFullscreen(false);
+    } else if (event.key === 'Tab') {
+      const targets = [...card.querySelectorAll('button:enabled,input:enabled,a[href]')].filter((el) => el.getClientRects().length);
+      const edge = event.shiftKey ? targets[0] : targets.at(-1);
+      if (document.activeElement === edge || !card.contains(document.activeElement)) {
+        event.preventDefault();
+        (event.shiftKey ? targets.at(-1) : targets[0]).focus();
+      }
+    }
+  });
+
+  function resizeWeatherMap() {
+    map.invalidateSize({ animate: false });
+    if (map.getSize().x && map.getSize().y) fitIpiranga(false);
+  }
+  // Leaflet ajusta o mapa após a mudança de tamanho do card ou da tela cheia.
+  if ('ResizeObserver' in window) new ResizeObserver(resizeWeatherMap).observe(mapWrapper);
+  else window.addEventListener('resize', resizeWeatherMap);
+
+  mapElement.addEventListener('pointerdown', pauseWeatherPlayer);
+  mapElement.addEventListener('wheel', pauseWeatherPlayer, { passive: true });
+  map.on('moveend', () => {
+    if (mapProduct === 'satellite') drawSatelliteFrame();
+    updateMapStatus();
+  });
+
+  fetch('/ibge-ipiranga-region.json').then((resp) => {
+    if (!resp.ok) throw new Error(`IBGE HTTP ${resp.status}`);
+    return resp.json();
+  }).then((geoJson) => {
+    const outline = { pane: 'ibgePane', interactive: false, fill: false };
+    L.geoJSON(geoJson, {
+      ...outline,
+      style: { className: 'radar-neighbor-line', weight: 1, dashArray: '4 4', opacity: .65 },
+      filter: (feature) => !feature.properties?.isCenter
+    }).addTo(map);
+    L.geoJSON(geoJson, {
+      ...outline,
+      filter: (feature) => feature.properties?.isCenter,
+      style: { className: 'radar-city-halo', weight: 5 }
+    }).addTo(map);
+    L.geoJSON(geoJson, {
+      ...outline,
+      filter: (feature) => feature.properties?.isCenter,
+      style: { className: 'radar-city-line', weight: 3 }
+    }).addTo(map);
+  }).catch((err) => console.warn('Contorno do IBGE indisponível', err));
+
+  const weather = window.latestWeatherData;
+  if (weather?.radar) montarRadarDoIndice(weather.radar, false);
+  if (weather?.nowcast) renderCellArrows(weather.nowcast);
+}
+
+function selectMapProduct(product) {
+  if (product === mapProduct) return;
+  pauseWeatherPlayer();
+  mapProduct = product;
+  const radar = product === 'radar';
+  document.getElementById('radarProduct').setAttribute('aria-pressed', String(radar));
+  document.getElementById('satelliteProduct').setAttribute('aria-pressed', String(!radar));
+  document.getElementById('radarLayers').hidden = !radar;
+  document.getElementById('radarLegend').hidden = !radar;
+  document.getElementById('radarCredits').hidden = !radar;
+  document.getElementById('satelliteCredits').hidden = radar;
+  document.getElementById('weatherMap').setAttribute('aria-label', radar ? 'Mapa de radar de Ipiranga' : 'Imagem de satélite de Ipiranga');
+  syncMapBackground();
+
+  if (radar) {
+    clearSatelliteImage();
+    showRadarFrame(Math.max(0, radarPastCount - 1));
+    if (!radarFrames.length) refreshRadar();
+  } else {
+    radarTileLayers.forEach((layer) => map.removeLayer(layer));
+    updateRadarDirection();
+    satelliteIndex = Math.max(0, satelliteFrames.length - 1);
+    if (satelliteFrames.length) drawSatelliteFrame();
+    updateWeatherPlayer();
+    updateMapStatus();
+    refreshSatellite();
+  }
+}
+
+function refreshSatellite() {
+  if (satelliteRequest) return satelliteRequest;
+  const query = new URLSearchParams({
+    where: '1=1', outFields: 'start_time', returnGeometry: 'false',
+    orderByFields: 'start_time DESC', resultRecordCount: '13', f: 'json'
+  });
+  satelliteRequest = fetch(`${noaaInfrared}/query?${query}`, {
+    signal: AbortSignal.timeout(15000), cache: 'no-cache'
+  }).then(async (resp) => {
+    if (!resp.ok) throw new Error(`NOAA HTTP ${resp.status}`);
+    const data = await resp.json();
+    const frames = (data.features || []).map(({ attributes }) => ({ time: attributes?.start_time }))
+      .filter((frame) => Number.isFinite(frame.time)).reverse();
+    if (!frames.length) throw new Error('NOAA sem quadros');
+    satelliteIndexError = false;
+    const latest = satelliteFrames.at(-1);
+    if (latest && frames.at(-1).time <= latest.time) return;
+    const followLive = !latest || satelliteIndex === satelliteFrames.length - 1;
+    const previousTime = satelliteFrames[satelliteIndex]?.time;
+    satelliteFrames = frames;
+    satelliteIndex = followLive ? frames.length - 1 : Math.max(0, frames.findIndex((frame) => frame.time === previousTime));
+    if (mapProduct === 'satellite') drawSatelliteFrame();
+  }).catch((error) => {
+    satelliteIndexError = !satelliteFrames.length;
+    console.warn('Atualização do satélite indisponível', error);
+  }).finally(() => {
+    satelliteRequest = null;
+    if (mapProduct === 'satellite') {
+      updateWeatherPlayer();
+      updateMapStatus();
+    }
+  });
+  return satelliteRequest;
+}
+
+function clearSatelliteImage() {
+  clearTimeout(satelliteImageTimer);
+  if (satelliteLayer) map.removeLayer(satelliteLayer);
+  if (satelliteVisibleLayer) map.removeLayer(satelliteVisibleLayer);
+  satelliteLayer = satelliteVisibleLayer = null;
+  satelliteDisplayedTime = null;
+  satelliteImageStatus = null;
+}
+
+function drawSatelliteFrame() {
+  const frame = satelliteFrames[satelliteIndex];
+  if (!frame || !map.getSize().x || !map.getSize().y) return;
+  const visibleBounds = map.getBounds();
+  if (!satelliteView || !satelliteView.contains(visibleBounds)) satelliteView = visibleBounds.pad(.16);
+  const sw = L.CRS.EPSG3857.project(satelliteView.getSouthWest());
+  const ne = L.CRS.EPSG3857.project(satelliteView.getNorthEast());
+  const aspect = (ne.x - sw.x) / (ne.y - sw.y);
+  const scale = 720 / Math.max(1, aspect);
+  const params = new URLSearchParams({
+    bbox: [sw.x, sw.y, ne.x, ne.y].map(Math.round).join(','),
+    bboxSR: '3857', imageSR: '3857', adjustAspectRatio: 'false',
+    size: `${Math.round(scale * aspect)},${Math.round(scale)}`, format: 'jpg',
+    time: String(frame.time), f: 'image'
+  });
+  const url = `${noaaInfrared}/exportImage?${params}`;
+  if (satelliteLayer?.getElement()?.src === url) return;
+  clearTimeout(satelliteImageTimer);
+  if (satelliteLayer && satelliteLayer !== satelliteVisibleLayer) map.removeLayer(satelliteLayer);
+  satelliteImageStatus = 'loading';
+  const layer = L.imageOverlay(url, satelliteView, { pane: 'radarPane', opacity: 0, alt: '' });
+  satelliteLayer = layer;
+  function complete(status) {
+    if (layer !== satelliteLayer || satelliteImageStatus !== 'loading') return;
+    clearTimeout(satelliteImageTimer);
+    satelliteImageStatus = status;
+    if (status === 'ready') {
+      if (satelliteVisibleLayer) map.removeLayer(satelliteVisibleLayer);
+      layer.setOpacity(1);
+      satelliteVisibleLayer = layer;
+      satelliteDisplayedTime = frame.time;
+    } else {
+      map.removeLayer(layer);
+      pauseWeatherPlayer();
+    }
+    updateWeatherPlayer();
+    updateMapStatus();
+  }
+  layer.on('load', () => complete('ready'));
+  layer.on('error', () => complete('error'));
+  satelliteImageTimer = setTimeout(() => complete('error'), 15000);
+  layer.addTo(map);
+  updateMapStatus();
+}
+
+function radarTileUrl(path) {
+  return path + '/256/{z}/{x}/{y}/2/1_1.png';
+}
+
+/* Valida só os pixels da região exibida inicialmente, usando os tiles do próprio RainViewer. */
+async function radarAreaHasPixels(template, tolerance = 0) {
+  const z = 7;
+  const nw = L.CRS.EPSG3857.latLngToPoint(radarArea.getNorthWest(), z).floor();
+  const se = L.CRS.EPSG3857.latLngToPoint(radarArea.getSouthEast(), z).ceil();
+  const jobs = [];
+  for (let y = Math.floor(nw.y / 256); y * 256 < se.y; y++) {
+    for (let x = Math.floor(nw.x / 256); x * 256 < se.x; x++) {
+      jobs.push((async () => {
+        const resp = await fetch(L.Util.template(template, { x, y, z }), { signal: AbortSignal.timeout(8000) });
+        if (!resp.ok) throw new Error(`RainViewer HTTP ${resp.status}`);
+        const bitmap = await createImageBitmap(await resp.blob());
+        const left = Math.max(0, nw.x - x * 256);
+        const top = Math.max(0, nw.y - y * 256);
+        const width = Math.min(256, se.x - x * 256) - left;
+        const height = Math.min(256, se.y - y * 256) - top;
+        const canvas = Object.assign(document.createElement('canvas'), { width, height });
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(bitmap, -left, -top);
+        bitmap.close();
+        const { data } = ctx.getImageData(0, 0, width, height);
+        const limit = width * height * tolerance;
+        let visible = 0;
+        for (let i = 3; i < data.length; i += 4) {
+          if (data[i] && ++visible > limit) return true;
+        }
+        return false;
+      })());
+    }
+  }
+  return (await Promise.all(jobs)).some(Boolean);
+}
+
+async function checkRadarEmpty(host, past) {
+  const latest = past.at(-1);
+  const displayed = radarFrames;
+  const scopeIsCurrent = () => displayed === radarFrames && mapProduct === 'radar';
+  // Sem duas horas bem amostradas, uma imagem vazia não confirma ausência de ecos.
+  if (Date.now() / 1000 - latest.time > 1500 || latest.time - past[0].time < 6600 ||
+      past.some((frame, i) => i > 0 && frame.time - past[i - 1].time > 900)) return;
+  try {
+    for (const frame of [...past].reverse()) {
+      if (!scopeIsCurrent()) return;
+      const path = host + frame.path;
+      if (!radarEchoes.has(path)) {
+        radarEchoes.set(path, radarAreaHasPixels(radarTileUrl(path)).catch((error) => {
+          radarEchoes.delete(path);
+          throw error;
+        }));
+      }
+      if (await radarEchoes.get(path)) return;
+    }
+    if (!scopeIsCurrent()) return;
+    // A máscara tem lacunas pontuais mesmo nas áreas cobertas.
+    radarCoverage ||= radarAreaHasPixels(host + '/v2/coverage/0/256/{z}/{x}/{y}/0/0_0.png', .05).catch((error) => {
+      radarCoverage = null;
+      throw error;
+    });
+    const missingCoverage = await radarCoverage;
+    if (scopeIsCurrent()) {
+      radarEmpty = !missingCoverage;
+      updateMapStatus();
+    }
+  } catch {
+    // Uma leitura incompleta não sustenta o aviso de ausência de ecos.
+  }
+}
+
+function updateMapStatus() {
+  const radar = mapProduct === 'radar';
+  const error = radar ? radarIndexError || radarTileErrors.has(radarTileLayers[currentFrameIndex])
+    : satelliteIndexError || satelliteImageStatus === 'error';
+  const loading = radar ? !radarFrames.length : !satelliteFrames.length || (satelliteImageStatus === 'loading' && !satelliteVisibleLayer);
+  const lastScan = radarFrames[radarPastCount - 1];
+  const empty = radar && radarEmpty && Date.now() / 1000 - lastScan.time <= 1500 && radarArea.contains(map.getCenter());
+  const message = error ? 'Imagem indisponível' : loading ? 'Carregando imagem…'
+    : empty ? 'Sem chuva no radar nas últimas 2 h' : '';
+  const status = document.getElementById('radarMapStatus').firstElementChild;
+  status.hidden = !message;
+  if (status.textContent !== message) status.textContent = message;
+  const retry = document.getElementById('radarRetry');
+  if (!error && document.activeElement === retry) {
+    document.getElementById(radar ? 'radarProduct' : 'satelliteProduct').focus({ preventScroll: true });
+  }
+  retry.hidden = !error;
 }
 
 async function fetchWeatherData() {
@@ -3219,8 +3436,17 @@ async function fetchWeatherData() {
     const instEl = document.getElementById("wxInstabilidade");
     if (instEl) {
       const inst = data.instabilidade;
-      const fmt = (v) => typeof v === "number" && Number.isFinite(v) ? `${Math.round(v)} J/kg` : "indisponível";
-      instEl.textContent = inst ? `Previsão de instabilidade (${inst.validoPara.replace("T", " ")} · horário de Brasília): CAPE ${fmt(inst.cape)} · CIN ${fmt(inst.cin)} · ${inst.fonte}. Não é alerta.` : "Previsão de instabilidade indisponível.";
+      // Open-Meteo já entrega a hora local de Brasília, sem fuso no texto.
+      const local = inst?.validoPara?.match(/^(\d{4})-(\d{2})-(\d{2})T(\d{2}:\d{2})/);
+      const day = local ? `${local[3]}/${local[2]}/${local[1]}` : null;
+      const when = day && `${localDateLabel(day)} ${local[4]}`;
+      instEl.textContent = when ? `Previsão de instabilidade · ${when}` : 'Previsão de instabilidade indisponível.';
+      const detail = document.getElementById('wxInstabilidadeDetalhe');
+      detail.hidden = !inst;
+      if (inst) {
+        const fmt = (value) => Number.isFinite(value) ? `${Math.round(value)} J/kg` : 'indisponível';
+        detail.textContent = `CAPE ${fmt(inst.cape)} · CIN ${fmt(inst.cin)} · ${inst.fonte}.`;
+      }
     }
 
     if (data.tempC !== undefined) {
@@ -3231,7 +3457,7 @@ async function fetchWeatherData() {
       /* Linha de destaque: temperatura grande, condição ao lado, vento à
          direita; a chance de chuva em uma linha própria logo abaixo. */
       if(tEl) tEl.textContent = `${data.tempC ?? '--'}°`;
-      if(cEl) cEl.textContent = rotuloCondicao(data);
+      if(cEl) cEl.textContent = sentenceCase(data.condition || 'Nublado');
       if(wEl) wEl.textContent = `${data.windKmh ?? 0} km/h`;
       if(rEl) {
         const pct = data.rainProbabilityPct ?? 0;
@@ -3958,8 +4184,18 @@ function haversineKm(lat1, lon1, lat2, lon2) {
 // para ficar visível para onde a célula está indo. Atualizada a cada
 // fetch do /api/weather (cache nowcast ~5 min no backend).
 
-let cellArrowLayer = null; // L.layerGroup com as setas atuais
-let cellArrowPoints = [];  // último nowcast usado (para legendas/tooltips)
+let cellArrowLayer = null;
+let cellArrowTime = null;
+
+function updateRadarDirection() {
+  const visible = cellArrowLayer && mapProduct === 'radar' &&
+    radarFrames[currentFrameIndex]?.time === cellArrowTime;
+  if (cellArrowLayer) {
+    if (visible) cellArrowLayer.addTo(map);
+    else map.removeLayer(cellArrowLayer);
+  }
+  document.getElementById('radarDirection').hidden = !visible;
+}
 
 /** Ponto de destino após percorrer distKm a partir de lat/lon no bearing (0=N). */
 function destinationPoint(lat, lon, bearingDeg, distKm) {
@@ -3979,12 +4215,11 @@ function destinationPoint(lat, lon, bearingDeg, distKm) {
 /** Cor da seta conforme a intensidade do núcleo (paleta do dashboard). */
 function arrowColorForIntensity(intensity) {
   const map = {
-    extreme: '#ef4444',
-    heavy: '#f59e0b',
-    moderate: '#38bdf8',
-    light: '#94a3b8',
+    extreme: 'var(--st-crit)',
+    moderate: 'var(--st-info)',
+    light: 'var(--text3)',
   };
-  return map[intensity] || '#f59e0b';
+  return map[intensity] || 'var(--st-warn)';
 }
 
 /**
@@ -3996,14 +4231,13 @@ function arrowColorForIntensity(intensity) {
  * vai embora lê-se como alerta vindo). Sem movimento confiável, sem seta.
  */
 function renderCellArrows(nowcast) {
-  if (!map || !nowcast) return;
-  if (cellArrowLayer) {
-    map.removeLayer(cellArrowLayer);
-    cellArrowLayer = null;
-  }
-  cellArrowPoints = [];
+  if (!map) return;
+  if (cellArrowLayer) map.removeLayer(cellArrowLayer);
+  cellArrowLayer = null;
+  cellArrowTime = null;
+  updateRadarDirection();
 
-  const latest = nowcast.frames && nowcast.frames[nowcast.frames.length - 1];
+  const latest = nowcast?.frames?.at(-1);
   if (!latest || !latest.cells || latest.cells.length === 0) return;
 
   const layer = L.layerGroup();
@@ -4038,6 +4272,7 @@ function renderCellArrows(nowcast) {
       [[cell.lat, cell.lon], [tip.lat, tip.lon]],
       {
         color,
+        pane: 'weatherDirection',
         weight: 2,
         opacity: 0.45,
         dashArray: '4 6',
@@ -4049,7 +4284,7 @@ function renderCellArrows(nowcast) {
 
     // Seta SVG na ponta, rotacionada para a direção do movimento
     const arrowSvg = `<svg width="26" height="26" viewBox="0 0 26 26" style="transform:rotate(${mv.directionDeg}deg)">
-      <path d="M13 2 L18 11 L14.5 11 L14.5 24 L11.5 24 L11.5 11 L8 11 Z" fill="${color}" stroke="#fff" stroke-width="1"/>
+      <path d="M13 2 L18 11 L14.5 11 L14.5 24 L11.5 24 L11.5 11 L8 11 Z" fill="${color}" stroke="var(--appbar-on)" stroke-width="1"/>
     </svg>`;
     const icon = L.divIcon({
       className: 'cell-arrow-icon',
@@ -4059,92 +4294,132 @@ function renderCellArrows(nowcast) {
     });
     const marker = L.marker([tip.lat, tip.lon], {
       icon,
+      pane: 'weatherDirection',
       interactive: false,
       keyboard: false,
-      zIndexOffset: 500,
     });
     layer.addLayer(marker);
 
-    cellArrowPoints.push({
-      lat: tip.lat,
-      lon: tip.lon,
-      cellLat: cell.lat,
-      cellLon: cell.lon,
-      directionDeg: mv.directionDeg,
-      speedKmh: mv.speedKmh,
-      intensity: cell.intensity,
-      maxDbz: cell.maxDbz,
-    });
   });
 
-  if (cellArrowPoints.length > 0) {
+  if (layer.getLayers().length) {
     cellArrowLayer = layer;
-    layer.addTo(map);
+    cellArrowTime = Number(latest.time);
+    updateRadarDirection();
   }
 }
 
 function showRadarFrame(index) {
-  if (!radarTileLayers || radarTileLayers.length === 0) return;
   currentFrameIndex = index;
-  radarTileLayers.forEach((layer, i) => {
-    const visivel = i === index;
-    layer.setOpacity(visivel ? 0.75 : 0);
-    // O Leaflet anima o fade-in dos tiles com um loop de rAF
-    // (opacity = (agora - carregado)/200) que pode parar antes de chegar a 1 e
-    // deixa o tile preso em 0 — o container fica em 0.75 mas 0,75 × 0 = 0, e a
-    // chuva não aparece (medido 22/09/2026). Aqui o estado é escrito direto no
-    // que já está no DOM; tiles novos são corrigidos no tileload da camada.
-    const cont = layer._container;
-    if (cont) {
-      cont.querySelectorAll('img.leaflet-tile').forEach((t) => {
-        const alvo = visivel ? '1' : '0';
-        if (t.style.opacity !== alvo) t.style.opacity = alvo;
-      });
-    }
-  });
-
-  const frame = radarFrames[index];
-  if (frame && frame.time) {
-    const dt = new Date(frame.time * 1000);
-    const timeStr = dt.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
-    // "Previsão" só quando o frame É do nowcast (índice ≥ radarPastCount) —
-    // antes marcava os 2 últimos frames como previsão mesmo quando eram
-    // frames reais (incidente 2026-08-12: '10:30 (Previsão)' com nowcast vazio).
-    const isNowcast = index >= radarPastCount;
-    const lbl = document.getElementById('radarTimeLabel');
-    if(lbl) lbl.textContent = `${timeStr} ${isNowcast ? '(Previsão)' : ''}`;
+  if (mapProduct !== 'radar') return;
+  const layer = radarTileLayers[index];
+  if (layer) {
+    radarTileLayers.forEach((tile) => tile.setOpacity(tile === layer ? .75 : 0));
+    if (!map.hasLayer(layer)) layer.addTo(map);
   }
+  updateRadarDirection();
+  updateWeatherPlayer();
+  updateMapStatus();
 }
 
-function toggleRadarPlay() {
-  if (!isPlaying && window._carregarLoopRadar) window._carregarLoopRadar();
-  isPlaying = !isPlaying;
-  const btn = document.getElementById('radarPlayBtn');
-  if(btn) btn.innerHTML = isPlaying ? `${icoMS('pause')}` : `${icoMS('play_arrow','fill')}`;
+function updateWeatherPlayer() {
+  const radar = mapProduct === 'radar';
+  const frames = radar ? radarFrames : satelliteFrames;
+  const index = radar ? currentFrameIndex : satelliteIndex;
+  const frame = frames[index];
+  const slider = document.getElementById('radarSlider');
+  const button = document.getElementById('radarPlayBtn');
+  const time = document.getElementById('radarTimeLabel');
+  const live = document.getElementById('radarLiveLabel');
+  const maxIndex = Math.max(0, frames.length - 1);
+  slider.max = maxIndex;
+  slider.value = index;
+  slider.disabled = button.disabled = frames.length < 2;
+  if (button.disabled) pauseWeatherPlayer();
+  slider.style.setProperty('--radar-progress', `${maxIndex ? 100 * index / maxIndex : 0}%`);
+  live.hidden = radar ? !frame || index !== radarPastCount - 1
+    : !satelliteDisplayedTime || satelliteDisplayedTime !== frames[maxIndex]?.time;
+  if (!frame) {
+    slider.setAttribute('aria-valuetext', 'Sem quadros');
+    time.textContent = '—';
+    return;
+  }
+  const selected = new Date(radar ? frame.time * 1000 : frame.time);
+  const shown = !radar && satelliteDisplayedTime ? new Date(satelliteDisplayedTime) : selected;
+  const minutes = Math.max(0, Math.floor((Date.now() - Number(shown)) / 60000));
+  const age = radar && index >= radarPastCount ? 'previsão'
+    : minutes < 1 ? 'agora' : `há ${minutes} min`;
+  slider.setAttribute('aria-valuetext', weatherClock.format(selected));
+  time.textContent = `${fullWeatherTime(shown)} · ${age}`;
+}
 
-  if (isPlaying) {
-    // O loop de frames pode ainda não ter sido baixado (ele espera o frame atual
-    // terminar, para não roubar banda da imagem que o cidadão olha). Pedir play é
-    // pedido explícito: carrega agora.
-    if (window._carregarLoopRadar) window._carregarLoopRadar();
-    playInterval = setInterval(() => {
-      let nextIndex = currentFrameIndex + 1;
-      if (nextIndex >= radarFrames.length) nextIndex = 0;
-      const slider = document.getElementById('radarSlider');
-      if(slider) slider.value = nextIndex;
-      showRadarFrame(nextIndex);
-    }, 800);
+function selectWeatherFrame(index) {
+  if (mapProduct === 'radar') {
+    showRadarFrame(index);
   } else {
-    if (playInterval) clearInterval(playInterval);
+    satelliteIndex = index;
+    drawSatelliteFrame();
+    updateWeatherPlayer();
   }
 }
 
-document.getElementById('radarPlayBtn')?.addEventListener('click', toggleRadarPlay);
-document.getElementById('radarSlider')?.addEventListener('input', (e) => {
-  if (window._carregarLoopRadar) window._carregarLoopRadar();
-  if (isPlaying) toggleRadarPlay();
-  showRadarFrame(parseInt(e.target.value, 10));
+function updatePlayButton(playing) {
+  const button = document.getElementById('radarPlayBtn');
+  button.setAttribute('aria-label', playing ? 'Pausar animação' : 'Reproduzir animação');
+  button.querySelector('.ms').textContent = playing ? 'pause' : 'play_arrow';
+}
+
+function pauseWeatherPlayer() {
+  if (playInterval == null) return;
+  clearInterval(playInterval);
+  playInterval = null;
+  updatePlayButton(false);
+}
+
+document.getElementById('radarPlayBtn').addEventListener('click', () => {
+  if (playInterval != null) {
+    pauseWeatherPlayer();
+    return;
+  }
+  updatePlayButton(true);
+  playInterval = setInterval(() => {
+    if (mapProduct === 'radar') {
+      if (!radarTileLayers[currentFrameIndex]?.isLoading()) selectWeatherFrame((currentFrameIndex + 1) % radarFrames.length);
+    } else if (satelliteImageStatus !== 'loading') {
+      selectWeatherFrame((satelliteIndex + 1) % satelliteFrames.length);
+    }
+  }, 800);
 });
+
+document.getElementById('radarSlider').addEventListener('input', (event) => {
+  pauseWeatherPlayer();
+  selectWeatherFrame(Number(event.currentTarget.value));
+});
+document.getElementById('radarRetry').addEventListener('click', () => {
+  if (!map) initWeatherMap();
+  if (!map) return;
+  if (mapProduct === 'radar') {
+    radarIndexError = false;
+    radarTileLayers[currentFrameIndex]?.redraw();
+    refreshRadar();
+  } else {
+    satelliteIndexError = false;
+    clearSatelliteImage();
+    drawSatelliteFrame();
+    refreshSatellite();
+  }
+  updateMapStatus();
+});
+document.addEventListener('visibilitychange', () => {
+  if (document.hidden) pauseWeatherPlayer();
+  else updateWeatherPlayer();
+});
+setInterval(() => {
+  if (document.visibilityState === 'visible') {
+    updateWeatherPlayer();
+    updateMapStatus();
+  }
+}, 30000);
 
 document.addEventListener('DOMContentLoaded', () => {
   initThemeToggle();
@@ -4153,9 +4428,13 @@ document.addEventListener('DOMContentLoaded', () => {
   // mas só faz sentido depois do mapa existir. Antes ele estava preso dentro do
   // `if (rtt > 200)` da telemetria, então em conexão boa o cidadão olhava um
   // retângulo vazio até o /api/weather responder.
-  initWeatherMap().then(() => { if (map) bootstrapRadar(); });
+  initWeatherMap();
+  if (map) bootstrapRadar();
+  else {
+    radarIndexError = true;
+    updateMapStatus();
+  }
 });
-setTimeout(initWeatherMap, 600);
 
 // ==== Toggle de tema claro/escuro (Material Design 3) ====
 function initThemeToggle() {
@@ -4294,8 +4573,10 @@ function copyPrompt(provider, text) {
   const textEl = document.getElementById('pushBtnText');
   const avisoRow = document.getElementById('avisoRow');
   const localidadeRow = document.getElementById('pushLocalidadeRow');
-  const localidadeInput = document.getElementById('pushLocalidade');
+  const localidadeSelect = document.getElementById('pushLocalidade');
   const localidadeSalvar = document.getElementById('pushLocalidadeSalvar');
+  const localidadeStatus = document.getElementById('pushLocalidadeStatus');
+  const chaveLocalidade = 'mi-localidade-copel';
   let swReg = null;
   let vapidKey = null;
 
@@ -4367,18 +4648,78 @@ function copyPrompt(provider, text) {
     } catch (e) { console.warn('push: estado', e); }
   }
 
-  try { if (localidadeInput) localidadeInput.value = localStorage.getItem('mi-localidade-copel') || ''; } catch {}
-  localidadeSalvar?.addEventListener('click', async () => {
+  function informarLocalidade(texto, estado = '') {
+    localidadeStatus.dataset.estado = estado;
+    localidadeStatus.textContent = texto;
+  }
+
+  function descricaoLocalidadeSalva() {
+    return localidadeSelect.value
+      ? `Avisos locais ativados para ${localidadeSelect.selectedOptions[0].textContent}.`
+      : 'Preferência de localidade removida.';
+  }
+
+  try {
+    const anterior = localStorage.getItem(chaveLocalidade)?.trim();
+    if (anterior) {
+      const chave = anterior.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toUpperCase().replace(/\s+/g, ' ');
+      const conhecida = [...localidadeSelect.options].find((opcao) => opcao.value === chave);
+      if (!conhecida) localidadeSelect.add(new Option(anterior, anterior));
+      localidadeSelect.value = conhecida?.value ?? anterior;
+      informarLocalidade(descricaoLocalidadeSalva());
+    }
+  } catch {}
+
+  localidadeSelect.addEventListener('change', () => {
+    informarLocalidade('Seleção alterada. Toque em Salvar.');
+  });
+
+  function enviarPreferenciaPush(path, payload) {
+    return fetch(`/api/push/${path}`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload), signal: AbortSignal.timeout(15000)
+    });
+  }
+
+  function dadosInscricao(sub) {
+    const chave = (nome) => btoa(String.fromCharCode(...new Uint8Array(sub.getKey(nome))));
+    return { endpoint: sub.endpoint, keys: { p256dh: chave('p256dh'), auth: chave('auth') } };
+  }
+
+  localidadeRow.addEventListener('submit', async (event) => {
+    event.preventDefault();
+    if (localidadeSalvar.disabled) return;
+    const localidade = localidadeSelect.value;
+    btn.disabled = localidadeSelect.disabled = localidadeSalvar.disabled = true;
+    informarLocalidade('Salvando preferência…');
     try {
       const sub = await swReg?.pushManager.getSubscription();
-      if (!sub) { showToast('Ative os avisos neste aparelho primeiro.'); return; }
-      const json = sub.toJSON();
-      const localidade = localidadeInput.value.trim();
-      const response = await fetch('/api/push/localidade', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ endpoint: sub.endpoint, keys: json.keys, localidade }) });
-      if (!response.ok) throw new Error('Preferência não salva');
-      try { localStorage.setItem('mi-localidade-copel', localidade); } catch {}
-      showToast(localidade ? 'Localidade salva neste aparelho.' : 'Preferência de localidade removida.');
-    } catch { showToast('Não foi possível salvar a localidade. Tente novamente.'); }
+      if (!sub) {
+        informarLocalidade('Ative os avisos neste aparelho para salvar a localidade.', 'erro');
+        return;
+      }
+      const inscricao = dadosInscricao(sub);
+      const payload = { ...inscricao, localidade };
+      let response = await enviarPreferenciaPush('localidade', payload);
+      let result = await response.json();
+      if (result.code === 'SUBSCRIPTION_NOT_FOUND') {
+        // Uma inscrição ativa no navegador pode ter ficado sem registro no servidor.
+        const registro = await enviarPreferenciaPush('subscribe', inscricao);
+        if (!registro.ok) throw new Error('Inscrição indisponível');
+        response = await enviarPreferenciaPush('localidade', payload);
+        result = await response.json();
+      }
+      if (!response.ok || result.status !== 'ok') throw new Error('Preferência não salva');
+      try {
+        if (localidade) localStorage.setItem(chaveLocalidade, localidade);
+        else localStorage.removeItem(chaveLocalidade);
+      } catch {}
+      informarLocalidade(descricaoLocalidadeSalva());
+    } catch {
+      informarLocalidade('Não foi possível salvar a localidade. Tente novamente.', 'erro');
+    } finally {
+      btn.disabled = localidadeSelect.disabled = localidadeSalvar.disabled = false;
+    }
   });
 
   async function subscribe() {
@@ -4388,15 +4729,7 @@ function copyPrompt(provider, text) {
         userVisibleOnly: true,
         applicationServerKey: urlBase64ToUint8Array(vapidKey),
       });
-      const body = JSON.stringify({
-        endpoint: sub.endpoint,
-        keys: { p256dh: btoa(String.fromCharCode.apply(null, new Uint8Array(sub.getKey('p256dh')))), auth: btoa(String.fromCharCode.apply(null, new Uint8Array(sub.getKey('auth')))) },
-      });
-      const res = await fetch('/api/push/subscribe', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body,
-      });
+      const res = await enviarPreferenciaPush('subscribe', dadosInscricao(sub));
       if (res.ok) { setState('on'); return true; }
       console.warn('push: subscribe falhou', res.status);
     } catch (e) { console.warn('push: subscribe', e); }
@@ -4420,6 +4753,9 @@ function copyPrompt(provider, text) {
         });
         await sub.unsubscribe();
       }
+      try { localStorage.removeItem(chaveLocalidade); } catch {}
+      localidadeSelect.value = '';
+      informarLocalidade('');
       setState('off');
     } catch (e) { console.warn('push: unsubscribe', e); }
   }

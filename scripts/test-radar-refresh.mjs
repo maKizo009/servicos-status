@@ -4,7 +4,10 @@ import { test } from 'node:test';
 import vm from 'node:vm';
 
 const html = readFileSync(new URL('../src/public/index.html', import.meta.url), 'utf8');
-const names = ['montarRadarDoIndice', 'baixarIndiceRainViewer', 'bootstrapRadar', 'refreshRadar', 'fetchWeatherData'];
+const names = [
+  'montarRadarDoIndice', 'baixarIndiceRainViewer', 'bootstrapRadar', 'refreshRadar',
+  'radarTileUrl', 'showRadarFrame', 'fetchWeatherData',
+];
 const functions = names.map((name) => {
   const start = html.search(new RegExp(`^(async )?function ${name}\\(`, 'm'));
   assert.ok(start >= 0, name);
@@ -16,25 +19,24 @@ const index = (...times) => ({ host: 'https://radar.test', radar: {
 } });
 
 function setup() {
-  const slider = { value: 0, max: 0 };
   const layers = new Set();
   let mounts = 0;
   const ctx = vm.createContext({
-    console: { ...console, warn() {} }, AbortSignal, window: {}, navigator: { connection: { saveData: true } },
-    document: { getElementById: (id) => id === 'radarSlider' ? slider : null },
-    setTimeout: () => {},
+    console: { ...console, warn() {} }, AbortSignal, window: {},
+    document: { getElementById: () => null },
     map: { removeLayer: (layer) => layers.delete(layer), hasLayer: (layer) => layers.has(layer) },
     L: { tileLayer: () => {
       mounts++;
-      return { addTo() { layers.add(this); return this; }, on() {}, once() {} };
+      return { addTo() { layers.add(this); return this; }, on() {}, once() {}, setOpacity() {} };
     } },
     renderNowcastCard() {}, renderCemadenCard() {}, renderHidroCard() {}, renderClimaIA() {},
     renderAlertaCard() {}, renderTopAlert() {}, entradaPainel() {},
-    showRadarFrame(i) { ctx.shown = vm.runInContext(`radarFrames[${i}].time`, ctx); }
+    enableRadarBackground() {}, updateRadarDirection() {}, updateMapStatus() {},
+    updateWeatherPlayer() { ctx.shown = vm.runInContext('radarFrames[currentFrameIndex].time', ctx); }
   });
-  vm.runInContext('let radarFrames = [], radarTileLayers = [], radarPastCount = 0, currentFrameIndex = 0, radarIndexRequest = null;', ctx);
-  vm.runInContext(functions, ctx);
-  return { ctx, slider, mounts: () => mounts };
+  const state = html.slice(html.indexOf("let mapProduct = 'radar';"), html.indexOf('function localDateLabel'));
+  vm.runInContext(`${state}\nlet radarIndexRequest = null;\n${functions}`, ctx);
+  return { ctx, layers, mounts: () => mounts };
 }
 
 test('scripts inline mantêm sintaxe JavaScript válida', () => {
@@ -73,13 +75,13 @@ test('resposta direta mais antiga não regride o radar nem o marcador de refresh
 });
 
 test('modo ao vivo avança para o último observado sem selecionar previsão', () => {
-  const { ctx, slider } = setup();
+  const { ctx } = setup();
   ctx.montarRadarDoIndice(index(100, 200), false);
   const next = index(200, 300, 400);
   next.radar.nowcast = [{ time: 500, path: '/forecast/500' }];
   ctx.montarRadarDoIndice(next, true);
   assert.equal(ctx.shown, 400);
-  assert.equal(slider.value, 2);
+  assert.equal(vm.runInContext('currentFrameIndex', ctx), 2);
 });
 
 test('seleção de histórico acompanha o horário quando a janela muda', () => {
@@ -126,5 +128,15 @@ test('resposta recebida antes do mapa não impede a tentativa seguinte', async (
   assert.equal(ctx.window._radarUltimoFrame, undefined);
   ctx.map = map;
   assert.equal(ctx.montarRadarDoIndice(index(100, 200), true), true);
+  assert.equal(ctx.shown, 200);
+});
+
+test('atualização recebida em Satélite prepara o radar sem montar seus tiles', () => {
+  const { ctx, layers } = setup();
+  vm.runInContext("mapProduct = 'satellite';", ctx);
+  assert.equal(ctx.montarRadarDoIndice(index(100, 200), true), true);
+  assert.equal(layers.size, 0);
+  vm.runInContext("mapProduct = 'radar'; showRadarFrame(radarPastCount - 1);", ctx);
+  assert.equal(layers.size, 1);
   assert.equal(ctx.shown, 200);
 });

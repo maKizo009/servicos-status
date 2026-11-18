@@ -5,7 +5,8 @@ const executar = async (q: any) => { const sql = typeof q === "string" ? q : q.s
 mock.module("../src/db.js", () => ({ getDbClient: async () => ({ execute: executar, batch: async (queries: any[]) => { for (const q of queries) await executar(q); } }) }));
 const tentativas = new Map<string, number>();
 let falhaConsulta = false;
-mock.module("../src/push.js", () => ({ pushConfigured: () => true, listPushSubscriptions: async () => { if (falhaConsulta) throw new Error("fonte indisponível"); return [{ endpoint: "a" }, { endpoint: "b" }]; }, sendPushAlert: async (_t: string, _c: string, _u: string, _l: string, endpoint: string) => { const n = (tentativas.get(endpoint) ?? 0) + 1; tentativas.set(endpoint, n); return { ok: endpoint === "b" && n === 1 ? 0 : 1, falhas: endpoint === "b" && n === 1 ? 1 : 0 }; } }));
+const consultasLocais: string[] = [];
+mock.module("../src/push.js", () => ({ pushConfigured: () => true, listPushSubscriptions: async (localidade?: string) => { if (localidade) consultasLocais.push(localidade); if (falhaConsulta) throw new Error("fonte indisponível"); return [{ endpoint: "a" }, { endpoint: "b" }]; }, sendPushAlert: async (_t: string, _c: string, _u: string, _l: string, endpoint: string) => { const n = (tentativas.get(endpoint) ?? 0) + 1; tentativas.set(endpoint, n); return { ok: endpoint === "b" && n === 1 ? 0 : 1, falhas: endpoint === "b" && n === 1 ? 1 : 0 }; } }));
 let telegram = 0;
 mock.module("../src/telegram.js", () => ({ sendTelegramAlert: async () => ++telegram > 1 }));
 test("retenta somente destinos que falharam", async () => {
@@ -38,4 +39,18 @@ test("cancela envio pendente quando a ocorrência encerra", async () => {
   await processarAvisosCopelAgrupados(d, ["aviso municipal agrupado"], "t", "c");
   await processarAvisosCopelAgrupados({ ...d, timestamp: d.timestamp + 600000, copelOutages: [], newCopelOutages: [] }, [], "t", "c");
   expect(db.query("SELECT estado FROM copel_fila_agrupada WHERE endpoint='b' ORDER BY rowid DESC LIMIT 1").get()).toEqual({ estado: "desatualizado" });
+});
+
+
+test("uma ocorrência agrupada aciona os assinantes de cada localidade", async () => {
+  const { processarAvisosCopelAgrupados } = await import("../src/copel-agrupado.js");
+  const avencal = { idOcorrencia: "4", numeroSequencial: "4", municipio: "IPIRANGA", bairro: "AVENCAL", ehProgramada: false, tipoPrincipal: "INTERRUPCAO", tipoEvento: "", dataInicio: "2026-11-18", previsaoRestabelecimento: null, faixaDuracao: "", statusEquipe: "", qtdConsumidores: 2, equipeId: "" };
+  const rural = { ...avencal, bairro: "RURAL", qtdConsumidores: 3 };
+  const agrupada = { ...avencal, bairro: "AVENCAL, RURAL", qtdConsumidores: 5 };
+  await processarAvisosCopelAgrupados({ timestamp: Date.now(), copelConsultaOk: true, copelOutages: [avencal, rural], newCopelOutages: [agrupada], saneparConsultaOk: true, saneparInterruptions: [], newSaneparInterruptions: [] }, [], "t", "c");
+  expect(consultasLocais).toEqual(["AVENCAL", "RURAL"]);
+  expect(db.query("SELECT DISTINCT titulo FROM copel_fila_agrupada WHERE ids = ? ORDER BY titulo").all(JSON.stringify(["4"]))).toEqual([
+    { titulo: "⚡ Falta de energia em AVENCAL" },
+    { titulo: "⚡ Falta de energia em RURAL" },
+  ]);
 });

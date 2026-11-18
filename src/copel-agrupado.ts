@@ -40,9 +40,17 @@ export async function processarAvisosCopelAgrupados(data: AllCheckData, motivos:
     const nivel = motivos.some(m => m.includes("10%")) ? "critical" : "warn";
     await adicionar(`municipal:${fingerprint([...ids, nivel])}`, tituloMunicipal, corpoMunicipal, nivel, ids);
   } else if (data.newCopelOutages.length > 0) {
-    const localidades = [...new Set(data.newCopelOutages.map(o => o.bairro).filter(Boolean))];
-    for (const localidade of localidades) {
-      const lista = data.newCopelOutages.filter(o => o.bairro === localidade);
+    const localidades = new Map<string, AllCheckData["newCopelOutages"]>();
+    for (const ocorrencia of data.newCopelOutages) {
+      // A consulta agrupa as linhas com o mesmo ID e junta seus bairros.
+      const bairros = new Set(ocorrencia.bairro.split(",").map(bairro => bairro.trim()).filter(Boolean));
+      for (const bairro of bairros) {
+        const lista = localidades.get(bairro) ?? [];
+        lista.push(ocorrencia);
+        localidades.set(bairro, lista);
+      }
+    }
+    for (const [localidade, lista] of localidades) {
       const ids = lista.map(o => o.idOcorrencia || o.numeroSequencial || `${o.bairro}|${o.dataInicio}`).sort();
       const programada = lista.every(o => o.ehProgramada);
       await adicionar(`local:${fingerprint([localidade, ...ids])}`, `⚡ ${programada ? "Desligamento programado" : "Falta de energia"} em ${localidade}`, `A Copel informa ocorrência em ${localidade}. Consulte o painel para detalhes e previsão.`, "warn", ids, localidade);
