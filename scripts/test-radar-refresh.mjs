@@ -6,7 +6,7 @@ import vm from 'node:vm';
 const html = readFileSync(new URL('../src/public/index.html', import.meta.url), 'utf8');
 const names = [
   'montarRadarDoIndice', 'baixarIndiceRainViewer', 'bootstrapRadar', 'refreshRadar',
-  'radarTileUrl', 'showRadarFrame', 'fetchWeatherData',
+  'radarTileUrl', 'showRadarFrame', 'fitIpiranga', 'fetchWeatherData',
 ];
 const functions = names.map((name) => {
   const start = html.search(new RegExp(`^(async )?function ${name}\\(`, 'm'));
@@ -138,5 +138,31 @@ test('atualização recebida em Satélite prepara o radar sem montar seus tiles'
   assert.equal(layers.size, 0);
   vm.runInContext("mapProduct = 'radar'; showRadarFrame(radarPastCount - 1);", ctx);
   assert.equal(layers.size, 1);
+  assert.equal(ctx.shown, 200);
+});
+
+
+test('recentraliza no enquadramento de Ipiranga sem alterar o zoom mínimo', () => {
+  const { ctx } = setup();
+  ctx.ipiranga = [-25.0244, -50.5847];
+  ctx.radarArea = {};
+  ctx.map.getSize = () => ({ x: 360, y: 252 });
+  ctx.map.getBoundsZoom = (area) => {
+    assert.equal(area, ctx.radarArea);
+    return 7.75;
+  };
+  let view;
+  ctx.map.setView = (center, zoom) => { view = { center, zoom }; };
+  ctx.fitIpiranga();
+  assert.deepEqual(view, { center: ctx.ipiranga, zoom: 7.75 });
+});
+
+test('mantém apenas a camada do quadro em exibição ao percorrer o histórico', () => {
+  const { ctx, layers } = setup();
+  ctx.montarRadarDoIndice(index(100, 200, 300), false);
+  const latest = [...layers][0];
+  ctx.showRadarFrame(1);
+  assert.equal(layers.size, 1);
+  assert.equal(layers.has(latest), false);
   assert.equal(ctx.shown, 200);
 });
