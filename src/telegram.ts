@@ -92,10 +92,11 @@ export async function sendCopelAlert(
 	outage: CopelOutage,
 	botToken: string,
 	chatId: string,
+	critical = false,
 ): Promise<boolean> {
 	const tag = outage.ehProgramada
 		? "⚡️ *DESLIGAMENTO PROGRAMADO*"
-		: "🔴 *FALTA DE ENERGIA (Emergência)*";
+		: `${critical ? "🔴" : "🟡"} *FALTA DE ENERGIA (Emergência)*`;
 	const previsao = formatCopelPrevisao(outage);
 	const duracao = formatCopelDuration(outage.faixaDuracao);
 

@@ -27,6 +27,8 @@ export interface AvisoOficial {
 	inicio?: string;
 	fim?: string;
 	link?: string;
+	descricao?: string;
+	orientacoes?: string;
 	/** Confirmado pelo CAP (campo `Municipios`) que Ipiranga/PR é afetado. */
 	cobreIpiranga?: boolean;
 }
@@ -35,6 +37,7 @@ export interface AlertasOficiaisState {
 	avisos: AvisoOficial[];
 	erros: string[];
 	atualizadoEm: number | null;
+	cacheInmet?: boolean;
 }
 
 export interface AlertaUnificado {
@@ -101,8 +104,8 @@ const REGIOES_PR = [
 	"Campos Gerais",
 ];
 
-/** Quantos CAPs baixar para confirmar Ipiranga por ciclo (custo de rede). */
-const MAX_CAPS_POR_CICLO = 8;
+/** Limite de consultas CAP simultâneas para não sobrecarregar a fonte. */
+const MAX_CAPS_SIMULTANEOS = 6;
 
 /**
  * Converte a "Severidade" do INMET em nível do monitor.
@@ -114,13 +117,38 @@ const MAX_CAPS_POR_CICLO = 8;
  * Cuidado: "Perigo Potencial" contém "Perigo" — testar o grau MAIS específico
  * primeiro, senão tudo vira laranja (bug de primeira versão, 01/10/2026).
  */
-function nivelSeveridadeInmet(txt: string): NivelAlerta {
+export function nivelSeveridadeInmet(txt: string): NivelAlerta {
 	const s = txt.toLowerCase();
-	if (s.includes("extremo") || s.includes("emerg")) return "vermelho";
+	if (s.includes("grande perigo") || s.includes("extremo") || s.includes("emerg")) return "vermelho";
 	if (s.includes("potencial")) return "amarelo";
 	if (s.includes("perigo")) return "laranja";
 	if (s.includes("aten")) return "amarelo";
 	return "verde";
+}
+
+/** Lê os campos oficiais do CAP e conserva cobertura desconhecida se faltar a lista. */
+export function interpretarCapInmet(xml: string): { cancelado: boolean; atualizado: boolean; identificador?: string; referencias: string[]; aviso: Partial<AvisoOficial> } {
+	const campo = (nome: string): string | undefined => {
+		const texto = new RegExp(`<${nome}>([\\s\\S]*?)</${nome}>`, "i").exec(xml)?.[1];
+		if (!texto) return undefined;
+		return texto.replace(/<!\[CDATA\[([\s\S]*?)\]\]>/g, "$1")
+			.replace(/&(#x[0-9a-f]+|#\d+|amp|lt|gt|quot|apos);/gi, (entidade, codigo: string) => {
+				const nomes: Record<string, string> = { amp: "&", lt: "<", gt: ">", quot: '"', apos: "'" };
+				if (codigo.startsWith("#x")) return String.fromCodePoint(Number.parseInt(codigo.slice(2), 16));
+				if (codigo.startsWith("#")) return String.fromCodePoint(Number.parseInt(codigo.slice(1), 10));
+				return nomes[codigo.toLowerCase()] ?? entidade;
+			}).trim();
+	};
+	const parametros = [...xml.matchAll(/<parameter>([\s\S]*?)<\/parameter>/gi)];
+	const municipios = parametros.find((p) => /<valueName>\s*Municipios\s*<\/valueName>/i.test(p[1] ?? ""))?.[1];
+	const lista = municipios ? /<value>([\s\S]*?)<\/value>/i.exec(municipios)?.[1] : undefined;
+	const severidade = campo("severity")?.toLowerCase();
+	const niveis: Record<string, NivelAlerta> = { extreme: "vermelho", severe: "laranja", moderate: "amarelo" };
+	const aviso: Partial<AvisoOficial> = { descricao: campo("description"), orientacoes: campo("instruction"), inicio: campo("onset") ?? campo("effective"), fim: campo("expires"), link: campo("web") };
+	if (severidade && niveis[severidade]) aviso.nivel = niveis[severidade];
+	if (lista !== undefined) aviso.cobreIpiranga = lista.includes(COD_IBGE_IPIRANGA);
+	const tipo = campo("msgType")?.toLowerCase();
+	return { cancelado: tipo === "cancel", atualizado: tipo === "update", identificador: campo("identifier"), referencias: (campo("references") ?? "").split(/\s+/).map((r) => r.split(",")[1]).filter((r): r is string => !!r), aviso };
 }
 
 /** INMET via RSS oficial (apiprevmet3) — filtra avisos que cobrem o PR. */
@@ -136,7 +164,8 @@ async function fetchInmet(): Promise<{
 	try {
 		const itens = txt.split("<item>").slice(1);
 		const avisos: AvisoOficial[] = [];
-		let capsBaixados = 0;
+		const candidatos: Array<{ aviso: AvisoOficial; capId: string }> = [];
+		let consultaIncompleta = false;
 		for (const bruto of itens) {
 			const item = bruto.split("</item>")[0] ?? "";
 			const desc = /<description><!\[CDATA\[([\s\S]*?)\]\]>/.exec(item)?.[1] ?? "";
@@ -147,6 +176,7 @@ async function fetchInmet(): Promise<{
 				.replace(/<[^>]+>/g, " ")
 				.replace(/\s+/g, " ")
 				.trim();
+
 			// Área: as regiões do INMET são nomes de região de previsão.
 			// Só entra se alguma região do PR aparecer — o feed é da América
 			// do Sul inteira e o resto não interessa ao monitor.
@@ -166,7 +196,7 @@ async function fetchInmet(): Promise<{
 			// regex do campo, que cortava "Perigo Potencial" em "Perigo".
 			const grauDoTitulo =
 				/severidade\s+grau:\s*([^.,;]+)/i.exec(titulo)?.[1] ?? titulo;
-			avisos.push({
+			const aviso: AvisoOficial = {
 				fonte: "INMET",
 				titulo: (titulo || `Aviso INMET: ${evento}`).slice(0, 200),
 				nivel: nivelSeveridadeInmet(`${grauDoTitulo} ${titulo}`),
@@ -174,30 +204,40 @@ async function fetchInmet(): Promise<{
 				inicio: campo("Início") ?? campo("Inicio"),
 				fim: campo("Fim"),
 				link: link ?? "https://avisos.inmet.gov.br/",
-			});
-			// Confirmação por IBGE no CAP: o aviso só marca Ipiranga se o
-			// município (4110508) aparece na lista `Municipios` do CAP.
-			// Sem isso, "aviso no PR" virava "aviso em Ipiranga" — mentira.
+			};
 			const capId = /\/avisos\/rss\/(\d+)/.exec(link ?? "")?.[1];
-			if (capId && capsBaixados < MAX_CAPS_POR_CICLO) {
-				capsBaixados++;
-				const cap = await fetchText(
-					`https://apiprevmet3.inmet.gov.br/avisos/rss/${capId}`,
-				);
-				const cobre =
-					!!cap &&
-					(new RegExp(`Ipiranga\\s*-\\s*PR\\s*\\(${COD_IBGE_IPIRANGA}\\)`).test(cap) ||
-						cap.includes(COD_IBGE_IPIRANGA));
-				const u = avisos[avisos.length - 1];
-				if (u) {
-					u.cobreIpiranga = cobre;
-					if (cobre && !u.titulo.includes("Ipiranga")) {
-						u.titulo = `${u.titulo} — atinge Ipiranga`.slice(0, 200);
-					}
-				}
+			if (!capId) { consultaIncompleta = true; continue; }
+			// O RSS inclui avisos antigos. Somente os ainda não vencidos e os
+			// cancelamentos precisam do CAP para compor o estado atual.
+			const fimRss = aviso.fim?.replace(" ", "T");
+			const fimMs = fimRss ? Date.parse(`${fimRss}-03:00`) : NaN;
+			if (!/\bStatus\s+Cancel\b/i.test(limpo) && Number.isFinite(fimMs) && fimMs <= Date.now()) continue;
+			candidatos.push({ aviso, capId });
+		}
+		const resultados: Array<{ aviso: AvisoOficial; dados: ReturnType<typeof interpretarCapInmet> }> = [];
+		for (let i = 0; i < candidatos.length; i += MAX_CAPS_SIMULTANEOS) {
+			const lote = candidatos.slice(i, i + MAX_CAPS_SIMULTANEOS);
+			const respostas = await Promise.all(lote.map(async (c) => {
+				const xml = await fetchText(`https://apiprevmet3.inmet.gov.br/avisos/rss/${c.capId}`);
+				return xml ? { aviso: c.aviso, dados: interpretarCapInmet(xml) } : null;
+			}));
+			for (const r of respostas) {
+				if (r) resultados.push(r); else consultaIncompleta = true;
 			}
 		}
-		return { avisos };
+		const cancelados = new Set(resultados.filter((r) => r.dados.cancelado || r.dados.atualizado).flatMap((r) => r.dados.referencias));
+		for (const { aviso, dados } of resultados) {
+			if (dados.cancelado || (dados.identificador && cancelados.has(dados.identificador))) continue;
+			if (!dados.aviso.descricao || !dados.aviso.inicio || !dados.aviso.fim || dados.aviso.cobreIpiranga === undefined) {
+				consultaIncompleta = true;
+				continue;
+			}
+			for (const [chave, valor] of Object.entries(dados.aviso)) {
+				if (valor !== undefined) Object.assign(aviso, { [chave]: valor });
+			}
+			avisos.push(aviso);
+		}
+		return { avisos, ...(consultaIncompleta ? { erro: "INMET: consulta CAP incompleta" } : {}) };
 	} catch {
 		return { avisos: [], erro: "INMET RSS ilegível (parse falhou)" };
 	}
@@ -319,8 +359,11 @@ export function descricaoParaPessoas(
 	a: Pick<AlertaUnificado, "nivel" | "titulo"> & {
 		motivos?: string[];
 		descricao?: string;
+		avisosOficiais?: AvisoOficial[];
 	},
 ): string {
+	const oficial = a.avisosOficiais?.find((aviso) => aviso.fonte === "INMET" && aviso.descricao === a.descricao);
+	if (oficial) return `INMET: ${oficial.descricao}`;
 	// O corpo do push NÃO pode afirmar mais do que o título (04/10/2026): a
 	// string fixa "Chuva forte se aproximando" saía mesmo com radar limpo e o
 	// laranja montado de acumulado+rio+aviso oficial — o morador olhava o
@@ -456,16 +499,12 @@ export function buildAlertaUnificado(
 	// região vizinha NÃO é aviso de Ipiranga.
 	const agoraMs = Date.now();
 	const todosAvisos = oficiais?.avisos ?? [];
-	// Vigente = JÁ COMEÇADO e AINDA NÃO TERMINADO. Bug ao vivo 02/10/2026:
-	// o filtro só olhava o FIM, então um aviso INMET laranja válido só a
-	// partir de 04/10 00:00 contava como vigente dois dias antes — com radar
-	// limpo e 0,2 mm, subiu o alerta da cidade a laranja e cutucou o celular.
-	// Aviso futuro é planejamento, não emergência de agora. Margem de 1 h
-	// tolera o fuso (INMET publica horário de Brasília; servidor em UTC).
-	const margemInicioMs = 60 * 60_000;
+	// A vigência usa o fuso do CAP. O formato legado sem fuso é de Brasília.
+	const margemInicioMs = 0;
 	const parseDataAviso = (s?: string) => {
 		if (!s) return NaN;
-		return Date.parse(s.replace(" ", "T"));
+		const iso = s.replace(" ", "T");
+		return Date.parse(/(?:Z|[+-]\d{2}:?\d{2})$/i.test(iso) ? iso : `${iso}-03:00`);
 	};
 	const vigentes = todosAvisos.filter((a) => {
 		const inicio = parseDataAviso(a.inicio);
@@ -476,6 +515,19 @@ export function buildAlertaUnificado(
 		return !Number.isFinite(fim) || fim > agoraMs;
 	});
 	const avisosIpiranga = vigentes.filter((a) => a.cobreIpiranga === true);
+	const avisoInmet = avisosIpiranga
+		.filter((a) => a.fonte === "INMET" && a.descricao && a.inicio && a.fim)
+		.sort((a, b) => ordem(b.nivel) - ordem(a.nivel))[0];
+	if (avisoInmet && ordem(avisoInmet.nivel) >= ordem(nivel)) {
+		return {
+			nivel: avisoInmet.nivel,
+			titulo: `${avisoInmet.titulo} — INMET`,
+			descricao: avisoInmet.descricao ?? "",
+			motivos: oficiais?.cacheInmet ? ["INMET indisponível no momento. Exibindo a última leitura disponível."] : [],
+			avisosOficiais: avisosIpiranga.filter((a) => a.fonte === "INMET" && !!a.descricao),
+			atualizadoEm: Date.now(),
+		};
+	}
 	// Vermelho oficial sobe mesmo sem confirmação de município: é grave demais
 	// pra ignorar (segurança acima de precisão). Os demais exigem confirmação.
 	const vermelhoSemConfirmar = vigentes.filter(
@@ -585,7 +637,7 @@ export function buildAlertaUnificado(
 		titulo,
 		descricao,
 		motivos,
-		avisosOficiais: todosAvisos,
+		avisosOficiais: avisosIpiranga.filter((a) => a.fonte === "INMET" && !!a.descricao),
 		atualizadoEm: Date.now(),
 	};
 }

@@ -27,6 +27,7 @@ export async function runAllChecks(
 	tracker: EventTracker,
 ): Promise<AllCheckData> {
 	const timestamp = Date.now();
+	await tracker.migrateCopelSnapshot();
 	// Operadoras de telefonia/ISP: REMOVIDAS em 22/09/2026 (pedido do Dave — os
 	// testes não tinham utilidade: o monitor não mede a rede da operadora, só o
 	// site de autoatendimento, e o BGP só diz o que ela anuncia). Cada ciclo
@@ -128,11 +129,6 @@ export async function buildUnifiedReport(
 	   falhou é IGNORÂNCIA, não ausência de ocorrências — e o site afirmava "Sem
 	   ocorrências" com a API da Copel fora do ar (relato do dono 28/09/2026). */
 	const copelConsultaOk = data.copelConsultaOk !== false;
-	const copelStatusConfirmed: "ok" | "warn" | "critical" = !copelConsultaOk
-		? "warn"
-		: interrupcoes.length > 0
-			? "critical"
-			: "ok";
 
 	/* Memória dos avisos (janela de 48 h): o card mostrava só o estado
 	   instantâneo, então o push não deixava rastro na página depois que a luz
@@ -210,6 +206,13 @@ export async function buildUnifiedReport(
 	const pctAffected = Number(
 		((copelTotalConsumers / cityTotalConsumers) * 100).toFixed(2),
 	);
+	const copelStatusConfirmed: "ok" | "warn" | "critical" = !copelConsultaOk
+		? "warn"
+		: pctAffected >= 10
+			? "critical"
+			: copelTotalConsumers >= 20 || pctAffected >= 1
+				? "warn"
+				: "ok";
 
 	// Desligamentos PROGRAMADOS (lembrete no topo da página): ocorrências
 	// com eh_programada=true. A API da Copel (mapa_poligonos_data) expõe a
@@ -223,7 +226,7 @@ export async function buildUnifiedReport(
 		status: copelStatusConfirmed,
 		details: !copelConsultaOk
 			? "Não foi possível consultar a Copel agora"
-			: copelStatusConfirmed === "ok"
+			: interrupcoes.length === 0
 				? emergenciasNaoConfirmadas.length > 0
 					? `${emergenciasNaoConfirmadas.length} ${emergenciasNaoConfirmadas.length === 1 ? "solicitação" : "solicitações"} não confirmadas — sem interrupção ativa`
 					: "Sem ocorrências"

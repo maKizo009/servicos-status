@@ -352,7 +352,9 @@ export async function getRecentEvents(
 export async function getDailyStatsSummary() {
 	const db = await getDbClient();
 	const now = Date.now();
-	const startOfDay = now - (now % (24 * 60 * 60 * 1000));
+	// Ipiranga segue o horário de Brasília, atualmente UTC-03:00.
+	const offset = -3 * 60 * 60 * 1000;
+	const startOfDay = Math.floor((now + offset) / 86400_000) * 86400_000 - offset;
 	const startOf7Days = now - 7 * 86400 * 1000;
 
 	const copelTodayRes = await db.execute({

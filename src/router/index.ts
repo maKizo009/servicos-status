@@ -78,12 +78,17 @@ export async function runChecks(): Promise<void> {
 	// operadora/ISP saíram do produto e não geram mais dado.
 
 	// Per-event alerts for COPEL
+	const consumidoresCopel = data.copelOutages.filter(o => (o.tipoPrincipal || "").toUpperCase().includes("INTERRUPCAO"))
+		.reduce((total, o) => total + (Number(o.qtdConsumidores) || 0), 0);
+	const entregasCopel: Array<{ id: string; telegram: boolean; pushRecebidos: number; pushFalhas: number }> = [];
 	for (const outage of data.newCopelOutages) {
-		await sendCopelAlert(
+		const telegram = await sendCopelAlert(
 			outage,
 			config.telegramBotToken,
 			config.telegramChatId,
+			consumidoresCopel >= (config.copelTotalConsumersCity || 6017) * 0.1,
 		);
+		entregasCopel.push({ id: outage.idOcorrencia || outage.numeroSequencial, telegram, pushRecebidos: 0, pushFalhas: 0 });
 		await saveEventLog(
 			"copel",
 			`Queda de Energia (${outage.ehProgramada ? "Programada" : "Emergencial"})`,
@@ -91,6 +96,12 @@ export async function runChecks(): Promise<void> {
 			`Equipe: ${outage.statusEquipe || "Pendente"} | Previsão: ${outage.previsaoRestabelecimento || "Sem previsão"}`,
 			outage.qtdConsumidores || 0,
 		);
+	}
+	try {
+		const { registrarSimulacaoCopel } = await import("../copel-simulacao.js");
+		await registrarSimulacaoCopel(data, config.copelTotalConsumersCity, entregasCopel);
+	} catch (error) {
+		logger.warn("Falha ao registrar simulação Copel", { error: String(error) });
 	}
 
 	// Per-event alerts for Sanepar

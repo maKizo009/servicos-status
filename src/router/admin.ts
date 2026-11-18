@@ -170,6 +170,20 @@ export async function handleAdminRoutes(ctx: RotaCtx): Promise<Response | null> 
 		}
 		return Response.json(await getAdminStats());
 	}
+	if (path === "/api/admin/copel-simulacao" && method === "GET") {
+		const { getSessionTokenFromCookie, verifySessionToken } = await import("../admin.js");
+		const token = getSessionTokenFromCookie(getHeader(req, "cookie"));
+		if (!(await verifySessionToken(token))) return Response.json({ error: "Não autenticado" }, { status: 401 });
+		const { getDbClient } = await import("../db.js");
+		const db = await getDbClient();
+		try {
+			const ciclos = await db.execute({ sql: "SELECT * FROM copel_simulacao WHERE ciclo >= ? ORDER BY ciclo ASC", args: [Date.now() - 14 * 86400_000] });
+			const alteracoes = await db.execute({ sql: "SELECT * FROM copel_alteracoes_observadas WHERE ciclo >= ? ORDER BY ciclo ASC", args: [Date.now() - 14 * 86400_000] });
+			return Response.json({ ciclos: ciclos.rows, alteracoes: alteracoes.rows });
+		} catch {
+			return Response.json({ error: "Simulação ainda indisponível" }, { status: 503 });
+		}
+	}
 	// Lista de inscritos nos alertas (para o dono ver QUEM está inscrito —
 	// host do push service + datas; ajuda a separar visitantes reais das
 	// inscrições sintéticas de teste). Autenticado como o resto do admin.
