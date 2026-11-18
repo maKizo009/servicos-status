@@ -84,6 +84,19 @@ export async function handlePushRoutes(ctx: RotaCtx): Promise<Response | null> {
 			});
 		}
 	}
+	if (path === "/api/push/localidade" && method === "POST") {
+		try {
+			const body = await getReqJson(req) as { endpoint?: string; keys?: { p256dh?: string; auth?: string }; localidade?: unknown };
+			if (!body.endpoint || !body.keys?.p256dh || !body.keys?.auth || typeof body.localidade !== "string" || body.localidade.length > 100) {
+				return Response.json({ error: "Preferência inválida" }, { status: 400 });
+			}
+			const { salvarLocalidadePush } = await import("../push.js");
+			const salvo = await salvarLocalidadePush({ endpoint: body.endpoint, keys: { p256dh: body.keys.p256dh, auth: body.keys.auth } }, body.localidade);
+			return salvo ? Response.json({ status: "ok" }) : Response.json({ error: "Inscrição não encontrada" }, { status: 400 });
+		} catch {
+			return Response.json({ error: "Requisição inválida" }, { status: 400 });
+		}
+	}
 	if (path === "/api/push/unsubscribe" && method === "POST") {
 		try {
 			const { removePushSubscriptionIfOwned } = await import("../push.js");

@@ -11,10 +11,11 @@ const executar = async (query: string | { sql: string; args: unknown[] }) => {
 mock.module("../src/db.js", () => ({ getDbClient: async () => ({ execute: executar, batch: async (queries: Array<{ sql: string; args: unknown[] }>) => { for (const q of queries) await executar(q); } }) }));
 
 test("registra abertura, atualização e fechamento apenas em consultas confirmadas", async () => {
-  const { registrarSimulacaoCopel } = await import("../src/copel-simulacao.js");
+  const { registrarSimulacaoCopel, prepararPropostaCopel } = await import("../src/copel-simulacao.js");
   const base = { idOcorrencia: "1", numeroSequencial: "1", municipio: "IPIRANGA", bairro: "RURAL", ehProgramada: false, tipoPrincipal: "INTERRUPCAO", tipoEvento: "", dataInicio: "2026-11-18", previsaoRestabelecimento: null, faixaDuracao: "", statusEquipe: "", qtdConsumidores: 10, equipeId: "" };
   const dados = (timestamp: number, qtd: number, ok = true) => ({ timestamp, copelConsultaOk: ok, copelOutages: qtd ? [{ ...base, qtdConsumidores: qtd }] : [], newCopelOutages: timestamp === 1 ? [base] : [], saneparConsultaOk: true, saneparInterruptions: [], newSaneparInterruptions: [] });
   await registrarSimulacaoCopel(dados(1, 10), 6017, []);
+  expect((await prepararPropostaCopel(dados(2, 20), 6017)).motivos).toContain("aviso municipal agrupado");
   await registrarSimulacaoCopel(dados(2, 20), 6017, []);
   await registrarSimulacaoCopel(dados(3, 0, false), 6017, []);
   await registrarSimulacaoCopel(dados(4, 0), 6017, []);

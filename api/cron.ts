@@ -20,7 +20,6 @@ import {
 	salvarSourceHealth,
 } from "../src/source-health.js";
 import {
-	sendCopelAlert,
 	sendSaneparAlert,
 	sendTelegramAlert,
 } from "../src/telegram.js";
@@ -146,18 +145,41 @@ export default async function handler(req: any, res: any) {
 		const consumidoresAtivos = data.copelOutages
 			.filter(o => (o.tipoPrincipal || "").toUpperCase().includes("INTERRUPCAO"))
 			.reduce((total, o) => total + (Number(o.qtdConsumidores) || 0), 0);
+		let agrupamentoProcessado = false;
+		let fallbackAgrupado = false;
+		if (data.copelConsultaOk) {
+			let proposta: Awaited<ReturnType<typeof import("../src/copel-simulacao.js").prepararPropostaCopel>> | null = null;
+			try {
+				const { prepararPropostaCopel } = await import("../src/copel-simulacao.js");
+				proposta = await prepararPropostaCopel(data, config.copelTotalConsumersCity);
+			} catch (error) {
+				console.error("Falha ao preparar avisos agrupados", String(error));
+				fallbackAgrupado = true;
+				agrupamentoProcessado = true;
+			}
+			if (proposta) {
+				try {
+					const { processarAvisosCopelAgrupados } = await import("../src/copel-agrupado.js");
+					await processarAvisosCopelAgrupados(proposta.data, proposta.motivos, config.telegramBotToken, config.telegramChatId, config.copelTotalConsumersCity);
+					agrupamentoProcessado = true;
+				} catch (error) {
+					console.error("Falha ao processar avisos agrupados Copel", String(error));
+					const { ErroEnfileiramentoCopel } = await import("../src/copel-agrupado.js");
+					if (error instanceof ErroEnfileiramentoCopel) {
+						fallbackAgrupado = true;
+						agrupamentoProcessado = true;
+					}
+				}
+			}
+		}
+		const novosConsumidores = data.newCopelOutages.reduce((total, o) => total + (Number(o.qtdConsumidores) || 0), 0);
+		if (fallbackAgrupado && consumidoresAtivos >= 20 && novosConsumidores >= 20) {
+			const localidades = [...new Set(data.copelOutages.filter(o => (o.tipoPrincipal || "").toUpperCase().includes("INTERRUPCAO")).map(o => o.bairro).filter(Boolean))];
+			const corpo = `A Copel informa ${consumidoresAtivos} unidades afetadas em ${localidades.join(", ") || "Ipiranga"}. Consulte o painel para detalhes.`;
+			await sendTelegramAlert({ botToken: config.telegramBotToken, chatId: config.telegramChatId, level: consumidoresAtivos >= (config.copelTotalConsumersCity || 6017) * 0.1 ? "critical" : "warn", summary: corpo });
+			await sendPushAlert("⚡ Energia em Ipiranga", corpo);
+		}
 		for (const outage of data.newCopelOutages) {
-			const telegram = await sendCopelAlert(
-				outage,
-				config.telegramBotToken,
-				config.telegramChatId,
-				consumidoresAtivos >= (config.copelTotalConsumersCity || 6017) * 0.1,
-			);
-			const push = await sendPushAlert(
-				`⚡ ${outage.ehProgramada ? "Desligamento programado" : "Queda de energia"} em ${outage.bairro || "Ipiranga"} (COPEL)`,
-				`${outage.qtdConsumidores || 0} consumidores afetados | Previsão: ${formatCopelPrevisao(outage)}`,
-			);
-			entregasCopel.push({ id: outage.idOcorrencia || outage.numeroSequencial, telegram, pushRecebidos: push.ok, pushFalhas: push.falhas });
 			await saveEventLog(
 				"copel",
 				`Queda de Energia (${outage.ehProgramada ? "Programada" : "Emergencial"})`,
@@ -168,7 +190,7 @@ export default async function handler(req: any, res: any) {
 		}
 		try {
 			const { registrarSimulacaoCopel } = await import("../src/copel-simulacao.js");
-			await registrarSimulacaoCopel(data, config.copelTotalConsumersCity ?? 6017, entregasCopel);
+			if (agrupamentoProcessado) await registrarSimulacaoCopel(data, config.copelTotalConsumersCity ?? 6017, entregasCopel);
 		} catch (error) {
 			console.error("Falha ao registrar simulação Copel", String(error));
 		}

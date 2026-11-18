@@ -14,7 +14,6 @@ import { loadConfig } from "./config.js";
 import { closeDb } from "./db.js";
 import { logger } from "./logger.js";
 import {
-	sendCopelAlert,
 	sendSaneparAlert,
 } from "./telegram.js";
 import {
@@ -43,21 +42,12 @@ async function runOnce(): Promise<void> {
 	logger.info("Running single check cycle (--once)");
 
 	const data = await runAllChecks(config, getTracker());
-	const consumidoresCopel = data.copelOutages.filter(o => (o.tipoPrincipal || "").toUpperCase().includes("INTERRUPCAO"))
-		.reduce((total, o) => total + (Number(o.qtdConsumidores) || 0), 0);
 	const entregasCopel: Array<{ id: string; telegram: boolean; pushRecebidos: number; pushFalhas: number }> = [];
-
-	for (const outage of data.newCopelOutages) {
-		const telegram = await sendCopelAlert(
-			outage,
-			config.telegramBotToken,
-			config.telegramChatId,
-			consumidoresCopel >= (config.copelTotalConsumersCity || 6017) * 0.1,
-		);
-		entregasCopel.push({ id: outage.idOcorrencia || outage.numeroSequencial, telegram, pushRecebidos: 0, pushFalhas: 0 });
-	}
 	try {
-		const { registrarSimulacaoCopel } = await import("./copel-simulacao.js");
+		const { registrarSimulacaoCopel, prepararPropostaCopel } = await import("./copel-simulacao.js");
+		const { processarAvisosCopelAgrupados } = await import("./copel-agrupado.js");
+		const proposta = await prepararPropostaCopel(data, config.copelTotalConsumersCity);
+		if (data.copelConsultaOk) await processarAvisosCopelAgrupados(proposta.data, proposta.motivos, config.telegramBotToken, config.telegramChatId, config.copelTotalConsumersCity);
 		await registrarSimulacaoCopel(data, config.copelTotalConsumersCity, entregasCopel);
 	} catch (error) {
 		logger.warn("Falha ao registrar simulação Copel", { error: String(error) });
