@@ -48,7 +48,6 @@ import {
 } from "../source-health.js";
 import {
 	sendUnifiedReport,
-	sendCopelAlert,
 	sendSaneparAlert,
 } from "../telegram.js";
 import type { UnifiedReport, WeatherState } from "../types.js";
@@ -78,17 +77,20 @@ export async function runChecks(): Promise<void> {
 	// operadora/ISP saíram do produto e não geram mais dado.
 
 	// Per-event alerts for COPEL
-	const consumidoresCopel = data.copelOutages.filter(o => (o.tipoPrincipal || "").toUpperCase().includes("INTERRUPCAO"))
-		.reduce((total, o) => total + (Number(o.qtdConsumidores) || 0), 0);
 	const entregasCopel: Array<{ id: string; telegram: boolean; pushRecebidos: number; pushFalhas: number }> = [];
+	let agrupamentoProcessado = false;
+	if (data.copelConsultaOk) {
+		try {
+			const { prepararPropostaCopel } = await import("../copel-simulacao.js");
+			const { processarAvisosCopelAgrupados } = await import("../copel-agrupado.js");
+			const proposta = await prepararPropostaCopel(data, config.copelTotalConsumersCity);
+			await processarAvisosCopelAgrupados(proposta.data, proposta.motivos, config.telegramBotToken, config.telegramChatId, config.copelTotalConsumersCity);
+			agrupamentoProcessado = true;
+		} catch (error) {
+			logger.warn("Falha ao processar avisos agrupados Copel", { error: String(error) });
+		}
+	}
 	for (const outage of data.newCopelOutages) {
-		const telegram = await sendCopelAlert(
-			outage,
-			config.telegramBotToken,
-			config.telegramChatId,
-			consumidoresCopel >= (config.copelTotalConsumersCity || 6017) * 0.1,
-		);
-		entregasCopel.push({ id: outage.idOcorrencia || outage.numeroSequencial, telegram, pushRecebidos: 0, pushFalhas: 0 });
 		await saveEventLog(
 			"copel",
 			`Queda de Energia (${outage.ehProgramada ? "Programada" : "Emergencial"})`,
@@ -99,7 +101,7 @@ export async function runChecks(): Promise<void> {
 	}
 	try {
 		const { registrarSimulacaoCopel } = await import("../copel-simulacao.js");
-		await registrarSimulacaoCopel(data, config.copelTotalConsumersCity, entregasCopel);
+		if (agrupamentoProcessado) await registrarSimulacaoCopel(data, config.copelTotalConsumersCity, entregasCopel);
 	} catch (error) {
 		logger.warn("Falha ao registrar simulação Copel", { error: String(error) });
 	}

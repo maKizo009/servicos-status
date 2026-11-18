@@ -179,7 +179,12 @@ export async function handleAdminRoutes(ctx: RotaCtx): Promise<Response | null> 
 		try {
 			const ciclos = await db.execute({ sql: "SELECT * FROM copel_simulacao WHERE ciclo >= ? ORDER BY ciclo ASC", args: [Date.now() - 14 * 86400_000] });
 			const alteracoes = await db.execute({ sql: "SELECT * FROM copel_alteracoes_observadas WHERE ciclo >= ? ORDER BY ciclo ASC", args: [Date.now() - 14 * 86400_000] });
-			return Response.json({ ciclos: ciclos.rows, alteracoes: alteracoes.rows });
+			let fila: unknown[] = [];
+			try {
+				const resultado = await db.execute({ sql: "SELECT criado_em, nivel, pendente, municipal, estado, tentativas, ultima_tentativa, CASE WHEN endpoint IS NULL THEN 'telegram' ELSE 'push' END AS canal FROM copel_fila_agrupada WHERE criado_em >= ? ORDER BY criado_em ASC", args: [Date.now() - 14 * 86400_000] });
+				fila = resultado.rows;
+			} catch { /* Fila ainda não foi ativada. */ }
+			return Response.json({ ciclos: ciclos.rows, alteracoes: alteracoes.rows, fila });
 		} catch {
 			return Response.json({ error: "Simulação ainda indisponível" }, { status: 503 });
 		}

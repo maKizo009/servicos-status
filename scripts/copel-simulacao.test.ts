@@ -6,6 +6,8 @@ describe("simulação do alerta municipal Copel", () => {
 		expect(planejarAvisoCopel(19, 0, 3, 6017)).toEqual([]);
 		expect(planejarAvisoCopel(21, 19, 0, 6017)).toContain("aviso municipal agrupado");
 		expect(planejarAvisoCopel(21, 21, 0, 6017)).toEqual([]);
+		expect(planejarAvisoCopel(21, 20, 1, 6017)).toEqual([]);
+		expect(planejarAvisoCopel(40, 20, 20, 6017)).toContain("aviso municipal agrupado");
 	});
 	test("registra o agravamento ao atingir 10%", () => {
 		expect(planejarAvisoCopel(602, 601, 0, 6017)).toContain("agravamento para 10% da rede");

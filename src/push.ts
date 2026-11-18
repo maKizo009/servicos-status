@@ -129,10 +129,32 @@ export async function savePushSubscription(
 /** Remove uma inscrição (unsubscribe ou endpoint inválido/expirou). */
 export async function removePushSubscription(endpoint: string): Promise<void> {
 	const db = await getDbClient();
+	await db.execute("CREATE TABLE IF NOT EXISTS push_localidades (endpoint TEXT PRIMARY KEY, localidade TEXT NOT NULL)");
+	await db.execute({ sql: "DELETE FROM push_localidades WHERE endpoint = ?", args: [endpoint] });
 	await db.execute({
 		sql: "DELETE FROM push_subscriptions WHERE endpoint = ?",
 		args: [endpoint],
 	});
+}
+
+export function normalizarLocalidade(value: string): string {
+	return value.normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim().replace(/\s+/g, " ").toUpperCase();
+}
+
+/** A alteração da preferência exige as mesmas chaves usadas na inscrição. */
+export async function salvarLocalidadePush(sub: PushSubscription, localidade: string): Promise<boolean> {
+	const db = await getDbClient();
+	const registro = await db.execute({ sql: "SELECT p256dh, auth FROM push_subscriptions WHERE endpoint = ?", args: [sub.endpoint] });
+	const row = registro.rows[0];
+	if (!row || normalizarChave(row.p256dh) !== normalizarChave(sub.keys.p256dh) || normalizarChave(row.auth) !== normalizarChave(sub.keys.auth)) return false;
+	await db.execute("CREATE TABLE IF NOT EXISTS push_localidades (endpoint TEXT PRIMARY KEY, localidade TEXT NOT NULL)");
+	const valor = normalizarLocalidade(localidade);
+	if (!valor) {
+		await db.execute({ sql: "DELETE FROM push_localidades WHERE endpoint = ?", args: [sub.endpoint] });
+	} else {
+		await db.execute({ sql: "INSERT INTO push_localidades (endpoint, localidade) VALUES (?, ?) ON CONFLICT(endpoint) DO UPDATE SET localidade=excluded.localidade", args: [sub.endpoint, valor] });
+	}
+	return true;
 }
 
 /**
@@ -171,11 +193,12 @@ export async function countPushSubscriptions(): Promise<number> {
 	return Number(res.rows[0]?.n ?? 0);
 }
 
-export async function listPushSubscriptions(): Promise<PushSubscription[]> {
+export async function listPushSubscriptions(localidade?: string): Promise<PushSubscription[]> {
 	const db = await getDbClient();
-	const res = await db.execute(
-		"SELECT endpoint, p256dh, auth FROM push_subscriptions",
-	);
+	if (localidade !== undefined) await db.execute("CREATE TABLE IF NOT EXISTS push_localidades (endpoint TEXT PRIMARY KEY, localidade TEXT NOT NULL)");
+	const res = localidade === undefined
+		? await db.execute("SELECT endpoint, p256dh, auth FROM push_subscriptions")
+		: await db.execute({ sql: "SELECT s.endpoint, s.p256dh, s.auth FROM push_subscriptions s JOIN push_localidades l ON l.endpoint = s.endpoint WHERE l.localidade = ?", args: [normalizarLocalidade(localidade)] });
 	return res.rows.map((r) => ({
 		endpoint: String(r.endpoint),
 		keys: { p256dh: String(r.p256dh), auth: String(r.auth) },
@@ -254,6 +277,8 @@ export async function sendPushAlert(
 	titulo: string,
 	corpo: string,
 	url = "/",
+	localidade?: string,
+	endpoint?: string,
 ): Promise<{ ok: number; falhas: number }> {
 	const c = loadConfig();
 	if (!pushConfigured()) {
@@ -262,7 +287,8 @@ export async function sendPushAlert(
 	}
 	setVapidDetails(c.vapidSubject!, c.vapidPublicKey!, c.vapidPrivateKey!);
 
-	const subs = await listPushSubscriptions();
+	let subs = await listPushSubscriptions(localidade);
+	if (endpoint) subs = subs.filter(s => s.endpoint === endpoint);
 	if (subs.length === 0) return { ok: 0, falhas: 0 };
 
 	let ok = 0;

@@ -2071,6 +2071,14 @@ html.trocando-tema, html.trocando-tema *{transition:none !important}
         <span class="sr-only" id="pushBtnText">Avisos desativados</span>
       </button>
     </div>
+    <div id="pushLocalidadeRow" hidden style="margin-top:12px">
+      <label for="pushLocalidade">Localidade para avisos de pequenas quedas de energia</label>
+      <div style="display:flex;gap:8px;margin-top:6px">
+        <input id="pushLocalidade" maxlength="100" placeholder="Nome informado pela Copel" style="flex:1;min-width:0">
+        <button id="pushLocalidadeSalvar" type="button">Salvar</button>
+      </div>
+      <small>Use o nome da localidade que aparece no painel da Copel. Deixe vazio para cancelar essa preferência.</small>
+    </div>
   </section>
 
   <div id="statusView">
@@ -4285,6 +4293,9 @@ function copyPrompt(provider, text) {
   const iconEl = document.getElementById('pushBtnIcon');
   const textEl = document.getElementById('pushBtnText');
   const avisoRow = document.getElementById('avisoRow');
+  const localidadeRow = document.getElementById('pushLocalidadeRow');
+  const localidadeInput = document.getElementById('pushLocalidade');
+  const localidadeSalvar = document.getElementById('pushLocalidadeSalvar');
   let swReg = null;
   let vapidKey = null;
 
@@ -4336,6 +4347,7 @@ function copyPrompt(provider, text) {
     else if (state === 'off') { iconEl.innerHTML = BELL_SVG.off; }
     btn.setAttribute('aria-checked', state === 'on' ? 'true' : 'false');
     if (avisoRow) avisoRow.dataset.estado = state;
+    if (localidadeRow) localidadeRow.hidden = state !== 'on';
     btn.setAttribute('aria-label', state === 'denied'
       ? 'Avisos no celular: bloqueados neste aparelho'
       : 'Avisos no celular');
@@ -4354,6 +4366,20 @@ function copyPrompt(provider, text) {
       setState(sub ? 'on' : 'off');
     } catch (e) { console.warn('push: estado', e); }
   }
+
+  try { if (localidadeInput) localidadeInput.value = localStorage.getItem('mi-localidade-copel') || ''; } catch {}
+  localidadeSalvar?.addEventListener('click', async () => {
+    try {
+      const sub = await swReg?.pushManager.getSubscription();
+      if (!sub) { showToast('Ative os avisos neste aparelho primeiro.'); return; }
+      const json = sub.toJSON();
+      const localidade = localidadeInput.value.trim();
+      const response = await fetch('/api/push/localidade', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ endpoint: sub.endpoint, keys: json.keys, localidade }) });
+      if (!response.ok) throw new Error('Preferência não salva');
+      try { localStorage.setItem('mi-localidade-copel', localidade); } catch {}
+      showToast(localidade ? 'Localidade salva neste aparelho.' : 'Preferência de localidade removida.');
+    } catch { showToast('Não foi possível salvar a localidade. Tente novamente.'); }
+  });
 
   async function subscribe() {
     if (!swReg || !vapidKey) return;
