@@ -13,6 +13,7 @@ import {
 	fetchAlertasOficiais,
 	logAlertaUnificado,
 } from "./alertas-oficiais.js";
+import { createHash } from "node:crypto";
 import { fetchHidroTriangulacao, preservarHidro } from "./ana-hidro.js";
 import {
 	fetchCemadenIpiranga,
@@ -22,6 +23,7 @@ import {
 import {
 	getLatestNowcastBulletin,
 	getLatestWeatherBulletin,
+	getWeatherStateCache,
 	lerCiclosAlerta,
 	lerUltimoNivelAlerta,
 	limparAmostrasDissipacaoAntigas,
@@ -451,6 +453,22 @@ export async function syncWeatherCycle(): Promise<WeatherState> {
 	// Roda no mesmo ciclo, nunca quebra o sync (try/catch interno).
 	try {
 		const oficiais = await promessaOficiais;
+		// Somente uma falha integral do RSS permite reutilizar a última leitura.
+		// Uma leitura parcial pode conter cancelamentos e não é mesclada.
+		if (oficiais.erros.some(e => e.startsWith("INMET RSS indisponível"))) {
+			try {
+				const salvo = await getWeatherStateCache();
+				const anterior = salvo ? JSON.parse(salvo.payload)?.alertasOficiais : null;
+				const idade = Date.now() - Number(anterior?.atualizadoEm ?? 0);
+				if (idade >= 0 && idade <= 30 * 60_000 && (anterior?.cacheInmet || !anterior?.erros?.some((e: string) => e.startsWith("INMET")))) {
+					oficiais.avisos.push(...(anterior.avisos ?? []).filter((a: { fonte?: string }) => a.fonte === "INMET"));
+					oficiais.atualizadoEm = anterior.atualizadoEm;
+					oficiais.cacheInmet = true;
+				}
+			} catch (error) {
+				logger.warn("Falha ao recuperar avisos INMET anteriores", { error: String(error) });
+			}
+		}
 		state.alertasOficiais = oficiais;
 		const estsA = state.cemaden?.estacoes ?? [];
 		const maxA = (f: (e: (typeof estsA)[number]) => number | null) =>
@@ -584,18 +602,22 @@ export async function syncWeatherCycle(): Promise<WeatherState> {
 			const { avisoMovimentoNucleo, pushParaAlerta, sendEventPush } =
 				await import("./push.js");
 			const regra = pushParaAlerta(unificado.nivel);
-			if (regra) {
+			const avisoOficial = unificado.avisosOficiais.find(a => a.fonte === "INMET" && a.descricao === unificado.descricao);
+			if (regra && !(avisoOficial && oficiais.cacheInmet)) {
 				// O aviso de olhar o radar entra no corpo do push: o que se aproxima
 				// pode mudar de rumo/intensidade (pedido do dono, 27/09/2026).
 				// Corpo do push em texto de gente (01/10/2026): a descrição
 				// técnica ("núcleo severo confirmado em 2 ciclos") vai pro CARD,
 				// não pro celular — lá ela só assusta e não informa.
 				const corpoPush = descricaoParaPessoas(unificado);
+				const identidade = avisoOficial
+					? createHash("sha256").update(JSON.stringify([avisoOficial.link, avisoOficial.nivel, avisoOficial.descricao, avisoOficial.orientacoes, avisoOficial.inicio, avisoOficial.fim])).digest("hex")
+					: null;
 				const enviado = await sendEventPush(
-					regra.evento,
+					identidade ? `inmet:${identidade}` : regra.evento,
 					`${regra.emoji} ${unificado.titulo}`,
 					corpoPush,
-					regra.ttlMs,
+					identidade ? 14 * 24 * 60 * 60_000 : regra.ttlMs,
 				);
 				logger.info("Push de alerta avaliado", {
 					nivel: unificado.nivel,

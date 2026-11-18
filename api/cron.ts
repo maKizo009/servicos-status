@@ -12,6 +12,7 @@ import { ensureInitialized } from "../src/runtime-state.js";
 import {
 	conteudoPushChuvaIminente,
 	sendEventPush,
+	sendPushAlert,
 } from "../src/push.js";
 import { EventTracker } from "../src/state.js";
 import {
@@ -141,17 +142,22 @@ export default async function handler(req: any, res: any) {
 			console.error("Livro de apostas falhou (não crítico):", String(err));
 		}
 
+		const entregasCopel: Array<{ id: string; telegram: boolean; pushRecebidos: number; pushFalhas: number }> = [];
+		const consumidoresAtivos = data.copelOutages
+			.filter(o => (o.tipoPrincipal || "").toUpperCase().includes("INTERRUPCAO"))
+			.reduce((total, o) => total + (Number(o.qtdConsumidores) || 0), 0);
 		for (const outage of data.newCopelOutages) {
-			await sendCopelAlert(
+			const telegram = await sendCopelAlert(
 				outage,
 				config.telegramBotToken,
 				config.telegramChatId,
+				consumidoresAtivos >= (config.copelTotalConsumersCity || 6017) * 0.1,
 			);
-			await sendEventPush(
-				"copel",
-				`⚡ Queda de energia em ${outage.bairro || "Ipiranga"} (COPEL)`,
+			const push = await sendPushAlert(
+				`⚡ ${outage.ehProgramada ? "Desligamento programado" : "Queda de energia"} em ${outage.bairro || "Ipiranga"} (COPEL)`,
 				`${outage.qtdConsumidores || 0} consumidores afetados | Previsão: ${formatCopelPrevisao(outage)}`,
 			);
+			entregasCopel.push({ id: outage.idOcorrencia || outage.numeroSequencial, telegram, pushRecebidos: push.ok, pushFalhas: push.falhas });
 			await saveEventLog(
 				"copel",
 				`Queda de Energia (${outage.ehProgramada ? "Programada" : "Emergencial"})`,
@@ -159,6 +165,12 @@ export default async function handler(req: any, res: any) {
 				`Equipe: ${outage.statusEquipe || "Pendente"} | Previsão: ${formatCopelPrevisao(outage)}`,
 				outage.qtdConsumidores || 0,
 			);
+		}
+		try {
+			const { registrarSimulacaoCopel } = await import("../src/copel-simulacao.js");
+			await registrarSimulacaoCopel(data, config.copelTotalConsumersCity ?? 6017, entregasCopel);
+		} catch (error) {
+			console.error("Falha ao registrar simulação Copel", String(error));
 		}
 
 		for (const intr of data.newSaneparInterruptions) {

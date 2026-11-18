@@ -77,24 +77,32 @@ export async function checkCopel(
 
 			allOutages.push(outage);
 
-			// Só INTERRUPÇÃO confirmada vira alerta (site oficial só conta
-			// tipo_principal=INTERRUPCAO nas UCs/OCs; EMERGENCIA = solicitação
-			// ainda não confirmada pela Copel — não dispara Telegram/push).
-			const isInterrupcao = (outage.tipoPrincipal || "")
-				.toUpperCase()
-				.includes("INTERRUPCAO");
-			if (!isInterrupcao) continue;
+		}
 
-			const h = makeHash(
-				outage.idOcorrencia,
-				outage.numeroSequencial,
-				outage.dataInicio,
-				outage.bairro,
-				String(outage.qtdConsumidores),
+		// A Copel pode devolver várias linhas para a mesma ocorrência. Procura
+		// primeiro qualquer chave antiga do grupo antes de migrar sua identidade.
+		const grupos = new Map<string, CopelOutage[]>();
+		for (const outage of allOutages) {
+			if (!(outage.tipoPrincipal || "").toUpperCase().includes("INTERRUPCAO")) continue;
+			const identidade = outage.idOcorrencia || outage.numeroSequencial;
+			const hash = identidade
+				? makeHash(identidade)
+				: makeHash(outage.municipio, outage.bairro, outage.dataInicio);
+			const grupo = grupos.get(hash) ?? [];
+			grupo.push(outage);
+			grupos.set(hash, grupo);
+		}
+		for (const [hash, grupo] of grupos) {
+			const conhecida = tracker.isKnown("copel_id", hash) || grupo.some((outage) =>
+				tracker.isKnown("copel", makeHash(outage.idOcorrencia, outage.numeroSequencial, outage.dataInicio, outage.bairro, String(outage.qtdConsumidores))),
 			);
-			if (!tracker.isKnown("copel", h)) {
-				tracker.markKnown("copel", h);
-				newOutages.push(outage);
+			if (!tracker.isKnown("copel_id", hash)) await tracker.markKnown("copel_id", hash);
+			if (!conhecida && grupo[0]) {
+				newOutages.push({
+					...grupo[0],
+					bairro: [...new Set(grupo.map((o) => o.bairro).filter(Boolean))].join(", "),
+					qtdConsumidores: grupo.reduce((soma, o) => soma + (Number(o.qtdConsumidores) || 0), 0),
+				});
 			}
 		}
 

@@ -36,6 +36,22 @@ export class EventTracker {
 		this.isInit = true;
 	}
 
+	async migrateCopelSnapshot(): Promise<void> {
+		try {
+			const db = await getDbClient();
+			const snapshot = await db.execute("SELECT payload FROM services_snapshot WHERE id = 1");
+			const report = snapshot.rows[0]?.payload ? JSON.parse(String(snapshot.rows[0].payload)) : null;
+			const copel = report?.services?.find((s: { name?: string }) => s.name === "Copel");
+			for (const outage of copel?.data?.activeEvents ?? []) {
+				const id = outage.idOcorrencia || outage.numeroSequencial;
+				const hash = id ? makeHash(id) : makeHash(outage.municipio || "", outage.bairro || "", outage.dataInicio || "");
+				if (!this.isKnown("copel_id", hash)) await this.markKnown("copel_id", hash);
+			}
+		} catch (error) {
+			logger.warn("Migração do retrato Copel indisponível", { error: String(error) });
+		}
+	}
+
 	isKnown(source: string, hash: string): boolean {
 		const set = this.known.get(source);
 		return set ? set.has(hash) : false;
@@ -55,6 +71,8 @@ export class EventTracker {
 				sql: "INSERT INTO known_events (source, hash, created_at) VALUES (?, ?, ?)",
 				args: [source, hash, Date.now()],
 			});
-		} catch {}
+		} catch (error) {
+			logger.warn("Falha ao persistir ocorrência conhecida", { source, error: String(error) });
+		}
 	}
 }

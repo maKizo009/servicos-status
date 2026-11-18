@@ -2963,7 +2963,7 @@ async function fetchStats(){
     const daily = data.daily || {};
 
     $('#statCopelToday').textContent = daily.copel?.eventsToday || 0;
-    $('#statCopelSub').textContent = `${(daily.copel?.totalConsumersToday || 0).toLocaleString('pt-BR')} UCs afetadas hoje (${daily.copel?.events7Days || 0} nos últimos 7 dias)`;
+    $('#statCopelSub').textContent = `Soma dos registros: ${(daily.copel?.totalConsumersToday || 0).toLocaleString('pt-BR')} UCs · ${daily.copel?.events7Days || 0} registros nos últimos 7 dias`;
 
     $('#statSaneparToday').textContent = daily.sanepar?.eventsToday || 0;
     $('#statSaneparSub').textContent = `${daily.sanepar?.events7Days || 0} interrupções nos últimos 7 dias`;
@@ -3614,8 +3614,7 @@ function renderHero(){
     if (card) card.dataset.alerta = a.nivel;
     if (alertBox) {
       const motivos = (a.motivos || []).map((m) => `<div>• ${esc(m)}</div>`).join('');
-      const oficiais = (a.avisosOficiais || []).slice(0, 2).map((o) =>
-        `<div class="hero-alert-fonte">${esc(o.fonte)}: ${esc(o.titulo)}</div>`).join('');
+      const oficiais = (a.avisosOficiais || []).filter(o => o.fonte === 'INMET' && o.descricao).map(renderAvisoInmet).join('');
       alertBox.innerHTML = `${motivos}${oficiais}`;
       alertBox.hidden = !(motivos || oficiais);
     }
@@ -3699,6 +3698,18 @@ function renderCemadenCard(data) {
     notas.textContent = 'Estações oficiais de chuva' + (hh ? ` · leitura das ${hh[1]}` : '');
   }
 }
+function renderAvisoInmet(o) {
+  const hora = s => {
+    const d = new Date(s);
+    return Number.isNaN(d.getTime()) ? 'não informado' : d.toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo', dateStyle: 'short', timeStyle: 'short' });
+  };
+  let link = '';
+  try {
+    const u = new URL(o.link);
+    if (u.protocol === 'https:' && (u.hostname === 'avisos.inmet.gov.br' || u.hostname === 'apiprevmet3.inmet.gov.br')) link = `<a href="${esc(u.href)}" target="_blank" rel="noopener noreferrer">Consultar aviso do INMET</a>`;
+  } catch {}
+  return `<div class="hero-alert-fonte"><strong>${esc(o.titulo)} · INMET</strong><div>Vigência ${esc(hora(o.inicio))} até ${esc(hora(o.fim))}</div><div>${esc(o.descricao || '')}</div>${o.orientacoes ? `<div>${esc(o.orientacoes)}</div>` : ''}${link}</div>`;
+}
 function renderTopAlert(data) {
   /* O alerta unificado (chuva CEMADEN + avisos oficiais) assume o TÍTULO do
      herói quando é laranja/vermelho; fora disso o herói segue com o veredito
@@ -3755,9 +3766,7 @@ function renderAlertaCard(data) {
   const desc = pushUnico(descBruto);
   const motivos = (a.motivos || []).map((m) => pushUnico(m)).filter(Boolean)
     .map((m) => `<div style="font-size:13px;color:var(--text3)">• ${esc(m)}</div>`).join('');
-  const oficiais = (a.avisosOficiais || []).slice(0, 3).map((o) =>
-    `<div>• ${esc(o.fonte)}: ${esc(o.titulo)} (${esc(o.nivel)})</div>`
-  ).join('');
+  const oficiais = (a.avisosOficiais || []).filter(o => o.fonte === 'INMET' && o.descricao).map(renderAvisoInmet).join('');
   if (mot) {
     mot.innerHTML = (titulo ? `<div style="font-weight:600;color:var(--text)">${esc(titulo)}</div>` : '') +
       (desc ? `<div style="margin-top:4px">${esc(desc)}</div>` : '') +

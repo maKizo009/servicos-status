@@ -74,7 +74,13 @@ describe("consulta não confirmada não vira 'Sem ocorrências'", () => {
 });
 
 describe("o relatório continua contando o que importa", () => {
-	test("INTERRUPCAO confirmada é crítica e soma as UCs", async () => {
+	test("a classificação acompanha o impacto municipal", async () => {
+		for (const [consumidores, status] of [[1, "ok"], [20, "warn"], [602, "critical"]] as const) {
+			const rel = await buildUnifiedReport(base({ copelOutages: [ocorrencia({ qtdConsumidores: consumidores })] }), 6017);
+			expect(rel.services.find(s => s.name === "Copel")?.status).toBe(status);
+		}
+	});
+	test("INTERRUPCAO confirmada soma as UCs e usa atenção a partir de 20", async () => {
 		const rel = await buildUnifiedReport(
 			base({
 				copelOutages: [
@@ -88,7 +94,7 @@ describe("o relatório continua contando o que importa", () => {
 			}),
 		);
 		const copel = rel.services.find((s) => s.name === "Copel");
-		expect(copel?.status).toBe("critical");
+		expect(copel?.status).toBe("warn");
 		expect(copel?.data?.totalConsumers).toBe(47);
 		expect(copel?.data?.ocorrencias).toBe(2);
 	});
