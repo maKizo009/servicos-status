@@ -7,6 +7,7 @@ const html = readFileSync(new URL('../src/public/index.html', import.meta.url), 
 const names = [
   'montarRadarDoIndice', 'baixarIndiceRainViewer', 'bootstrapRadar', 'refreshRadar',
   'radarTileUrl', 'showRadarFrame', 'fitIpiranga', 'fetchWeatherData',
+  'cancelRadarPreparation', 'prepareRadarFrame', 'prefetchNextRadarFrame',
 ];
 const functions = names.map((name) => {
   const start = html.search(new RegExp(`^(async )?function ${name}\\(`, 'm'));
@@ -22,16 +23,17 @@ function setup() {
   const layers = new Set();
   let mounts = 0;
   const ctx = vm.createContext({
-    console: { ...console, warn() {} }, AbortSignal, window: {},
-    document: { getElementById: () => null },
+    console: { ...console, warn() {} }, AbortSignal, window: {}, setTimeout, clearTimeout,
+    navigator: { connection: { saveData: true } },
+    document: { hidden: false, getElementById: () => null },
     map: { removeLayer: (layer) => layers.delete(layer), hasLayer: (layer) => layers.has(layer) },
     L: { tileLayer: () => {
       mounts++;
-      return { addTo() { layers.add(this); return this; }, on() {}, once() {}, setOpacity() {} };
+      return { addTo() { layers.add(this); return this; }, on() {}, once() {}, off() {}, setOpacity() {}, isLoading() { return false; } };
     } },
     renderNowcastCard() {}, renderCemadenCard() {}, renderHidroCard() {}, renderClimaIA() {},
     renderAlertaCard() {}, renderTopAlert() {}, entradaPainel() {},
-    enableRadarBackground() {}, updateRadarDirection() {}, updateMapStatus() {},
+    enableRadarBackground() {}, updateRadarDirection() {}, updateMapStatus() {}, checkRadarEmpty() {}, pauseWeatherPlayer() {},
     updateWeatherPlayer() { ctx.shown = vm.runInContext('radarFrames[currentFrameIndex].time', ctx); }
   });
   const state = html.slice(html.indexOf("let mapProduct = 'radar';"), html.indexOf('function localDateLabel'));
@@ -165,4 +167,62 @@ test('mantém apenas a camada do quadro em exibição ao percorrer o histórico'
   assert.equal(layers.size, 1);
   assert.equal(layers.has(latest), false);
   assert.equal(ctx.shown, 200);
+});
+
+test('mantém a imagem até o próximo quadro carregar e cancela ouvintes obsoletos', () => {
+  const { ctx, layers } = setup();
+  const created = [];
+  ctx.L.tileLayer = () => {
+    const listeners = new Map();
+    const layer = {
+      loading: false,
+      addTo() { this.loading = true; layers.add(this); return this; },
+      on(type, fn) { const list = listeners.get(type) || []; list.push(fn); listeners.set(type, list); },
+      once(type, fn) { this.on(type, fn); },
+      off(type, fn) { listeners.set(type, (listeners.get(type) || []).filter((f) => f !== fn)); },
+      setOpacity(value) { this.opacity = value; },
+      isLoading() { return this.loading; },
+      emit(type) { if (type === 'load') this.loading = false; for (const fn of [...(listeners.get(type) || [])]) fn(); },
+      listeners(type) { return (listeners.get(type) || []).length; }
+    };
+    created.push(layer);
+    return layer;
+  };
+  ctx.montarRadarDoIndice(index(100, 200, 300), false);
+  created[2].emit('load');
+  ctx.showRadarFrame(0);
+  assert.equal(ctx.shown, 300);
+  assert.equal(layers.size, 2);
+  ctx.showRadarFrame(2);
+  assert.equal(layers.size, 1);
+  assert.equal(created[0].listeners('load'), 1);
+  ctx.showRadarFrame(0);
+  ctx.showRadarFrame(1);
+  assert.equal(layers.size, 2);
+  assert.equal(created[0].listeners('load'), 1); // listener permanente da camada
+  assert.equal(created[0].listeners('tileerror'), 1);
+  created[1].emit('load');
+  assert.equal(ctx.shown, 200);
+  assert.equal(layers.size, 1);
+  assert.equal(created[1].opacity, .75);
+});
+
+test('refresh reaproveita camadas ainda presentes no índice', () => {
+  const { ctx, mounts } = setup();
+  ctx.montarRadarDoIndice(index(100, 200, 300), false);
+  ctx.montarRadarDoIndice(index(200, 300, 400), true);
+  assert.equal(mounts(), 4);
+  assert.equal(ctx.shown, 400);
+});
+
+test('preferências inválidas ou storage indisponível usam os padrões', () => {
+  const { ctx } = setup();
+  ctx.localStorage = { getItem: () => '{inválido' };
+  assert.equal(vm.runInContext("readWeatherPreferences().product", ctx), 'radar');
+  assert.equal(vm.runInContext("readWeatherPreferences().photo", ctx), false);
+  ctx.localStorage = { getItem() { throw new Error('bloqueado'); } };
+  assert.equal(vm.runInContext("readWeatherPreferences().product", ctx), 'radar');
+  ctx.localStorage = { getItem: () => JSON.stringify({ product: 'satellite', photo: true }) };
+  assert.equal(vm.runInContext("readWeatherPreferences().product", ctx), 'satellite');
+  assert.equal(vm.runInContext("readWeatherPreferences().photo", ctx), true);
 });

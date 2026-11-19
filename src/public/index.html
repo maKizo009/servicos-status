@@ -267,6 +267,9 @@
 
 .radar-card>.panel-head{position:relative;padding:4px 10px;gap:4px;flex-wrap:nowrap}
 .radar-head-actions{margin-left:auto;display:flex}
+.radar-background{display:flex;align-items:center;gap:8px;padding:6px 12px;font-size:13px;flex-wrap:wrap}
+.radar-background[hidden]{display:none}
+.radar-background .radar-segment span{height:28px;font-size:12px}
 .radar-player,.radar-footer{display:flex;align-items:center;gap:8px;padding:0 14px}
 .radar-segments{display:flex}
 .radar-action,.radar-segment{
@@ -2091,19 +2094,23 @@ html.trocando-tema, html.trocando-tema *{transition:none !important}
         <div class="panel-head">
           <h2 class="sr-only" id="radarTitle">Radar de chuva</h2>
           <div class="radar-segments" role="group" aria-label="Imagem meteorológica">
-            <button type="button" class="radar-segment" id="radarProduct" aria-label="Radar" aria-pressed="true"><span>Radar</span></button>
-            <button type="button" class="radar-segment" id="satelliteProduct" aria-label="Satélite" aria-pressed="false"><span>Satélite</span></button>
+            <button type="button" class="radar-segment" id="radarProduct" aria-label="Radar de chuva" aria-pressed="true"><span>Radar de chuva</span></button>
+            <button type="button" class="radar-segment" id="satelliteProduct" aria-label="Satélite GOES" aria-pressed="false"><span>Satélite GOES</span></button>
           </div>
           <div class="radar-head-actions">
-            <button type="button" class="radar-action" id="radarLayers" aria-label="Foto aérea" aria-pressed="false" title="Usar foto aérea">
-              <span class="radar-action-face"><span class="ms s20" aria-hidden="true">layers</span></span>
-            </button>
             <button type="button" class="radar-action" id="radarRecenter" aria-label="Recentralizar em Ipiranga" title="Recentralizar em Ipiranga">
               <span class="radar-action-face"><span class="ms s20" aria-hidden="true">location_on</span></span>
             </button>
             <button type="button" class="radar-action" id="btnFullscreen" aria-label="Ver em tela cheia" title="Tela cheia">
               <span class="radar-action-face"><span class="ms s20" aria-hidden="true">fullscreen</span></span>
             </button>
+          </div>
+        </div>
+        <div class="radar-background" id="radarBackgroundSelector">
+          <span>Fundo do radar</span>
+          <div class="radar-segments" role="group" aria-label="Fundo do radar">
+            <button type="button" class="radar-segment" id="radarBackgroundMap" aria-pressed="true"><span>Mapa</span></button>
+            <button type="button" class="radar-segment" id="radarBackgroundPhoto" aria-pressed="false"><span>Foto aérea</span></button>
           </div>
         </div>
         <div class="radar-map-wrapper">
@@ -2796,16 +2803,26 @@ function montarRadarDoIndice(idx, substituir) {
   const seguirAoVivo = !substituir || !anterior || currentFrameIndex === radarPastCount - 1;
   const selecionado = radarFrames[currentFrameIndex]?.time;
   const host = idx.host || 'https://tilecache.rainviewer.com';
+  const radarFramesBefore = radarFrames;
+  const oldTiles = radarTileLayers;
+  const oldHost = window._radarHost || host;
+  window._radarHost = host;
   radarFrames = [...past, ...(idx.radar.nowcast || [])];
   radarPastCount = past.length;
   radarEmpty = false;
   radarIndexError = false;
-  radarTileLayers.forEach((layer) => map.removeLayer(layer));
+  const oldLayers = new Map(radarFramesBefore.map((frame, i) => [oldHost + frame.path, oldTiles[i]]));
+  for (const [path, layer] of oldLayers) {
+    if (layer !== radarDisplayedLayer && !radarFrames.some((frame) => host + frame.path === path)) map.removeLayer(layer);
+  }
+  cancelRadarPreparation();
   const validPaths = new Set(past.map((frame) => host + frame.path));
   for (const path of radarEchoes.keys()) {
     if (!validPaths.has(path)) radarEchoes.delete(path);
   }
   radarTileLayers = radarFrames.map((frame) => {
+    const reused = oldLayers.get(host + frame.path);
+    if (reused) return reused;
     const layer = L.tileLayer(radarTileUrl(host + frame.path), {
       pane: 'radarPane', tileSize: 256, opacity: 0, maxNativeZoom: 7, maxZoom: 14,
       className: 'rain-tile', crossOrigin: true
@@ -2814,7 +2831,7 @@ function montarRadarDoIndice(idx, substituir) {
     layer.on('loading', () => radarTileErrors.delete(layer));
     layer.on('tileerror', () => {
       radarTileErrors.add(layer);
-      if (mapProduct === 'radar' && layer === radarTileLayers[currentFrameIndex]) {
+      if (mapProduct === 'radar' && layer === radarDisplayedLayer) {
         pauseWeatherPlayer();
         updateMapStatus();
       }
@@ -2822,12 +2839,13 @@ function montarRadarDoIndice(idx, substituir) {
     layer.on('load', () => {
       if (mapProduct !== 'radar') return;
       updateMapStatus();
-      if (layer === radarTileLayers[radarPastCount - 1]) checkRadarEmpty(host, past);
+      if (layer === radarDisplayedLayer && layer === radarTileLayers[radarPastCount - 1]) checkRadarEmpty(host, radarFrames.slice(0, radarPastCount));
     });
     return layer;
   });
 
   const anteriorIdx = radarFrames.findIndex((frame) => frame.time === selecionado);
+  currentFrameIndex = Math.max(0, anteriorIdx);
   showRadarFrame(seguirAoVivo ? radarPastCount - 1 : Math.max(0, anteriorIdx));
   window._radarUltimoFrame = ultimo.path;
   return true;
@@ -3035,6 +3053,16 @@ let radarFrames = [];
 let radarTileLayers = [];
 let radarPastCount = 0;
 let currentFrameIndex = 0;
+let radarDisplayedLayer = null;
+let radarDisplayedFrame = null;
+let radarPreparingLayer = null;
+let radarPrepareCleanup = null;
+let radarPendingShow = false;
+let radarSelection = 0;
+let radarLoadTimer = null;
+let radarSliderTimer = null;
+let radarSelectedIndex = 0;
+let radarEmptyCheck = null;
 let radarIndexError = false;
 const radarTileErrors = new WeakSet();
 const radarEchoes = new Map();
@@ -3051,6 +3079,28 @@ let satelliteDisplayedTime;
 let satelliteImageTimer;
 let satelliteImageStatus;
 let playInterval;
+
+const weatherPreferencesKey = 'mi-weather-preferences-v1';
+function readWeatherPreferences() {
+  try {
+    const preferences = JSON.parse(localStorage.getItem(weatherPreferencesKey) || '{}');
+    return {
+      product: preferences.product === 'satellite' ? 'satellite' : 'radar',
+      photo: preferences.photo === true
+    };
+  } catch { return { product: 'radar', photo: false }; }
+}
+function saveWeatherPreferences() {
+  try { localStorage.setItem(weatherPreferencesKey, JSON.stringify({ product: mapProduct, photo: photoBackground })); } catch {}
+}
+function updateRadarBackgroundControls() {
+  document.getElementById('radarBackgroundMap').setAttribute('aria-pressed', String(!photoBackground));
+  document.getElementById('radarBackgroundPhoto').setAttribute('aria-pressed', String(photoBackground));
+  const credit = document.getElementById('radarMapCredit');
+  credit.textContent = photoBackground ? 'Esri' : 'OpenStreetMap';
+  credit.href = photoBackground ? 'https://www.esri.com/en-us/arcgis/products/arcgis-world-imagery/overview'
+    : 'https://www.openstreetmap.org/copyright';
+}
 
 function localDateLabel(day) {
   return day === weatherDay.format(new Date()) ? 'Hoje' : day.slice(0, 5);
@@ -3082,6 +3132,8 @@ function enableRadarBackground() {
 
 function initWeatherMap() {
   if (map || typeof L === 'undefined') return;
+  const preferences = readWeatherPreferences();
+  photoBackground = preferences.photo;
   const card = document.getElementById('radarCard');
   const mapElement = document.getElementById('weatherMap');
   const mapWrapper = mapElement.parentElement;
@@ -3114,17 +3166,16 @@ function initWeatherMap() {
   document.getElementById('radarRecenter').addEventListener('click', fitIpiranga);
   document.getElementById('radarProduct').addEventListener('click', () => selectMapProduct('radar'));
   document.getElementById('satelliteProduct').addEventListener('click', () => selectMapProduct('satellite'));
-  document.getElementById('radarLayers').addEventListener('click', (event) => {
-    photoBackground = !photoBackground;
-    radarBackgroundReady = true;
-    event.currentTarget.setAttribute('aria-pressed', String(photoBackground));
-    event.currentTarget.title = photoBackground ? 'Usar mapa neutro' : 'Usar foto aérea';
-    const credit = document.getElementById('radarMapCredit');
-    credit.textContent = photoBackground ? 'Esri' : 'OpenStreetMap';
-    credit.href = photoBackground ? 'https://www.esri.com/en-us/arcgis/products/arcgis-world-imagery/overview'
-      : 'https://www.openstreetmap.org/copyright';
-    syncMapBackground();
-  });
+  for (const [id, photo] of [['radarBackgroundMap', false], ['radarBackgroundPhoto', true]]) {
+    document.getElementById(id).addEventListener('click', () => {
+      photoBackground = photo;
+      radarBackgroundReady = true;
+      updateRadarBackgroundControls();
+      saveWeatherPreferences();
+      syncMapBackground();
+    });
+  }
+  updateRadarBackgroundControls();
 
   const fullscreen = document.getElementById('btnFullscreen');
   function setFullscreen(active) {
@@ -3167,6 +3218,7 @@ function initWeatherMap() {
 
   mapElement.addEventListener('pointerdown', pauseWeatherPlayer);
   mapElement.addEventListener('wheel', pauseWeatherPlayer, { passive: true });
+  map.on('movestart', cancelRadarPreparation);
   map.on('moveend', () => {
     if (mapProduct === 'satellite') drawSatelliteFrame();
     updateMapStatus();
@@ -3194,6 +3246,7 @@ function initWeatherMap() {
     }).addTo(map);
   }).catch((err) => console.warn('Contorno do IBGE indisponível', err));
 
+  if (preferences.product === 'satellite') selectMapProduct('satellite');
   const weather = window.latestWeatherData;
   if (weather?.radar) montarRadarDoIndice(weather.radar, false);
   if (weather?.nowcast) renderCellArrows(weather.nowcast);
@@ -3201,12 +3254,14 @@ function initWeatherMap() {
 
 function selectMapProduct(product) {
   if (product === mapProduct) return;
+  clearTimeout(radarSliderTimer);
   pauseWeatherPlayer();
   mapProduct = product;
   const radar = product === 'radar';
   document.getElementById('radarProduct').setAttribute('aria-pressed', String(radar));
   document.getElementById('satelliteProduct').setAttribute('aria-pressed', String(!radar));
-  document.getElementById('radarLayers').hidden = !radar;
+  document.getElementById('radarBackgroundSelector').hidden = !radar;
+  saveWeatherPreferences();
   document.getElementById('radarTitle').textContent = radar ? 'Radar de chuva' : 'Satélite GOES-19';
   document.getElementById('radarLegend').hidden = !radar;
   document.getElementById('satelliteLegend').hidden = radar;
@@ -3220,7 +3275,10 @@ function selectMapProduct(product) {
     showRadarFrame(Math.max(0, radarPastCount - 1));
     if (!radarFrames.length) refreshRadar();
   } else {
+    cancelRadarPreparation();
     radarTileLayers.forEach((layer) => map.removeLayer(layer));
+    if (radarDisplayedLayer) map.removeLayer(radarDisplayedLayer);
+    radarDisplayedLayer = null;
     updateRadarDirection();
     satelliteIndex = Math.max(0, satelliteFrames.length - 1);
     if (satelliteFrames.length) drawSatelliteFrame();
@@ -3362,6 +3420,9 @@ async function radarAreaHasPixels(template, tolerance = 0) {
 
 async function checkRadarEmpty(host, past) {
   const latest = past.at(-1);
+  const checkKey = host + latest.path;
+  if (radarEmptyCheck === checkKey) return;
+  radarEmptyCheck = checkKey;
   const displayed = radarFrames;
   const scopeIsCurrent = () => displayed === radarFrames && mapProduct === 'radar';
   // Sem duas horas bem amostradas, uma imagem vazia não confirma ausência de ecos.
@@ -3369,7 +3430,10 @@ async function checkRadarEmpty(host, past) {
       past.some((frame, i) => i > 0 && frame.time - past[i - 1].time > 900)) return;
   try {
     for (const frame of [...past].reverse()) {
-      if (!scopeIsCurrent()) return;
+      if (!scopeIsCurrent()) {
+        if (radarEmptyCheck === checkKey) radarEmptyCheck = null;
+        return;
+      }
       const path = host + frame.path;
       if (!radarEchoes.has(path)) {
         radarEchoes.set(path, radarAreaHasPixels(radarTileUrl(path)).catch((error) => {
@@ -3391,13 +3455,14 @@ async function checkRadarEmpty(host, past) {
       updateMapStatus();
     }
   } catch {
+    if (radarEmptyCheck === checkKey) radarEmptyCheck = null;
     // Uma leitura incompleta não sustenta o aviso de ausência de ecos.
   }
 }
 
 function updateMapStatus() {
   const radar = mapProduct === 'radar';
-  const error = radar ? radarIndexError || radarTileErrors.has(radarTileLayers[currentFrameIndex])
+  const error = radar ? radarIndexError || radarTileErrors.has(radarDisplayedLayer)
     : satelliteIndexError || satelliteImageStatus === 'error';
   const loading = radar ? !radarFrames.length : !satelliteFrames.length || (satelliteImageStatus === 'loading' && !satelliteVisibleLayer);
   const lastScan = radarFrames[radarPastCount - 1];
@@ -4179,7 +4244,7 @@ let cellArrowTime = null;
 
 function updateRadarDirection() {
   const visible = cellArrowLayer && mapProduct === 'radar' &&
-    radarFrames[currentFrameIndex]?.time === cellArrowTime;
+    radarDisplayedFrame?.time === cellArrowTime;
   if (cellArrowLayer) {
     if (visible) cellArrowLayer.addTo(map);
     else map.removeLayer(cellArrowLayer);
@@ -4299,25 +4364,134 @@ function renderCellArrows(nowcast) {
   }
 }
 
-function showRadarFrame(index) {
-  currentFrameIndex = index;
-  if (mapProduct !== 'radar') return;
+function cancelRadarPreparation() {
+  radarSelection++;
+  clearTimeout(radarLoadTimer);
+  radarLoadTimer = null;
+  if (radarPrepareCleanup) radarPrepareCleanup();
+  radarPrepareCleanup = null;
+  if (radarPreparingLayer && radarPreparingLayer !== radarDisplayedLayer) map.removeLayer(radarPreparingLayer);
+  radarPreparingLayer = null;
+  radarPendingShow = false;
+}
+
+function prepareRadarFrame(index, show) {
   const layer = radarTileLayers[index];
-  if (layer) {
-    radarTileLayers.forEach((tile) => { if (tile !== layer) map.removeLayer(tile); });
+  if (!layer || mapProduct !== 'radar' || document.hidden) return;
+  if (layer === radarDisplayedLayer) {
+    if (show) {
+      cancelRadarPreparation();
+      currentFrameIndex = index;
+      radarDisplayedFrame = radarFrames[index];
+      updateWeatherPlayer();
+    }
+    return;
+  }
+  if (layer === radarPreparingLayer && layer.isLoading()) {
+    radarPendingShow ||= show;
+    return;
+  }
+  cancelRadarPreparation();
+  const selection = radarSelection;
+  radarPreparingLayer = layer;
+  radarPendingShow = show;
+  radarIndexError = false;
+  let failed = false;
+  const finish = () => {
+    if (selection !== radarSelection || radarPreparingLayer !== layer) return;
+    clearTimeout(radarLoadTimer);
+    radarLoadTimer = null;
+    radarPrepareCleanup();
+    radarPrepareCleanup = null;
+    if (failed) {
+      map.removeLayer(layer);
+      radarPreparingLayer = null;
+      radarSelectedIndex = index;
+      radarIndexError = true;
+      pauseWeatherPlayer();
+      updateWeatherPlayer();
+      updateMapStatus();
+      return;
+    }
+    if (!radarPendingShow) return;
+    if (radarDisplayedLayer) map.removeLayer(radarDisplayedLayer);
+    radarDisplayedLayer = layer;
+    radarPreparingLayer = null;
+    layer.setOpacity(.75);
+    currentFrameIndex = index;
+    radarDisplayedFrame = radarFrames[index];
+    updateRadarDirection();
+    updateWeatherPlayer();
+    updateMapStatus();
+    if (index === radarPastCount - 1) checkRadarEmpty(window._radarHost, radarFrames.slice(0, radarPastCount));
+    if (playInterval != null) prefetchNextRadarFrame();
+  };
+  const onError = () => { failed = true; };
+  radarPrepareCleanup = () => {
+    layer.off('tileerror', onError);
+    layer.off('load', finish);
+  };
+  layer.on('tileerror', onError);
+  layer.on('load', finish);
+  layer.setOpacity(0);
+  if (!map.hasLayer(layer)) layer.addTo(map);
+  if (!layer.isLoading()) finish();
+  else radarLoadTimer = setTimeout(() => { failed = true; finish(); }, 15000);
+}
+
+function prefetchNextRadarFrame() {
+  if (mapProduct !== 'radar' || document.hidden || radarFrames.length < 2) return;
+  prepareRadarFrame((currentFrameIndex + 1) % radarFrames.length, false);
+}
+
+function showRadarFrame(index) {
+  radarSelectedIndex = index;
+  if (mapProduct !== 'radar') { currentFrameIndex = index; return; }
+  const layer = radarTileLayers[index];
+  if (!layer) return;
+  if (!radarDisplayedLayer) {
+    cancelRadarPreparation();
+    currentFrameIndex = index;
+    radarDisplayedLayer = layer;
+    radarDisplayedFrame = radarFrames[index];
     layer.setOpacity(.75);
     if (!map.hasLayer(layer)) layer.addTo(map);
+    updateRadarDirection();
+    updateWeatherPlayer();
+    updateMapStatus();
+    const connection = navigator.connection || navigator.mozConnection || navigator.webkitConnection || {};
+    if (!connection.saveData && (!connection.effectiveType || connection.effectiveType === '4g')) {
+      layer.once('load', () => {
+        if (radarDisplayedLayer === layer && mapProduct === 'radar' && !document.hidden) prefetchNextRadarFrame();
+      });
+    }
+    return;
   }
-  updateRadarDirection();
-  updateWeatherPlayer();
-  updateMapStatus();
+  if (layer === radarPreparingLayer && !layer.isLoading()) {
+    radarSelection++;
+    clearTimeout(radarLoadTimer);
+    radarLoadTimer = null;
+    radarPreparingLayer = null;
+    map.removeLayer(radarDisplayedLayer);
+    radarDisplayedLayer = layer;
+    radarDisplayedFrame = radarFrames[index];
+    layer.setOpacity(.75);
+    currentFrameIndex = index;
+    updateRadarDirection();
+    updateWeatherPlayer();
+    updateMapStatus();
+    if (index === radarPastCount - 1) checkRadarEmpty(window._radarHost, radarFrames.slice(0, radarPastCount));
+    if (playInterval != null) prefetchNextRadarFrame();
+    return;
+  }
+  prepareRadarFrame(index, true);
 }
 
 function updateWeatherPlayer() {
   const radar = mapProduct === 'radar';
   const frames = radar ? radarFrames : satelliteFrames;
   const index = radar ? currentFrameIndex : satelliteIndex;
-  const frame = frames[index];
+  const frame = radar ? radarDisplayedFrame : frames[index];
   const slider = document.getElementById('radarSlider');
   const button = document.getElementById('radarPlayBtn');
   const time = document.getElementById('radarTimeLabel');
@@ -4365,14 +4539,16 @@ function pauseWeatherPlayer() {
 }
 
 document.getElementById('radarPlayBtn').addEventListener('click', () => {
+  clearTimeout(radarSliderTimer);
   if (playInterval != null) {
     pauseWeatherPlayer();
     return;
   }
   updatePlayButton(true);
+  if (mapProduct === 'radar') prefetchNextRadarFrame();
   playInterval = setInterval(() => {
     if (mapProduct === 'radar') {
-      if (!radarTileLayers[currentFrameIndex]?.isLoading()) selectWeatherFrame((currentFrameIndex + 1) % radarFrames.length);
+      if (!radarDisplayedLayer?.isLoading() && (!radarPreparingLayer || !radarPreparingLayer.isLoading())) selectWeatherFrame((currentFrameIndex + 1) % radarFrames.length);
     } else if (satelliteImageStatus !== 'loading') {
       selectWeatherFrame((satelliteIndex + 1) % satelliteFrames.length);
     }
@@ -4381,14 +4557,17 @@ document.getElementById('radarPlayBtn').addEventListener('click', () => {
 
 document.getElementById('radarSlider').addEventListener('input', (event) => {
   pauseWeatherPlayer();
-  selectWeatherFrame(Number(event.currentTarget.value));
+  const index = Number(event.currentTarget.value);
+  clearTimeout(radarSliderTimer);
+  radarSliderTimer = setTimeout(() => selectWeatherFrame(index), 120);
 });
 document.getElementById('radarRetry').addEventListener('click', () => {
   if (!map) initWeatherMap();
   if (!map) return;
   if (mapProduct === 'radar') {
     radarIndexError = false;
-    radarTileLayers[currentFrameIndex]?.redraw();
+    radarTileLayers[radarSelectedIndex]?.redraw();
+    showRadarFrame(radarSelectedIndex);
     refreshRadar();
   } else {
     satelliteIndexError = false;
@@ -4399,7 +4578,7 @@ document.getElementById('radarRetry').addEventListener('click', () => {
   updateMapStatus();
 });
 document.addEventListener('visibilitychange', () => {
-  if (document.hidden) pauseWeatherPlayer();
+  if (document.hidden) { clearTimeout(radarSliderTimer); pauseWeatherPlayer(); cancelRadarPreparation(); }
   else updateWeatherPlayer();
 });
 setInterval(() => {
@@ -4412,6 +4591,9 @@ setInterval(() => {
 document.addEventListener('DOMContentLoaded', () => {
   initThemeToggle();
   initScrollIndicator();
+});
+
+document.addEventListener('DOMContentLoaded', () => {
   // O radar instantâneo (índice do RainViewer) desenha ANTES da API chegar —
   // mas só faz sentido depois do mapa existir. Antes ele estava preso dentro do
   // `if (rtt > 200)` da telemetria, então em conexão boa o cidadão olhava um

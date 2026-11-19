@@ -17,6 +17,77 @@
 const VERSAO = "monitor-ipiranga-v3";
 const CACHE_SHELL = `${VERSAO}-shell`;
 const CACHE_ESTATICOS = `${VERSAO}-estaticos`;
+const CACHE_RADAR = `${VERSAO}-radar-v1`;
+const RADAR_MAX_TILES = 250;
+const RADAR_MAX_AGE_MS = 6 * 60 * 60 * 1000;
+let radarWrites = 0;
+let radarMaintenance = Promise.resolve();
+let lastRadarCleanup = 0;
+const radarFrameTimes = new Map();
+
+function radarFrameToken(url) {
+	if (url.origin !== "https://tilecache.rainviewer.com") return null;
+	const match = /^\/v2\/radar\/([a-zA-Z0-9_-]+)\/256\/\d+\/\d+\/\d+\/\d+\/[^/]+\.png$/.exec(url.pathname);
+	return match ? match[1] : null;
+}
+
+async function cleanRadarCache(cache) {
+	const keys = await cache.keys();
+	const metadata = new Map();
+	for (const key of keys) {
+		const token = radarFrameToken(new URL(key.url));
+		if (!token || metadata.has(token)) continue;
+		const meta = await cache.match(new Request(new URL(`/__radar_cache_meta__/${token}`, self.location.origin)));
+		metadata.set(token, meta ? Number(await meta.text()) : 0);
+	}
+	const tiles = keys.filter((key) => radarFrameToken(new URL(key.url)));
+	const cutoff = Date.now() - RADAR_MAX_AGE_MS;
+	const obsolete = [];
+	const remaining = [];
+	for (const key of tiles) {
+		const token = radarFrameToken(new URL(key.url));
+		((metadata.get(token) || 0) < cutoff ? obsolete : remaining).push(key);
+	}
+	const overflow = remaining.slice(0, Math.max(0, remaining.length - RADAR_MAX_TILES));
+	await Promise.all([...obsolete, ...overflow].map((key) => cache.delete(key)));
+	const retained = new Set(remaining.slice(overflow.length).map((key) => radarFrameToken(new URL(key.url))));
+	for (const token of metadata.keys()) {
+		if (!retained.has(token)) {
+			radarFrameTimes.delete(token);
+			await cache.delete(new Request(new URL(`/__radar_cache_meta__/${token}`, self.location.origin)));
+		}
+	}
+}
+
+function queueRadarMaintenance(task) {
+	radarMaintenance = radarMaintenance.then(task, task).catch(() => {});
+	return radarMaintenance;
+}
+
+function cleanRadarCacheIfDue() {
+	if (Date.now() - lastRadarCleanup < 5 * 60 * 1000) return radarMaintenance;
+	lastRadarCleanup = Date.now();
+	return queueRadarMaintenance(async () => cleanRadarCache(await caches.open(CACHE_RADAR)));
+}
+
+function cacheRadarTile(req, resp, token) {
+	return queueRadarMaintenance(async () => {
+		const cache = await caches.open(CACHE_RADAR);
+		const meta = new Request(new URL(`/__radar_cache_meta__/${token}`, self.location.origin));
+		const prior = await cache.match(meta);
+		const priorTime = prior ? Number(await prior.text()) : 0;
+		if (!priorTime || Date.now() - priorTime >= RADAR_MAX_AGE_MS) {
+			const now = Date.now();
+			await cache.put(meta, new Response(String(now)));
+			radarFrameTimes.set(token, now);
+		}
+		await cache.put(req, resp);
+		if (++radarWrites === 1 || radarWrites % 25 === 0) {
+			lastRadarCleanup = Date.now();
+			await cleanRadarCache(cache);
+		}
+	});
+}
 /** Baixado na instalação: sem isto não existe shell offline. */
 const SHELL_URLS = [
 	"/",
@@ -57,6 +128,31 @@ self.addEventListener("fetch", (e) => {
 	try {
 		url = new URL(req.url);
 	} catch {
+		return;
+	}
+	const radarToken = radarFrameToken(url);
+	if (radarToken) {
+		const operation = (async () => {
+			try {
+				const cache = await caches.open(CACHE_RADAR);
+				const cached = await cache.match(req);
+				if (cached) {
+					let stored = radarFrameTimes.get(radarToken);
+					if (stored === undefined) {
+						const meta = await cache.match(new Request(new URL(`/__radar_cache_meta__/${radarToken}`, self.location.origin)));
+						stored = meta ? Number(await meta.text()) : 0;
+						radarFrameTimes.set(radarToken, stored);
+					}
+					if (Date.now() - stored < RADAR_MAX_AGE_MS) return { response: cached, write: cleanRadarCacheIfDue() };
+				}
+			} catch {}
+			const resp = await fetch(req);
+			const isPng = /^image\/png(?:\s*;|$)/i.test(resp.headers.get("content-type") || "");
+			const write = resp.ok && resp.type !== "opaque" && isPng ? cacheRadarTile(req, resp.clone(), radarToken) : null;
+			return { response: resp, write };
+		})();
+		e.respondWith(operation.then((result) => result.response));
+		e.waitUntil(operation.then((result) => result.write).catch(() => {}));
 		return;
 	}
 	// Terceiros (CDN de tiles etc.) e API: passa direto, sem interceptar.
