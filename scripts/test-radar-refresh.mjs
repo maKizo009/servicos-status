@@ -8,6 +8,7 @@ const names = [
   'montarRadarDoIndice', 'baixarIndiceRainViewer', 'bootstrapRadar', 'refreshRadar',
   'radarTileUrl', 'showRadarFrame', 'fitIpiranga', 'fetchWeatherData',
   'cancelRadarPreparation', 'prepareRadarFrame', 'prefetchNextRadarFrame',
+  'radarPlayNext', 'scheduleRadarFrame',
 ];
 const functions = names.map((name) => {
   const start = html.search(new RegExp(`^(async )?function ${name}\\(`, 'm'));
@@ -169,7 +170,7 @@ test('mantém apenas a camada do quadro em exibição ao percorrer o histórico'
   assert.equal(ctx.shown, 200);
 });
 
-test('mantém a imagem até o próximo quadro carregar e cancela ouvintes obsoletos', () => {
+test('mantém a imagem até o próximo quadro carregar e cancela ouvintes obsoletos', async () => {
   const { ctx, layers } = setup();
   const created = [];
   ctx.L.tileLayer = () => {
@@ -202,6 +203,8 @@ test('mantém a imagem até o próximo quadro carregar e cancela ouvintes obsole
   assert.equal(created[0].listeners('load'), 1); // listener permanente da camada
   assert.equal(created[0].listeners('tileerror'), 1);
   created[1].emit('load');
+  assert.equal(ctx.shown, 300); // Leaflet termina o callback antes da troca.
+  await new Promise((resolve) => setTimeout(resolve, 0));
   assert.equal(ctx.shown, 200);
   assert.equal(layers.size, 1);
   assert.equal(created[1].opacity, .75);
@@ -225,4 +228,138 @@ test('preferências inválidas ou storage indisponível usam os padrões', () =>
   ctx.localStorage = { getItem: () => JSON.stringify({ product: 'satellite', photo: true }) };
   assert.equal(vm.runInContext("readWeatherPreferences().product", ctx), 'satellite');
   assert.equal(vm.runInContext("readWeatherPreferences().photo", ctx), true);
+});
+
+
+test('tile isolado com erro não interrompe quadro com outros tiles carregados', async () => {
+  const { ctx, layers } = setup();
+  const created = [];
+  ctx.L.tileLayer = () => {
+    const listeners = new Map();
+    const layer = {
+      loading: false,
+      addTo() { this.loading = true; layers.add(this); this.emit('loading'); return this; },
+      on(type, fn) { listeners.set(type, [...(listeners.get(type) || []), fn]); },
+      once(type, fn) { this.on(type, fn); },
+      off(type, fn) { listeners.set(type, (listeners.get(type) || []).filter((f) => f !== fn)); },
+      setOpacity(value) { this.opacity = value; },
+      isLoading() { return this.loading; },
+      emit(type) { if (type === 'load') this.loading = false; for (const fn of [...(listeners.get(type) || [])]) fn(); }
+    };
+    created.push(layer);
+    return layer;
+  };
+  ctx.montarRadarDoIndice(index(100, 200, 300), false);
+  created[2].emit('tileload');
+  created[2].emit('load');
+  ctx.showRadarFrame(0);
+  created[0].emit('tileerror');
+  created[0].emit('tileload');
+  created[0].emit('load');
+  assert.equal(ctx.shown, 300);
+  await new Promise((resolve) => setTimeout(resolve, 0));
+  assert.equal(ctx.shown, 100);
+  assert.equal(vm.runInContext('radarIndexError', ctx), false);
+
+  // Um quadro inteiramente indisponível é pulado, conservando o último visível.
+  vm.runInContext('playInterval = 1', ctx);
+  ctx.radarPlayNext = (index) => { ctx.skipped = index; };
+  ctx.showRadarFrame(1);
+  created[1].emit('tileerror');
+  created[1].emit('load');
+  await new Promise((resolve) => setTimeout(resolve, 0));
+  assert.equal(ctx.skipped, 1);
+  assert.equal(ctx.shown, 100);
+  assert.equal(vm.runInContext('radarIndexError', ctx), false);
+});
+
+test('ao retornar ao quadro exibido durante reprodução, agenda outra tentativa', () => {
+  const { ctx } = setup();
+  ctx.montarRadarDoIndice(index(100, 200), false);
+  ctx.scheduleRadarFrame = () => { ctx.scheduled = true; };
+  vm.runInContext('playInterval = 1', ctx);
+  ctx.showRadarFrame(1);
+  assert.equal(ctx.scheduled, true);
+});
+
+
+test('status aguarda a primeira imagem e preserva foco durante aviso parcial', () => {
+  const { ctx, layers } = setup();
+  const created = [];
+  ctx.L.tileLayer = () => {
+    const listeners = new Map();
+    const layer = {
+      addTo() { layers.add(this); this.emit('loading'); return this; },
+      on(type, fn) { listeners.set(type, [...(listeners.get(type) || []), fn]); },
+      once(type, fn) { this.on(type, fn); },
+      off() {}, setOpacity() {}, isLoading() { return true; },
+      emit(type) { for (const fn of listeners.get(type) || []) fn(); }
+    };
+    created.push(layer);
+    return layer;
+  };
+  const status = { hidden: false, textContent: '' };
+  const retry = { hidden: true };
+  let focused = false;
+  const product = { focus() { focused = true; } };
+  ctx.document.getElementById = (id) => ({ radarMapStatus: { firstElementChild: status }, radarRetry: retry, radarProduct: product })[id];
+  const start = html.indexOf('function updateMapStatus() {');
+  vm.runInContext(html.slice(start, html.indexOf('\n}', start) + 2), ctx);
+  ctx.montarRadarDoIndice(index(100, 200), false);
+  assert.equal(status.textContent, 'Carregando imagem…');
+  created[1].emit('tileload');
+  assert.equal(status.hidden, true);
+  // Um quadro de fundo ainda carregando não oculta o quadro já utilizável.
+  vm.runInContext('radarPreparingLayer = {}', ctx);
+  ctx.updateMapStatus();
+  assert.equal(status.hidden, true);
+  ctx.document.activeElement = retry;
+  vm.runInContext('radarPartialTiles.add(radarDisplayedLayer)', ctx);
+  ctx.updateMapStatus();
+  assert.equal(status.textContent, 'Imagem parcialmente indisponível');
+  assert.equal(retry.hidden, false);
+  assert.equal(focused, false);
+  vm.runInContext('radarPartialTiles.delete(radarDisplayedLayer)', ctx);
+  ctx.updateMapStatus();
+  assert.equal(focused, true);
+});
+
+
+test('boot prioriza índice ao vivo quando API persistida chegou antes do mapa', async () => {
+  const { ctx, mounts } = setup();
+  ctx.window.latestWeatherData = { radar: index(10, 20) };
+  let release;
+  ctx.fetch = () => new Promise((resolve) => { release = resolve; });
+  const boot = ctx.bootstrapRadar();
+  assert.equal(mounts(), 0);
+  release({ ok: true, json: async () => index(100, 200) });
+  await boot;
+  assert.equal(ctx.shown, 200);
+  assert.equal(mounts(), 2);
+});
+
+test('boot usa radar persistido quando índice ao vivo falha', async () => {
+  const { ctx } = setup();
+  ctx.window.latestWeatherData = { radar: index(10, 20) };
+  ctx.fetch = async () => { throw new Error('offline'); };
+  await ctx.bootstrapRadar();
+  assert.equal(ctx.shown, 20);
+  assert.equal(vm.runInContext('radarIndexError', ctx), false);
+});
+
+test('boot libera fallback após a espera curta e depois aceita índice mais novo', async () => {
+  const { ctx } = setup();
+  ctx.window.latestWeatherData = { radar: index(10, 20) };
+  let release, expire;
+  ctx.setTimeout = (fn, ms) => { if (ms === 1000) expire = fn; return 1; };
+  ctx.clearTimeout = () => {};
+  ctx.fetch = () => new Promise((resolve) => { release = resolve; });
+  const boot = ctx.bootstrapRadar();
+  expire();
+  await Promise.resolve();
+  await Promise.resolve();
+  assert.equal(ctx.shown, 20);
+  release({ ok: true, json: async () => index(100, 200) });
+  await boot;
+  assert.equal(ctx.shown, 200);
 });
