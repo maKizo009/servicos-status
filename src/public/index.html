@@ -1661,6 +1661,9 @@ html.trocando-tema, html.trocando-tema *{transition:none !important}
 .hero-alert summary{cursor:pointer;min-height:44px;display:flex;align-items:center;justify-content:space-between;gap:8px;font-weight:600;color:var(--md-sys-color-primary)}
 .hero-alert summary::after{content:'+';font-size:20px}
 .hero-alert[open] summary::after{content:'−'}
+.hero-alert-boletins{margin:0;padding:0;list-style:none}
+.hero-alert-boletins li + li{border-top:1px solid var(--md-sys-color-outline-variant)}
+.hero-alert-boletins a{display:inline-flex;align-items:center;min-height:44px}
 .hero-alert-fonte{font-size:13px;line-height:1.5}
 .hero-alert-fonte + .hero-alert-fonte{border-top:1px solid var(--md-sys-color-outline-variant);margin-top:12px;padding-top:12px}
 .notification-card{background:var(--md-sys-color-surface-container);border-radius:24px;padding:0 16px 16px}
@@ -2025,7 +2028,7 @@ html.trocando-tema, html.trocando-tema *{transition:none !important}
       </a>
     </div>
     <details class="hero-alert" id="heroAlert" hidden>
-      <summary>Ver avisos e orientações</summary>
+      <summary>Boletins oficiais</summary>
       <div id="heroAlertContent"></div>
     </details>
     <div class="hero-stamp">
@@ -3914,7 +3917,8 @@ function renderHero(){
   if (a && a.hot) {
     const avisosInmet = (a.avisosOficiais || []).filter(o => o.fonte === 'INMET');
     const tituloOriginal = String(a.titulo || '').replace(/\s+—\s+INMET$/, '');
-    const principal = avisosInmet.find(o => o.titulo === tituloOriginal);
+    const principal = avisosInmet.find(o => o.titulo === tituloOriginal && o.descricao === a.descricao)
+      || avisosInmet.find(o => o.titulo === tituloOriginal);
     const titulo = (a.titulo || 'Alerta meteorológico').replace(/\.\s*Severidade Grau:\s*/i, ' · ');
     if (tEl) tEl.textContent = titulo + (principal && !/INMET/i.test(titulo) ? ' · INMET' : '');
     const validade = principal ? formatarVigenciaInmet(principal) : '';
@@ -3931,12 +3935,17 @@ function renderHero(){
     }
     if (card) card.dataset.alerta = a.nivel;
     if (alertBox) {
-      const motivos = (a.motivos || []).map((m) => `<div>• ${esc(m)}</div>`).join('');
-      const oficiais = avisosInmet.map(renderAvisoInmet).join('');
+      const motivos = (a.motivos || []).filter(m => !principal || m !== avisoDesatualizado)
+        .map((m) => `<div>• ${esc(m)}</div>`).join('');
+      const oficiais = renderBoletinsInmet(avisosInmet, principal);
       const resumo = alertBox.querySelector('summary');
-      if (resumo) resumo.textContent = avisosInmet.length ? 'Ver avisos do INMET' : 'Ver detalhes do alerta';
+      if (resumo) resumo.textContent = oficiais ? 'Boletins oficiais' : 'Ver detalhes do alerta';
       const conteudo = document.getElementById('heroAlertContent');
-      if (conteudo) conteudo.innerHTML = `${motivos}${oficiais}`;
+      const html = `${motivos}${oficiais}`;
+      if (conteudo && conteudo._ultimoAvisoHtml !== html) {
+        conteudo.innerHTML = html;
+        conteudo._ultimoAvisoHtml = html;
+      }
       alertBox.hidden = !(motivos || oficiais);
     }
   } else {
@@ -4032,13 +4041,52 @@ function formatarVigenciaInmet(o) {
   const fim = formatarHoraAviso(o.fim);
   return inicio && fim ? `Vigência ${inicio} até ${fim}` : fim ? `Até ${fim}` : inicio ? `Desde ${inicio}` : '';
 }
-function renderAvisoInmet(o) {
-  const hora = (valor) => formatarHoraAviso(valor) || 'não informado';
-  let link = '';
+function urlAvisoInmet(o) {
   try {
     const u = new URL(o.link);
-    if (u.protocol === 'https:' && (u.hostname === 'avisos.inmet.gov.br' || u.hostname === 'apiprevmet3.inmet.gov.br')) link = `<a href="${esc(u.href)}" target="_blank" rel="noopener noreferrer">Consultar aviso do INMET</a>`;
+    if (u.protocol === 'https:' && (u.hostname === 'avisos.inmet.gov.br' || u.hostname === 'apiprevmet3.inmet.gov.br')) return u;
   } catch {}
+  return null;
+}
+function linkAvisoInmet(url, rotulo) {
+  return `<a href="${esc(url.href)}" target="_blank" rel="noopener noreferrer">${esc(rotulo)}</a>`;
+}
+function avisosInmetUnicos(avisos) {
+  const vistos = new Set();
+  return avisos.filter(o => {
+    const url = urlAvisoInmet(o);
+    const chave = url && url.pathname !== '/'
+      ? `${url.origin}${url.pathname.replace(/\/+$/, '')}${url.search}`
+      : JSON.stringify([o.titulo, o.nivel, o.inicio, o.fim, o.descricao, o.orientacoes]);
+    if (vistos.has(chave)) return false;
+    vistos.add(chave);
+    return true;
+  });
+}
+function renderBoletinsInmet(avisos, principal) {
+  const ordenados = principal ? [principal, ...avisos.filter(o => o !== principal)] : avisos;
+  const separarTitulo = titulo => String(titulo || '').split(/\.\s*Severidade Grau:\s*/i);
+  const [eventoPrincipal] = separarTitulo(principal?.titulo);
+  const boletins = avisosInmetUnicos(ordenados).map(o => {
+    const [evento, grau] = separarTitulo(o.titulo);
+    const rotulo = o === principal ? 'Consultar boletim principal'
+      : evento && evento === eventoPrincipal && grau ? grau
+      : [evento, grau].filter(Boolean).join(' · ') || 'Consultar boletim do INMET';
+    const url = urlAvisoInmet(o);
+    if (url && url.pathname !== '/') return `<li>${linkAvisoInmet(url, rotulo)}</li>`;
+
+    // Sem link de um boletim específico, mantém as informações oficiais no painel.
+    const vigencia = o === principal ? '' : formatarVigenciaInmet(o);
+    const descricao = String(o.descricao || '').replace(/^INMET publica aviso iniciando em:\s*\d{2}\/\d{2}\/\d{4}\s+\d{2}:\d{2}\.\s*/i, '');
+    const texto = [vigencia, descricao, o.orientacoes].filter(Boolean).map(t => `<div>${esc(t)}</div>`).join('');
+    return `<li class="hero-alert-fonte">${o === principal ? '' : `<strong>${esc(rotulo)}</strong>`}${texto}</li>`;
+  });
+  return boletins.length ? `<ul class="hero-alert-boletins">${boletins.join('')}</ul>` : '';
+}
+function renderAvisoInmet(o) {
+  const hora = (valor) => formatarHoraAviso(valor) || 'não informado';
+  const url = urlAvisoInmet(o);
+  const link = url ? linkAvisoInmet(url, 'Consultar aviso do INMET') : '';
   return `<div class="hero-alert-fonte"><strong>${esc(o.titulo)} · INMET</strong><div>Vigência ${esc(hora(o.inicio))} até ${esc(hora(o.fim))}</div><div>${esc(o.descricao || '')}</div>${o.orientacoes ? `<div>${esc(o.orientacoes)}</div>` : ''}${link}</div>`;
 }
 function renderTopAlert(data) {
@@ -4097,7 +4145,8 @@ function renderAlertaCard(data) {
   const desc = pushUnico(descBruto);
   const motivos = (a.motivos || []).map((m) => pushUnico(m)).filter(Boolean)
     .map((m) => `<div style="font-size:13px;color:var(--text3)">• ${esc(m)}</div>`).join('');
-  const oficiais = (a.avisosOficiais || []).filter(o => o.fonte === 'INMET' && o.descricao).map(renderAvisoInmet).join('');
+  const oficiais = avisosInmetUnicos((a.avisosOficiais || []).filter(o => o.fonte === 'INMET' && o.descricao))
+    .map(renderAvisoInmet).join('');
   if (mot) {
     mot.innerHTML = (titulo ? `<div style="font-weight:600;color:var(--text)">${esc(titulo)}</div>` : '') +
       (desc ? `<div style="margin-top:4px">${esc(desc)}</div>` : '') +
