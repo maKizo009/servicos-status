@@ -4201,7 +4201,7 @@ function renderHidroCard(data) {
       <div style="margin-top:4px">Rótulos: OUT23 (29/10 18h, Uvaia ~739) · DEZ24 (09/12 13h, Uvaia ~339) · SET26 (13/09, saiu sem transbordar) · JAN25 (21/01, régua 4m sem sair) · jul/24 e set/24 (não saíram) · invernos 13/14/15/17/19 (todos saíram; 2013 o mais dramático). Faixas P90/P98 do ano hidrológico.</div>
       <div style="margin-top:6px"><a href="/api/hidro" style="color:var(--md-sys-color-primary)">Dados crus (JSON)</a> · <a href="https://github.com/maKizo009/servicos-status/issues" style="color:var(--md-sys-color-primary)">Sugerir melhoria</a></div>
     </div>`;
-  content.innerHTML = rows + notaRios +
+  const html = rows + notaRios +
     `<details>
       <summary>Detalhes · Como é calculado</summary>
       <div style="margin-top:6px;line-height:1.6">
@@ -4218,6 +4218,19 @@ function renderHidroCard(data) {
         ${h.atualizadoEm ? `Atualizado: ${new Date(h.atualizadoEm).toLocaleString('pt-BR')}.` : ''}</div>
       </div>
     </details>`;
+  if (content._ultimoHidroHtml === html) return;
+  const detalhesAnteriores = content.querySelector('details');
+  const estavaAberto = !!detalhesAnteriores?.open;
+  const focoAnterior = content.contains(document.activeElement) ? document.activeElement : null;
+  const focoResumo = focoAnterior?.tagName === 'SUMMARY';
+  const hrefFocado = focoAnterior?.tagName === 'A' ? focoAnterior.getAttribute('href') : null;
+  content.innerHTML = html;
+  content._ultimoHidroHtml = html;
+  const detalhes = content.querySelector('details');
+  if (detalhes) detalhes.open = estavaAberto;
+  const foco = focoResumo ? detalhes?.querySelector('summary')
+    : hrefFocado ? [...content.querySelectorAll('a')].find(a => a.getAttribute('href') === hrefFocado) : null;
+  if (foco) foco.focus({ preventScroll: true });
 }
 function renderNowcastCard(data) {
   const nc = data?.nowcast;
