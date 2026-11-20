@@ -1,10 +1,7 @@
 /** Harness do card hidro: garante card visual enxuto (sem parágrafo técnico). */
 import { readFileSync } from "node:fs";
 
-const html = readFileSync(
-	"/root/servicos-status/src/public/index.html",
-	"utf8",
-);
+const html = readFileSync(new URL("../src/public/index.html", import.meta.url), "utf8");
 function extractFn(src: string, name: string): string {
 	const start = src.indexOf(`function ${name}(`);
 	if (start < 0) throw new Error(name + " não achado");
@@ -21,20 +18,29 @@ function extractFn(src: string, name: string): string {
 }
 const src = extractFn(html, "renderHidroCard");
 
-const els: Record<
-	string,
-	{ style: Record<string, string>; innerHTML: string; textContent: string }
-> = {};
-const mk = () => ({
-	style: {} as Record<string, string>,
-	innerHTML: "",
-	textContent: "",
-	dataset: {} as Record<string, string>,
-	addEventListener: () => {},
-	classList: { add: () => {}, remove: () => {}, toggle: () => {} },
-});
+function mk() {
+	let html = "";
+	let details: { open: boolean; querySelector: () => null } | null = null;
+	return {
+		style: {} as Record<string, string>,
+		get innerHTML() { return html; },
+		set innerHTML(value: string) {
+			html = value;
+			details = value.includes("<details>") ? { open: false, querySelector: () => null } : null;
+		},
+		textContent: "",
+		dataset: {} as Record<string, string>,
+		querySelector: (selector: string) => selector === "details" ? details : null,
+		querySelectorAll: () => [],
+		contains: () => false,
+		addEventListener: () => {},
+		classList: { add: () => {}, remove: () => {}, toggle: () => {} },
+	};
+}
+const els: Record<string, ReturnType<typeof mk>> = {};
 (globalThis as Record<string, unknown>).document = {
 	getElementById: (id: string) => (els[id] ??= mk()),
+	activeElement: null,
 	addEventListener: () => {},
 };
 (globalThis as Record<string, unknown>).window = {};
@@ -124,6 +130,14 @@ const checks: Array<[string, boolean]> = [
 	// (check "tag FLASH/RIOS" removida 08/10/2026: o elemento hidroStatusTag
 	// não existe mais na página — era código morto que quebrava o harness.)
 ];
+const detalhes = els["hidroContent"].querySelector("details");
+if (detalhes) detalhes.open = true;
+fn(data);
+checks.push(["atualização sem mudança preserva o elemento aberto", els["hidroContent"].querySelector("details") === detalhes && !!detalhes?.open]);
+data.hidro.estacoes[0].nivelCm = 380;
+fn(data);
+checks.push(["detalhes permanecem abertos quando o nível muda", !!els["hidroContent"].querySelector("details")?.open]);
+checks.push(["nível atualizado aparece no cartão", els["hidroContent"].innerHTML.includes("3,80 m")]);
 let fail = 0;
 for (const [n, ok] of checks) {
 	console.log(ok ? "pass" : "FAIL", "-", n);

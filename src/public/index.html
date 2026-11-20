@@ -1658,7 +1658,13 @@ html.trocando-tema, html.trocando-tema *{transition:none !important}
   padding:10px 12px;font-size:15px;line-height:1.5;color:var(--text2)
 }
 .hero-alert[hidden]{display:none}
-.hero-alert-fonte{opacity:.85;font-size:13px}
+.hero-alert summary{cursor:pointer;min-height:44px;display:flex;align-items:center;justify-content:space-between;gap:8px;font-weight:600;color:var(--md-sys-color-primary)}
+.hero-alert summary::after{content:'+';font-size:20px}
+.hero-alert[open] summary::after{content:'−'}
+.hero-alert-fonte{font-size:13px;line-height:1.5}
+.hero-alert-fonte + .hero-alert-fonte{border-top:1px solid var(--md-sys-color-outline-variant);margin-top:12px;padding-top:12px}
+.notification-card{background:var(--md-sys-color-surface-container);border-radius:24px;padding:0 16px 16px}
+.notification-card:has(.aviso-row[hidden]):has(.push-localidade[hidden]):has(#pushPrompt[hidden]){display:none}
 /* Carimbo único de atualização do painel. */
 .hero-stamp{
   display:flex;align-items:center;gap:8px;font-size:13px;color:var(--text2);
@@ -1916,10 +1922,6 @@ html.trocando-tema, html.trocando-tema *{transition:none !important}
 .push-localidade :focus-visible{outline:2px solid var(--brand);outline-offset:2px}
 .push-localidade-status{min-height:1.35em}
 .push-localidade-status[data-estado="erro"]{color:var(--md-sys-color-error)}
-@media (min-width:992px){
-  .aviso-row{grid-column:1 / -1;grid-row:4}
-}
-
 @media (prefers-reduced-motion:reduce){
   .hero-tile:hover,.hero-tile:active{transform:none}
   .sw-trilho,.sw-bola{transition:none}
@@ -1988,22 +1990,6 @@ html.trocando-tema, html.trocando-tema *{transition:none !important}
     </button>
   </nav>
 
-  <!-- Instalar como app: fica VISÍVEL na página (pedido do dono 29/09/2026) — a
-       opção existia só no menu hambúrguer. O JS esconde quando o app já está
-       instalado (standalone) ou quando o aparelho dispensou o card. Ícone em
-       SVG de propósito: não depende da fonte de ícones para fazer sentido. -->
-  <section class="install-card" id="installCard" hidden>
-    <span class="install-ico" aria-hidden="true">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-    </span>
-    <div class="install-txt">
-      <strong>Instalar no celular</strong>
-      <span>Abre como app e deixa os avisos de chuva na tela de início.</span>
-    </div>
-    <button class="install-go" id="btnInstallGo" type="button">Instalar</button>
-    <button class="install-x" id="btnInstallX" type="button" aria-label="Dispensar o aviso de instalação">&times;</button>
-  </section>
-
   <!-- HERÓI: o card de status. Título = pior estado; tiles 2×2 (um fato cada,
        sem subtexto) que levam ao card do detalhe; UM carimbo de atualização no
        rodapé. O banner separado e a faixa de 5 pílulas saíram (v2, 24/09/2026):
@@ -2038,48 +2024,14 @@ html.trocando-tema, html.trocando-tema *{transition:none !important}
         <span class="hero-tile-val" id="tileChuvaVal">—</span>
       </a>
     </div>
-    <div class="hero-alert" id="heroAlert" hidden></div>
+    <details class="hero-alert" id="heroAlert" hidden>
+      <summary>Ver avisos e orientações</summary>
+      <div id="heroAlertContent"></div>
+    </details>
     <div class="hero-stamp">
       <span class="hero-dot" id="heroDot" aria-hidden="true"></span>
       <span id="heroStamp">Verificando a atualização…</span>
     </div>
-    <!-- AVISOS NO CELULAR — ligar/desligar o CANAL, não abrir uma lista. Os
-         alertas continuam só nos painéis (radar, rios, serviços); esta linha
-         não repete nenhum aviso, só decide se você recebe um toque no celular
-         quando o estado resumido aqui em cima mudar. Aparece só quando o push
-         está configurado (o JS tira o `hidden`). -->
-    <div class="aviso-row" id="avisoRow" data-estado="off" hidden>
-      <span class="aviso-ico" id="pushBtnIcon" aria-hidden="true"></span>
-      <span class="aviso-txt">
-        <span class="aviso-lbl">Avisos no celular</span>
-        <span class="aviso-desc">Avisar quando a chuva ou o rio mudarem de estado.</span>
-        <span class="aviso-hint" id="avisoHint">Seu celular está bloqueando os avisos. Libere nas permissões do site e recarregue a página.</span>
-      </span>
-      <button class="sw" id="btnPush" type="button" role="switch" aria-checked="false"
-              data-state="off" aria-label="Avisos no celular: desativados"
-              title="Avisar no celular quando a chuva ou o rio mudarem de estado">
-        <span class="sw-trilho" aria-hidden="true"><span class="sw-bola"></span></span>
-        <span class="sr-only" id="pushBtnText">Avisos desativados</span>
-      </button>
-    </div>
-    <form class="push-localidade" id="pushLocalidadeRow" hidden>
-      <label for="pushLocalidade">Localidade para avisos de pequenas quedas de energia</label>
-      <div class="push-localidade-controles">
-        <!-- Bairros de Ipiranga no catálogo do mapa oficial da Copel. -->
-        <select id="pushLocalidade" aria-describedby="pushLocalidadeStatus">
-          <option value="">Sem preferência</option>
-          <option value="AVENCAL">Avencal</option>
-          <option value="CENTRO">Centro</option>
-          <option value="DESCALVADO">Descalvado</option>
-          <option value="IPIRANGA">Ipiranga</option>
-          <option value="PROGRESSO">Progresso</option>
-          <option value="RURAL">Rural</option>
-          <option value="TABOAO">Taboão</option>
-        </select>
-        <button id="pushLocalidadeSalvar" type="submit">Salvar</button>
-      </div>
-      <p class="push-localidade-status" id="pushLocalidadeStatus" role="status"></p>
-    </form>
   </section>
 
   <div id="statusView">
@@ -2215,6 +2167,74 @@ html.trocando-tema, html.trocando-tema *{transition:none !important}
       <section class="grid" id="grid" aria-label="Status dos serviços"></section>
       </div>
     </div>
+  <!-- Instalar como app: fica VISÍVEL na página (pedido do dono 29/09/2026) — a
+       opção existia só no menu hambúrguer. O JS esconde quando o app já está
+       instalado (standalone) ou quando o aparelho dispensou o card. Ícone em
+       SVG de propósito: não depende da fonte de ícones para fazer sentido. -->
+  <section class="install-card" id="installCard" hidden>
+    <span class="install-ico" aria-hidden="true">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+    </span>
+    <div class="install-txt">
+      <strong>Instalar no celular</strong>
+      <span>Abre como app e deixa os avisos de chuva na tela de início.</span>
+    </div>
+    <button class="install-go" id="btnInstallGo" type="button">Instalar</button>
+    <button class="install-x" id="btnInstallX" type="button" aria-label="Dispensar o aviso de instalação">&times;</button>
+  </section>
+
+    <section class="notification-card" aria-label="Configurações de avisos no celular">
+    <!-- AVISOS NO CELULAR — ligar/desligar o CANAL, não abrir uma lista. Os
+         alertas continuam só nos painéis (radar, rios, serviços); esta linha
+         não repete nenhum aviso, só decide se você recebe um toque no celular
+         quando o estado resumido aqui em cima mudar. Aparece só quando o push
+         está configurado (o JS tira o `hidden`). -->
+    <div class="aviso-row" id="avisoRow" data-estado="off" hidden>
+      <span class="aviso-ico" id="pushBtnIcon" aria-hidden="true"></span>
+      <span class="aviso-txt">
+        <span class="aviso-lbl">Avisos no celular</span>
+        <span class="aviso-desc">Avisar quando a chuva ou o rio mudarem de estado.</span>
+        <span class="aviso-hint" id="avisoHint">Seu celular está bloqueando os avisos. Libere nas permissões do site e recarregue a página.</span>
+      </span>
+      <button class="sw" id="btnPush" type="button" role="switch" aria-checked="false"
+              data-state="off" aria-label="Avisos no celular: desativados"
+              title="Avisar no celular quando a chuva ou o rio mudarem de estado">
+        <span class="sw-trilho" aria-hidden="true"><span class="sw-bola"></span></span>
+        <span class="sr-only" id="pushBtnText">Avisos desativados</span>
+      </button>
+    </div>
+    <div id="pushPrompt" hidden style="padding:16px 0" role="region" aria-label="Ativar alertas de chuva">
+      <div style="display:flex;gap:12px;align-items:flex-start">
+        <div class="ms s28" aria-hidden="true">notifications</div>
+        <div style="flex:1">
+          <div style="font-weight:700;font-size:14.5px;color:var(--text)">Receber alertas de chuva no celular?</div>
+          <div style="font-size:13px;color:var(--text2);line-height:1.5;margin-top:4px">Receba avisos de chuva forte em Ipiranga.</div>
+          <div style="display:flex;gap:8px;margin-top:12px">
+            <button id="pushPromptYes" type="button" style="flex:1;padding:10px;border:none;border-radius:10px;background:var(--g5);color:#fff;font-weight:700;font-size:13.5px">Ativar alertas</button>
+            <button id="pushPromptNo" type="button" style="padding:10px 14px;border:none;border-radius:9999px;background:var(--md-sys-color-surface-container);color:var(--text2);font-size:13px">Agora não</button>
+          </div>
+        </div>
+      </div>
+    </div>
+    <form class="push-localidade" id="pushLocalidadeRow" hidden>
+      <label for="pushLocalidade">Localidade para avisos de pequenas quedas de energia</label>
+      <div class="push-localidade-controles">
+        <!-- Bairros de Ipiranga no catálogo do mapa oficial da Copel. -->
+        <select id="pushLocalidade" aria-describedby="pushLocalidadeStatus">
+          <option value="">Sem preferência</option>
+          <option value="AVENCAL">Avencal</option>
+          <option value="CENTRO">Centro</option>
+          <option value="DESCALVADO">Descalvado</option>
+          <option value="IPIRANGA">Ipiranga</option>
+          <option value="PROGRESSO">Progresso</option>
+          <option value="RURAL">Rural</option>
+          <option value="TABOAO">Taboão</option>
+        </select>
+        <button id="pushLocalidadeSalvar" type="submit">Salvar</button>
+      </div>
+      <p class="push-localidade-status" id="pushLocalidadeStatus" role="status"></p>
+    </form>
+    </section>
   </div>
 
   <!-- TAB 2: ESTATÍSTICAS DIÁRIAS -->
@@ -2720,13 +2740,15 @@ function renderCards(services){
     const fonteVelha = (minSvc!=null && minSvc>15)
       ? `<span class="svc-velha">Fonte atualizada às ${fmtTime(tSvc.getTime())}</span>` : '';
     const nivel = ESTADOS[chaveEstado].nivel;
+    const rotulo = name === 'Copel' && chaveEstado === 'normal' && (svc.data?.totalConsumers || 0) > 0
+      ? 'Ocorrência local' : ESTADOS[chaveEstado].rotulo;
 
     itens+=`<div class="svc-item" data-name="${esc(name)}" data-nivel="${nivel}">
       <span class="svc-ico" aria-hidden="true">${ico}</span>
       <div class="svc-corpo">
         <div class="svc-topo">
           <span class="svc-nome">${esc(nomeSvc)}</span>
-          <span class="chip-estado" data-nivel="${nivel}">${esc(ESTADOS[chaveEstado].rotulo)}</span>
+          <span class="chip-estado" data-nivel="${nivel}">${esc(rotulo)}</span>
         </div>
         <p class="svc-msg">${esc(msg)}</p>
         ${avisos?`<p class="svc-avisos">${esc(avisos)}</p>`:''}
@@ -3852,11 +3874,8 @@ function renderHero(){
     const tile = el.closest('.hero-tile');
     if (tile) tile.dataset.nivel = ESTADOS[chave].nivel;
   };
-  /* A tile mostra a PALAVRA de estado (igual ao chip do card de serviço); a
-     contagem de quem está sem luz vive na mensagem do card Serviços, onde cabe
-     explicar. Antes o tile dizia "1 sem luz" e o chip dizia "Normal" — duas
-     leituras do mesmo fato. */
-  pinta('tileEnergiaVal', ESTADOS[estadoEnergia].rotulo, estadoEnergia);
+  /* O indicador e o card usam o mesmo rótulo para interrupções localizadas. */
+  pinta('tileEnergiaVal', ucs > 0 && estadoEnergia === 'normal' ? 'Ocorrência local' : ESTADOS[estadoEnergia].rotulo, estadoEnergia);
   pinta('tileAguaVal', ESTADOS[estadoAgua].rotulo, estadoAgua);
   pinta('tileRiosVal', rio.rotulo, rio.chave);
   pinta('tileChuvaVal', `${String(chuva.em24h).replace('.', ',')} mm`, estadoChuva);
@@ -3893,8 +3912,18 @@ function renderHero(){
   const alertBox = document.getElementById('heroAlert');
   const card = document.getElementById('heroCard');
   if (a && a.hot) {
-    if (tEl) tEl.textContent = a.titulo || 'Alerta meteorológico';
-    if (sEl) sEl.textContent = a.descricao || '';
+    const avisosInmet = (a.avisosOficiais || []).filter(o => o.fonte === 'INMET');
+    const tituloOriginal = String(a.titulo || '').replace(/\s+—\s+INMET$/, '');
+    const principal = avisosInmet.find(o => o.titulo === tituloOriginal);
+    const titulo = (a.titulo || 'Alerta meteorológico').replace(/\.\s*Severidade Grau:\s*/i, ' · ');
+    if (tEl) tEl.textContent = titulo + (principal && !/INMET/i.test(titulo) ? ' · INMET' : '');
+    const validade = principal ? formatarVigenciaInmet(principal) : '';
+    const orientacao = /não se abrigue debaixo de árvores/i.test(principal?.orientacoes || '')
+      ? 'Não se abrigue debaixo de árvores.' : 'Acompanhe as orientações oficiais.';
+    const avisoDesatualizado = (a.motivos || []).find(m => /INMET indisponível/i.test(m));
+    if (sEl) sEl.textContent = principal
+      ? [validade, orientacao, avisoDesatualizado].filter(Boolean).join(' · ')
+      : (a.descricao || '');
     if (lead) {
       lead.dataset.nivel = a.nivel === 'vermelho' ? 'emerg' : 'crit';
       lead.dataset.ico = '';
@@ -3903,13 +3932,16 @@ function renderHero(){
     if (card) card.dataset.alerta = a.nivel;
     if (alertBox) {
       const motivos = (a.motivos || []).map((m) => `<div>• ${esc(m)}</div>`).join('');
-      const oficiais = (a.avisosOficiais || []).filter(o => o.fonte === 'INMET' && o.descricao).map(renderAvisoInmet).join('');
-      alertBox.innerHTML = `${motivos}${oficiais}`;
+      const oficiais = avisosInmet.map(renderAvisoInmet).join('');
+      const resumo = alertBox.querySelector('summary');
+      if (resumo) resumo.textContent = avisosInmet.length ? 'Ver avisos do INMET' : 'Ver detalhes do alerta';
+      const conteudo = document.getElementById('heroAlertContent');
+      if (conteudo) conteudo.innerHTML = `${motivos}${oficiais}`;
       alertBox.hidden = !(motivos || oficiais);
     }
   } else {
     if (card) card.removeAttribute('data-alerta');
-    if (alertBox) { alertBox.hidden = true; alertBox.innerHTML = ''; }
+    if (alertBox) { alertBox.hidden = true; alertBox.open = false; }
   }
 }
 window.renderHero = renderHero;
@@ -3987,11 +4019,21 @@ function renderCemadenCard(data) {
     notas.textContent = 'Estações oficiais de chuva' + (hh ? ` · leitura das ${hh[1]}` : '');
   }
 }
+function formatarHoraAviso(valor) {
+  if (!valor) return '';
+  const iso = String(valor).replace(' ', 'T');
+  const data = new Date(/(?:Z|[+-]\d{2}:?\d{2})$/i.test(iso) ? iso : `${iso}-03:00`);
+  return Number.isNaN(data.getTime()) ? '' : data.toLocaleString('pt-BR', {
+    timeZone: 'America/Sao_Paulo', dateStyle: 'short', timeStyle: 'short'
+  });
+}
+function formatarVigenciaInmet(o) {
+  const inicio = formatarHoraAviso(o.inicio);
+  const fim = formatarHoraAviso(o.fim);
+  return inicio && fim ? `Vigência ${inicio} até ${fim}` : fim ? `Até ${fim}` : inicio ? `Desde ${inicio}` : '';
+}
 function renderAvisoInmet(o) {
-  const hora = s => {
-    const d = new Date(s);
-    return Number.isNaN(d.getTime()) ? 'não informado' : d.toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo', dateStyle: 'short', timeStyle: 'short' });
-  };
+  const hora = (valor) => formatarHoraAviso(valor) || 'não informado';
   let link = '';
   try {
     const u = new URL(o.link);
@@ -4107,6 +4149,7 @@ function renderHidroCard(data) {
     && !NOMES_FORA.some((r) => String(e.nome).indexOf(r) === 0));
   const varias = estacoesVisiveis.length > 1;
 
+  const detalhesEstacoes = [];
   const rows = estacoesVisiveis.map((e) => {
     const nome = esc(String(e.nome).split(' (')[0]);
     const t = tendencia(e.delta6hCm);
@@ -4120,28 +4163,30 @@ function renderHidroCard(data) {
     // chip do cabeçalho).
     const tagEstacao = varias
       ? ` <span class="chip-estado" data-nivel="${ESTADOS[chave].nivel}">${esc(ESTADOS[chave].rotulo)}</span>` : '';
+    const dataHora = String(e.dataHora || '');
+    const local = dataHora.match(/^(\d{4})-(\d{2})-(\d{2})[ T](\d{2}:\d{2})(?::\d{2})?$/);
+    let leitura = local ? `${local[3]}/${local[2]} às ${local[4]}` : '';
+    if (!local && dataHora) {
+      const data = new Date(dataHora);
+      if (!Number.isNaN(data.getTime())) leitura = data.toLocaleString('pt-BR', {
+        timeZone: 'America/Sao_Paulo', dateStyle: 'short', timeStyle: 'short'
+      });
+    }
+    detalhesEstacoes.push(`<div><strong>${nome}:</strong> ${esc(t.palavra)}${t.variacao ? ` · ${esc(t.variacao)}` : ''} · água passando: ${fmtV(e.vazaoM3s)}${recuo}</div>`);
     return `<div class="rio-bloco">
       <div class="rio-topo">
         <span class="rio-nome">${nome}${tagEstacao}</span>
         <span class="rio-nivel">${fmtM(e.nivelCm)}</span>
       </div>
-      <div class="rio-linha">${esc(t.palavra)}${t.variacao ? ` · ${esc(t.variacao)}` : ''} · água passando: ${fmtV(e.vazaoM3s)}${recuo}</div>
+      <div class="rio-linha">${esc(t.palavra)}${recuo ? ' · alerta removido' : ''}</div>
+      <div class="rio-meta">${h.desatualizado ? 'ANA indisponível · ' : ''}${leitura ? `Última leitura: ${esc(leitura)}` : 'Horário da leitura indisponível'}</div>
     </div>`;
   }).join('');
 
   /* UMA frase explicativa com o risco de transbordar — o lugar da confiança é
      AQUI, não no herói (v2). */
   const riscoTxt = riscoFrase(risco);
-  /* Dado PRESERVADO de um ciclo em que a ANA não respondeu (ver preservarHidro):
-     o horário da última leitura vai na cara do leitor — número velho não pode
-     passar por leitura de agora. */
-  const velho = h.desatualizado === true;
-  const horaLeitura = (() => {
-    const dh = estacoesVisiveis.map((e) => String(e.dataHora || '')).filter(Boolean).sort().pop();
-    const m = dh ? dh.match(/(\d{2}):(\d{2})/) : null;
-    return m ? ` de ${m[1]}h${m[2]}` : '';
-  })();
-  const notaRios = `<p class="rio-nota">O ${esc(rio.estacao)} mede a bacia do Bitumirim, o rio que alaga Ipiranga. ${esc(riscoTxt)}${velho ? ` <strong>A ANA não está respondendo agora — estes números são da última leitura${esc(horaLeitura)}.</strong>` : ''}</p>`;
+  const notaRios = `<p class="rio-nota">${esc(riscoFrase({ ...risco, confianca: null }))}</p>`;
 
   const iflLine = (h.ifl && h.ifl.nivel !== 'verde')
     ? `<div style="background:var(--a1);border-radius:12px;padding:10px 12px;margin:6px 0;font-size:13px;color:var(--text)">${icoMS('bolt','s18')} <strong>Flash local (IFL ${esc(String(h.ifl.score).replace('.', ','))} · ${esc(h.ifl.nivel.toUpperCase())})</strong> — ${esc(h.ifl.motivos.join('; '))}</div>`
@@ -4156,10 +4201,12 @@ function renderHidroCard(data) {
       <div style="margin-top:4px">Rótulos: OUT23 (29/10 18h, Uvaia ~739) · DEZ24 (09/12 13h, Uvaia ~339) · SET26 (13/09, saiu sem transbordar) · JAN25 (21/01, régua 4m sem sair) · jul/24 e set/24 (não saíram) · invernos 13/14/15/17/19 (todos saíram; 2013 o mais dramático). Faixas P90/P98 do ano hidrológico.</div>
       <div style="margin-top:6px"><a href="/api/hidro" style="color:var(--md-sys-color-primary)">Dados crus (JSON)</a> · <a href="https://github.com/maKizo009/servicos-status/issues" style="color:var(--md-sys-color-primary)">Sugerir melhoria</a></div>
     </div>`;
-  content.innerHTML = rows + notaRios +
+  const html = rows + notaRios +
     `<details>
-      <summary>Como é calculado</summary>
+      <summary>Detalhes · Como é calculado</summary>
       <div style="margin-top:6px;line-height:1.6">
+        <p>O ${esc(rio.estacao)} mede a bacia do Bitumirim, o rio que alaga Ipiranga. ${esc(riscoTxt)}</p>
+        ${detalhesEstacoes.join('')}
         ${prev ? `<div><strong>Regra:</strong> ${esc(prev.regra)}</div>
         <div style="margin-top:4px"><strong>Motivos:</strong> ${prev.motivos.map((m) => esc(m)).join(' · ')}</div>
         ${prev.jev ? `<div style="margin-top:4px"><strong>Segunda opinião (modelo de decisão):</strong> ${prev.jev.vaiSair === 'sim' ? 'sai da calha' : prev.jev.vaiSair === 'nao' ? 'não sai da calha' : 'indefinido'}${prev.jev.probVaiSair != null ? ` · probabilidade ${Math.round(prev.jev.probVaiSair * 100)}%` : ''}${prev.jev.confianca != null ? ` · confiança própria ${Math.round(prev.jev.confianca * 100)}%` : ''}${prev.jev.transborda !== 'indefinido' ? ` · se sair, cheia grande: ${prev.jev.transborda === 'sim' ? 'sim' : 'não'}` : ''}</div>` : ''}
@@ -4171,6 +4218,19 @@ function renderHidroCard(data) {
         ${h.atualizadoEm ? `Atualizado: ${new Date(h.atualizadoEm).toLocaleString('pt-BR')}.` : ''}</div>
       </div>
     </details>`;
+  if (content._ultimoHidroHtml === html) return;
+  const detalhesAnteriores = content.querySelector('details');
+  const estavaAberto = !!detalhesAnteriores?.open;
+  const focoAnterior = content.contains(document.activeElement) ? document.activeElement : null;
+  const focoResumo = focoAnterior?.tagName === 'SUMMARY';
+  const hrefFocado = focoAnterior?.tagName === 'A' ? focoAnterior.getAttribute('href') : null;
+  content.innerHTML = html;
+  content._ultimoHidroHtml = html;
+  const detalhes = content.querySelector('details');
+  if (detalhes) detalhes.open = estavaAberto;
+  const foco = focoResumo ? detalhes?.querySelector('summary')
+    : hrefFocado ? [...content.querySelectorAll('a')].find(a => a.getAttribute('href') === hrefFocado) : null;
+  if (foco) foco.focus({ preventScroll: true });
 }
 function renderNowcastCard(data) {
   const nc = data?.nowcast;
@@ -4982,7 +5042,10 @@ function copyPrompt(provider, text) {
           try { localStorage.setItem('mi_push_prompt', JSON.stringify({ ts: Date.now(), done: true })); } catch (e) {}
           if (window.__miPushPopup) window.__miPushPopup.hide();
           showToast('Alertas ativados! Você será avisado em chuva forte.');
-        } else if (perm === 'denied') { setState('denied'); }
+        } else if (perm === 'denied') {
+          setState('denied');
+          if (window.__miPushPopup) window.__miPushPopup.hide();
+        }
       });
       btn.addEventListener('click', async () => {
         if (Notification.permission === 'denied') {
@@ -5148,22 +5211,10 @@ function copyPrompt(provider, text) {
     .catch(() => {});
 })();
 </script>
-<div id="pushPrompt" style="display:none;position:fixed;left:50%;transform:translateX(-50%) translateY(24px);bottom:18px;z-index:9998;width:min(92vw,440px);background:var(--md-sys-color-surface-container-high);border-radius:16px;box-shadow:0 12px 32px rgba(0,0,0,.3);padding:16px;opacity:0;transition:opacity .25s ease,transform .25s ease" role="dialog" aria-label="Ativar alertas de chuva">
-  <div style="display:flex;gap:12px;align-items:flex-start">
-    <div class="ms s28" aria-hidden="true">notifications</div>
-    <div style="flex:1">
-      <div style="font-weight:700;font-size:14.5px;color:var(--text)">Receber alertas de chuva no celular?</div>
-      <div style="font-size:13px;color:var(--text2);line-height:1.5;margin-top:4px">O Monitor avisa quando chuva forte vem pra Ipiranga — antes de você ver na janela. Só toca em alerta laranja ou vermelho, sem spam.</div>
-      <div style="display:flex;gap:8px;margin-top:12px">
-        <button id="pushPromptYes" type="button" style="flex:1;padding:10px;border:none;border-radius:10px;background:var(--g5);color:#fff;font-weight:700;font-size:13.5px">Ativar alertas</button>
-        <button id="pushPromptNo" type="button" style="padding:10px 14px;border:none;border-radius:9999px;background:var(--md-sys-color-surface-container);color:var(--text2);font-size:13px">Agora não</button>
-      </div>
-    </div>
-  </div>
-</div>
+
 
 <script>
-/* ===== Popup de ativação de push (novo visitante, 1x/30 dias) ===== */
+/* Convite de ativação de push para novos visitantes, 1x a cada 30 dias. */
 (() => {
   const KEY = 'mi_push_prompt';
   function dismissed() {
@@ -5184,49 +5235,17 @@ function copyPrompt(provider, text) {
       const box = document.getElementById('pushPrompt');
       if (!box) return;
       setTimeout(() => {
-        if (dismissed()) return;
-        box.style.display = 'block';
-        requestAnimationFrame(() => { box.style.opacity = '1'; box.style.transform = 'translateX(-50%) translateY(0)'; });
-        // O prompt é `position:fixed` no rodapé: cobria 155 px do que estivesse
-        // embaixo — na prática o card da Copel, que tem 2366 px de altura e quase
-        // sempre tem a base na tela (relatado em 22/09/2026). Ele existe pra ser
-        // um convite de UMA vez ("1x/30 dias", como diz o comentário acima), não
-        // pra ficar pendurado: sai assim que o usuário começa a rolar a página.
-        // O sino continua sendo o caminho pra ativar alertas depois.
-        const y0 = window.scrollY;
-        let jaSaiu = false;
-        const sair = (ev) => {
-          if (jaSaiu) return;
-          // Rolagem residual (restauração de posição no carregamento) não mata o convite.
-          if (ev && ev.type === 'scroll' && Math.abs(window.scrollY - y0) < 80) return;
-          jaSaiu = true;
-          window.removeEventListener('scroll', sair);
-          document.removeEventListener('scroll', sair);
-          window.removeEventListener('pointerdown', interagiu);
-          window.removeEventListener('touchstart', interagiu);
-          mark(false);
-          window.__miPushPopup.hide();
-        };
-        // Toque/clique fora do próprio prompt também encerra o convite. É a rede
-        // mais confiável: não depende de evento de scroll chegar (medição no
-        // harness mostrou contexto onde scroll não chega ao listener).
-        const interagiu = (ev) => {
-          if (ev && ev.target && ev.target.closest && ev.target.closest('#pushPrompt')) return;
-          sair(ev);
-        };
-        // Nos dois alvos: o scroll do documento dispara em `document` e borbulha
-        // para `window`, mas já vi mundo isolado/iframe onde só um dos dois chega.
-        window.addEventListener('scroll', sair, { passive: true });
-        document.addEventListener('scroll', sair, { passive: true });
-        window.addEventListener('pointerdown', interagiu, { passive: true });
-        window.addEventListener('touchstart', interagiu, { passive: true });
-        // Rede de segurança: sem isso ele só sairia se o usuário clicasse ou rolasse.
-        setTimeout(sair, 40000);
+        if (dismissed() || Notification.permission !== 'default') return;
+        const aviso = document.getElementById('avisoRow');
+        if (aviso) aviso.hidden = true;
+        box.hidden = false;
       }, 2500);
     },
     hide: () => {
       const box = document.getElementById('pushPrompt');
-      if (box) box.style.display = 'none';
+      if (box) box.hidden = true;
+      const aviso = document.getElementById('avisoRow');
+      if (aviso) aviso.hidden = false;
     },
   };
   document.addEventListener('click', (ev) => {
