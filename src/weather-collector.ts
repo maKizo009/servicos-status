@@ -1,3 +1,4 @@
+import { normalizarPrevisaoDiaria, type PrevisaoDia } from "./previsao-cinco-dias.js";
 import { getLatestRadarCache, saveRadarCache } from "./db.js";
 import { logger } from "./logger.js";
 import type {
@@ -130,6 +131,7 @@ export async function fetchCurrentWeather(): Promise<{
 	windKmh: number;
 	humidityPct: number;
 	hourlyForecast: HourlyForecastPoint[];
+	previsaoDiaria: PrevisaoDia[];
 	instabilidade: WeatherState["instabilidade"];
 	/** O fetch REAL funcionou? false = valores abaixo são defaults inventados. */
 	ok: boolean;
@@ -139,7 +141,7 @@ export async function fetchCurrentWeather(): Promise<{
 		const controller = new AbortController();
 		const timeoutId = setTimeout(() => controller.abort(), 6_000);
 
-		let res = await fetch(OPEN_METEO_API_URL, { signal: controller.signal });
+		let res = await fetch(OPEN_METEO_API_URL + "&daily=weather_code,temperature_2m_max,temperature_2m_min,precipitation_sum,precipitation_probability_max,wind_gusts_10m_max&forecast_days=5", { signal: controller.signal });
 		clearTimeout(timeoutId);
 		// Preserve o clima existente caso as novas variáveis não sejam aceitas.
 		if (!res.ok) res = await fetch(OPEN_METEO_BASE_URL, { signal: AbortSignal.timeout(6000) });
@@ -149,6 +151,7 @@ export async function fetchCurrentWeather(): Promise<{
 		}
 
 		const data = (await res.json()) as {
+			daily?: Parameters<typeof normalizarPrevisaoDiaria>[0];
 			current?: {
 				time?: string;
 				temperature_2m?: number;
@@ -245,6 +248,7 @@ export async function fetchCurrentWeather(): Promise<{
 			windKmh,
 			humidityPct,
 			hourlyForecast,
+			previsaoDiaria: normalizarPrevisaoDiaria(data.daily),
 			instabilidade,
 			ok: true,
 			erro: null,
@@ -260,6 +264,7 @@ export async function fetchCurrentWeather(): Promise<{
 			windKmh: 14,
 			humidityPct: 68,
 			hourlyForecast: [],
+			previsaoDiaria: [],
 			instabilidade: null,
 			// Defaults INVENTADOS — o source-health marca a fonte como fora
 			// para o vigia alertar em vez do site mentir em silêncio.
