@@ -621,7 +621,7 @@ export async function syncWeatherCycle(): Promise<WeatherState> {
 				);
 				logger.info("Push de alerta avaliado", {
 					nivel: unificado.nivel,
-					evento: regra.evento,
+					evento: identidade ? `inmet:${identidade}` : regra.evento,
 					enviado,
 				});
 			}
@@ -629,6 +629,16 @@ export async function syncWeatherCycle(): Promise<WeatherState> {
 			logger.warn("Push de alerta falhou (sem quebrar o ciclo)", {
 				error: String(err),
 			});
+		}
+		try {
+			const { conteudoPushVigilancia } = await import("./push-vigilancia.js");
+			const { sendEventPush } = await import("./push.js");
+			const frames = state.nowcast?.frames ?? [];
+			const frameTime = frames.length ? Math.max(...frames.map((frame) => frame.time)) : null;
+			const conteudo = state.radarSeveroConfirmado ? null : conteudoPushVigilancia(state.nowcast?.threats ?? [], frameTime);
+			if (conteudo) await sendEventPush("radar:vigilancia-extrema", conteudo.titulo, conteudo.corpo, 90 * 60_000);
+		} catch (err) {
+			logger.warn("Push de vigilância falhou (sem quebrar o ciclo)", { error: String(err) });
 		}
 	} catch (err) {
 		logger.warn("Alerta unificado falhou (sem quebrar o ciclo)", {
@@ -677,3 +687,4 @@ export async function syncWeatherCycle(): Promise<WeatherState> {
 }
 
 /** TTL do estado compartilhado no Turso: folga pro cron de 10 min do GH Actions. */
+

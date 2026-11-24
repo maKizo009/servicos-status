@@ -388,12 +388,15 @@ export async function sendEventPush(
 	url = "/",
 ): Promise<boolean> {
 	if (ttlMs > 0 && !(await canSendPush(evento, ttlMs))) {
+		logger.info("Push suprimido por cooldown", { evento, ttlMs });
 		return false;
 	}
 	const r = await sendPushAlert(titulo, corpo, url);
+	logger.info("Push processado", { evento, recebidos: r.ok, falhas: r.falhas });
 	if (r.ok > 0 || ttlMs === 0) {
 		if (ttlMs > 0) await markPushSent(evento);
 		return true;
 	}
 	return false;
 }
+
