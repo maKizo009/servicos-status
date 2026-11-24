@@ -224,8 +224,12 @@ export default async function handler(req: any, res: any) {
 		// Um push por evento: quando o alerta unificado já está laranja/vermelho,
 		// ele manda o push do mesmo núcleo — aqui não se duplica.
 		const nivelUnificado = weatherState.alertaUnificado?.nivel;
-		const unificadoJaAvisa =
-			nivelUnificado === "laranja" || nivelUnificado === "vermelho";
+		const alertaUnificado = weatherState.alertaUnificado;
+		const avisoInmet = alertaUnificado?.avisosOficiais.some(
+			(a) => a.fonte === "INMET" && a.descricao === alertaUnificado.descricao,
+		);
+		const unificadoJaAvisa = !avisoInmet &&
+			(nivelUnificado === "laranja" || nivelUnificado === "vermelho");
 		// Só interrompe o celular com evidência CONFIRMADA entre ciclos
 		// (29/09/2026): `radarSevero` sozinho promovia push por um único ciclo de
 		// um núcleo no piso da faixa "forte" já enfraquecendo.
@@ -307,3 +311,4 @@ export default async function handler(req: any, res: any) {
 		}
 	}
 }
+
