@@ -1930,6 +1930,8 @@ html.trocando-tema, html.trocando-tema *{transition:none !important}
   .sw-trilho,.sw-bola{transition:none}
 }
 
+
+.forecast-view{margin:18px 0 32px}.forecast-head{display:flex;align-items:center;justify-content:space-between;gap:12px;margin:12px 0 16px}.forecast-head h2{font-size:21px;margin:0}.forecast-head p,.forecast-meta{font-size:13px;color:var(--text2);margin:5px 0}.forecast-share{border:0;border-radius:50%;width:44px;height:44px;background:var(--md-sys-color-primary-container);color:var(--md-sys-color-on-primary-container);font-size:25px;cursor:pointer}.forecast-days{display:grid;gap:8px}.forecast-day{background:var(--surface);border:1px solid var(--border);border-radius:16px;overflow:hidden}.forecast-day summary{cursor:pointer;list-style:none;display:grid;grid-template-columns:minmax(90px,1fr) 1fr auto auto;align-items:center;gap:12px;padding:16px;min-height:64px}.forecast-day summary::-webkit-details-marker{display:none}.forecast-day summary:after{content:'⌄';font-size:20px}.forecast-day[open] summary:after{content:'⌃'}.forecast-date{font-weight:700}.forecast-temp{font-weight:700;text-align:right}.forecast-rain{color:var(--st-info);font-size:13px}.forecast-body{padding:0 16px 16px;line-height:1.55;color:var(--text2)}.forecast-body p{margin:6px 0}.forecast-summary{background:var(--md-sys-color-surface-container-low);padding:12px;border-radius:12px}.forecast-meta{margin-top:12px}.forecast-error{padding:20px;border-radius:12px;background:var(--surface)}
 </style>
 </head>
 <body>
@@ -1987,9 +1989,9 @@ html.trocando-tema, html.trocando-tema *{transition:none !important}
       <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-6h2v6zm0-8h-2V7h2v2z"/></svg>
       Status ao vivo
     </button>
-    <button class="tab-btn" id="tabStatsBtn" type="button" role="tab" aria-selected="false" aria-controls="statsView">
+    <button class="tab-btn" id="tabStatsBtn" type="button" role="tab" aria-selected="false" aria-controls="forecastView">
       <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zM9 17H7v-7h2v7zm4 0h-2v-10h2v10zm4 0h-2v-4h2v4z"/></svg>
-      Relatório
+      Previsão
     </button>
   </nav>
 
@@ -2240,6 +2242,13 @@ html.trocando-tema, html.trocando-tema *{transition:none !important}
     </section>
   </div>
 
+  <section id="forecastView" class="forecast-view" style="display:none" aria-label="Previsão do tempo">
+    <div class="forecast-head"><div><h2>Previsão para Ipiranga</h2><p>Hoje e próximos quatro dias · toque para ver detalhes</p></div>
+      <button id="forecastShare" class="forecast-share" type="button" title="Compartilhar previsão" aria-label="Compartilhar previsão"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><path d="m8.6 10.5 6.8-4M8.6 13.5l6.8 4"/></svg></button></div>
+    <div id="forecastDays" class="forecast-days" aria-live="polite">Carregando previsão…</div>
+    <p id="forecastMeta" class="forecast-meta">Open-Meteo / ECMWF IFS 0,25° · horário de Brasília</p>
+    <p class="forecast-meta">Previsão sujeita a mudanças. Para alertas atuais, consulte Status ao vivo.</p>
+  </section>
   <!-- TAB 2: ESTATÍSTICAS DIÁRIAS -->
   <div id="statsView" style="display:none">
     <div class="stats-container">
@@ -2307,6 +2316,7 @@ html.trocando-tema, html.trocando-tema *{transition:none !important}
     <span style="margin:0 6px">·</span>
     <span id="footerTime">Atualizado há --s</span>
   </div>
+  <button class="llm-btn" type="button" id="reportLink">Relatório de ocorrências</button>
   <details class="footer-llm">
     <summary>Para assistentes de IA</summary>
     <p class="ia-explica">Não entendeu os números? Peça pro ChatGPT, Claude ou Gemini explicar — eles leem os dados oficiais deste site.</p>
@@ -2973,21 +2983,70 @@ function updateFooter(ts){
   window._footerTick=setInterval(tick,5000);
 }
 
+
+function forecastDate(date){const parts=date.split('-').map(Number);return new Date(parts[0],parts[1]-1,parts[2],12).toLocaleDateString('pt-BR',{weekday:'short',day:'2-digit',month:'2-digit'}).replace('.','');}
+function forecastNumber(v, unit){return typeof v==='number' && Number.isFinite(v) ? v.toLocaleString('pt-BR',{maximumFractionDigits:1})+unit : 'indisponível';}
+function renderForecast(){
+  const target=document.getElementById('forecastDays'), f=window.latestWeatherData?.previsaoCincoDias;
+  if(!f?.dias?.length){target.innerHTML='<p class="forecast-error">Previsão indisponível no momento. Tente novamente mais tarde.</p>';return;}
+  const opened=new Set([...target.querySelectorAll('details[open]')].map(e=>e.dataset.date));
+  const today=new Intl.DateTimeFormat('en-CA',{timeZone:'America/Sao_Paulo',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date());
+  const visibleDays=f.dias.filter(d=>d.data>=today);
+  if(!visibleDays.length){target.textContent='Previsão desatualizada. Aguarde a próxima atualização.';return;}
+  target.innerHTML=visibleDays.map((d,i)=>`<details class="forecast-day" data-date="${esc(d.data)}" ${opened.has(d.data)?'open':''}><summary><span class="forecast-date">${d.data===today?'Hoje · ':''}${esc(forecastDate(d.data))}</span><span class="forecast-rain">${forecastNumber(d.chuvaMm,' mm')}</span><span class="forecast-temp">${forecastNumber(d.maximaC,'°')} / ${forecastNumber(d.minimaC,'°')}</span></summary><div class="forecast-body"><p>Chuva prevista: <strong>${forecastNumber(d.chuvaMm,' mm')}</strong></p><p>Pico de probabilidade de chuva: <strong>${forecastNumber(d.probabilidadeMaximaPct,'%')}</strong></p><p>Rajadas previstas: <strong>${forecastNumber(d.rajadasKmh,' km/h')}</strong></p>${f.resumos?.[d.data]?`<div class="forecast-summary"><strong>${i<2&&f.fonteResumo==='ia'?'Resumo por IA':'Resumo automático'}</strong><p>${esc(f.resumos[d.data])}</p></div>`:''}</div></details>`).join('');
+  target.querySelectorAll('details').forEach(el=>el.addEventListener('toggle',()=>{if(el.open)target.querySelectorAll('details').forEach(other=>{if(other!==el)other.open=false;});}));
+  const dt=new Date(f.consultadoEm).toLocaleString('pt-BR',{timeZone:'America/Sao_Paulo',day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'});
+  document.getElementById('forecastMeta').textContent=`Open-Meteo / ECMWF IFS 0,25° · consultado em ${dt} · horário de Brasília`;
+}
+document.getElementById('forecastShare').addEventListener('click',async()=>{
+ const f=window.latestWeatherData?.previsaoCincoDias;if(!f?.dias?.length)return;
+ const selected=document.querySelector('#forecastDays details[open]')?.dataset.date || document.querySelector('#forecastDays details')?.dataset.date;
+ const d=f.dias.find(x=>x.data===selected);if(!d)return;
+ const canvas=document.createElement('canvas');canvas.width=1080;canvas.height=1080;const c=canvas.getContext('2d');
+ c.fillStyle='#f5faf2';c.fillRect(0,0,1080,1080);c.fillStyle='#1b6b3a';c.fillRect(0,0,1080,155);
+ c.fillStyle='#fff';c.font='bold 46px sans-serif';c.fillText('Ipiranga Monitor',54,95);
+ c.fillStyle='#1d3826';c.font='bold 48px sans-serif';c.fillText('Previsão · '+forecastDate(d.data),54,235);
+ c.font='bold 60px sans-serif';c.fillText(forecastNumber(d.maximaC,'°')+' / '+forecastNumber(d.minimaC,'°'),54,330);
+ c.font='32px sans-serif';c.fillText('Máxima / mínima',54,378);
+ c.fillText('Chuva prevista: '+forecastNumber(d.chuvaMm,' mm'),54,450);
+ c.fillText('Pico de probabilidade: '+forecastNumber(d.probabilidadeMaximaPct,'%'),54,505);
+ c.font='bold 29px sans-serif';c.fillText(f.fonteResumo==='ia'&&f.dias.indexOf(d)<2?'RESUMO POR IA':'RESUMO AUTOMÁTICO',54,592);
+ c.font='31px sans-serif';const words=(f.resumos?.[d.data]||'').split(/\s+/);let line='',y=645;
+ for(const word of words){const next=line+' '+word;if(c.measureText(next).width>970&&line){c.fillText(line.trim(),54,y);y+=43;line=word;}else line=next;}if(line)c.fillText(line.trim(),54,y);
+ c.font='26px sans-serif';c.fillText('Open-Meteo / ECMWF IFS 0,25°',54,890);
+ c.fillText('Consultado: '+new Date(f.consultadoEm).toLocaleString('pt-BR',{timeZone:'America/Sao_Paulo'}),54,932);
+ c.fillText('Previsão sujeita a mudanças · servicos-status.vercel.app',54,974);
+ canvas.toBlob(async blob=>{if(!blob)return;const file=new File([blob],'previsao-ipiranga.png',{type:'image/png'});
+ if(navigator.share && navigator.canShare?.({files:[file]})){try{await navigator.share({title:'Previsão · Monitor Ipiranga',files:[file]});return;}catch(e){if(e.name==='AbortError')return;}}
+ const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=file.name;a.click();setTimeout(()=>URL.revokeObjectURL(a.href),10000);
+ },'image/png');
+});
+
 function switchTab(tab){
   const statusView = $('#statusView');
   const statsView = $('#statsView');
   const btnStatus = $('#tabStatusBtn');
   const btnStats = $('#tabStatsBtn');
+  const forecastView = $('#forecastView');
 
-  if(tab === 'stats'){
+  if(tab === 'forecast'){
+    statusView.style.display = 'none'; statsView.style.display = 'none'; forecastView.style.display = 'block';
+    btnStatus.classList.remove('active'); btnStats.classList.add('active');
+    btnStatus.setAttribute('aria-selected','false'); btnStats.setAttribute('aria-selected','true');
+    renderForecast();
+  } else if(tab === 'stats'){
+    forecastView.style.display = 'none';
     statusView.style.display = 'none';
     statsView.style.display = 'block';
     btnStatus.classList.remove('active');
-    btnStats.classList.add('active');
+    btnStats.classList.remove('active');
+    btnStatus.setAttribute('aria-selected','false'); btnStats.setAttribute('aria-selected','false');
     fetchStats();
   } else {
     statsView.style.display = 'none';
+    forecastView.style.display = 'none';
     statusView.style.display = 'block';
+    btnStatus.setAttribute('aria-selected','true'); btnStats.setAttribute('aria-selected','false');
     btnStats.classList.remove('active');
     btnStatus.classList.add('active');
   }
@@ -3058,7 +3117,8 @@ document.getElementById('btnRefresh').addEventListener('click', () => {
    ciclo de 60 s, o gesto de puxar a tela no celular e "Atualizar agora" no menu
    do topo — um terceiro caminho só poluía o cabeçalho do card. */
 document.getElementById('tabStatusBtn').addEventListener('click', () => switchTab('status'));
-document.getElementById('tabStatsBtn').addEventListener('click', () => switchTab('stats'));
+document.getElementById('tabStatsBtn').addEventListener('click', () => switchTab('forecast'));
+document.getElementById('reportLink').addEventListener('click', () => { switchTab('stats'); document.getElementById('statsView').scrollIntoView({behavior:'smooth'}); });
 window.switchTab = switchTab;
 window.scrollToCard = scrollToCard;
 window.toggleCopelOutages = toggleCopelOutages;
@@ -3538,6 +3598,7 @@ async function fetchWeatherData() {
     if (!resp.ok) return;
     const data = await resp.json();
     window.latestWeatherData = data;
+    if (document.getElementById('forecastView')?.style.display === 'block') renderForecast();
     const instEl = document.getElementById("wxInstabilidade");
     if (instEl) {
       const inst = data.instabilidade;
